@@ -1,0 +1,4 @@
+# Files are kept byte for byte as they are on disk: the game reads these folders directly.
+* -text
+*.tga binary
+*.png binary

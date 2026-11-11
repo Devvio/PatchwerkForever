@@ -1,0 +1,386 @@
+# Our own route planner: plan
+
+Goal: a route planner for WoW Forever that is ours end to end: map data made from the
+game's own files by our tools, a planner written by us, shipped as its own addon. No
+MelloUI code or data in it.
+
+**Name (2026-11-12): "Patchwerk Forever: Wayfarer".** It was "Wayfinder Forever" until then; CurseForge
+already has an addon of that name, so Tyrone renamed it for the upload. Folders
+`PatchwerkForever_Wayfarer` and `_Kalimdor`, `_EasternKingdoms`, `_ZephrasIsle`; saved data
+`PatchwerkForever_WayfarerDB`; commands `/wayfarer` and `/pfw`. Below, the log keeps the old name
+where it was written before the change: read Wayfinder, `WayfinderForever` and `/wayfinder` as the
+new ones. A copy from just before the rename is in `backup/wayfinder-before-rename/`.
+
+**Release (prepared 2026-11-12, not yet uploaded):** version 0.9.0, a beta: only a Horde character
+in Kalimdor has been played. MIT for the code and pictures; README.md, CHANGELOG.md and LICENSE in
+the main folder. `python release.py` checks the four folders (versions agree, every listed file is
+there, no old name left) and writes `G:/Games/World of Warcraft/PatchwerkForever_Wayfarer-release/`:
+the zip of all four folders, the description (the README) and the changelog; the short summary is
+there too. Tyrone uploads by hand. After a change: CHANGELOG.md, the version in the four TOCs and in
+`pack.py`, then `release.py`. `python carry_saved.py` carried his settings and herb spots over from
+the old name's saved file (done, with the game closed). Confirmed in-game by Tyrone (2026-11-12):
+the renamed addon loads with his settings and herb spots intact.
+
+Decided with Tyrone (2026-11-11):
+- First usable version covers **ground and flight paths**; buildings, bridges and lifts come later.
+- It is **its own addon**, separate from Patchwerk Forever.
+- A Lua interpreter (LuaJIT via the Python package `lupa`) is installed so code is run here before it is tried in-game.
+
+## What is proven (tools in this folder)
+
+- `casc.py` reads any file out of the install's storage for the `wowf` product. Root v2, 2.4 M files.
+- `terrain.py` reads a map's tiles and gives heights and slopes per 4.17-yard cell. `mulgore.py` draws them.
+- Terrain is not encrypted. Kalimdor has 988 tiles (16.2 M cells), Eastern Kingdoms 736 (12.1 M).
+- Measured: extraction about 43 s + 32 s; walkability as run-length text about 3.9 MB + 2.9 MB.
+- Also present and readable: water (MH2O), object placements (MDDF/MODF), texture lists (MDID),
+  and the tables TaxiNodes, TaxiPath, TaxiPathNode, Map, UiMap, UiMapAssignment (WDC5 format).
+- `luacheck.py` compiles an addon's Lua with a real parser.
+
+## Milestones
+
+Each ends with something that can be checked here, before anything goes in-game.
+
+### 1. World extractor — done 2026-11-11
+- `db2.py` reads the game's tables (WDC5, numbers only). `world.py` finds every map's world file in
+  `Map.db2` and extracts whole maps: `python world.py 0 1 2991`.
+- Per cell: NONE, WALK, STEEP (over 50 degrees), WADE (shallow water), SWIM (1.5 yards deep or more),
+  plus the ground height. Output in `world/`: `map_<id>.bin` for the later tools, `map_<id>.png` to look at.
+- Extracted: Eastern Kingdoms (map 0, 736 tiles, 25 s), Kalimdor (map 1, 988 tiles, 35 s), and the new
+  zone on map 2991 (72 tiles, an island; MelloUI calls it Zephras Isle). No tile failed.
+- 73 of the table's 81 maps are readable; 8 are encrypted (unreleased content) and skipped.
+  Maps 3065 and 3104 are blank flat placeholders. Map 3021 (60 tiles) is real terrain of an unknown zone.
+- Continent map bounds turned out not to be needed: in-game the addon can ask the game for world
+  coordinates directly (`C_Map.GetWorldPosFromMapPos`, and back with `GetMapPosFromWorldPos`), so the
+  data is keyed by map id and world coordinates. `UiMapAssignment` is not parsed.
+- Not yet judged: whether 50 degrees is the right limit everywhere, and beaches where the sea has no
+  water data (map 2991's surroundings are holes, not sea). The planner's test trips in milestone 2 will show.
+
+### 2. Planner prototype, offline — done 2026-11-11
+- `nav.py`: the grid is cut into blocks of 32 x 32 cells (133 yards). A *gate* is made wherever two
+  blocks touch along passable cells (one per 16 cells of open border), and inside each block the
+  cheapest walk between each pair of its gates is worked out once. A route is: start to its block's
+  gates, A* over the gates, gates to the goal. `build_nav.py` builds it, `trips.py` runs test trips
+  and draws them (`world/trips_<id>.png`) and what connects to what (`world/islands_<id>.png`).
+- Sizes: Kalimdor 92,869 gates and 222,020 links (built in 93 s); Eastern Kingdoms 70,024 and
+  168,929 (74 s); the island 1,865 and 4,341. With a gate per 32 cells instead: about 17% fewer gates
+  and 35% fewer links, routes 2.6% longer than exact instead of 2.1%.
+- Quality: six trips checked against an exact cell-by-cell search were 0.6 to 4.0% longer (2.1% average).
+- Speed (in Python): 4 to 110 ms a search; the longest (Booty Bay to Light's Hope) looked at 29,653 gates.
+- Costs: seconds at running speed; wading 1.25x, swimming 1.6x (3x since 5a); open water more than
+  2 blocks from land is left out.
+
+What the test trips showed:
+- **Where a tunnel, bridge or lift is the only way, the ground is cut off.** Dun Morogh (tunnels to
+  Loch Modan and Elwynn's tram), Winterspring (Timbermaw Hold), Searing Gorge, the top of Thunder Bluff
+  (lifts) and others are separate stretches. `islands_0.png` shows them in colours.
+- **Worse than "no way": the planner then swims round the coast.** Thelsamar to Menethil Harbor came
+  out as 48 minutes, Booty Bay to Light's Hope as 71, most of it in the sea, because the Dun Algaz
+  tunnels and the Thandol Span are missing. A confident, wrong route.
+- So two things move up before a first usable version: the key links (tunnels, bridges, lifts),
+  and a limit on swimming (a much higher price, and a route that is mostly swimming is reported as
+  doubtful rather than drawn as normal).
+
+For the addon (milestone 4):
+- Loading 93,000 gates as Lua tables would cost tens of MB. The data has to be packed strings,
+  decoded a tile at a time as a search reaches it.
+- A straightening pass over the fine grid would remove most of the 2% and the slightly zig-zag look.
+
+### 3. Flight paths — done 2026-11-11
+- `flights.py` reads the game's TaxiNodes (101 rows), TaxiPath (328) and TaxiPathNode (10,965 points) and
+  writes `world/flights.bin`. The tables are classic Azeroth plus Forever's own zones (Riverglades,
+  Tidegear Coast, Mount Hyjal). A real flight point is a row with a bit number of its own and a mount;
+  its side comes from which mount it has. Alliance: 37 points, 140 direct flights. Horde: 35 and 148.
+  Three new points (Tidegear Coast, both Powderfuse Ports) have no flights in the tables.
+- `db2.texts()` reads a table's text column (names).
+- A flight's time is not in the tables: it is the length of its line at 32 yards a second. Against
+  remembered classic times that is within about 10% (Orgrimmar to Crossroads 1:43). Not timed in-game.
+- `nav.Coarse.add_flights(ground, flights, side, known)`: each flight point is a node on the ground
+  beside the flight master and a node in the air; boarding (15 s) and landing (3 s) join them and
+  flights join the air nodes, so a flight through several points pays for boarding once. The search's
+  guide then allows for flying speed; checked against a much weaker guide on 29 trips: same answers.
+- `python trips.py 1 horde` (or `0 alliance`, ...) runs the test trips with flights and draws them
+  (`world/trips_<id>_<side>.png`, flights in light blue). Examples: Crossroads to Gadgetzan 4.9 min
+  (23 on foot), Booty Bay to Light's Hope 14 min (61 on foot), Thelsamar to Menethil 3 min (12 on foot).
+  Searches 7 to 69 ms in Python.
+- Flight masters not on our ground:
+  - on a tower (Thunder Bluff 49 yd up, Orgrimmar 64, Stormwind 31, Booty Bay 34 to 37): joined to the
+    ground below with a guessed climb of 4 yards walked a yard climbed. Approximate.
+  - inside something (Ironforge, the Undercity): flown through, never boarded or left there. So a Horde
+    route in Tirisfal walks to the Sepulcher instead of using the Undercity. Needs "floors as places".
+- For the addon: `C_TaxiMap.GetTaxiNodesForMap(uiMapID)` exists on Forever and its `nodeID` is the
+  table's id; each node it returns has `isUndiscovered` and `faction`, so which points the character
+  knows should be available anywhere, not only at a flight master. To be tried in-game in milestone 4.
+
+### 4. The addon, first version — built 2026-11-11; Tyrone tried it in-game the same day: "it works"
+Working name **Wayfinder Forever** (folder `WayfinderForever`, `/wayfinder`, saved data `WayfinderForeverDB`).
+
+Done and checked here:
+- `pack.py` writes the map data as three more addons, loaded only when the character is on that map:
+  `WayfinderForever_Kalimdor` (2.2 MB), `_EasternKingdoms` (1.7 MB), `_ZephrasIsle` (62 KB). Cells are
+  runs of a kind a tile; each block's gates and walks are a string; links and flights are small tables.
+  Everything large is text of 64 characters in Lua long brackets. The format is in pack.py's heading.
+  A map's data reads in 0.02 s and takes 3 to 5 MB in memory.
+- `Planner.lua` uses no game function. `python lua_trips.py 1 horde` (and the other five runs) runs it
+  in a real Lua 5.1 on the packed data against the Python prototype: on all 87 trip runs the cost is
+  within 0.04% and the flights are the same. Slowest search 374 ms (Booty Bay to Light's Hope on foot);
+  in the game a search gives way every 4 ms. Decoded blocks are dropped after each search.
+- The game side: `Core.lua` (settings, `/wayfinder go | to x y | stop | config | where`, two bindable
+  actions in Bindings.xml), `Route.lua` (the map pin as destination, searching a little each frame,
+  following the trail, a new route after a wrong turn, arriving), `WorldMap.lua` and `Minimap.lua`
+  (the trail: gold walking, pink tunnel/bridge/lift, light blue flight), `Settings.lua` (its own page).
+- `python lua_shell.py` runs all of it against a stand-in for the game (`wowstub.lua`) through a
+  whole session. It proves the addon's own code runs; it cannot prove the game answers like the stand-in.
+
+Decided by Tyrone 2026-11-11: **MelloUI is disabled from here on**; Wayfinder is the routing system.
+So Wayfinder stands alone (it never used MelloUI), and what he used MelloUI's Route for has to come
+from Wayfinder: destinations from the tracked quest and RestedXP steps first, then milestone 6.
+Gone with MelloUI and not replaced: RestedXP steps shown in the quest tracker (a MelloUI feature).
+Patchwerk Forever's MelloUI fixes switch themselves off without MelloUI; they stay for other users.
+
+Reported in-game:
+- 2026-11-11: with MelloUI and Wayfinder both running, the minimap turned black under EllesmereUI's
+  minimap. Cause not found by reading either addon. Our minimap layer was a child of the minimap;
+  it is now a frame of its own laid over it, and Tyrone confirmed that cured it. The cause itself
+  was never found: do not hang frames on the minimap in this setup.
+
+- 2026-11-11: on first load the minimap trail jumped about for a few seconds; Tyrone: "the map
+  bounces then settles" (the minimap itself, most likely EllesmereUI setting its size and zoom). The
+  trail now waits after a login or reload until the minimap has kept one size, place and zoom for a
+  second (eight at most). Not yet confirmed in-game.
+
+- 2026-11-11, after MelloUI was switched off: the minimap follows the mouse until clicked, and
+  EllesmereUI's minimap background grows upward. Not explained. Checked: Wayfinder only reads from
+  the minimap (size, place, strata, alpha) and lays a mouse-disabled frame over it; nothing in
+  EllesmereUI's minimap module looks for such frames; its saved minimap position is intact (centre
+  820, 383, size 280); only its unlock mode makes frames follow the cursor. Tyrone's test: it still
+  happens with "Trail On The Minimap" off, so the trail is not the cause.
+  Found by Tyrone: the addon **Lueur** (herb and ore icons on the minimap). To read the minimap's dots
+  it moves the minimap under the mouse and sweeps over it (`Minimap:AdjustPointsOffset`,
+  `UpdateMouseoverAtPoint`); its own settings say "each scan hides the minimap for a moment". That
+  is the scanning, the bounce and the sticking to the cursor. Nothing to do with Wayfinder,
+  EllesmereUI or MelloUI. Two guesses of mine were wrong along the way (EllesmereUI settling at
+  login; MapUtils, which also sweeps the minimap but was not the cause). The hold-until-steady guard
+  in Minimap.lua came from the first guess; it is harmless and stays.
+
+- 2026-11-11: "navigation doesn't update unless MelloUI is enabled". Cause: MelloUI's Route was what
+  laid the game's map pin on each RestedXP guide step, and Wayfinder only followed the pin. Fix:
+  `Sources.lua`. With no pin, the route goes to the place RestedXP's arrow points at
+  (`RXPG_ARROW.element`: `zone`, `x`, `y` as a place on a zone's map, turned into world coordinates by
+  the game; else `wx`, `wy`, `instance`, RestedXP's own, x west and y north) and moves on with the
+  guide. A pin or `/wayfinder to` comes first. A step you stop is left until the guide moves on; a step
+  you reach is not routed to again unless you walk 40 yards away with it still open. Setting "Follow My
+  RestedXP Guide". Passes the stand-in session; not yet confirmed in-game. Needs a full game restart
+  (a new file in the TOC).
+- Guide following confirmed in-game by Tyrone (2026-11-11, MelloUI off).
+- Herb and ore spots (asked for 2026-11-11): built as `Nodes.lua`; Tyrone confirmed in-game that a gathered spot shows on the minimap. A spot is
+  remembered when a cast aimed at something that is not a creature (UNIT_SPELLCAST_SENT gives its
+  name) is followed within 12 s by loot holding a herb or an ore (item class 7, subclass 9 or 7; not
+  from a creature where the game says). Kept in `WayfinderForeverDB.nodes` and `.nodeKinds` for all
+  characters. Shown with the item's icon on the minimap and on a zone's world map. Settings: Remember
+  Herb And Ore Spots, and one each for the two maps. `/wayfinder nodes`, `/wayfinder nodes forget`.
+  It shows where things grow, not whether one is up: the tracking dots cannot be read without moving
+  the minimap about (what Lueur did). Forever does name the node in the cast event and uses those class
+  numbers (it works). Not yet heard about: ore icons, the zone map, `/wayfinder nodes forget`.
+- `ns.MinimapView(frame, above)` and `ns.WorldMapView()` share the placing maths with other layers.
+
+- Sparkle on things nearby (asked for 2026-11-11, "similar to Lueur"): built as `Sparkle.lua`, not yet
+  tried in-game. The game picks one "soft interact" target and gives it a nameplate; a turning star
+  (the game's own `Interface\Cooldown\star4`, no art of Lueur's) is hung on it when it is a herb, a
+  vein, a chest or a quest object, coloured by kind. The kind comes from the cursor the game would show
+  (`SetUnitCursorTexture` on a hidden texture, matched against `GetFileIDFromPath` of the cursor files)
+  and from the names of gathered spots. While its setting is on it sets the game's
+  `SoftTargetNameplateInteract` and `SoftTargetIconGameObject` to 1, keeps what they were in
+  `WayfinderForeverDB.sparkleWas` and puts them back when unticked. `/wayfinder sparkle` says what the
+  game points at and why it does or does not sparkle. Unknown until tried: whether those two settings
+  are enough for a nameplate on Forever, whether the cursors can be told apart, the size and place of
+  the star, and how it sits with EllesmereUI's nameplates.
+- Sparkle, first try in-game (2026-11-11): the game's herb icon showed but no star. Likely cause: on
+  Forever the cursor comes back as an atlas (a named piece of a shared picture), so matching file
+  numbers recognised nothing and the thing was taken as a plain "other" and hidden. Now the kind is
+  read from words in the atlas's name (or a file's path), and a thing whose kind the game does not
+  tell sparkles anyway. Also added, as asked: the thing's name written over it ("Name Over The
+  Thing"). Not yet confirmed in-game.
+- Sparkle, second try (2026-11-11): `/wayfinder sparkle` said the game pointed at nothing. Cause: a
+  thing in the world does not "exist" for `UnitExists` on this client even while the game points at
+  it; `UnitIsGameObject("softinteract")` is the call that says so. Fixed, and the nameplate is now
+  also looked for among the nameplates on screen (`UnitIsUnit(token, "softinteract")`) when asking by
+  "softinteract" gives nothing. The command now also says what was last pointed at, since typing on
+  a keyboard can make the game let go (its SoftTargetInteract is 1: gamepad only). The stand-in now
+  behaves like Forever here, so the first version would have failed its test. Confirmed in-game by Tyrone: a herb sparkles and
+  shows its name. Not yet heard about: veins, chests, quest objects, the colours, the star's size.
+- Customising (asked for 2026-11-11, by interview): built, passes the stand-in session, not yet tried
+  in-game. Tyrone chose: the sparkle, the name and the trail; each kind of thing its own look; hide in
+  combat and in instances as options, and an ignore list; everything on the options page with the
+  game's colour picker and a Test button.
+  - `ns.settings` in Core.lua now holds tick boxes, sliders, pick lists, colours ("ffRRGGBB", as the
+    game's colour swatch keeps them), buttons and headings, each with the sub-page it is on.
+    Settings.lua builds the pages from it: 60 settings on a first page and seven sub-pages.
+  - Sparkle.lua: six effects (star, soft glow, pulsing ring, light beam, swirl, brackets) and "none",
+    drawn from the addon's own pictures in `Media/` (made by `python media.py`; previews in
+    `world/media_preview/`). Each of herb, ore, chest, quest object and other has its own effect,
+    colour, size, brightness, height and speed. Hide In Combat, Hide In Dungeons And Raids. Ignore:
+    `/wayfinder ignore` (and `undo`, `list`, `clear`), a bindable action, a Forget button.
+  - The name: size, font (the game's, Friz Quadrata, Arial Narrow, Morpheus, Skurri; a font the client
+    lacks falls back to the game's), outline, the kind's colour or one fixed colour, above or below.
+  - Trail.lua: the trail's three colours, its thickness on each map, solid, dashes or dots, and a
+    pattern that flows toward the destination; used by WorldMap.lua and Minimap.lua.
+  - Confirmed in-game by Tyrone (2026-11-11, after a full restart): the new options pages open and
+    work. Not yet heard about, one by one: each effect's look in the world, the name's fonts, the
+    trail styles, the cost of a flowing trail on the open world map (redrawn about 30 times a
+    second), the ignore list and its bound key.
+- Sparkle "behind the character" (asked for 2026-11-11): Tyrone wanted the sparkle in the world with
+  depth. Not possible: an addon draws on top of the finished 3D picture, and the game's own outline is
+  already at its highest on his client (`graphicsOutlineMode` 2). Built the stand-in he agreed to: the
+  whole mark fades as it comes over an oval where the character is taken to stand (Sparkle.lua,
+  `Body`, `Covered`, `Tuck`). The oval is worked out from the camera's distance (`GetCameraZoom`),
+  hanging under the middle of the screen. New page "Sparkle: Behind My Character" (off by default):
+  the tick box, Brightness Left, Character Size, Character Width, Across, Up, and a Show button that
+  draws the oval for ten seconds. 66 settings, 8 sub-pages, 7 buttons now. Passes the stand-in
+  session; not tried in-game. Unknown until tried:
+  - whether `GetCameraZoom` is on Forever (it is not in the interface source, which never calls it);
+    without it 15 yards is assumed and `/wayfinder sparkle` says so;
+  - whether the game tells where a mark hung on a nameplate is (`GetCenter` is documented as secret
+    "when anchoring secret"); if not, the mark stays bright and `/wayfinder sparkle` says so;
+  - whether the oval sits on the character with his camera (ConsolePort may keep it off-centre).
+  It assumes the thing is on the far side of the character and cannot cut to the character's shape.
+  Confirmed in-game by Tyrone (2026-11-12): the sparkle fades over his character. So the game does
+  tell where a mark hung on a herb's nameplate is. Not yet heard: whether the oval follows the zoom
+  (that is, whether `GetCameraZoom` is there), and which slider values he settled on.
+- Destinations from a tracked quest (asked for 2026-11-12): built in Sources.lua, which now chooses
+  between two sources when there is no pin: the RestedXP guide and a tracked quest.
+  - Which quest: the one the game's arrow is on (`C_SuperTrack.GetSuperTrackedQuestID`), else (setting
+    "Which Quest") the nearest in the tracker; the one being followed is kept so two do not take turns.
+  - Where it is: asked the way the game's own world map asks, `GetQuestUiMapID(id, true)` then the
+    quest's mark in `C_QuestLog.GetQuestsOnMap(uiMap)`. The Forever interface source uses both
+    (QuestMapFrame.lua, QuestDataProvider.lua), which is why they are trusted to be there. A quest
+    on another continent is passed over unless the game gives a next stop on this one
+    (`C_QuestLog.GetNextWaypoint`), which is then routed to.
+  - Settings: Follow My Tracked Quest (on), Which Quest, and which of guide and quest goes first
+    (guide by default: the game puts its arrow on every quest you accept, which would keep taking
+    over from a guide). A reached quest place is left alone until you are 120 yards off or its mark
+    moves; one you stopped, until its mark moves. `/wayfinder quest` says what the game reports.
+  - Passes the stand-in session; not tried in-game. Unknown until tried: whether Forever's quests
+    have marks on the map at all, and whether the game's arrow is on a quest by itself there.
+- Subtle sparkles (asked for 2026-11-12, "subtle and immersive"): five more effects in the list,
+  Subtle: glints, fireflies, faint shimmer, ground ripple, wisp. Two new pictures from media.py
+  (glint.tga, mote.tga). An Apply button on the first page gives every kind one of them, changing
+  only the effect. Every mark, and its name, now comes in over a third of a second instead of
+  popping. 69 settings, 8 sub-pages, 8 buttons now. Passes the stand-in session. New picture files
+  need a full restart of the game.
+- Confirmed in-game by Tyrone (2026-11-12, after a full restart): the quest route and the subtle
+  sparkles both work. So Forever's quests do have marks on the map. Not yet heard, one by one: which
+  subtle effects he kept, a quest on the other continent, guide and quest together, the nearest-quest
+  choice with nothing under the game's arrow.
+- Smoothing the trail: done by a separate session on 2026-11-11 in `P.Line` (`Planner.lua`), checked
+  again here. The line is straightened where a straight walk stays on the ground, and its corners
+  rounded. `python lua_smooth.py` over 87 trips: points 9531 to 3427 (most in one line 958 to 290),
+  turning 452,925 to 42,710 degrees, turns of 30 degrees or more 9222 to 231, no smoothed line off
+  the ground; costs and flights unchanged (`lua_trips.py` differs on 0 trips). Slowest line 394 ms
+  (was 277), spread over frames in the game. Not yet tried in-game.
+
+Not done yet:
+- In-game so far: Tyrone's first try worked (no detail given on which parts he looked at). Not yet
+  heard about: the minimap trail turning with the character, a wrong turn, arriving, the settings page,
+  the bindings, a route through a lift or a tunnel.
+- Routes across continents (boats, zeppelins); the time left shown on screen. (Destinations from
+  RestedXP steps and from a tracked quest, and the straightening pass: done, see above.)
+- Flight points known: taken from `C_TaxiMap.GetTaxiNodesForMap` on the continent's map (1414, 1415).
+  If the game returns nothing there, all of the side's points are used and it says so once.
+- Memory during a search right across a continent on foot is tens of MB for a moment.
+- Done when: Tyrone has walked a few routes in-game.
+
+### 5. Structures and special links (the hard part)
+Milestone 2 showed the key links are needed for the first version, not after it.
+
+#### 5a. Tunnels, bridges, gates; swimming — done 2026-11-11
+- Guessing from bounding boxes was tried first and dropped: it missed long tunnels (several models
+  end to end) and made links up 40-yard cliffs.
+- What works: `wmo.py` reads the building models' own collision triangles (root file -> group files ->
+  vertices, triangles, a collide flag each) and places them. The placing is checked against the game:
+  a model's box, turned (about its x, then y, then the vertical plus half a turn), scaled and moved,
+  gives the box its placement states, for every model but 24.
+- `links.py`: models whose boxes touch are one structure. Its floors (triangles under 50 degrees) go
+  on a one-yard grid, walls and low ceilings stop a character, and a link is made only where there is
+  a walk from one patch of ground over the floors to another, and the way round is missing or more
+  than 3 times (and 250 yards) longer. A link's length is the real walk. `python links.py 0` takes
+  about 100 s; it writes `world/links_<id>.txt` (every link) and `world/nav_<id>_linked.bin`.
+  The ground-only graph `nav_<id>.bin` is left as it is, so links.py can be run again.
+- Found: 64 links in Eastern Kingdoms, 80 in Kalimdor. Among them both Dun Morogh gate passes, the four
+  Dun Algaz tunnels, the Thandol Span, Coldridge Pass, Timbermaw Hold (Felwood, Winterspring), the
+  Talondeep Path. Dun Morogh and Winterspring are no longer cut off.
+- Test trips after: every Eastern Kingdoms test town is on one stretch. Thelsamar to Menethil Harbor
+  12 min through 4 links (was a 46 min swim). Booty Bay to Light's Hope 61 min (was 71, mostly sea).
+- Swimming costs 3 times walking (was 1.6). `nav.swimming()` measures a route's swim; over 300 yards
+  or a quarter of the route is reported as DOUBTFUL, with where the swims are.
+- `hand_links.txt`: links told by hand (a lift: both ends and the ride's seconds). Empty so far.
+- Lifts are in no file we can read: the game's own object table (GameObjects.db2) holds only signs and
+  the like, its transport table is empty, and the terrain shows 15 look-alike cliff spots round
+  Thunder Bluff. So they are marked in-game: a macro stores the character's position in
+  `PatchwerkForeverDB.marks`, and `marks.py` reads the saved file, checks each mark against our ground
+  and height, and writes the pairs into `hand_links.txt`.
+- Done for Thunder Bluff's two western lifts (Tyrone's marks, 2026-11-11). Two things learned:
+  WoW Forever's UnitPosition gives no height (0), and a lift's upper landing is a wooden platform
+  standing out over the lower ground, so both marks of a lift fall on the same ground in our data.
+  `python marks.py TBBT` says which marks are tops; the top end is then moved to the nearest ground
+  at least 15 yards higher (18 and 25 yards away here). The inn on the bluff to Bloodhoof Village now
+  routes: 1469 yd through one lift. The lift's seconds are the gap between the two presses (35, 45).
+- The two eastern lifts were added later the same day (marks 5 to 8, `python marks.py TBBTBTTB`).
+  Marks 6 and 7 are the tops (worked out from his walking between them, then confirmed by Tyrone).
+  From the inn, Crossroads now routes by
+  an eastern lift and Bloodhoof Village by a western one.
+- One-way links (2026-11-11): a safe drop off Thunder Bluff's south-west rise, marks 9 to 11, in two
+  steps (48 yd then 78 yd down in our data; Tyrone says it is safe, it is steep ground and probably a
+  slide). `python marks.py TBBTBTTBDDD`: D marks made going down become links from each to the next
+  only. `hand_links.txt` lines take `oneway` after the seconds; `Coarse.add_link(..., oneway=True)`;
+  pack.py writes a 1 after such a link and Planner.lua then joins it one way. Checked in both
+  planners: taken going down (inn to Bloodhoof Village 209 s, was 250 s by lift), never going up.
+- After new marks: `python marks.py <a letter a mark>`, `python links.py 1`, `python pack.py 1`, then
+  `/reload` in the game.
+
+Still wrong or missing after 5a:
+- **Lifts**: the Great Lift, if this world has it (Crossroads to Gadgetzan goes round through
+  Dustwallow and swims 300 yards, marked doubtful), any other Thunder Bluff lifts, the Undercity.
+  They need marking in-game (see marks.py), or learning in-game (5b).
+- trips.py shows a trip's minutes from its length; a lift's ride time is in the route's cost but not
+  in the minutes shown.
+- **Places that are floor, not ground**: Booty Bay, and the insides of Stormwind, Ironforge, the
+  Undercity. A place there snaps to the nearest ground (for Booty Bay: the sea bed under the docks).
+  The floor grid of links.py is the start of an answer: keep the floors as places, not only as links.
+- **Doors**: a gate the game keeps locked is still a link (Stonewrought Pass, Loch Modan to Searing Gorge).
+- 19 short links are marked "STEEP, check" in the links files: stairs or ramps as steep as the walk
+  allows. Likely real (Jintha'Alor's terraces come out as a chain), not checked in-game.
+- Bridges that are scenery models (M2), not building models, are not read.
+- In the addon a link needs its swim length kept beside its cost, so the time shown is the real time.
+
+#### Later
+  b. Learn from where the player walks, checked against our height data so a fall is never learned as a path.
+     Lifts are the first use.
+  c. Floors as places (see above).
+- Boats and zeppelins: from the game's transport tables if readable, else a hand-made table.
+- Roads: recognise road textures in the terrain files and make them cheaper, so routes prefer them.
+
+### 6. Carry over what Patchwerk Forever adds to MelloUI's Route
+These get simpler and better once the planner is ours:
+- Blocked spots that really close a stretch (today MelloUI's own roads can't be closed).
+- Mount-aware route choice (not possible from outside MelloUI).
+- Hearthstone and teleports as real route options, not just a suggestion.
+- Quest run and the next-guide-steps trail.
+
+## Risks and open questions
+
+- **Structures.** Until milestone 5, routes in cities and across bridges will be wrong or missing.
+  The first version should say so rather than draw a confident line through a wall.
+- **In-game performance.** Lua is slow and memory matters. The coarse graph is the answer; its block
+  size needs measuring in milestone 2.
+- **New zones.** Forever has maps beyond the two classic continents. Whether their files are
+  encrypted is unknown until milestone 1 (some files in the install are).
+- **Patches.** A patch that changes the world means re-running the extractor and re-releasing data.
+- **Publishing.** The map data is derived from Blizzard's game files. Fine for personal use;
+  shipping it publicly is Tyrone's call (other addons do ship client-derived data).
+- **Testing.** Everything up to milestone 4 can be verified here. In-game behaviour (drawing, waypoints,
+  combat restrictions) cannot.
+
+## Order and size
+
+Milestones 1 to 4 are the first usable version: roughly one working session each, 4 being the largest.
+Milestone 5 is open-ended and can be done a piece at a time after people are using the planner.

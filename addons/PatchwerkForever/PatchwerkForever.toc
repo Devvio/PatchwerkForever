@@ -1,0 +1,36 @@
+## Interface: 16001
+## Title: Patchwerk Forever
+## Notes: Fixes and additions for other addons on WoW Forever: Console Port and MelloUI's Route. Each one only runs when the addon it is for is loaded. Type /patchwerk to list them.
+## Author: Tyrone
+## Version: 1.0.1
+## X-Category: Miscellaneous
+## X-License: MIT
+## OptionalDeps: ConsolePort, MelloUI, MelloUI_Route, EllesmereUI
+## SavedVariables: PatchwerkForeverDB
+
+Core.lua
+
+ConsolePort\Database.lua
+ConsolePort\Conflicts.lua
+ConsolePort\Bindings.lua
+ConsolePort\GameMenu.lua
+ConsolePort\Compat.lua
+ConsolePort\ItemMenu.lua
+ConsolePort\Interact.lua
+ConsolePort\Targeting.lua
+ConsolePort\KeyRing.lua
+ConsolePort\InputStyle.lua
+ConsolePort\BlizzardBars.lua
+
+MelloUI\RouteOnly.lua
+MelloUI\GameMenuButtons.lua
+
+MelloUI\Route\Shared.lua
+MelloUI\Route\Warmup.lua
+MelloUI\Route\Ground.lua
+MelloUI\Route\Blocked.lua
+MelloUI\Route\Travel.lua
+MelloUI\Route\Trips.lua
+MelloUI\Route\Controls.lua
+
+Settings.lua

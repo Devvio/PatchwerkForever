@@ -1,0 +1,30 @@
+# Ways the game files do not describe: lifts, and anything else that has to be told.
+# links.py reads this file and adds each line as a link (both directions).
+#
+#   map   from: X  Y    to: X  Y    seconds   name
+#   map   from: X  Y    to: X  Y    seconds   oneway   name      (only from the first place to the second: a drop)
+#
+# map       0 Eastern Kingdoms, 1 Kalimdor
+# X, Y      world coordinates of where the character stands on the ground just before
+#           stepping on, and just after stepping off.
+#
+# The easy way: mark both ends in game with the macro in marks.py, /reload, and run
+#     python marks.py
+# which checks the marks against our ground and writes the lines at the end of this file.
+# By hand: /run print(UnitPosition("player")) prints X, Y, height, map.
+# seconds   how long the ride takes, with an average wait.
+#
+# Known to be missing still:
+#   the Great Lift between the Barrens and Thousand Needles (Kalimdor), the Undercity's lifts
+#   (Eastern Kingdoms). Thunder Bluff's four are below.
+#
+# Example (not real coordinates):
+#   1   -1234.5 100.0    -1260.0 95.0    25   Thunder Bluff, north lift
+
+# --- from marks made in-game (written by marks.py; anything below this line is replaced) ---
+1   -1435.4 -139.6   -1452.1 -156.2   7   oneway   drop, marks 9 to 10 (48 yd down)
+1   -1452.1 -156.2   -1431.2 -193.8   13   oneway   drop, marks 10 to 11 (78 yd down)
+1   -1302.1 152.1   -1314.6 181.2   45   lift, marks 1 and 2 (top end moved 25 yd to the nearest ground at height 127)
+1   -1281.2 193.8   -1272.9 168.8   35   lift, marks 3 and 4 (top end moved 18 yd to the nearest ground at height 132)
+1   -1035.4 -56.2   -1072.9 -52.1   17   lift, marks 5 and 6 (top end moved 29 yd to the nearest ground at height 135)
+1   -1043.8 -2.1   -1022.9 -22.9   17   lift, marks 7 and 8 (top end moved 26 yd to the nearest ground at height 125)

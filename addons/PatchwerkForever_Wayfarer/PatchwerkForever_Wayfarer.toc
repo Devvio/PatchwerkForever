@@ -1,0 +1,20 @@
+## Interface: 16001
+## Title: Patchwerk Forever: Wayfarer
+## Notes: Finds the way to your map pin, a quest you track or your RestedXP guide's next step: over the ground, through tunnels and over bridges, by flight path. Also remembers herb and ore spots and puts a sparkle on the things you can use. Type /wayfarer.
+## Author: Tyrone
+## Version: 0.9.0
+## X-Category: Map & Minimap
+## X-License: MIT
+## IconTexture: Interface\AddOns\PatchwerkForever_Wayfarer\Media\star
+## SavedVariables: PatchwerkForever_WayfarerDB
+
+Planner.lua
+Core.lua
+Route.lua
+Sources.lua
+Trail.lua
+WorldMap.lua
+Minimap.lua
+Nodes.lua
+Sparkle.lua
+Settings.lua

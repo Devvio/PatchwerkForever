@@ -1,0 +1,11 @@
+# What the tools read out of the game's files and build on the way: large, and made again by running them.
+tools/world/
+# Copies kept by hand before a risky change.
+tools/backup/
+# Python's own leavings.
+__pycache__/
+*.pyc
+# Built uploads (they go to the release folders beside the repository).
+*.zip
+# Private names the release check looks for in what is shipped.
+tools/private_words.txt
