@@ -119,6 +119,10 @@ function CreateFrame(kind, name, parent)
 		assert(font, 'a font string needs a font')
 		local fs = { shown = true }
 		function fs:SetText(text) assert(type(text) == 'string') self.text = text end
+		function fs:GetText() return self.text end
+		function fs:SetWidth(w) assert(w > 0) self.width = w end
+		function fs:SetJustifyH(how) assert(how == 'CENTER' or how == 'LEFT' or how == 'RIGHT') end
+		function fs:SetWordWrap(on) assert(type(on) == 'boolean') end
 		-- (this client is taken to lack one of the fonts, to see the fall back to the game's own)
 		function fs:SetFont(path, size, flags)
 			assert(type(path) == 'string' and size > 0 and type(flags) == 'string')

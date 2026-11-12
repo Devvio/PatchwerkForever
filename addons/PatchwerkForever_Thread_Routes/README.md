@@ -28,10 +28,29 @@ With nothing else to do, you only have to pick a destination:
 
 - **Your map pin.** Put a pin on the world map and the route appears. A pin always comes first.
 - **A quest you track.** With no pin, it routes to the quest the game's own arrow is on, or failing that the nearest quest in your tracker. It moves on to the next objective, and to whoever takes the quest in once it is done.
-- **Your RestedXP guide.** With no pin, it routes to the guide's current step and moves on with it. Nothing of RestedXP's is changed.
+- **Your RestedXP guide.** With no pin, it routes to the guide's current step and moves on with it (more below). Nothing of RestedXP's is changed.
 - **A spot you type.** `/thread to 45.2 61.8` routes to that place on the map you are on.
 
 When a guide and a quest both lead somewhere, the guide goes first; a setting turns that round.
+
+## Following a RestedXP guide
+
+The guide is read as it runs: the step you are on, what it asks for, and the steps after it.
+
+- **The guide's travel is followed.** When a step has you fly, the route leads on foot to the flight master the guide names and leaves the flying to the guide, instead of planning another way.
+- **Steps with no place are said, not routed.** "Use your hearthstone" or "train your skills" has nowhere to go to: its words appear on screen, and no quest is followed in its stead.
+- **The next step is ready.** The way from each step to the next is found ahead of time, so the trail changes the moment a step is done, with no pause.
+- **The steps after are drawn.** A fainter trail runs on through the next few steps, on the world map and the minimap, so you can see where the guide is heading. A flight the guide has you take is a straight line in the flights' colour.
+
+Settings: **Follow The Guide's Travel** and **Guide Steps Shown Ahead** (none to five; two to begin with).
+
+This reads RestedXP's own lists of steps while the game runs. If a RestedXP update moves them, the route falls back to the spot RestedXP's arrow points at, as before.
+
+## The step, said on screen
+
+When the route gets a new destination, a few words appear in the upper middle of the screen: what you are going to do (the guide's own words for its step, a quest's name, "to your map pin"), and under them, smaller, the route: how long it takes, how far it is on foot, what it flies or rides. They fade in, stay a few seconds and fade out. Nothing is said when the way is only found again after a wrong turn.
+
+Where the words stand, how large they are and how long they stay are on the page **Thread: Step Text**, with a button to try it. `/thread step` says the last one again.
 
 ## What a route knows
 
@@ -49,7 +68,7 @@ Each spot where you pick a herb or mine a vein is remembered for all your charac
 
 ## Settings
 
-**Options → AddOns → Patchwerk Forever → Thread: Routes**, or `/thread config`. The trail's colours, thickness and style (solid, dashes, dots, flowing) are on **Thread: Trail**.
+**Options → AddOns → Patchwerk Forever → Thread: Routes**, or `/thread config`. The trail's colours, thickness and style (solid, dashes, dots, flowing) are on **Thread: Trail**; the words on screen are on **Thread: Step Text**.
 
 ## Commands
 
@@ -62,6 +81,7 @@ Each spot where you pick a herb or mine a vein is remembered for all your charac
 | `/thread config` | opens the settings |
 | `/thread where` | says where the planner thinks you are |
 | `/thread quest` | says where the game puts your tracked quests, and which one is followed |
+| `/thread step` | says the current step on screen again |
 | `/thread nodes` / `nodes forget` | counts the herb and ore spots; forgets the ones within 15 yards |
 
 Two actions can be bound to a key or a gamepad button (Options → Keybindings → AddOns, or Console Port's binding list): route now, and stop routing.

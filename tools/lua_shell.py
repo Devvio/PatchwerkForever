@@ -107,7 +107,7 @@ def main():
     stub.Fire("PLAYER_LOGIN")
     stub.Fire("PLAYER_ENTERING_WORLD")
     chat("login")
-    assert len(stub.settings) == 72 and stub.category, "the settings pages were not built"
+    assert len(stub.settings) == 80 and stub.category, "the settings pages were not built"
     assert stub.provider, "the world map layer was not attached"
 
     step("put a pin on Gadgetzan")
@@ -204,7 +204,7 @@ def main():
     assert stub.opened == 8, "the tool's own settings page did not open"
 
     step("no pin: the route follows the RestedXP guide's arrow, step by step")
-    assert len(stub.settings) == 72, "the guide setting is missing from the settings page"
+    assert len(stub.settings) == 80, "the guide setting is missing from the settings page"
     stub.pin = None
     stub.Fire("USER_WAYPOINT_UPDATED")
     assert not ns.dest
@@ -461,10 +461,10 @@ def main():
                 assert s.variable[len(addon) + 1:] not in by_name, s.variable
                 by_name[s.variable[len(addon) + 1:]] = s
                 break
-    assert len(by_name) == 72, "expected 72 settings on the options pages, found %d" % len(by_name)
+    assert len(by_name) == 80, "expected 80 settings on the options pages, found %d" % len(by_name)
     assert by_name["baseTellMissing"].page == "Patchwerk Forever"
     pages = sorted(stub.pages.keys())
-    WANT = {"Thread: Routes": 12, "Thread: Trail": 11, "Thread: Sparkle": 4, "Sparkle: Names": 8,
+    WANT = {"Thread: Routes": 14, "Thread: Trail": 11, "Thread: Step Text": 6, "Thread: Sparkle": 4, "Sparkle: Names": 8,
             "Sparkle: Behind My Character": 6, "Sparkle: Chests": 6, "Sparkle: Herbs": 6, "Sparkle: Ore": 6,
             "Sparkle: Other Things": 6, "Sparkle: Quest Objects": 6}
     assert pages == sorted(WANT), pages
@@ -475,7 +475,7 @@ def main():
     sdb = lua.globals().PatchwerkForever_Thread_SparkleDB
     assert sdb and not lua.globals().PatchwerkForever_Thread_RoutesDB.sparkleWas, "the sparkle keeps its things in the routes' saved data"
     buttons = list(stub.buttons.values())
-    assert sorted(b.text for b in buttons) == ["Apply", "Forget", "Show"] + ["Test"] * 5, [b.text for b in buttons]
+    assert sorted(b.text for b in buttons) == ["Apply", "Forget", "Show", "Show"] + ["Test"] * 5, [b.text for b in buttons]
     assert sum(1 for s in by_name.values() if s.colour) == 10 and sum(1 for s in by_name.values() if s.choices) == 12
 
     def setv(name, value):
@@ -669,7 +669,7 @@ def main():
     assert any("will not say where the sparkle is" in t for t in chat("sparkle")), "the command does not say it cannot place the sparkle"
     # the Show button
     assert alpha_at(cx, cy) == 0.0
-    [b for b in buttons if b.text == "Show"][0].click()
+    [b for b in buttons if b.name == "Show Where"][0].click()
     ovals = [f for f in stub.frames.values() if f.ring is not None]
     assert len(ovals) == 1 and ovals[0].shown, "the Show button showed nothing"
     assert abs(ovals[0].width - 2 * hw / 0.82) < 0.01 and abs(ovals[0].height - 2 * hh / 0.82) < 0.01, "the oval shown is not the oval used"
@@ -867,6 +867,169 @@ def main():
     stub.Tick(); frames()
     assert not ns.dest
     chat("quest over the sea")
+
+    step("the guide read ahead: its travel followed, the next way found before it is wanted, the steps after drawn fainter, each step said on screen")
+    # a stand-in for RestedXP as it runs: its steps, the one you are on, its arrow
+    lua.execute("""
+        local function at(x, y) return { tag = 'goto', wx = y, wy = x, instance = 1 } end
+        local steps = {
+            { { tag = 'accept', text = 'Accept Plainstrider Menace' }, at(-600, -2800) },
+            { { tag = 'turnin', text = 'Turn in Plainstrider Menace' }, { tag = 'accept', text = 'Accept The Forgotten Pools' }, at(-956, -3754) },
+            { { tag = 'fly', text = 'Fly to Orgrimmar' }, at(-437, -2596) },
+            { { tag = 'turnin', text = 'Turn in your report' }, at(1600, -4400) },
+            { { tag = 'hs', text = 'Hearth to the Crossroads' } },
+            { { tag = 'train', text = 'Train your skills' } },
+            { { tag = 'complete', text = 'Kill raptors' }, at(-1994, -156) },
+            { { tag = 'accept', text = 'Accept Raptor Thieves' }, at(-600, -2800) },
+            { { tag = 'turnin', text = 'Turn in Raptor Thieves' }, at(-600, -2800) },
+        }
+        for i, lines in ipairs(steps) do
+            local s = { index = i, elements = lines }
+            for _, e in ipairs(lines) do e.step = s end
+            steps[i] = s
+        end
+        RXPCData = { currentStep = 1, stepSkip = {} }
+        RXP = { currentGuide = { steps = steps }, activeWaypoints = {} }
+        RXPG_ARROW = { shown = true, IsShown = function(self) return self.shown end }
+        -- RestedXP moves on to a step: its arrow goes to the step's place, or is hidden when it has none
+        -- (and then keeps what it last pointed at, as RestedXP's does)
+        function STUB.GuideStep(n)
+            RXPCData.currentStep = n
+            for i, s in ipairs(steps) do
+                s.active = (i == n) or nil
+                if i < n then s.completed = true end
+            end
+            RXPG_ARROW.shown = false
+            for _, e in ipairs(steps[n].elements) do
+                if e.wx then RXPG_ARROW.element, RXPG_ARROW.shown = e, true end
+            end
+        end
+    """)
+
+    def words():
+        got = ns.FloatShown()
+        return (got[0], got[1]) if isinstance(got, tuple) else (got, None)
+
+    def quiet():                       # the words on screen have had their time
+        stub.time += 60
+        stub.Frame()
+        assert ns.FloatShown() is None, "the words did not go out"
+
+    stub.pin = None
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    stub.watched, stub.focus = lua.table_from([]), 0
+    stub.Fire("QUEST_LOG_UPDATE")
+    for name, value in (("rxp", True), ("quests", True), ("sourceFirst", "rxp"), ("rxpTravel", True), ("rxpAhead", 2),
+                        ("flights", True), ("float", True), ("floatRoute", True)):
+        setting(name, value)
+    stub.player.x, stub.player.y, stub.player.map = -442.0, -2598.0, 1
+    lua.globals().WorldMapFrame.mapID = 1414
+    stub.GuideStep(1)
+    stub.Tick(); frames()
+    assert ns.dest and ns.dest.source == "rxp" and near(*FIELD) and ns.dest.kind == "accept" and ns.route, "the guide's step was not routed to"
+    big, small = words()
+    assert big == "Accept Plainstrider Menace" and small and "walk" in small, (big, small)
+    assert ns.ahead and len(ns.ahead.legs) == 2, "the ways on through the next two steps were not found"
+    stub.provider.RefreshAllData()
+    with_ahead = stub.shown
+    setting("rxpAhead", 0)
+    assert ns.ahead is None
+    stub.provider.RefreshAllData()
+    without = stub.shown
+    assert 0 < without < with_ahead, "the steps after were not drawn on the world map (%d, %d)" % (without, with_ahead)
+    setting("rxpAhead", 2)
+    frames()
+    assert len(ns.ahead.legs) == 2
+    print("      on the world map: %d lines with the two steps after, %d without" % (with_ahead, without))
+
+    # the step is done where it was: the way to the next is there at once, with no search
+    stub.player.x, stub.player.y = FIELD[0] + 2, FIELD[1]
+    stub.Tick()
+    assert not ns.dest, "not stopped on reaching the step's place"
+    stub.GuideStep(2)
+    stub.Tick()
+    assert ns.dest and near(*RATCHET) and ns.route, "the way to the next step was not handed over at once"
+    assert abs(ns.route.points[1][1] - FIELD[0]) < 1, "the route handed over does not begin where the step was"
+    big, small = words()
+    assert big == "Turn in Plainstrider Menace\nAccept The Forgotten Pools" and "walk" in small, (big, small)
+    frames()
+    # after it: on foot to the flight master, then the flight as the guide has it, a straight line
+    legs = ns.ahead.legs
+    assert len(legs) == 2 and legs[2].points[2][3] == "fly" and len(legs[2].points) == 2, "the guide's flight is not drawn as a flight"
+    assert len(legs[1].flown) == 0, "the way to the flight master was found by flying"
+
+    # a step that has you fly: gone to on foot, the flying left to the guide
+    stub.player.x, stub.player.y = RATCHET[0] + 2, RATCHET[1]
+    stub.Tick()
+    stub.GuideStep(3)
+    stub.Tick(); frames()
+    assert ns.dest and ns.dest.kind == "fly" and ns.dest.walkOnly and near(-437.0, -2596.0)
+    assert ns.route and len(ns.route.flown) == 0, "a flight was planned to reach the flight master"
+    assert words()[0] == "Fly to Orgrimmar"
+
+    # a hearthstone: nowhere to go, said on screen; a tracked quest is not followed in its stead;
+    # RestedXP's hidden arrow still holds the last spot, which is not gone to
+    stub.QuestAt(880, "A Decoy", 1, *CAMP)
+    stub.watched = lua.table_from([880])
+    stub.Fire("QUEST_LOG_UPDATE")
+    stub.GuideStep(5)
+    assert lua.eval("RXPG_ARROW.element ~= nil and not RXPG_ARROW.shown")
+    stub.Tick(); frames()
+    assert not ns.dest and not ns.route, "routed somewhere on a hearthstone step"
+    assert words() == ("Hearth to the Crossroads", ""), words()
+    assert ns.ahead is None, "a way was drawn on from a hearthstone"
+    # with the guide's travel not followed, it is as it was: the quest behind it
+    setting("rxpTravel", False)
+    stub.Tick(); frames()
+    assert ns.dest and ns.dest.source == "quest" and words()[0] == "Quest: A Decoy", "the quest was not followed with the setting off"
+    setting("rxpTravel", True)
+    stub.Tick(); frames()
+    assert not ns.dest
+    stub.QuestGone(880)
+    stub.Fire("QUEST_REMOVED")
+
+    # a step that is only words
+    stub.GuideStep(6)
+    stub.Tick(); frames()
+    assert not ns.dest and words()[0] == "Train your skills"
+
+    # two steps at one place: no new route, the new step's words
+    stub.player.x, stub.player.y = -442.0, -2598.0
+    stub.GuideStep(8)
+    stub.Tick(); frames()
+    held = ns.dest
+    assert held and near(*FIELD) and words()[0] == "Accept Raptor Thieves"
+    stub.GuideStep(9)
+    stub.Tick(); frames()
+    assert same(ns.dest, held), "a new destination for a step at the same place"
+    assert words()[0] == "Turn in Raptor Thieves" and "walk" in words()[1]
+
+    # the words go out by themselves, and come back when asked; switched off, none
+    quiet()
+    slash("step")
+    assert words()[0] == "Turn in Raptor Thieves"
+    quiet()
+    setting("float", False)
+    stub.GuideStep(7)
+    stub.Tick(); frames()
+    assert ns.dest and near(*CAMP) and ns.FloatShown() is None, "words on screen with the setting off"
+    setting("float", True)
+    [b for b in buttons if b.name == "Show Me"][0].click()
+    assert words()[0].startswith("Turn in The Forgotten Pools")
+    quiet()
+    # your own pin: said too
+    stub.PinAt(1, *FIELD)
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    frames()
+    stub.Tick()                        # (the guide's steps after are let go of at the next look)
+    assert ns.dest.pin and words()[0] == "To your map pin" and ns.ahead is None, (words(), ns.ahead)
+    stub.pin = None
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    # no guide any more
+    lua.execute("RXP, RXPCData, RXPG_ARROW = nil, nil, nil")
+    stub.Tick(); frames()
+    assert not ns.dest and ns.ahead is None
+    chat("the guide read ahead")
     lua.globals().PatchwerkForever_Thread_Routes_Go()
     lua.globals().PatchwerkForever_Thread_Routes_Stop()
     chat("bindings")

@@ -188,7 +188,7 @@ def pack_map(map_id, flights):
     with open(os.path.join(folder, "PatchwerkForever_Thread_Routes_%s.toc" % NAMES[map_id]), "w", encoding="utf-8", newline="\n") as f:
         f.write("## Interface: 16001\n## Title: Thread (Routes) map: %s\n"
                 "## Notes: Map data for Patchwerk Forever: Thread (Routes). Loaded by it when needed.\n"
-                "## Author: Tyrone\n## Version: 0.11.0\n"
+                "## Author: Tyrone\n## Version: 0.12.0\n"
                 # (the game's addon list shows it under the parent; without this line it stood apart)
                 "## Group: PatchwerkForever\n"
                 "## IconTexture: Interface\\AddOns\\PatchwerkForever_Thread_Routes\\Media\\icon\n"

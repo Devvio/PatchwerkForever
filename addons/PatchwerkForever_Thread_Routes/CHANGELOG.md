@@ -1,3 +1,18 @@
+## 0.12.0 (beta)
+
+### RestedXP guides, read ahead
+- The guide is now read as it runs, not only the spot its arrow points at: the step you are on, what it asks for, and the steps after it.
+- **The guide's travel is followed.** A step that has you fly is gone to on foot, to the flight master the guide names. A step with no place (use your hearthstone, train your skills) is said on screen instead of routed, and no quest is followed in its stead.
+- **The next step is ready.** The way from each step to the next is found ahead of time, so the trail changes the moment a step is done.
+- **The steps after are drawn**: a fainter trail on through the next few steps, on the world map and the minimap.
+- New settings: Follow The Guide's Travel, and Guide Steps Shown Ahead (none to five).
+- Fixed: while RestedXP hid its arrow (a step with no place), the route could still lead to the spot the arrow last pointed at.
+
+### The step, said on screen
+- When the route gets a new destination, a few words fade in on the upper middle of the screen: the step (the guide's own words, a quest's name, "to your map pin") and, under them, the route. Not when the way is only found again after a wrong turn.
+- A new page of settings, **Thread: Step Text**: on or off, the route line, size, how long it stays, where it stands, and a button to try it.
+- `/thread step` says the last one again.
+
 ## 0.11.0 (beta)
 
 A new name and a new home. This addon was "Wayfarer" until now.

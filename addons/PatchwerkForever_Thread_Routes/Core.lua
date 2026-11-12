@@ -15,6 +15,10 @@ ns.settings = {
 		desc = 'When you put a pin on the world map, find the way to it at once.' },
 	{ key = 'rxp', default = true, name = 'Follow My RestedXP Guide',
 		desc = 'With no map pin, route to the current step of your RestedXP guide, and on to the next as you go.' },
+	{ key = 'rxpTravel', default = true, name = 'Follow The Guide\'s Travel', parent = 'rxp',
+		desc = 'When a guide step has you fly, the route leads on foot to the flight master the guide names and leaves the flying to the guide, instead of planning another way. A step with no place to go to (use your hearthstone, train your skills) is said on screen, and no quest is followed in its stead.' },
+	{ key = 'rxpAhead', default = 2, min = 0, max = 5, step = 1, name = 'Guide Steps Shown Ahead', parent = 'rxp',
+		desc = 'A fainter trail runs on from the step you are on through this many of the next ones, on the world map and the minimap. The way to the next step is found ahead of time, so the trail changes the moment a step is done. Zero shows none and finds nothing ahead.' },
 	{ key = 'quests', default = true, name = 'Follow My Tracked Quest',
 		desc = 'With no map pin, route to a quest you are tracking: to where it is to be done, on to its next objective, and to whoever takes it in once it is done.' },
 	{ key = 'questPick', default = 'nearest', name = 'Which Quest', parent = 'quests',
@@ -64,6 +68,22 @@ ns.settings = {
 		desc = 'The colour of a flight.' },
 	{ page = 'Thread: Trail', key = 'trailRide', colour = true, default = 'ff66e6c8', name = 'Colour: Boats And Zeppelins',
 		desc = 'The colour of the course a boat or a zeppelin takes.' },
+
+	-- the step, said on screen
+	{ page = 'Thread: Step Text', key = 'float', default = true, name = 'Describe The Step On Screen',
+		desc = 'When the route gets a new destination (a new guide step, a new quest objective, a new map pin), a few words appear on screen: what you are going to do. They fade in, stay a few seconds and fade out. Nothing is said when the way is only found again after a wrong turn.' },
+	{ page = 'Thread: Step Text', key = 'floatRoute', default = true, name = 'The Route Under It', parent = 'float',
+		desc = 'A smaller line under the words: how long the route takes, how far it is on foot, and what it flies or rides.' },
+	{ page = 'Thread: Step Text', key = 'floatSize', default = 20, min = 12, max = 40, step = 1, name = 'Size',
+		desc = 'How large the words are written.' },
+	{ page = 'Thread: Step Text', key = 'floatHold', default = 5, min = 2, max = 15, step = 1, name = 'Seconds It Stays',
+		desc = 'How long the words stay before they fade out.' },
+	{ page = 'Thread: Step Text', key = 'floatDown', default = 18, min = 0, max = 80, step = 1, name = 'Down The Screen',
+		desc = 'How far down from the top of the screen the words stand, in percent of its height.' },
+	{ page = 'Thread: Step Text', key = 'floatAcross', default = 0, min = -40, max = 40, step = 1, name = 'Across The Screen',
+		desc = 'Moves the words left (below zero) or right of the middle, in percent of the screen\'s width.' },
+	{ page = 'Thread: Step Text', button = 'Show', name = 'Show Me', click = function() ns.FloatTest() end,
+		desc = 'Shows a made-up step where the words will stand, at the size and for the time set above.' },
 }
 
 ---------------------------------------------------------------------------
@@ -75,6 +95,7 @@ local function Help()
 	ns.Print('  /thread to 45.2 61.8: route to that spot on the map you are on')
 	ns.Print('  /thread stop: stop routing (a guide step or quest is left alone until it moves on)')
 	ns.Print('  /thread quest: where the game says your tracked quests are, and which one is followed')
+	ns.Print('  /thread step: say the step on screen again')
 	ns.Print('  /thread config: open the settings')
 	ns.Print('  /thread where: say where the planner thinks you are')
 	ns.Print('  /thread nodes: how many herb and ore spots are remembered')
@@ -110,6 +131,8 @@ SlashCmdList.PATCHWERKFOREVER_THREAD = function(text)
 		end
 	elseif word == 'quest' or word == 'quests' then
 		ns.Try('quest', ns.QuestSay)
+	elseif word == 'step' then
+		ns.Try('step', ns.FloatAgain)
 	else
 		Help()
 	end

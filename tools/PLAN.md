@@ -56,6 +56,25 @@ base), the sparkle split from the route planner, and MelloUI Route's additions u
   (Tyrone does not run MelloUI). RestedXP still sets `RXPG_ARROW.element` with zone, x, y, wx, wy, instance.
   Also in the repository now: the CurseForge uploader (`upload.py`, `upload_check.py`, `curseforge.json`, the
   CI workflow), and Patchwerk's flavour text at the top of each README.
+- Thread (Routes) 0.12.0: RestedXP read ahead, and the step said on screen (Tyrone, 2026-11-12: "deep dive
+  routing for restedxp, read the upcoming step and direct accordingly", "with a route change, a graceful
+  floating text describing the step"; of the interview he took all four read-ahead parts, the step then the
+  route for the words, upper middle and configurable, every new destination).
+  - `Guide.lua` reads RestedXP as it runs: `RXP.currentGuide.steps`, `RXPCData.currentStep`, each step's
+    elements (`tag`, `text`, `completed`, `skip`, and for a place `zone/x/y` or `wx/wy/instance`), and the
+    arrow's element only while the arrow is shown (hidden, it keeps its last spot: that was a fault before).
+    With none of that to be found it falls back to the arrow's spot. RestedXP is CC BY-NC-SA: read, never copied.
+  - `Route.lua`: the search is a function of its own (`Search`), with a queue behind the main search for ways
+    that can wait (`ns.SearchLater`); `dest.walkOnly` for a fly step; a fresh destination is described once its
+    route is known. `Ahead.lua`: the ways between the next steps, drawn fainter (`ns.ahead.legs`), the first
+    handed over as the route when a step is done where it was (`Ahead.Take`). `Float.lua`: the words on screen.
+  - Passes the pretend session with a stand-in guide (a route to the step, two ways found ahead, the handover
+    with no search, a fly step walked to, a hearthstone step said and not routed, two steps at one place, the
+    words going out and coming back).
+  - Confirmed in-game by Tyrone (2026-11-12, after a full start, his guide running): the step's words appear
+    on screen and the fainter trail runs on ahead ("Yes, both work"). So RestedXP's `RXP` table and its
+    steps are there as read. Not heard one by one: the handover with no pause when a step is done, a fly
+    step walked to, a hearthstone step said and not routed, and whether the size and place of the words suit.
 Below, read Wayfarer, `PatchwerkForever_Wayfarer` and `/wayfarer` as Thread (Routes) and its names;
 the log keeps the names things had when it was written.
 

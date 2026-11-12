@@ -3,8 +3,12 @@
 -- A map pin, or a spot given with /thread to, always comes first. With neither, the route goes
 -- where one of these says, and moves on as it does:
 --
---   your RestedXP guide   RestedXP keeps the place its arrow points at on the arrow's frame
---                         (RXPG_ARROW.element). Nothing of RestedXP's is changed.
+--   your RestedXP guide   the step you are on, read from RestedXP as it runs (Guide.lua): where it
+--                         sends you, what it asks for, and the steps after it. A step that has you
+--                         fly is gone to on foot, to the flight master the guide names; one with no
+--                         place (a hearthstone, training) is said on screen. The way on through the
+--                         next steps is drawn fainter and found ahead of time (Ahead.lua). Nothing
+--                         of RestedXP's is changed.
 --   a quest you track     the quest the game's own arrow is on (the "super-tracked" one), or failing
 --                         that the nearest of the quests in your tracker. Where a quest is, is asked
 --                         of the game the way its own world map asks: the map the quest is on
@@ -35,32 +39,29 @@ local function Apart(ax, ay, bx, by)
 end
 
 -- A spot on one of the game's maps (0 to 1 across and down) as: continent, world x, world y.
-local function World(uiMap, x, y)
-	if type(uiMap) ~= 'number' or type(x) ~= 'number' or type(y) ~= 'number' then return nil end
-	local ok, map, world = pcall(C_Map.GetWorldPosFromMapPos, uiMap, CreateVector2D(x, y))
-	if not (ok and map and world) then return nil end
-	local wx, wy = world:GetXY()
-	return map, wx, wy
-end
+local World = ns.WorldOf
 
 ---------------------------------------------------------------------------
 -- The RestedXP guide
 ---------------------------------------------------------------------------
--- The place the RestedXP arrow points at: map, world x, world y; nothing when there is none.
+-- What the guide says now (Guide.lua): the step you are on, what it asks for, its words, where it
+-- sends you, and the steps after it. Read again at every look; nil with no guide running.
+local guide
+
+-- The place the guide sends you: map, world x, world y; nothing when there is none.
 local function GuideTarget()
-	local arrow = _G.RXPG_ARROW
-	local e = arrow and arrow.element
-	if type(e) ~= 'table' then return nil end
-	-- its place on a zone's map, which the game turns into world coordinates itself
-	if e.zone and e.x and e.y then
-		local map, x, y = World(e.zone, e.x / 100, e.y / 100)
-		if map then return map, x, y end
-	end
-	-- else RestedXP's own world coordinates: its x runs west and its y north, the game's the other way round
-	if type(e.wx) == 'number' and type(e.wy) == 'number' and type(e.instance) == 'number' then
-		return e.instance, e.wy, e.wx
-	end
-	return nil
+	guide = ns.Guide.Read(ns.Get('rxpAhead') or 0)
+	if not (guide and guide.map) then return nil end
+	return guide.map, guide.x, guide.y
+end
+
+-- What goes with a guide's step when it becomes the destination: its words, its kind, and, for a step
+-- that has you fly, that the way to the flight master is to be gone on foot (the guide names the
+-- flight; the planner is not to think of another).
+local function GuideMore()
+	if not guide then return nil end
+	return { lines = guide.lines, kind = guide.kind, step = guide.index,
+		walkOnly = (guide.kind == 'fly' and ns.Get('rxpTravel')) or nil }
 end
 
 ---------------------------------------------------------------------------
@@ -196,18 +197,42 @@ local FIND = { rxp = GuideTarget, quest = QuestTarget }
 local function Target()
 	local _, _, here = ns.Place()
 	local order = ns.Get('sourceFirst') == 'quest' and QUEST_FIRST or GUIDE_FIRST
+	guide = nil
 	for _, name in ipairs(order) do
 		if ns.Get(SETTING[name]) then
 			local map, x, y = FIND[name]()
 			if map and (here == nil or map == here or ns.CanCross(map)) then return name, map, x, y end
+			-- A guide's step that sends you nowhere (use your hearthstone, train, buy food): the guide
+			-- still has the say, so no quest is followed behind its back. It is said on screen instead.
+			if name == 'rxp' and guide and not guide.map and ns.Get('rxpTravel') and guide.kind ~= 'place' then
+				return name
+			end
 		end
 	end
 	return nil
 end
 
+-- The fainter trail on through the guide's next steps (Ahead.lua), and with it the way to the next
+-- step found ahead of time. Nothing of it while something else than the guide is followed.
+local function LookAhead(from)
+	if not (guide and from and #guide.ahead > 0 and (ns.Get('rxpAhead') or 0) > 0) then
+		return ns.Ahead.Set({})
+	end
+	local chain = { { map = from.map, x = from.x, y = from.y, kind = ns.Get('rxpTravel') and guide.kind or 'place' } }
+	for _, step in ipairs(guide.ahead) do
+		chain[#chain + 1] = { map = step.map, x = step.x, y = step.y, kind = ns.Get('rxpTravel') and step.kind or 'place' }
+	end
+	ns.Ahead.Set(chain)
+end
+
+local said       -- the guide's step last said on screen with no new destination to go with it
+
 local function Look()
 	local dest = ns.dest
-	if dest and not dest.source then return end              -- your own pin or spot comes first
+	if dest and not dest.source then                         -- your own pin or spot comes first
+		ns.Ahead.Set({})
+		return
+	end
 	local stopped = ns.stopped
 	if stopped then
 		ns.stopped = nil
@@ -222,8 +247,24 @@ local function Look()
 			ns.Stop(false)
 			ns.stopped = nil
 		end
+		ns.Ahead.Set({})
 		return
 	end
+	if not map then
+		-- the guide's step has no place: nothing to go to, its words on screen once
+		if dest then
+			ns.Stop(false)
+			ns.stopped = nil
+		end
+		if said ~= guide.key then
+			said = guide.key
+			ns.FloatStep(guide.lines)
+		end
+		-- (nothing is drawn on ahead: there is no telling from here where the next walk begins)
+		ns.Ahead.Set({})
+		return
+	end
+	if source ~= 'rxp' then guide = nil end
 	if skip then
 		if skip.source == source and skip.map == map and Apart(skip.x, skip.y, x, y) <= SAME then
 			if not skip.reached then return end
@@ -232,8 +273,19 @@ local function Look()
 		end
 		skip = nil
 	end
-	if dest and dest.source == source and dest.map == map and Apart(dest.x, dest.y, x, y) <= SAME then return end
-	ns.SetDestination(map, x, y, false, false, source)
+	if dest and dest.source == source and dest.map == map and Apart(dest.x, dest.y, x, y) <= SAME then
+		-- the same place still. A guide that has moved on to another step there (take the quest, then
+		-- hand one in to the same person) gets its new words said, with the route as it stands.
+		if guide and dest.step ~= guide.index then
+			dest.step, dest.lines, dest.kind = guide.index, guide.lines, guide.kind
+			ns.FloatStep(guide.lines, ns.route and ns.Summary(ns.route) or nil)
+		end
+		LookAhead(dest)
+		return
+	end
+	local more = guide and GuideMore() or (source == 'quest' and quest.id and { lines = { 'Quest: ' .. Title(quest.id) } }) or nil
+	ns.SetDestination(map, x, y, false, false, source, more)
+	LookAhead(ns.dest)
 end
 
 -- Routes to what the guide or a quest gives now (for /thread go with no pin). Returns true if there is one.
@@ -242,10 +294,16 @@ function ns.GoToSource()
 	local source, map, x, y = Target()
 	if not source then return false end
 	skip = nil
+	if not map then                                    -- the guide's step has no place: its words, again
+		ns.FloatStep(guide.lines)
+		ns.Print('your guide\'s step has nowhere to go to: ' .. (guide.lines[1] or 'it has no words either') .. '.')
+		return true
+	end
 	if source == 'quest' and ns.Get('notify') then
 		ns.Print((quest.stop and 'on the way to your quest "%s":' or 'to your quest "%s":'):format(Title(quest.id)))
 	end
-	ns.SetDestination(map, x, y, false, true, source)
+	local more = (source == 'rxp' and GuideMore()) or (source == 'quest' and quest.id and { lines = { 'Quest: ' .. Title(quest.id) } }) or nil
+	ns.SetDestination(map, x, y, false, true, source, more)
 	return true
 end
 
@@ -302,7 +360,7 @@ ns.On('PLAYER_LOGIN', function()
 	C_Timer.NewTicker(EVERY, function() ns.Try('following your guide and quests', Look) end)
 end)
 ns.OnSetting(function(key)
-	if key == 'rxp' or key == 'quests' or key == 'questPick' or key == 'sourceFirst' then
+	if key == 'rxp' or key == 'quests' or key == 'questPick' or key == 'sourceFirst' or key == 'rxpTravel' or key == 'rxpAhead' then
 		quest.dirty = true
 		Look()
 	end

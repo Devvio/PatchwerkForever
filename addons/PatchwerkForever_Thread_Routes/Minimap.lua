@@ -109,12 +109,14 @@ end
 local function Trail()
 	Clear()
 	local route = ns.route
-	if not (route and ns.Get('minimap')) then return end
+	local ahead = ns.ahead and ns.ahead.legs
+	if not ((route or ahead) and ns.Get('minimap')) then return end
 	local parent = Layer()
 	local px, py, map, perYard, sin, cos, radius = ns.MinimapView(parent, 8)
-	if not px or map ~= route.map then return end
+	if not px then return end
 	local edge = radius * 0.96
-	local thick = ns.Get('trailThickMini') or 2.5
+	local full = ns.Get('trailThickMini') or 2.5
+	local thick, alpha = full, 0.9
 	local pen = ns.TrailPen(1, true)
 	local r, g, b = 1, 1, 1
 	local function line(x1, y1, x2, y2)
@@ -126,7 +128,7 @@ local function Trail()
 			lines[used] = l
 		end
 		l:SetThickness(thick)
-		l:SetColorTexture(r, g, b, 0.9)
+		l:SetColorTexture(r, g, b, alpha)
 		l:SetStartPoint('CENTER', parent, x1, y1)
 		l:SetEndPoint('CENTER', parent, x2, y2)
 		l:Show()
@@ -141,29 +143,46 @@ local function Trail()
 			dots[dotted] = d
 		end
 		d:SetVertexColor(r, g, b)
+		if d.SetAlpha then d:SetAlpha(alpha) end
 		d:SetSize(thick * 2.2, thick * 2.2)
 		d:ClearAllPoints()
 		d:SetPoint('CENTER', parent, 'CENTER', x, y)
 		d:Show()
 	end
-	local points = route.points
+	local points, at
 	local function spot(i)
-		if i == route.at then return 0, 0 end                 -- the trail starts at the character
+		if i == at then return 0, 0 end                       -- the trail starts at the character
 		local p = points[i]
 		local east, north = (py - p[2]) * perYard, (p[1] - px) * perYard
 		return east * cos + north * sin, north * cos - east * sin
 	end
-	for i = math.max(1, route.at), #points - 1 do
-		if used >= MOST then break end
-		local ax, ay = spot(i)
-		local bx, by = spot(i + 1)
-		local cx, cy, ex, ey = InCircle(ax, ay, bx, by, edge)
-		if cx and points[i + 1][3] ~= 'gap' then
-			r, g, b = ns.TrailColour(points[i + 1][3])
-			ns.Stroke(pen, cx, cy, ex, ey, line, dot)
+	-- one trail: the part of it on the map you are on
+	local drew = false
+	local function Run(trail, follow)
+		points, at = trail.points, follow and trail.at or nil
+		if map ~= trail.map then
+			points, at = trail.parts and trail.parts[map], nil
+		end
+		if not points then return end
+		drew = true
+		for i = math.max(1, at or 1), #points - 1 do
+			if used >= MOST then break end
+			local ax, ay = spot(i)
+			local bx, by = spot(i + 1)
+			local cx, cy, ex, ey = InCircle(ax, ay, bx, by, edge)
+			if cx and points[i + 1][3] ~= 'gap' then
+				r, g, b = ns.TrailColour(points[i + 1][3])
+				ns.Stroke(pen, cx, cy, ex, ey, line, dot)
+			end
 		end
 	end
-	return true
+	if route and map == route.map then Run(route, true) end
+	-- the way on through a guide's next steps (Ahead.lua): fainter and finer
+	thick, alpha = full * 0.7, 0.45
+	for _, leg in ipairs(ahead or {}) do
+		Run(leg, false)
+	end
+	return drew or nil
 end
 
 local function Draw()
@@ -172,7 +191,7 @@ end
 
 local ticker
 local function Watch()
-	local want = ns.route ~= nil and ns.Get('minimap')
+	local want = (ns.route ~= nil or ns.ahead ~= nil) and ns.Get('minimap')
 	if want and not ticker then
 		ticker = C_Timer.NewTicker(EVERY, function() ns.Try('the minimap trail', Draw) end)
 	elseif not want and ticker then

@@ -90,30 +90,67 @@ end
 ---------------------------------------------------------------------------
 -- Searching, a little each frame
 ---------------------------------------------------------------------------
+-- job: the search for the route you are on. It comes first. Behind it, one at a time and only while
+-- there is no job, run the searches that can wait (ns.SearchLater: the ways between the guide's next
+-- steps, Ahead.lua). A job that starts while one of those is under way puts it back to wait.
 local job, lastPlan = nil, 0
+local waiting, behind, behindAsk = {}, nil, nil
+local Search
 local runner = CreateFrame('Frame')
 runner:Hide()
 runner:SetScript('OnUpdate', function()
-	if not job then
-		runner:Hide()
+	if job then
+		P.deadline = debugprofilestop() + P.budget
+		local ok, err = coroutine.resume(job)
+		if not ok then
+			job = nil
+			ns.Print('the search stopped on an error: ' .. tostring(err))
+		elseif coroutine.status(job) == 'dead' then
+			job = nil
+		end
 		return
 	end
+	if not behind then
+		local ask = table.remove(waiting, 1)
+		while ask and ask.want and not ask.want() do          -- (no longer wanted: the guide moved on)
+			ask = table.remove(waiting, 1)
+		end
+		if not ask then
+			runner:Hide()
+			return
+		end
+		behindAsk = ask
+		behind = coroutine.create(function()
+			local route = Search(ask.from, ask.to, ask.opts or {})
+			ask.done(route)
+		end)
+	end
 	P.deadline = debugprofilestop() + P.budget
-	local ok, err = coroutine.resume(job)
+	local ok, err = coroutine.resume(behind)
 	if not ok then
-		job = nil
-		ns.Print('the search stopped on an error: ' .. tostring(err))
-	elseif coroutine.status(job) == 'dead' then
-		job = nil
+		behind, behindAsk = nil, nil
+		P.Forget()
+		ns.Try('a search ahead', error, tostring(err), 0)     -- (said once, not thrown)
+	elseif coroutine.status(behind) == 'dead' then
+		behind, behindAsk = nil, nil
 	end
 end)
+
+-- A search that can wait. from, to: { map =, x =, y = } in world coordinates. done(route) is called with
+-- the route, or with nothing when there is no way. want(), when given, is asked just before the search
+-- starts: false drops it.
+function ns.SearchLater(from, to, opts, done, want)
+	waiting[#waiting + 1] = { from = from, to = to, opts = opts, done = done, want = want }
+	runner:Show()
+end
 
 local function Duration(seconds)
 	if seconds < 90 then return ('%d s'):format(seconds) end
 	return ('%d min'):format(math.floor(seconds / 60 + 0.5))
 end
 
-local function Say(route)
+-- A route in a few words: how long, how far on foot, and what it flies or rides.
+local function Summary(route)
 	local parts = { ('walk %d yd'):format(route.yards) }
 	for _, flight in ipairs(route.flown) do
 		parts[#parts + 1] = 'fly ' .. table.concat(flight, ' > ')
@@ -121,7 +158,12 @@ local function Say(route)
 	for _, ride in ipairs(route.rides or {}) do
 		parts[#parts + 1] = ('%s %s > %s'):format(ride.kind, ride.from, ride.to)
 	end
-	local text = Duration(route.seconds) .. ': ' .. table.concat(parts, ', ') .. '.'
+	return Duration(route.seconds) .. ': ' .. table.concat(parts, ', ')
+end
+ns.Summary = Summary
+
+local function Say(route)
+	local text = Summary(route) .. '.'
 	if route.swum > 300 then
 		text = text .. (' It swims %d yd: have a look before you trust it.'):format(route.swum)
 	end
@@ -136,7 +178,86 @@ local function Fail(announce, text)
 		ns.route = nil
 		Changed()
 	end
-	if announce then ns.Print(text) end
+	if announce and text then ns.Print(text) end
+end
+
+-- A destination you have just been given is described on screen once its route is known (Float.lua):
+-- not again when the way is found anew after a wrong turn.
+local function Fresh(dest, route)
+	if dest and dest.fresh then
+		dest.fresh = nil
+		if ns.FloatRoute then ns.Try('the step on screen', ns.FloatRoute, dest, route) end
+	end
+end
+
+-- Finds the way from one place to another. It is run inside a search (a coroutine) and gives up its
+-- turn as it goes. from, to: { map =, x =, y = } in world coordinates. opts.walkOnly: on foot (no
+-- flights, and no boats where both ends are on one map). Returns the route, or nothing and why not
+-- (no reason given: the map data could not be had, which has been said already).
+Search = function(from, to, opts)
+	local map = from.map
+	local rides = ns.Get('rides') and ns.Crossings or nil
+	if map ~= to.map and not rides then
+		return nil, 'that is on another continent, and Use Boats And Zeppelins is switched off.'
+	end
+	if not Data(map) then return nil end
+	if map ~= to.map and not Data(to.map) then return nil end
+	if opts.walkOnly and map == to.map then rides = nil end
+	local sx, sy = P.CellOf(map, from.x, from.y)
+	sx, sy = P.Nearest(map, sx, sy, 12)
+	if not sx then
+		return nil, 'you are not standing on ground the planner knows (inside a building, on a boat, or on one?).'
+	end
+	local gx, gy = P.CellOf(to.map, to.x, to.y)
+	local tx, ty = gx, gy
+	gx, gy = P.Nearest(to.map, gx, gy, 24)
+	if not gx then
+		return nil, 'there is no ground the planner knows within 100 yards of that spot.'
+	end
+	-- walks found by the planner, joined by boats and zeppelins where that is quicker or the only way
+	local side, flights, known = Side(), ns.Get('flights') and not opts.walkOnly, {}
+	local journey = P.Journey({ map = map, x = sx, y = sy }, { map = to.map, x = gx, y = gy }, {
+		rides = rides, side = side,
+		use = function(m) return DATA[m] ~= nil and Data(m) end,
+		walk = function(m)
+			if not flights then return {} end
+			if known[m] == nil then known[m] = Known(m) or false end
+			return { side = side, known = known[m] or nil }
+		end,
+	})
+	if not journey then
+		P.Forget()
+		if map ~= to.map then
+			return nil, 'no way found to that continent: no boat or zeppelin your side can take leads there, or the spot is cut off.'
+		end
+		return nil, 'no way found. The spot may be cut off by something the planner does not know: a lift, a boat, a locked gate.'
+	end
+	local line = P.JourneyLine(journey)
+	P.Forget()
+	-- the part on the map it starts on is the one followed; the parts on other maps wait their turn
+	local points = line.parts[1].points
+	points[1][1], points[1][2] = from.x, from.y
+	local short = math.sqrt((tx - gx) * (tx - gx) + (ty - gy) * (ty - gy)) * 4.1667
+	local last = line.parts[#line.parts].points
+	if short < 8 and #last > 1 then
+		last[#last][1], last[#last][2] = to.x, to.y
+	end
+	local parts = {}
+	for n = 2, #line.parts do
+		local part = line.parts[n]
+		if part.map ~= map then
+			local list = parts[part.map]
+			if not list then
+				parts[part.map] = part.points
+			else                                  -- on that map a second time: joined on, the join not drawn
+				part.points[1][3] = 'gap'
+				for _, p in ipairs(part.points) do list[#list + 1] = p end
+			end
+		end
+	end
+	return { map = map, points = points, parts = parts, seconds = line.seconds, yards = line.yards,
+		swum = line.swum, flown = line.flown, rides = line.rides, at = 1, short = short,
+		to = { map = to.map, x = to.x, y = to.y } }
 end
 
 -- Finds the route to ns.dest from where the character stands. `announce` says it in chat.
@@ -144,72 +265,36 @@ function ns.Plan(announce)
 	local dest = ns.dest
 	if not dest then return end
 	local px, py, map = Place()
-	if not px then return Fail(announce, 'the game does not say where you are here.') end
-	local rides = ns.Get('rides') and ns.Crossings or nil
-	if map ~= dest.map and not rides then
+	if not px then
+		Fresh(dest)
+		return Fail(announce, 'the game does not say where you are here.')
+	end
+	if map ~= dest.map and not (ns.Get('rides') and ns.Crossings) then
+		Fresh(dest)
 		return Fail(announce, 'that is on another continent, and Use Boats And Zeppelins is switched off.')
 	end
-	if not Data(map) then return Fail(false) end
-	if map ~= dest.map and not Data(dest.map) then return Fail(false) end
+	if not Data(map) or (map ~= dest.map and not Data(dest.map)) then
+		Fresh(dest)
+		return Fail(false)
+	end
 	lastPlan = GetTime()
-	job = coroutine.create(function()
-		local sx, sy = P.CellOf(map, px, py)
-		sx, sy = P.Nearest(map, sx, sy, 12)
-		if not sx then
-			return Fail(announce, 'you are not standing on ground the planner knows (inside a building, on a boat, or on one?).')
-		end
-		local gx, gy = P.CellOf(dest.map, dest.x, dest.y)
-		local tx, ty = gx, gy
-		gx, gy = P.Nearest(dest.map, gx, gy, 24)
-		if not gx then
-			return Fail(announce, 'there is no ground the planner knows within 100 yards of that spot.')
-		end
-		-- walks found by the planner, joined by boats and zeppelins where that is quicker or the only way
-		local side, flights, known = Side(), ns.Get('flights'), {}
-		local journey = P.Journey({ map = map, x = sx, y = sy }, { map = dest.map, x = gx, y = gy }, {
-			rides = rides, side = side,
-			use = function(m) return DATA[m] ~= nil and Data(m) end,
-			walk = function(m)
-				if not flights then return {} end
-				if known[m] == nil then known[m] = Known(m) or false end
-				return { side = side, known = known[m] or nil }
-			end,
-		})
-		if not journey then
-			P.Forget()
-			if map ~= dest.map then
-				return Fail(announce, 'no way found to that continent: no boat or zeppelin your side can take leads there, or the spot is cut off.')
-			end
-			return Fail(announce, 'no way found. The spot may be cut off by something the planner does not know: a lift, a boat, a locked gate.')
-		end
-		local line = P.JourneyLine(journey)
+	if behind then
+		-- a search that can wait is under way: it goes back to wait, and starts over later
+		table.insert(waiting, 1, behindAsk)
+		behind, behindAsk = nil, nil
 		P.Forget()
+	end
+	job = coroutine.create(function()
+		local route, why = Search({ map = map, x = px, y = py }, dest, { walkOnly = dest.walkOnly })
 		if ns.dest ~= dest then return end        -- the destination changed while this was being found
-		-- the part on the map you are on is the one followed; the parts on other maps wait their turn
-		local points = line.parts[1].points
-		points[1][1], points[1][2] = px, py
-		local short = math.sqrt((tx - gx) * (tx - gx) + (ty - gy) * (ty - gy)) * 4.1667
-		local last = line.parts[#line.parts].points
-		if short < 8 and #last > 1 then
-			last[#last][1], last[#last][2] = dest.x, dest.y
+		if not route then
+			Fail(announce, why)
+		else
+			ns.route = route
+			Changed()
+			if announce and ns.Get('notify') then Say(route) end
 		end
-		local parts = {}
-		for n = 2, #line.parts do
-			local part = line.parts[n]
-			if part.map ~= map then
-				local list = parts[part.map]
-				if not list then
-					parts[part.map] = part.points
-				else                                  -- on that map a second time: joined on, the join not drawn
-					part.points[1][3] = 'gap'
-					for _, p in ipairs(part.points) do list[#list + 1] = p end
-				end
-			end
-		end
-		ns.route = { map = map, points = points, parts = parts, seconds = line.seconds, yards = line.yards,
-			swum = line.swum, flown = line.flown, rides = line.rides, at = 1, short = short }
-		Changed()
-		if announce and ns.Get('notify') then Say(ns.route) end
+		Fresh(dest, route)
 	end)
 	runner:Show()
 end
@@ -311,12 +396,30 @@ local function PinPlace()
 end
 
 -- source: nil for a place you chose (the pin, /thread to), or what chose it for you ('rxp' or 'quest': Sources.lua).
-function ns.SetDestination(map, x, y, pin, announce, source)
-	ns.dest = { map = map, x = x, y = y, pin = pin, source = source }
+-- more: what else is known of it (Sources.lua): lines, the words that describe it on screen; kind, what
+-- a guide's step asks for; walkOnly, to be gone to on foot.
+function ns.SetDestination(map, x, y, pin, announce, source, more)
+	local dest = { map = map, x = x, y = y, pin = pin, source = source, fresh = true }
+	for key, value in pairs(more or {}) do
+		dest[key] = value
+	end
+	ns.dest = dest
 	ns.stopped = nil
 	Watch(true)
+	-- the way to a guide's next step may have been found already, while you were on the step before
+	local ready = ns.Ahead and ns.Ahead.Take(dest)
+	if ready then
+		job = nil
+		lastPlan = GetTime()
+		ns.route = ready
+		Changed()
+		if announce and ns.Get('notify') then Say(ready) end
+		Fresh(dest, ready)
+		return
+	end
 	ns.Plan(announce)
 end
+ns.RouteChanged = Changed
 
 -- announce: true when you stopped it yourself. What was stopped is left in ns.stopped for Sources.lua, so it
 -- does not at once route to the same guide step again.

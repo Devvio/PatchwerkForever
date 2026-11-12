@@ -72,7 +72,8 @@ local function Draw()
 	if not (map and map.GetCanvas and map:IsShown()) then return end
 	Wipe()
 	local route = ns.route
-	if not (route and ns.Get('worldMap')) then return end
+	local ahead = ns.ahead and ns.ahead.legs
+	if not ((route or ahead) and ns.Get('worldMap')) then return end
 	local mapID = map:GetMapID()
 	if not mapID then return end
 	local info = C_Map.GetMapInfo(mapID)
@@ -81,13 +82,6 @@ local function Draw()
 	local m1, topLeft = C_Map.GetWorldPosFromMapPos(mapID, CreateVector2D(0, 0))
 	local m2, bottomRight = C_Map.GetWorldPosFromMapPos(mapID, CreateVector2D(1, 1))
 	if not (topLeft and bottomRight) or m1 ~= m2 then return end
-	-- the part of the route on the map shown: the part being walked, or, of a journey that crosses to
-	-- another continent, the part over there
-	local points, at = route.points, route.at
-	if m1 ~= route.map then
-		points, at = route.parts and route.parts[m1], nil
-		if not points then return end
-	end
 	local top, left = topLeft:GetXY()
 	local bottom, right = bottomRight:GetXY()
 	if top == bottom or left == right then return end
@@ -95,13 +89,15 @@ local function Draw()
 	local width, height = parent:GetWidth(), parent:GetHeight()
 	local scale = map.GetCanvasScale and tonumber(map:GetCanvasScale()) or 1
 	if scale <= 0 then scale = 1 end
-	local thick = (ns.Get('trailThickMap') or 3) / scale
+	local full = (ns.Get('trailThickMap') or 3) / scale
+	local thick, alpha = full, 0.95
 	local pen = ns.TrailPen(1 / scale)
 	local r, g, b = 1, 1, 1
+	local points, at
 	local function line(x1, y1, x2, y2)
 		if used >= MOST then return end
 		local l = Line(parent)
-		l:SetColorTexture(r, g, b, 0.95)
+		l:SetColorTexture(r, g, b, alpha)
 		l:SetThickness(thick)
 		l:SetStartPoint('TOPLEFT', parent, x1, y1)
 		l:SetEndPoint('TOPLEFT', parent, x2, y2)
@@ -117,6 +113,7 @@ local function Draw()
 			dots[dotted] = d
 		end
 		d:SetVertexColor(r, g, b)
+		if d.SetAlpha then d:SetAlpha(alpha) end
 		d:SetSize(thick * 2.2, thick * 2.2)
 		d:ClearAllPoints()
 		d:SetPoint('CENTER', parent, 'TOPLEFT', x, y)
@@ -129,14 +126,39 @@ local function Draw()
 		if i == at and px then x, y = px, py end               -- the trail starts at the character
 		return (left - y) / (left - right), (top - x) / (top - bottom)
 	end
-	for i = math.max(1, at or 1), #points - 1 do
-		if used >= MOST then break end
-		local ax, ay = spot(i)
-		local bx, by = spot(i + 1)
-		local cx, cy, ex, ey = Clip(ax, ay, bx, by)
-		if cx and points[i + 1][3] ~= 'gap' then
-			r, g, b = ns.TrailColour(points[i + 1][3])
-			ns.Stroke(pen, cx * width, -cy * height, ex * width, -ey * height, line, dot)
+	-- one trail: the part of it on the map shown (the part being walked, or, of a journey that crosses to
+	-- another continent, the part over there)
+	local function Run(trail, follow)
+		points, at = trail.points, follow and trail.at or nil
+		if m1 ~= trail.map then
+			points, at = trail.parts and trail.parts[m1], nil
+		end
+		if not points then return end
+		for i = math.max(1, at or 1), #points - 1 do
+			if used >= MOST then break end
+			local ax, ay = spot(i)
+			local bx, by = spot(i + 1)
+			local cx, cy, ex, ey = Clip(ax, ay, bx, by)
+			if cx and points[i + 1][3] ~= 'gap' then
+				r, g, b = ns.TrailColour(points[i + 1][3])
+				ns.Stroke(pen, cx * width, -cy * height, ex * width, -ey * height, line, dot)
+			end
+		end
+	end
+	if route then Run(route, true) end
+	-- the way on through a guide's next steps (Ahead.lua): fainter and finer, each ending in a dot
+	thick, alpha = full * 0.7, 0.45
+	for _, leg in ipairs(ahead or {}) do
+		Run(leg, false)
+		local last = points and points[#points]
+		if last then
+			local x, y = (left - last[2]) / (left - right), (top - last[1]) / (top - bottom)
+			if x >= 0 and x <= 1 and y >= 0 and y <= 1 then
+				r, g, b = ns.TrailColour('walk')
+				thick = full * 1.2
+				dot(x * width, -y * height)
+				thick = full * 0.7
+			end
 		end
 	end
 end
@@ -205,7 +227,7 @@ local function Attach()
 		since = since + elapsed
 		if since < AGAIN then return end
 		since = 0
-		if ns.route and ns.Get('worldMap') and ns.TrailMoves() then
+		if (ns.route or ns.ahead) and ns.Get('worldMap') and ns.TrailMoves() then
 			ns.Try('the world map trail', Draw)
 		end
 	end)
