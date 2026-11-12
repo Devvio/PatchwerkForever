@@ -1,8 +1,12 @@
-"""Build the upload for one of the addons.
+"""Build the upload for the addons. Each is a CurseForge project of its own.
 
-    python release.py wayfarer      Patchwerk Forever: Wayfarer (four folders: the addon and its map data)
-    python release.py patchwerk     Patchwerk Forever
-    python release.py               both
+    python release.py patchwerk     Patchwerk Forever, the base
+    python release.py consoleport   Patchwerk Forever: Stitch (Console Port)
+    python release.py melloui       Patchwerk Forever: Stitch (MelloUI)
+    python release.py melloroute    Patchwerk Forever: Stitch (MelloUI Route)
+    python release.py routes        Patchwerk Forever: Thread (Routes) (four folders: the tool and its map data)
+    python release.py sparkle       Patchwerk Forever: Thread (Sparkle)
+    python release.py               all of them
 
 Checks the addon's folders, then writes into its release folder in the repository
 (release/<main folder>, which git does not keep):
@@ -10,6 +14,13 @@ Checks the addon's folders, then writes into its release folder in the repositor
     <main folder>-<version>.zip    the folders, as they go into Interface/AddOns
     CurseForge-description.md      the addon's README.md
     CurseForge-changelog.md        the addon's CHANGELOG.md
+    CurseForge-summary.txt         the one-line summary
+    CurseForge-notes.txt           what to set on the project: what it requires, its logo
+    logo.png                       the project's picture (made by art.py)
+    listing/                       pictures for the listing (screenshots, a banner), from art/<folder>/listing/
+
+When all of them are built it also writes release/UPLOAD.md: what to upload, in which order, and what
+to set on each project.
 
 The version is the one in the main folder's TOC; every other folder of the addon must carry the same.
 Nothing is uploaded: that is done by hand on CurseForge.
@@ -34,19 +45,70 @@ PRIVATE = ("gmail",)
 if os.path.exists(os.path.join(HERE, "private_words.txt")):
     with open(os.path.join(HERE, "private_words.txt"), encoding="utf-8") as _f:
         PRIVATE += tuple(line.strip().lower() for line in _f if line.strip())
+# main: the folder the project is named for.  more: its other folders (load on demand).
+# requires: addons of ours it cannot run without (its TOC must say so; CurseForge must be told).
+# with: other people's addons it is for.  summary: CurseForge's one line, 250 characters at most.
 PROJECTS = {
-    "wayfarer": {
-        "main": "PatchwerkForever_Wayfarer",
-        "more": ["PatchwerkForever_Wayfarer_Kalimdor", "PatchwerkForever_Wayfarer_EasternKingdoms",
-                 "PatchwerkForever_Wayfarer_ZephrasIsle"],
-        "stale": PRIVATE + ("wayfinder", "pathfinder"),
-        "needs": ("README.md", "CHANGELOG.md", "LICENSE", "Bindings.xml"),
-    },
     "patchwerk": {
         "main": "PatchwerkForever",
         "more": [],
-        "stale": PRIVATE + ("wayfinder",),
-        "needs": ("README.md", "CHANGELOG.md", "LICENSE"),
+        "requires": [],
+        "stale": PRIVATE + ("wayfinder", "wayfarer"),
+        "needs": ("README.md", "CHANGELOG.md", "LICENSE", "Media/icon.tga"),
+        "summary": "The base of the Patchwerk Forever addons for WoW Forever: one settings home, saved data and "
+                   "/patchwerk for all of them. It does nothing by itself; add Stitch (fixes for other addons) "
+                   "and Thread (our own tools).",
+    },
+    "consoleport": {
+        "main": "PatchwerkForever_Stitch_ConsolePort",
+        "more": [],
+        "requires": ["PatchwerkForever"],
+        "with": "Console Port",
+        "stale": PRIVATE + ("wayfinder", "wayfarer"),
+        "needs": ("README.md", "CHANGELOG.md", "LICENSE", "Media/icon.tga", "Link.lua"),
+        "summary": "Fixes for Console Port on WoW Forever: the game menu button, Forever's own gamepad bindings, "
+                   "the item menu, interact from rings, the bag bar and micro menu. Needs Patchwerk Forever.",
+    },
+    "melloui": {
+        "main": "PatchwerkForever_Stitch_MelloUI",
+        "more": [],
+        "requires": ["PatchwerkForever"],
+        "with": "MelloUI",
+        "stale": PRIVATE + ("wayfinder", "wayfarer"),
+        "needs": ("README.md", "CHANGELOG.md", "LICENSE", "Media/icon.tga", "Link.lua"),
+        "summary": "For MelloUI on WoW Forever: keeps its game menu button and EllesmereUI's apart, and can trim "
+                   "MelloUI to its Route and Quest Tracker. Needs Patchwerk Forever.",
+    },
+    "melloroute": {
+        "main": "PatchwerkForever_Stitch_MelloUIRoute",
+        "more": [],
+        "requires": ["PatchwerkForever"],
+        "with": "MelloUI",
+        "stale": PRIVATE + ("wayfinder", "wayfarer"),
+        "needs": ("README.md", "CHANGELOG.md", "LICENSE", "Media/icon.tga", "Link.lua"),
+        "summary": "Additions to MelloUI's Route on WoW Forever: roads ready at login, roads before shortcuts, "
+                   "blocked spots, hearthstone and teleport suggestions, next guide steps, a quest run. "
+                   "Needs Patchwerk Forever.",
+    },
+    "routes": {
+        "main": "PatchwerkForever_Thread_Routes",
+        "more": ["PatchwerkForever_Thread_Routes_Kalimdor", "PatchwerkForever_Thread_Routes_EasternKingdoms",
+                 "PatchwerkForever_Thread_Routes_ZephrasIsle"],
+        "requires": ["PatchwerkForever"],
+        "stale": PRIVATE + ("wayfinder", "pathfinder", "wayfarer"),
+        "needs": ("README.md", "CHANGELOG.md", "LICENSE", "Bindings.xml", "Media/icon.tga", "Link.lua"),
+        "summary": "A route planner for WoW Forever: finds the way to your map pin, tracked quest or RestedXP step "
+                   "over ground, by flight path, boat and zeppelin, and remembers herb and ore spots. "
+                   "Needs Patchwerk Forever.",
+    },
+    "sparkle": {
+        "main": "PatchwerkForever_Thread_Sparkle",
+        "more": [],
+        "requires": ["PatchwerkForever"],
+        "stale": PRIVATE + ("wayfinder", "pathfinder", "wayfarer"),
+        "needs": ("README.md", "CHANGELOG.md", "LICENSE", "Bindings.xml", "Media/icon.tga", "Link.lua"),
+        "summary": "A sparkle and a name on the herb, vein, chest or quest object you are coming up to on WoW "
+                   "Forever: twelve effects, a look for each kind of thing. Needs Patchwerk Forever.",
     },
 }
 
@@ -140,17 +202,36 @@ def build(key):
         for name in files:
             if name.endswith(".lua") and name not in listed:
                 problems.append("%s has %s, which its TOC does not list" % (folder, name))
-            if name.lower().endswith(TEXT) or name == "LICENSE":
+            if (name.lower().endswith(TEXT) or name == "LICENSE") and name != "CHANGELOG.md":   # (it may say what it was called)
                 text = open(os.path.join(ADDONS, folder, name), encoding="utf-8").read().lower()
                 for word in project["stale"]:
                     if word in text:
                         problems.append("%s/%s still says \"%s\"" % (folder, name, word))
+        if fields.get("Group") != "PatchwerkForever":
+            problems.append("%s has no '## Group: PatchwerkForever' line (the game's addon list would show it apart)" % folder)
         if folder != main and fields.get("LoadOnDemand") != "1":
             problems.append("%s is not load-on-demand" % folder)
+        # the picture in the game's addon list: a file of this addon's, or of one it cannot run without
+        icon = re.match(r"Interface\\AddOns\\([^\\]+)\\(.+)$", fields.get("IconTexture", ""))
+        deps = [d.strip() for d in fields.get("Dependencies", "").split(",") if d.strip()]
+        if not icon:
+            problems.append("%s has no IconTexture line" % folder)
+        elif icon.group(1) != folder and icon.group(1) not in deps:
+            problems.append("%s takes its icon from %s, which it does not require" % (folder, icon.group(1)))
+        elif not os.path.exists(os.path.join(ADDONS, icon.group(1), icon.group(2).replace("\\", os.sep) + ".tga")):
+            problems.append("%s names an icon that is not there: %s" % (folder, fields["IconTexture"]))
+        if folder == main:
+            for need in project["requires"]:
+                if need not in deps:
+                    problems.append("%s does not say it requires %s" % (folder, need))
+            if project["requires"] and (not listed or listed[0] != "Link.lua"):
+                problems.append("%s must list Link.lua first" % folder)
         plan.append((folder, files))
     for name in project["needs"]:
         if name not in plan[0][1]:
             problems.append("%s has no %s" % (main, name))
+    if len(project["summary"]) > 250:
+        problems.append("the summary is %d characters; CurseForge takes 250" % len(project["summary"]))
     if ("## %s" % version) not in open(os.path.join(ADDONS, main, "CHANGELOG.md"), encoding="utf-8").read():
         problems.append("CHANGELOG.md has no entry for %s" % version)
     if problems:
@@ -176,6 +257,30 @@ def build(key):
                 z.writestr(folder + "/" + name, data[name])
     shutil.copyfile(os.path.join(ADDONS, main, "README.md"), os.path.join(out, "CurseForge-description.md"))
     shutil.copyfile(os.path.join(ADDONS, main, "CHANGELOG.md"), os.path.join(out, "CurseForge-changelog.md"))
+    with open(os.path.join(out, "CurseForge-summary.txt"), "w", encoding="utf-8", newline="\n") as f:
+        f.write(project["summary"] + "\n")
+    title = toc(main)[0].get("Title", main)
+    notes = ["%s %s" % (title, version), "",
+             "File to upload:  %s-%s.zip" % (main, version),
+             "Description:     CurseForge-description.md",
+             "Changelog:       CurseForge-changelog.md (the entry for %s)" % version,
+             "Summary:         CurseForge-summary.txt",
+             "Project picture: logo.png" + ("" if os.path.exists(os.path.join(out, "logo.png"))
+                                            else "  (NOT THERE YET: run python art.py)"),
+             "Game version:    World of Warcraft: Forever (interface %s)" % toc(main)[0].get("Interface"), ""]
+    if project["requires"]:
+        notes.append("Relations, on the file: Required Dependency -> " + ", ".join(
+            toc(need)[0].get("Title", need) for need in project["requires"]))
+    else:
+        notes.append("Relations: none. It needs no other addon.")
+    if project.get("with"):
+        notes.append("It is for %s, which people install themselves; mark that as a Required Dependency too if "
+                     "its project is on CurseForge, else leave it to the description." % project["with"])
+    pictures = listing(main, out)
+    if pictures:
+        notes.append("Pictures for the listing, in listing/: " + ", ".join(pictures))
+    with open(os.path.join(out, "CurseForge-notes.txt"), "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(notes) + "\n")
 
     # read it back: every file whole, and the folders at the top
     with zipfile.ZipFile(path) as z:
@@ -190,6 +295,64 @@ def build(key):
     return True
 
 
+def listing(main, out):
+    """Copies a project's listing pictures (screenshots, a banner) from art/<folder>/listing/ to its
+    release folder. Returns their names."""
+    src = os.path.join(REPO, "art", main, "listing")
+    dst = os.path.join(out, "listing")
+    if os.path.isdir(dst):
+        shutil.rmtree(dst)
+    if not os.path.isdir(src):
+        return []
+    shutil.copytree(src, dst)
+    return sorted(os.listdir(dst))
+
+
+# the tag a project's release commit gets, and whether its CurseForge project is there already
+TAGS = {"patchwerk": "patchwerk-forever", "consoleport": "stitch-consoleport", "melloui": "stitch-melloui",
+        "melloroute": "stitch-melloroute", "routes": "thread-routes", "sparkle": "thread-sparkle"}
+EXISTS = {"patchwerk"}
+ORDER = ["consoleport", "melloui", "melloroute", "routes", "sparkle", "patchwerk"]
+
+
+def checklist():
+    """release/UPLOAD.md: every project, in the order to upload them, with what to set on each."""
+    lines = ["# Upload checklist", "",
+             "Made by `python release.py`. One section a CurseForge project, in the order to upload them.", "",
+             "**The order matters.** Patchwerk Forever 2.0.0 does nothing by itself, and people who have 1.x get it as",
+             "an update. Have the Stitch and Thread projects up (and approved) first, so that when the base's update",
+             "tells them which addon to get, it is there to be found. Every project but the base names",
+             "**Patchwerk Forever** as a required dependency.", ""]
+    for n, key in enumerate(ORDER, 1):
+        project = PROJECTS[key]
+        main = project["main"]
+        fields = toc(main)[0]
+        version = fields.get("Version")
+        out = OUT % main
+        pictures = sorted(os.listdir(os.path.join(out, "listing"))) if os.path.isdir(os.path.join(out, "listing")) else []
+        mark = commit([main] + project["more"])
+        lines += ["## %d. %s %s" % (n, fields.get("Title", main), version), "",
+                  "- **Project:** %s" % ("the one that is there (it becomes the base)" if key in EXISTS
+                                         else "new; name it exactly as above"),
+                  "- **Folder here:** `release/%s/`" % main,
+                  "- **File:** `%s-%s.zip`, built from commit `%s`%s" % (
+                      main, version, mark, "  **(NOT COMMITTED: commit and run release.py again)**" if (mark or "+").endswith("+") else ""),
+                  "- **Release type:** %s" % ("Beta" if version.startswith("0.") else "Release"),
+                  "- **Game version:** World of Warcraft: Forever (interface %s)" % fields.get("Interface"),
+                  "- **Summary:** %s" % project["summary"],
+                  "- **Description:** `CurseForge-description.md`.  **Changelog:** the entry for %s in `CurseForge-changelog.md`" % version,
+                  "- **Category:** %s.  **Licence:** MIT" % fields.get("X-Category", "Miscellaneous"),
+                  "- **Logo:** `logo.png`" + ("" if os.path.exists(os.path.join(out, "logo.png")) else "  (NOT THERE: run python art.py)"),
+                  "- **Pictures:** %s" % (", ".join("`listing/%s`" % p for p in pictures) if pictures else "none yet"),
+                  "- **Required dependency:** %s" % (", ".join(toc(r)[0].get("Title", r) for r in project["requires"]) or "none"
+                                                      ) + ("; and %s, if its project is on CurseForge" % project["with"] if project.get("with") else ""),
+                  "- **Folders in the zip:** %s" % ", ".join("`%s`" % f for f in [main] + project["more"]),
+                  "- **Afterwards, tag the commit:** `git tag %s-%s %s`" % (TAGS[key], version, (mark or "").rstrip("+")), ""]
+    with open(os.path.join(REPO, "release", "UPLOAD.md"), "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(lines))
+    print("the checklist: " + os.path.join(REPO, "release", "UPLOAD.md"))
+
+
 def main():
     keys = sys.argv[1:] or sorted(PROJECTS)
     for key in keys:
@@ -197,6 +360,8 @@ def main():
             sys.exit("no such addon: %s (there are: %s)" % (key, ", ".join(sorted(PROJECTS))))
     if not all([build(key) for key in keys]):
         sys.exit(1)
+    if sorted(keys) == sorted(PROJECTS):
+        checklist()
 
 
 if __name__ == "__main__":

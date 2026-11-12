@@ -1,8 +1,10 @@
-"""Run the whole of Patchwerk Forever: Wayfarer outside the game, against a stand-in for the game (wowstub.lua).
+"""Run Patchwerk Forever's own tools, Thread (Routes) and Thread (Sparkle), outside the game on its base,
+against a stand-in for the game (wowstub.lua).
 
     python lua_shell.py
 
-Loads the addon's files in the order its TOC gives, in a real Lua 5.1, and plays a session: log in,
+Loads the base and both tools, each addon's files in the order its TOC gives, in a real Lua 5.1, and plays
+a session: log in,
 put a pin on the map, let the search run frame by frame, open the map, walk along the trail, take
 a wrong turn, arrive, use the slash commands. It fails loudly on any Lua error.
 
@@ -19,7 +21,9 @@ try:
 except ImportError:
     from lupa import LuaRuntime
 
-ADDON = "PatchwerkForever_Wayfarer"
+BASE = "PatchwerkForever"
+ADDON = "PatchwerkForever_Thread_Routes"
+SPARKLE = "PatchwerkForever_Thread_Sparkle"
 
 
 def toc_files(folder, name):
@@ -45,12 +49,35 @@ def main():
         return True
 
     lua.globals().C_AddOns.LoadAddOn = load_addon
-    ns = lua.table()
+    # the base says things with print; the tools through the chat frame
+    lua.execute("""
+        function print(...)
+            local out = {}
+            for i = 1, select('#', ...) do out[#out + 1] = tostring((select(i, ...))) end
+            STUB.messages[#STUB.messages + 1] = table.concat(out, ' ')
+        end
+        tinsert = table.insert
+    """)
     load = lua.eval("function(code, name, addon, ns) return assert(loadstring(code, name))(addon, ns) end")
-    for path in toc_files(os.path.join(ADDONS, ADDON), ADDON):
-        load(open(path, encoding="utf-8").read(), "@" + os.path.basename(path), ADDON, ns)
     stub = lua.globals().STUB
-    slash = lua.globals().SlashCmdList.PATCHWERKFOREVER_WAYFARER
+    tables = {}
+    # as the game does: an addon's files, then its ADDON_LOADED, then the next addon
+    for addon in (BASE, ADDON, SPARKLE):
+        tables[addon] = lua.table()
+        for path in toc_files(os.path.join(ADDONS, addon), addon):
+            load(open(path, encoding="utf-8").read(), "@" + addon + "/" + os.path.basename(path), addon, tables[addon])
+        stub.Fire("ADDON_LOADED", addon)
+    ns, sparkle = tables[ADDON], tables[SPARKLE]
+    assert ns.linked and sparkle.linked, "a tool did not join the base"
+    route_slash = lua.globals().SlashCmdList.PATCHWERKFOREVER_THREAD
+    sparkle_slash = lua.globals().SlashCmdList.PATCHWERKFOREVER_SPARKLE
+
+    def slash(words):
+        # (the sparkle's commands as they were typed when it was part of the route planner still work)
+        if words.split(" ")[0] in ("ignore", "sparkle"):
+            sparkle_slash(words)
+        else:
+            route_slash(words)
     said = [0]
 
     def chat(label):
@@ -77,11 +104,10 @@ def main():
 
     step("log in at Crossroads, a Horde character")
     stub.player.x, stub.player.y, stub.player.map = -442.0, -2598.0, 1
-    stub.Fire("ADDON_LOADED", ADDON)
     stub.Fire("PLAYER_LOGIN")
     stub.Fire("PLAYER_ENTERING_WORLD")
     chat("login")
-    assert len(stub.settings) == 71 and stub.category, "the settings page was not built"
+    assert len(stub.settings) == 72 and stub.category, "the settings pages were not built"
     assert stub.provider, "the world map layer was not attached"
 
     step("put a pin on Gadgetzan")
@@ -175,10 +201,10 @@ def main():
         slash(words)
         frames()
     chat("slash")
-    assert stub.opened == 7, "the settings page did not open"
+    assert stub.opened == 8, "the tool's own settings page did not open"
 
     step("no pin: the route follows the RestedXP guide's arrow, step by step")
-    assert len(stub.settings) == 71, "the guide setting is missing from the settings page"
+    assert len(stub.settings) == 72, "the guide setting is missing from the settings page"
     stub.pin = None
     stub.Fire("USER_WAYPOINT_UPDATED")
     assert not ns.dest
@@ -225,7 +251,7 @@ def main():
     for _ in range(3):
         stub.Tick(); frames()
     assert ns.dest and ns.dest.source == "rxp", "not routed back to an open step after walking away"
-    # /wayfarer go with no pin routes to the guide; turning the setting off stops it
+    # /thread go with no pin routes to the guide; turning the setting off stops it
     slash("stop")
     slash("go"); frames()
     assert ns.dest and ns.dest.source == "rxp"
@@ -352,7 +378,7 @@ def main():
     chat("quest")
 
     step("herbs and ore: a spot is remembered when you gather, and shown on both maps")
-    db = lua.globals().PatchwerkForever_WayfarerDB
+    db = lua.globals().PatchwerkForever_Thread_RoutesDB
     world_map = lua.globals().WorldMapFrame
 
     def gather(name, x, y, loot, target=None):
@@ -427,15 +453,27 @@ def main():
     stub.player.x, stub.player.y = -442.0, -2598.0
 
     step("the options pages: every control is made, on the page it belongs to")
-    by_name = {s.variable[len(ADDON) + 1:]: s for s in stub.settings.values()}
-    assert len(by_name) == 71, "expected 71 settings on the options pages, found %d" % len(by_name)
+    # each tool's settings carry its own addon's name; the base's one setting is on the parent page
+    by_name = {}
+    for s in stub.settings.values():
+        for addon in (SPARKLE, ADDON, BASE):
+            if s.variable.startswith(addon + "_"):
+                assert s.variable[len(addon) + 1:] not in by_name, s.variable
+                by_name[s.variable[len(addon) + 1:]] = s
+                break
+    assert len(by_name) == 72, "expected 72 settings on the options pages, found %d" % len(by_name)
+    assert by_name["baseTellMissing"].page == "Patchwerk Forever"
     pages = sorted(stub.pages.keys())
-    assert pages == ["Name Over Things", "Sparkle: Behind My Character", "Sparkle: Chests", "Sparkle: Herbs", "Sparkle: Ore",
-                     "Sparkle: Other Things", "Sparkle: Quest Objects", "Trail"], pages
+    WANT = {"Thread: Routes": 12, "Thread: Trail": 11, "Thread: Sparkle": 4, "Sparkle: Names": 8,
+            "Sparkle: Behind My Character": 6, "Sparkle: Chests": 6, "Sparkle: Herbs": 6, "Sparkle: Ore": 6,
+            "Sparkle: Other Things": 6, "Sparkle: Quest Objects": 6}
+    assert pages == sorted(WANT), pages
     for page in pages:
         on_it = [n for n, s in by_name.items() if s.page == page]
-        want = 8 if page == "Name Over Things" else 11 if page == "Trail" else 6
-        assert len(on_it) == want, "%s has %d settings, expected %d" % (page, len(on_it), want)
+        assert len(on_it) == WANT[page], "%s has %d settings, expected %d" % (page, len(on_it), WANT[page])
+    assert list(stub.headers.values()) == ["Patchwerk Forever", "Herb And Ore Spots"], list(stub.headers.values())
+    sdb = lua.globals().PatchwerkForever_Thread_SparkleDB
+    assert sdb and not lua.globals().PatchwerkForever_Thread_RoutesDB.sparkleWas, "the sparkle keeps its things in the routes' saved data"
     buttons = list(stub.buttons.values())
     assert sorted(b.text for b in buttons) == ["Apply", "Forget", "Show"] + ["Test"] * 5, [b.text for b in buttons]
     assert sum(1 for s in by_name.values() if s.colour) == 10 and sum(1 for s in by_name.values() if s.choices) == 12
@@ -446,7 +484,7 @@ def main():
     step("a sparkle on the thing the game points at, each kind with its own look")
     cvars = stub.cvars
     assert cvars.SoftTargetNameplateInteract == "1" and cvars.SoftTargetIconGameObject == "1", "the game's two settings were not switched on"
-    assert db.sparkleWas.SoftTargetNameplateInteract == "0", "what the settings were was not kept"
+    assert sdb.sparkleWas.SoftTargetNameplateInteract == "0", "what the settings were was not kept"
     plate = lua.eval("CreateFrame('Frame')")
     same = lua.eval("function(a, b) return a == b end")
     HERB = "Cursor_Crosshair_GatherHerbs_64"
@@ -569,13 +607,13 @@ def main():
     herb()
     assert s.shown
     slash("ignore")
-    assert not s.shown and db.sparkleIgnored["Silverleaf"], "ignoring a thing did not hide it"
+    assert not s.shown and sdb.sparkleIgnored["Silverleaf"], "ignoring a thing did not hide it"
     herb()
     assert not s.shown, "an ignored thing sparkled again"
     slash("ignore list")
     slash("ignore undo")
     assert s.shown, "undoing did not bring it back"
-    lua.globals().PatchwerkForever_Wayfarer_Ignore()                       # the bound key
+    lua.globals().PatchwerkForever_Thread_Sparkle_Ignore()                       # the bound key
     assert not s.shown
     [b for b in buttons if b.text == "Forget"][0].click()
     assert s.shown, "the Forget button did not clear the list"
@@ -829,8 +867,8 @@ def main():
     stub.Tick(); frames()
     assert not ns.dest
     chat("quest over the sea")
-    lua.globals().PatchwerkForever_Wayfarer_Go()
-    lua.globals().PatchwerkForever_Wayfarer_Stop()
+    lua.globals().PatchwerkForever_Thread_Routes_Go()
+    lua.globals().PatchwerkForever_Thread_Routes_Stop()
     chat("bindings")
     print("all steps ran; memory at the end %.1f MB" % (lua.eval("collectgarbage('count')") / 1024))
 

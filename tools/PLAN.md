@@ -4,6 +4,52 @@ Goal: a route planner for WoW Forever that is ours end to end: map data made fro
 game's own files by our tools, a planner written by us, shipped as its own addon. No
 MelloUI code or data in it.
 
+**Two tracks under one parent (2026-11-12, later the same day; Tyrone's design and names):**
+Patchwerk Forever is the parent (the base). **Stitch** is for third-party addons: fixes and
+additions sewn onto Console Port and MelloUI. **Thread** is first-party: tools made by us. He
+chose Thread as the tools' name in place of Wayfarer, the tools under the parent (they need the
+base), the sparkle split from the route planner, and MelloUI Route's additions under Stitch.
+- Folders: `PatchwerkForever_Stitch_ConsolePort`, `_Stitch_MelloUI`, `_Stitch_MelloUIRoute` (each
+  2.0.0); `PatchwerkForever_Thread_Routes` with `_Kalimdor`, `_EasternKingdoms`, `_ZephrasIsle`
+  (0.11.0; `/thread`, `/pft`; saved `PatchwerkForever_Thread_RoutesDB`; map data global
+  `PatchwerkForever_Thread_RoutesData`; bindings `PATCHWERKFOREVER_THREAD_GO/_STOP`);
+  `PatchwerkForever_Thread_Sparkle` (0.11.0; `/sparkle`, `/pfs`; saved
+  `PatchwerkForever_Thread_SparkleDB`; binding `PATCHWERKFOREVER_SPARKLE_IGNORE`).
+- The base's new `Tools.lua` is what Wayfarer's Core.lua and Settings.lua were, made general:
+  `PatchwerkForever:Tool(addon, ns, spec)` gives a tool `ns.Print/Try/On/Get/Set/OnSetting/RGB/
+  OpenSettings`, and at login the base makes the tool's pages from `ns.settings` as sub-pages of
+  its own (Thread: Routes, Thread: Trail, Thread: Sparkle, Sparkle: Names, five Sparkle kinds,
+  Sparkle: Behind My Character). Each tool lists `Link.lua` first; every later file starts with
+  `if not ns.linked then return end`.
+- The sparkle reads the route planner's `nodeKinds` when that tool is installed, else goes by the
+  game's cursor alone.
+- Tools: `build.py` takes away a folder in the game that it built and the repository no longer
+  has; `build_check.py` tries the build tool on a scratch copy; `release.py` has six projects
+  (patchwerk, consoleport, melloui, melloroute, routes, sparkle); `art.py` draws six icons;
+  `media.py` writes each picture to the tool that uses it; `carry_tracks.py` splits the old
+  saved file into the two tools' (game closed) and renames bindings.
+- Passes: luacheck on all nine folders, `lua_patchwerk.py`, `lua_shell.py` (the base with both
+  tools: 72 settings, 10 sub-pages), `lua_trips.py`, `lua_journeys.py`, `build_check.py`,
+  `release.py`. Built into the game the same day, with the game closed: nine folders written,
+  the seven old ones taken away; `carry_tracks.py` carried Tyrone's saved data over (9 route
+  settings, 22 herb and ore spots, 11 sparkle settings; the old saved file is left).
+- Icons: Tyrone made six pictures from the prompts in `art/PROMPTS.md` (written to match the
+  art of the first listing); they are `art/<folder>/icon.png` and replace the drawn icons.
+- Confirmed in-game by Tyrone (2026-11-12, after a full start): all the addons load, with
+  their icons and settings pages ("Yes, all there"). So Forever's addon list does show
+  `## IconTexture`, and sub-pages of several addons under one parent page work. Not heard one
+  by one: `/thread config` and `/sparkle config` opening their own page, a route and a sparkle
+  in play under the new names, each Console Port fix.
+- Two things from Tyrone's look at it in the game (2026-11-12): he did not find the Stitch options, which were a
+  section of the parent's first page, so each Stitch now has a sub-page of its own ("Stitch: Console Port");
+  and his screenshot of the addon list showed the three map data folders standing outside the Patchwerk
+  Forever group with their titles cut off. Forever's addon list goes by a `## Group:` line in the TOC (set by
+  the client from names and dependencies when absent; read in Blizzard's AddonList.lua): every TOC now says
+  `## Group: PatchwerkForever`, and the map data titles are "Thread (Routes) map: Kalimdor" and so on.
+  Both built into the game; neither seen there yet.
+Below, read Wayfarer, `PatchwerkForever_Wayfarer` and `/wayfarer` as Thread (Routes) and its names;
+the log keeps the names things had when it was written.
+
 **Name (2026-11-12): "Patchwerk Forever: Wayfarer".** It was "Wayfinder Forever" until then; CurseForge
 already has an addon of that name, so Tyrone renamed it for the upload. Folders
 `PatchwerkForever_Wayfarer` and `_Kalimdor`, `_EasternKingdoms`, `_ZephrasIsle`; saved data
@@ -19,6 +65,28 @@ does it on every save. Edit in the repository, build, then /reload (or start the
 the build says so). The tools find `addons/` from where they are; only the game's own path
 (`G:/Games/World of Warcraft`) is written into them. The build tool passed its tries on a scratch
 copy and built the real folders; the game has NOT been started on the built folders yet.
+
+**Patchwerk Forever split into a base and parts (2026-11-12, at Tyrone's request; his choices: one
+part per addon it fixes, separate CurseForge projects, Wayfarer standalone but sharing the look,
+icons drawn by the tools and replaceable):** `PatchwerkForever` 2.0.0 is the base (Core.lua,
+Settings.lua: the global `PatchwerkForever`, the settings page made at login, `/patchwerk`, saved
+data still all in `PatchwerkForeverDB`). The fixes moved, unchanged but for their first lines, to
+`PatchwerkForever_ConsolePort`, `PatchwerkForever_MelloUIRoute` and `PatchwerkForever_MelloUI`
+(each 2.0.0; `Link.lua` first, `## Dependencies: PatchwerkForever` and the addon it is for). The
+base tells someone once when Console Port or MelloUI runs and its part is not installed. The
+one-time carry-over of settings from before 1.0.0 is gone. Wayfarer is 0.10.1: only its icon
+changed. Art: `python art.py` draws an icon family (64 x 64 `Media/icon.tga` per addon, 512 x 512
+`release/<folder>/logo.png`, `release/art-preview.png`); a PNG in `art/<folder>/` replaces or adds
+a picture and is converted on every build. `python release.py` now builds five projects, each with
+a summary and notes on what to set on CurseForge. `python lua_patchwerk.py` plays logins of the
+base with and without parts. Passes here; built into the game. Confirmed in-game by Tyrone
+(2026-11-12, after a full start): the base and the Console Port part load from the built folders
+with his settings intact ("Yes, all there"). Not heard one by one: whether the addon list shows
+the icons, and each Console Port fix in play. The
+fixes inside the Console Port and MelloUI parts cannot be run outside the game. Not known until
+tried: whether Forever's addon list shows `## IconTexture`, and that the Console Port part behaves
+as before now that it is an addon of its own (Tyrone runs Console Port; he does not run MelloUI,
+so the two MelloUI parts will go untried by him).
 
 **Release (prepared 2026-11-12, not yet uploaded):** version 0.9.0, a beta: only a Horde character
 in Kalimdor has been played. MIT for the code and pictures; README.md, CHANGELOG.md and LICENSE in

@@ -1,0 +1,8 @@
+<Bindings>
+	<Binding name="PATCHWERKFOREVER_THREAD_GO" header="PATCHWERKFOREVER_THREAD" category="ADDONS">
+		PatchwerkForever_Thread_Routes_Go()
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_THREAD_STOP" category="ADDONS">
+		PatchwerkForever_Thread_Routes_Stop()
+	</Binding>
+</Bindings>

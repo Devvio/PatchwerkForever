@@ -1,0 +1,11 @@
+# Patchwerk Forever: Thread (Sparkle)
+
+## 0.11.0 (beta)
+
+First release as an addon of its own. Until now the sparkle was part of the route planner (then called Wayfarer, now *Patchwerk Forever: Thread (Routes)*).
+
+- Needs the **Patchwerk Forever** base (a small addon). Its settings are under Options → AddOns → Patchwerk Forever, on **Thread: Sparkle** and the Sparkle pages beneath it.
+- **The command is `/sparkle`** (or `/pfs`): `/sparkle`, `/sparkle ignore`, `undo`, `list`, `clear`, `config`.
+- What it does is unchanged: twelve effects, a look for each kind of thing, the name over the thing, hiding in combat and in dungeons, things you ignore, fading behind your character.
+- The route planner is no longer needed. With it installed, herbs and veins are still known by the names of the spots you have gathered.
+- Settings and the ignore list saved under the old addon are not read; the key binding needs setting again.

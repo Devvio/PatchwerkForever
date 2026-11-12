@@ -1,7 +1,7 @@
 """Build the addons into the game's AddOns folder.
 
-    python build.py                  build both addons into the game
-    python build.py wayfarer         only Patchwerk Forever: Wayfarer (patchwerk: only Patchwerk Forever)
+    python build.py                  build every addon into the game
+    python build.py routes           only that one (patchwerk, consoleport, melloui, melloroute, routes, sparkle)
     python build.py watch            keep running: build again whenever a source file is saved
     python build.py check            say what a build would change, and write nothing
 
@@ -14,7 +14,11 @@ ships. Development-only files stay behind. Each TOC gets a line
 
     ## X-Build: <commit>             with a + when the files differ from that commit
 
-so the game's folder says what it was built from. Only files that changed are written.
+so the game's folder says what it was built from. Only files that changed are written. Before each
+build, your own pictures in art/ are made into the game's format (art.py).
+
+A folder in the game that this tool built and that the repository no longer has (an addon renamed
+or dropped) is taken away, so the game does not load the old addon beside the new one.
 
 It refuses to write
     a folder whose Lua does not parse, or whose TOC lists a file that is not there
@@ -30,6 +34,7 @@ import subprocess
 import sys
 import time
 
+import art
 from release import ADDONS, BUILD, PROJECTS, commit, contents, toc
 
 GAME = os.environ.get("PATCHWERK_ADDONS") or r"G:/Games/World of Warcraft/_forever_/Interface/AddOns"
@@ -38,6 +43,7 @@ POLL = 0.7                                  # seconds between looks, when watchi
 SETTLE = 0.4                                # seconds the files must stay as they are before a build
 
 _lua = None
+GUARD = True                                # mind a running game (not when building somewhere else: --to)
 
 
 def parses(name, data):
@@ -108,7 +114,7 @@ def build_folder(folder, mark, game, write, take_over):
     link = is_link(target)
     have = {}
     if link:
-        if game_running():
+        if GUARD and game_running():
             problems.append("it is a junction in the game's folder and the game is running: close the game first")
     elif os.path.isdir(target):
         have = there(target)
@@ -171,12 +177,34 @@ def build_folder(folder, mark, game, write, take_over):
     return True, says, restart
 
 
+def retired(game):
+    """Folders in the game that this tool built and the repository no longer has: an addon renamed or dropped.
+
+    Left there, the game would load the old addon beside the new one. Only a folder whose name begins
+    PatchwerkForever and whose TOC carries the build line is taken for ours; a junction never is."""
+    ours = {f for p in PROJECTS.values() for f in [p["main"]] + p["more"]}
+    out = []
+    for name in sorted(os.listdir(game)):
+        path = os.path.join(game, name)
+        if name in ours or not name.startswith("PatchwerkForever") or is_link(path) or not os.path.isdir(path):
+            continue
+        toc_path = os.path.join(path, name + ".toc")
+        if os.path.isfile(toc_path):
+            with open(toc_path, "rb") as f:
+                if BUILD.search(f.read()):
+                    out.append(name)
+    return out
+
+
 def build(keys, game, write=True, take_over=False, quiet_when_same=False):
     """Build the addons named. Returns whether every folder is as it should be."""
     if not os.path.isdir(game):
         print("there is no folder %s" % game)
         return False
     good, restart, said = True, False, False
+    if write:                                   # your own PNGs in art/, made into the game's pictures
+        for path in art.take_in():
+            said = True
     for key in keys:
         project = PROJECTS[key]
         folders = [project["main"]] + project["more"]
@@ -191,6 +219,14 @@ def build(keys, game, write=True, take_over=False, quiet_when_same=False):
             for line in says:
                 print(line)
                 said = True
+    for folder in retired(game):
+        print("%s: an addon this repository no longer has%s" % (folder, " (taken away)" if write else " (would be taken away)"))
+        said = restart = True
+        if write:
+            for path in there(os.path.join(game, folder)).values():
+                os.remove(path)
+            for root, _, _ in os.walk(os.path.join(game, folder), topdown=False):
+                os.rmdir(root)
     if not said:
         if not quiet_when_same:
             print("nothing to do: %s is up to date" % os.path.normpath(game))
@@ -202,11 +238,11 @@ def build(keys, game, write=True, take_over=False, quiet_when_same=False):
 
 
 def snapshot(keys):
-    """What the source looks like now: every file's time and size."""
+    """What the source looks like now: every file's time and size, your own art included."""
     out = {}
     for key in keys:
         for folder in [PROJECTS[key]["main"]] + PROJECTS[key]["more"]:
-            for root, _, names in os.walk(os.path.join(ADDONS, folder)):
+            for root, _, names in list(os.walk(os.path.join(ADDONS, folder))) + list(os.walk(os.path.join(art.ART, folder))):
                 for name in names:
                     path = os.path.join(root, name)
                     try:
@@ -249,6 +285,7 @@ def main():
             if not args:
                 sys.exit("--to needs a folder")
             game = args.pop(0)
+            globals()["GUARD"] = False
         elif a == "--take-over":
             take_over = True
         elif a in ("watch", "check"):

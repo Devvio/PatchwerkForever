@@ -1,5 +1,21 @@
 # Patchwerk Forever
 
+## 2.0.0
+
+Patchwerk Forever is now a base with separate addons on two tracks, so you install only what you use: **Stitch**, what is sewn onto other people's addons, and **Thread**, our own tools.
+
+- **The fixes moved out, to Stitch.** The Console Port fixes, the MelloUI Route additions and the MelloUI tweaks are addons of their own: *Patchwerk Forever: Stitch (Console Port)*, *Patchwerk Forever: Stitch (MelloUI Route)* and *Patchwerk Forever: Stitch (MelloUI)*. Each needs this base. **If you had 1.x, install the parts you want**; nothing else changes in what they do.
+- **Your settings and saved data carry over**: they are still kept by the base (blocked spots, learned landing places, cleared bindings, every setting).
+- The base tells you once, in chat, when Console Port or MelloUI is running and the part for it is not installed. New setting: **Tell Me About Missing Parts**.
+- **Thread: our own tools join the base too.** *Patchwerk Forever: Thread (Routes)*, the route planner, and *Patchwerk Forever: Thread (Sparkle)* keep their settings on pages of their own under Patchwerk Forever's.
+- `/patchwerk` now lists what is installed, with versions, before the active fixes.
+- The settings page is made at login and is always there, with a page beneath it for each Stitch installed (Stitch: Console Port, ...) and the Thread tools' pages beside them.
+- An icon in the game's addon list, for the base and for each part.
+- For addon authors: the base's API is the global `PatchwerkForever`: `Link` for a Stitch, `Tool` for a tool (see the README).
+- Removed: the one-time carrying over of settings from before 1.0.0.
+
+The parts that were in 1.x, for reference, are described below as they were.
+
 ## 1.0.1
 
 Checked against MelloUI 2.1.44 (Console Port is still 3.3.13).

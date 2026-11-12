@@ -21,7 +21,7 @@ try:
 except ImportError:
     from lupa import LuaRuntime
 
-MAIN = os.path.join(ADDONS, "PatchwerkForever_Wayfarer")
+MAIN = os.path.join(ADDONS, "PatchwerkForever_Thread_Routes")
 MAPS = (0, 1, 2991)
 # side, from (map, world x, world y), to, what it is
 JOURNEYS = [
@@ -45,8 +45,8 @@ JOURNEYS = [
 def runtime():
     lua = LuaRuntime(unpack_returned_tuples=True)
     for m in MAPS:
-        folder = os.path.join(ADDONS, "PatchwerkForever_Wayfarer_" + NAMES[m])
-        for line in open(os.path.join(folder, "PatchwerkForever_Wayfarer_%s.toc" % NAMES[m]), encoding="utf-8"):
+        folder = os.path.join(ADDONS, "PatchwerkForever_Thread_Routes_" + NAMES[m])
+        for line in open(os.path.join(folder, "PatchwerkForever_Thread_Routes_%s.toc" % NAMES[m]), encoding="utf-8"):
             if line.strip().endswith(".lua"):
                 with open(os.path.join(folder, line.strip()), encoding="ascii") as f:
                     lua.execute(f.read())
@@ -54,7 +54,7 @@ def runtime():
     load = lua.eval("function(code, name, ns) return assert(loadstring(code, name))(name, ns) end")
     for name in ("Planner.lua", "Crossings.lua", "Journey.lua"):
         with open(os.path.join(MAIN, name), encoding="utf-8") as f:
-            load(f.read(), "PatchwerkForever_Wayfarer", ns)
+            load(f.read(), "PatchwerkForever_Thread_Routes", ns)
     return lua, ns
 
 

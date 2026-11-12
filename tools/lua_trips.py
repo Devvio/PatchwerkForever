@@ -24,17 +24,17 @@ except ImportError:                                     # no plain 5.1 in this l
 
 def planner(map_id):
     lua = LuaRuntime(unpack_returned_tuples=True)
-    folder = os.path.join(ADDONS, "PatchwerkForever_Wayfarer_" + NAMES[map_id])
+    folder = os.path.join(ADDONS, "PatchwerkForever_Thread_Routes_" + NAMES[map_id])
     started = time.perf_counter()
-    for line in open(os.path.join(folder, "PatchwerkForever_Wayfarer_%s.toc" % NAMES[map_id]), encoding="utf-8"):
+    for line in open(os.path.join(folder, "PatchwerkForever_Thread_Routes_%s.toc" % NAMES[map_id]), encoding="utf-8"):
         line = line.strip()
         if line.endswith(".lua"):
             with open(os.path.join(folder, line), encoding="ascii") as f:
                 lua.execute(f.read())
     loaded = time.perf_counter() - started
-    with open(os.path.join(ADDONS, "PatchwerkForever_Wayfarer", "Planner.lua"), encoding="utf-8") as f:
+    with open(os.path.join(ADDONS, "PatchwerkForever_Thread_Routes", "Planner.lua"), encoding="utf-8") as f:
         ns = lua.table()
-        lua.eval("function(code, name, ns) return assert(loadstring(code, name))(name, ns) end")(f.read(), "PatchwerkForever_Wayfarer", ns)
+        lua.eval("function(code, name, ns) return assert(loadstring(code, name))(name, ns) end")(f.read(), "PatchwerkForever_Thread_Routes", ns)
     return lua, ns.Planner, loaded
 
 

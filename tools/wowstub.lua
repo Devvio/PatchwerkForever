@@ -1,4 +1,4 @@
--- A stand-in for the game, just enough of it to run Patchwerk Forever: Wayfarer's files outside the game
+-- A stand-in for the game, just enough of it to run Patchwerk Forever: Thread (Routes)'s files outside the game
 -- (lua_shell.py). It checks that the addon's own code runs: it cannot check that the real game
 -- behaves as these stand-ins do.
 
@@ -90,6 +90,7 @@ end
 function CreateFrame(kind, name, parent)
 	local frame = { scripts = {}, shown = true, level = 1, width = 1002, height = 668, parent = parent }
 	function frame:RegisterEvent(event) STUB.events[event] = STUB.events[event] or {}; STUB.events[event][self] = true end
+	function frame:UnregisterEvent(event) if STUB.events[event] then STUB.events[event][self] = nil end end
 	function frame:SetScript(what, fn) self.scripts[what] = fn end
 	function frame:HookScript(what, fn) self.scripts['hook' .. what] = fn end
 	function frame:Show() self.shown = true end
@@ -265,7 +266,7 @@ C_SuperTrack = { GetSuperTrackedQuestID = function() return STUB.focus end }
 
 C_TaxiMap = { GetTaxiNodesForMap = function(id)
 	local out = {}
-	local D = PatchwerkForever_WayfarerData[MAPS[id][1]]
+	local D = PatchwerkForever_Thread_RoutesData[MAPS[id][1]]
 	for _, p in ipairs(D.points) do
 		out[#out + 1] = { nodeID = p[1], name = p[2], isUndiscovered = STUB.undiscovered[p[1]] or false }
 	end
@@ -315,7 +316,7 @@ Settings = {
 	RegisterVerticalLayoutCategory = function(title) return { title = title, GetID = function() return 7 end }, {} end,
 	RegisterVerticalLayoutSubcategory = function(parent, name)
 		assert(parent and type(name) == 'string' and not STUB.pages[name], 'a sub-page made twice: ' .. tostring(name))
-		local page = { title = name, items = 0 }
+		local page = { title = name, items = 0, GetID = function() return 8 end }
 		STUB.pages[name] = page
 		return page, {}
 	end,

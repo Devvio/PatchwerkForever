@@ -1,0 +1,21 @@
+## Interface: 16001
+## Title: Patchwerk Forever: Stitch (MelloUI Route)
+## Notes: Additions to MelloUI's route planner: roads ready at login, roads before shortcuts, blocked spots, hearthstone and teleport suggestions, the next guide steps and a quest run. Needs Patchwerk Forever and MelloUI.
+## Author: Tyrone
+## Version: 2.0.0
+## Group: PatchwerkForever
+## IconTexture: Interface\AddOns\PatchwerkForever_Stitch_MelloUIRoute\Media\icon
+## X-Category: Map & Minimap
+## X-License: MIT
+## Dependencies: PatchwerkForever, MelloUI
+## OptionalDeps: MelloUI_Route, ConsolePort
+
+Link.lua
+
+Shared.lua
+Warmup.lua
+Ground.lua
+Blocked.lua
+Travel.lua
+Trips.lua
+Controls.lua

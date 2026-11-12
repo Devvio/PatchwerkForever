@@ -1,13 +1,13 @@
-"""Pack the maps for the game: the data addons of Patchwerk Forever: Wayfarer.
+"""Pack the maps for the game: the data addons of Patchwerk Forever: Thread (Routes).
 
     python pack.py              packs maps 0, 1 and 2991, and the boats and zeppelins
     python pack.py crossings    only the boats and zeppelins (Crossings.lua, in the addon's own folder)
 
 For each map, a folder beside the addon (loaded only when the character is on that map):
 
-    PatchwerkForever_Wayfarer_<Name>/Cells<n>.lua    what each ground cell is, a tile a string
-    PatchwerkForever_Wayfarer_<Name>/Graph<n>.lua    each block's gates and the walks between them, a block a string
-    PatchwerkForever_Wayfarer_<Name>/Extra.lua       the links (tunnels, bridges, lifts) and the flight paths
+    PatchwerkForever_Thread_Routes_<Name>/Cells<n>.lua    what each ground cell is, a tile a string
+    PatchwerkForever_Thread_Routes_<Name>/Graph<n>.lua    each block's gates and the walks between them, a block a string
+    PatchwerkForever_Thread_Routes_<Name>/Extra.lua       the links (tunnels, bridges, lifts) and the flight paths
 
 Everything large is text of 64 different characters ('>' to '}', a number 0 to 63 each), inside Lua
 long brackets [=[ ... ]=], which the game reads fast and keeps as it is until a search needs it.
@@ -133,15 +133,15 @@ def pack_map(map_id, flights):
         if a in here and b in here:
             paths.append((a, b, path["seconds"]))
 
-    folder = os.path.join(ADDONS, "PatchwerkForever_Wayfarer_" + NAMES[map_id])
+    folder = os.path.join(ADDONS, "PatchwerkForever_Thread_Routes_" + NAMES[map_id])
     os.makedirs(folder, exist_ok=True)
     for name in os.listdir(folder):
         if name.endswith((".lua", ".toc")):
             os.remove(os.path.join(folder, name))
     head = ("-- Made by pack.py from the game's own files. Do not edit: run pack.py again.\n"
-            "PatchwerkForever_WayfarerData = PatchwerkForever_WayfarerData or {}\n"
-            "local M = PatchwerkForever_WayfarerData[%d] or { cells = {}, graph = {} }\n"
-            "PatchwerkForever_WayfarerData[%d] = M\n" % (map_id, map_id))
+            "PatchwerkForever_Thread_RoutesData = PatchwerkForever_Thread_RoutesData or {}\n"
+            "local M = PatchwerkForever_Thread_RoutesData[%d] or { cells = {}, graph = {} }\n"
+            "PatchwerkForever_Thread_RoutesData[%d] = M\n" % (map_id, map_id))
     files, total = [], 0
 
     def write(name, body):
@@ -185,12 +185,15 @@ def pack_map(map_id, flights):
     extra.append("}\n")
     write("Extra.lua", "".join(extra))
 
-    with open(os.path.join(folder, "PatchwerkForever_Wayfarer_%s.toc" % NAMES[map_id]), "w", encoding="utf-8", newline="\n") as f:
-        f.write("## Interface: 16001\n## Title: Patchwerk Forever: Wayfarer (%s)\n"
-                "## Notes: Map data for Patchwerk Forever: Wayfarer. Loaded by it when needed.\n"
-                "## Author: Tyrone\n## Version: 0.10.0\n"
+    with open(os.path.join(folder, "PatchwerkForever_Thread_Routes_%s.toc" % NAMES[map_id]), "w", encoding="utf-8", newline="\n") as f:
+        f.write("## Interface: 16001\n## Title: Thread (Routes) map: %s\n"
+                "## Notes: Map data for Patchwerk Forever: Thread (Routes). Loaded by it when needed.\n"
+                "## Author: Tyrone\n## Version: 0.11.0\n"
+                # (the game's addon list shows it under the parent; without this line it stood apart)
+                "## Group: PatchwerkForever\n"
+                "## IconTexture: Interface\\AddOns\\PatchwerkForever_Thread_Routes\\Media\\icon\n"
                 "## X-License: MIT (code); map data made from the game's own files\n"
-                "## Dependencies: PatchwerkForever_Wayfarer\n## LoadOnDemand: 1\n\n%s\n"
+                "## Dependencies: PatchwerkForever_Thread_Routes\n## LoadOnDemand: 1\n\n%s\n"
                 % (TITLES[map_id], "\n".join(files)))
     print("map %d -> %s: %d tiles, %d blocks, %d links, %d flight points, %d flights; %d files, %.1f MB%s" % (
         map_id, os.path.basename(folder), len(tiles), len(graph), len(far), len(points), len(paths), len(files),
@@ -224,7 +227,7 @@ def pack_crossings():
             out.append("\t\t{ %d, %d, %.0f, { %s } },\n" % (a + 1, b + 1, ride["seconds"], ", ".join(flat)))
         out.append("\t},\n},\n")
     out.append("}\n")
-    path = os.path.join(ADDONS, "PatchwerkForever_Wayfarer", "Crossings.lua")
+    path = os.path.join(ADDONS, "PatchwerkForever_Thread_Routes", "Crossings.lua")
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         f.write("".join(out))
     print("crossings -> Crossings.lua: %d lines, %d rides, %.1f KB" % (

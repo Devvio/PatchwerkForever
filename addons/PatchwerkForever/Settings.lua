@@ -1,13 +1,15 @@
 local addonName, ns = ...;
+local P = ns.P;
 ---------------------------------------------------------------
 -- Settings page
 ---------------------------------------------------------------
 -- Patchwerk's own page in the game's options (Options > AddOns),
--- listing the settings the loaded fixes added (ns:AddSetting), a
--- heading per section. Loaded last, so every fix has added its own.
--- Each control is a proxy onto ns:GetSetting / ns:SetSetting: the
--- values stay in PatchwerkForeverDB.settings, changed here or with
--- /patchwerk set.
+-- listing the settings the base and the installed Stitch parts
+-- added (AddSetting), a heading per section, with the pages of
+-- our own tools beneath it (Tools.lua). Made at login, when every
+-- part has loaded and added its own. Each control is a proxy onto
+-- GetSetting / SetSetting: the values stay in
+-- PatchwerkForeverDB.settings, changed here or with /patchwerk set.
 
 local TITLE = 'Patchwerk Forever';
 
@@ -18,20 +20,46 @@ local function Tooltip(def)
 	return def.desc or def.note;
 end
 
+local settingsCategory;
+
 local function Build()
 	if not ( Settings and Settings.RegisterVerticalLayoutCategory and Settings.RegisterProxySetting
 	and Settings.CreateCheckbox and Settings.RegisterAddOnCategory and Settings.VarType ) then
 		return;
 	end
-	if ( #ns.Settings.list == 0 ) then
-		return;   -- (none of the addons it is for are loaded)
+	local parentCategory, parentLayout = Settings.RegisterVerticalLayoutCategory(TITLE);
+	-- The base's own settings are on its page. Each Stitch has a page of its own beneath it
+	-- ("Stitch: Console Port"), beside the tools' pages, so the list on the left shows what is
+	-- installed. (A client without sub-pages gets them all on the one page, a heading for each.)
+	local pages, sectionsOf = {}, {};
+	for _, def in ipairs(P.Settings.list) do
+		local part = def.part or addonName;
+		sectionsOf[part] = sectionsOf[part] or { count = 0 };
+		if ( def.section and not sectionsOf[part][def.section] ) then
+			sectionsOf[part][def.section] = true;
+			sectionsOf[part].count = sectionsOf[part].count + 1;
+		end
 	end
-	local category, layout = Settings.RegisterVerticalLayoutCategory(TITLE);
-	local controls, section = {}, nil;
-	for _, def in ipairs(ns.Settings.list) do
-		if ( def.section ~= section ) then
-			section = def.section;
-			if ( section and CreateSettingsListSectionHeaderInitializer ) then
+	local function PageOf(part)
+		if ( part == addonName or not Settings.RegisterVerticalLayoutSubcategory ) then
+			return parentCategory, parentLayout, true;
+		end
+		local page = pages[part];
+		if not page then
+			local sub, subLayout = Settings.RegisterVerticalLayoutSubcategory(parentCategory, ns.PageName(part));
+			page = { category = sub, layout = subLayout };
+			pages[part] = page;
+		end
+		-- (one section on a page of its own needs no heading: the page's name says it)
+		return page.category, page.layout, sectionsOf[part].count > 1;
+	end
+	local controls, section, sectionPart = {}, nil, nil;
+	for _, def in ipairs(P.Settings.list) do
+		local part = def.part or addonName;
+		local category, layout, headings = PageOf(part);
+		if ( def.section ~= section or part ~= sectionPart ) then
+			section, sectionPart = def.section, part;
+			if ( headings and section and CreateSettingsListSectionHeaderInitializer ) then
 				local header = CreateSettingsListSectionHeaderInitializer(section);
 				if Settings.RegisterInitializer then
 					Settings.RegisterInitializer(category, header)
@@ -44,8 +72,8 @@ local function Build()
 		local setting = Settings.RegisterProxySetting(category, addonName .. '_' .. key,
 			isNumber and Settings.VarType.Number or Settings.VarType.Boolean,
 			def.name or key, def.default,
-			function() return ns:GetSetting(key) end,
-			function(value) ns:SetSetting(key, value) end);
+			function() return P:GetSetting(key) end,
+			function(value) P:SetSetting(key, value) end);
 		local control;
 		if isNumber then
 			local options = Settings.CreateSliderOptions(def.min or 0, def.max or 1, def.step or 1);
@@ -61,15 +89,32 @@ local function Build()
 		local parent = def.parent and controls[def.parent];
 		if ( parent and control and control.SetParentInitializer ) then
 			local parentKey = def.parent;
-			control:SetParentInitializer(parent, function() return ns:GetSetting(parentKey) == true end)
+			control:SetParentInitializer(parent, function() return P:GetSetting(parentKey) == true end)
 		end
 	end
-	Settings.RegisterAddOnCategory(category)
-	ns.settingsCategory = category;
+	-- our own tools' pages, under this one (Tools.lua)
+	local ok, err = pcall(ns.BuildToolPages, parentCategory);
+	if not ok then
+		P:Print('The pages of the tools could not be made (' .. tostring(err) .. ').')
+	end
+	Settings.RegisterAddOnCategory(parentCategory)
+	settingsCategory = parentCategory;
 end
 
-function ns:OpenSettings()
-	local category = self.settingsCategory;
+-- What a Stitch's page is called: its title without the family's name, "Stitch (Console Port)"
+-- written as the tools' pages are, "Stitch: Console Port".
+function ns.PageName(part)
+	local title = ns.Meta(part, 'Title') or part;
+	title = title:gsub('^Patchwerk Forever:%s*', '');
+	local track, what = title:match('^(%a+)%s*%((.+)%)$');
+	if track then
+		return track .. ': ' .. what;
+	end
+	return title;
+end
+
+function ns.OpenSettings()
+	local category = settingsCategory;
 	if not ( category and Settings and Settings.OpenToCategory ) or InCombatLockdown() then
 		return false;
 	end
@@ -77,60 +122,9 @@ function ns:OpenSettings()
 	return ok;
 end
 
----------------------------------------------------------------
--- Settings from before the page
----------------------------------------------------------------
--- Before 1.0.0 the settings sat in Console Port's own (its Forever
--- Gamepad and Patchwork Route sections), or in each fix's saved
--- data without it. Carried over once, and taken out of Console
--- Port's saved settings, where they would be left behind.
-local function OldKey(key)
-	local route = key:match('^route(%u.*)$');
-	if route then
-		return 'patchRoute' .. route, route:sub(1, 1):lower() .. route:sub(2);
-	end
-	return key;
-end
-
-local function CarryOver()
-	local db = PatchwerkForeverDB;
-	if db.settingsCarried then return end;
-	db.settingsCarried = true;
-	local consolePort = { rawget(_G, 'ConsolePortCharacterSettings'), rawget(_G, 'ConsolePortSettings') };
-	local routeOld = type(db.Route) == 'table' and type(db.Route.settings) == 'table' and db.Route.settings or {};
-	for _, def in ipairs(ns.Settings.list) do
-		local key = def.key;
-		local oldVar, oldRoute = OldKey(key);
-		local value;
-		for i = 1, 2 do
-			local source = consolePort[i];
-			if ( type(source) == 'table' and source[oldVar] ~= nil ) then
-				if ( value == nil ) then
-					value = source[oldVar];
-				end
-				source[oldVar] = nil;
-			end
-		end
-		if ( value == nil and oldRoute ) then
-			value = routeOld[oldRoute];
-		end
-		if ( key == 'melloRouteOnly' and type(db.MelloUI) == 'table' and db.MelloUI.routeOnly ~= nil ) then
-			value = db.MelloUI.routeOnly;
-			db.MelloUI.routeOnly = nil;
-		end
-		if ( db.settings[key] == nil and type(value) == type(def.default) ) then
-			db.settings[key] = value;
-		end
-	end
-	if ( type(db.Route) == 'table' ) then
-		db.Route.settings = nil;
-	end
-end
-
-ns:WhenLoaded(function()
-	CarryOver()
+ns.AtLogin(function()
 	local ok, err = pcall(Build);
 	if not ok then
-		ns:Print('The settings page could not be made (' .. tostring(err) .. '). /patchwerk set lists the settings.')
+		P:Print('The settings page could not be made (' .. tostring(err) .. '). /patchwerk set lists the settings.')
 	end
 end)

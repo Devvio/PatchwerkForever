@@ -1,0 +1,14 @@
+## Interface: 16001
+## Title: Thread (Routes) map: Eastern Kingdoms
+## Notes: Map data for Patchwerk Forever: Thread (Routes). Loaded by it when needed.
+## Author: Tyrone
+## Version: 0.11.0
+## Group: PatchwerkForever
+## IconTexture: Interface\AddOns\PatchwerkForever_Thread_Routes\Media\icon
+## X-License: MIT (code); map data made from the game's own files
+## Dependencies: PatchwerkForever_Thread_Routes
+## LoadOnDemand: 1
+
+Cells1.lua
+Graph1.lua
+Extra.lua

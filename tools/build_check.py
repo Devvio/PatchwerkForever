@@ -1,0 +1,228 @@
+"""Try build.py and art.py's taking-in of pictures on a scratch copy, with a scratch folder for the game.
+
+    python build_check.py
+
+Copies addons/ and the three tools into a temporary folder, makes it a git repository of its own, and
+builds into a pretend AddOns folder beside it: a junction where a folder should be, a second build
+with nothing to do, a changed file, a file that stops shipping, broken Lua, a TOC naming a missing
+file, somebody else's folder, an addon the repository no longer has, a picture of your own, and
+watching for a save. Nothing of the real game folder is touched.
+"""
+import filecmp
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+REAL = os.path.normpath(os.path.join(HERE, ".."))
+SCRATCH = os.path.join(tempfile.gettempdir(), "patchwerk-build-check")
+REPO = os.path.join(SCRATCH, "repo")
+GAME = os.path.join(SCRATCH, "game")
+TOOLS = os.path.join(REPO, "tools")
+ROUTES = "PatchwerkForever_Thread_Routes"
+MAIN = os.path.join(REPO, "addons", ROUTES)
+LINK = 0x400                                    # the mark of a junction
+
+
+def clear(path):
+    """Take a scratch folder away: junctions first so nothing is followed, read-only files forced."""
+    if not os.path.isdir(path):
+        return
+    for name in os.listdir(path):
+        full = os.path.join(path, name)
+        if os.path.isdir(full) and (os.lstat(full).st_file_attributes & LINK):
+            os.rmdir(full)
+
+    def force(func, target, _exc):
+        os.chmod(target, 0o666)
+        func(target)
+    shutil.rmtree(path, onerror=force)
+
+
+def git(*args):
+    subprocess.run(["git", "-C", REPO, "-c", "user.name=check", "-c", "user.email=check@example.invalid",
+                    "-c", "core.autocrlf=false"] + list(args), check=True, capture_output=True)
+
+
+def run(*args, expect=0):
+    r = subprocess.run([sys.executable, "build.py", "--to", GAME] + list(args), cwd=TOOLS, capture_output=True, text=True)
+    print(">>> build.py " + " ".join(args))
+    for line in r.stdout.rstrip().splitlines():
+        if not line.startswith("  + "):
+            print("    " + line)
+    assert not r.stderr.strip(), r.stderr
+    assert r.returncode == expect, (r.returncode, expect)
+    return r.stdout
+
+
+def game(*parts):
+    return os.path.join(GAME, *parts)
+
+
+def build_line(folder):
+    toc = open(game(folder, folder + ".toc"), encoding="utf-8").read()
+    line = [l for l in toc.splitlines() if "X-Build" in l]
+    assert len(line) == 1, line
+    return line[0]
+
+
+def main():
+    sys.path.insert(0, HERE)
+    import art
+
+    clear(SCRATCH)
+    os.makedirs(GAME)
+    shutil.copytree(os.path.join(REAL, "addons"), os.path.join(REPO, "addons"))
+    os.makedirs(TOOLS)
+    for name in ("build.py", "release.py", "art.py"):
+        shutil.copy(os.path.join(HERE, name), os.path.join(TOOLS, name))
+    git("init", "-q")
+    git("add", "-A")
+    git("commit", "-q", "-m", "scratch")
+    folders = sorted(os.listdir(os.path.join(REPO, "addons")))
+
+    print("a junction where a folder should be: taken away, what it pointed at left alone")
+    old = os.path.join(SCRATCH, "oldhome")
+    os.makedirs(old)
+    open(os.path.join(old, "keep.txt"), "w").write("still here")
+    subprocess.run(["cmd", "/c", "mklink", "/J", game("PatchwerkForever"), old], check=True, capture_output=True)
+    out = run("check")
+    assert "would be written" in out and "junction" in out
+    assert os.path.exists(game("PatchwerkForever", "keep.txt")), "check must write nothing"
+    out = run()
+    assert "start the game again" in out
+    assert open(os.path.join(old, "keep.txt")).read() == "still here", "the junction's target was touched"
+    assert not (os.lstat(game("PatchwerkForever")).st_file_attributes & LINK)
+    assert not os.path.exists(game("PatchwerkForever", "keep.txt"))
+    assert sorted(os.listdir(GAME)) == folders
+    for folder in folders:
+        line = build_line(folder)
+        assert not line.endswith("+") and "unversioned" not in line, line
+
+    print("again: nothing to do")
+    assert "nothing to do" in run()
+
+    print("an addon the repository no longer has: this tool's folder is taken away, anyone else's is left")
+    shutil.copytree(game("PatchwerkForever_Thread_Sparkle"), game("PatchwerkForever_Wayfarer"))
+    os.rename(game("PatchwerkForever_Wayfarer", "PatchwerkForever_Thread_Sparkle.toc"),
+              game("PatchwerkForever_Wayfarer", "PatchwerkForever_Wayfarer.toc"))
+    os.makedirs(game("PatchwerkForever_Theirs"))
+    open(game("PatchwerkForever_Theirs", "PatchwerkForever_Theirs.toc"), "w").write("## Title: someone else's\n")
+    os.makedirs(game("SomethingElse"))
+    out = run("check")
+    assert "PatchwerkForever_Wayfarer: an addon this repository no longer has (would be taken away)" in out
+    assert os.path.isdir(game("PatchwerkForever_Wayfarer"))
+    out = run()
+    assert "PatchwerkForever_Wayfarer: an addon this repository no longer has (taken away)" in out
+    assert "start the game again" in out
+    assert not os.path.exists(game("PatchwerkForever_Wayfarer"))
+    assert os.path.isdir(game("PatchwerkForever_Theirs")) and os.path.isdir(game("SomethingElse"))
+    shutil.rmtree(game("PatchwerkForever_Theirs"))
+    os.rmdir(game("SomethingElse"))
+
+    print("a Lua file changes: written, /reload is enough, and the build line says the files differ")
+    with open(os.path.join(MAIN, "Trail.lua"), "a", encoding="utf-8") as f:
+        f.write("\n-- a change\n")
+    out = run()
+    assert "Trail.lua" in out and "/reload is enough" in out, out
+    assert build_line(ROUTES).endswith("+")
+    assert not build_line("PatchwerkForever").endswith("+"), "another addon's build line changed"
+
+    print("a development-only file is left out; a file that stops shipping is taken away")
+    open(os.path.join(MAIN, "notes.tmp"), "w").write("scratch")
+    os.remove(os.path.join(MAIN, "Media", "dot.tga"))
+    out = run()
+    assert "1 taken away" in out and "Media/dot.tga" in out
+    assert not os.path.exists(game(ROUTES, "notes.tmp"))
+    assert not os.path.exists(game(ROUTES, "Media", "dot.tga"))
+
+    print("broken Lua: not built, the last good build stays")
+    good = open(game(ROUTES, "Route.lua"), "rb").read()
+    source = open(os.path.join(MAIN, "Route.lua"), "rb").read()
+    with open(os.path.join(MAIN, "Route.lua"), "ab") as f:
+        f.write(b"\nlocal function (\n")
+    out = run(expect=1)
+    assert "NOT BUILT" in out and "syntax error" in out
+    assert open(game(ROUTES, "Route.lua"), "rb").read() == good
+    open(os.path.join(MAIN, "Route.lua"), "wb").write(source)
+
+    print("the TOC lists a file that is not there")
+    os.rename(os.path.join(MAIN, "Nodes.lua"), os.path.join(MAIN, "Nodes.away"))
+    out = run(expect=1)
+    assert "lists Nodes.lua" in out
+    os.rename(os.path.join(MAIN, "Nodes.away"), os.path.join(MAIN, "Nodes.lua"))
+    run()
+
+    print("a folder this tool did not build is not replaced without --take-over")
+    shutil.rmtree(game("PatchwerkForever"))
+    os.makedirs(game("PatchwerkForever"))
+    open(game("PatchwerkForever", "PatchwerkForever.toc"), "w").write("## Title: someone else's\n")
+    open(game("PatchwerkForever", "Theirs.lua"), "w").write("-- theirs\n")
+    out = run("patchwerk", expect=1)
+    assert "was not built by this tool" in out
+    assert os.path.exists(game("PatchwerkForever", "Theirs.lua"))
+    run("patchwerk", "--take-over")
+    assert not os.path.exists(game("PatchwerkForever", "Theirs.lua"))
+
+    print("a picture of your own in art/: the icon made 64 x 64, another picture a power of two each side")
+    os.makedirs(os.path.join(REPO, "art", "PatchwerkForever"))
+    big = [[(200, 40, 40, 255) if (i // 25 + j // 25) % 2 else (0, 0, 0, 0) for i in range(200)] for j in range(200)]
+    open(os.path.join(REPO, "art", "PatchwerkForever", "icon.png"), "wb").write(art.png_bytes(big))
+    wide = [[(10, 200, 90, 128)] * 100 for _ in range(30)]
+    open(os.path.join(REPO, "art", "PatchwerkForever", "banner.png"), "wb").write(art.png_bytes(wide))
+    out = run("patchwerk")
+    assert "icon.png (200 x 200) -> Media/icon.tga (64 x 64)" in out and "Media/banner.tga (128 x 32)" in out, out
+    tga = open(game("PatchwerkForever", "Media", "icon.tga"), "rb").read()
+    assert len(tga) == 18 + 64 * 64 * 4 and tga[12:16] == bytes((64, 0, 64, 0))
+    assert os.path.getsize(game("PatchwerkForever", "Media", "banner.tga")) == 18 + 128 * 32 * 4
+    assert art.read_png(os.path.join(REPO, "art", "PatchwerkForever", "icon.png")) == big, "a PNG does not read back"
+    assert "nothing to do" in run("patchwerk")
+
+    print("what is in the game is byte for byte what ships, but for the build line")
+    run()
+    for folder in folders:
+        for root, _, names in os.walk(game(folder)):
+            for name in names:
+                a = os.path.join(root, name)
+                b = os.path.join(REPO, "addons", os.path.relpath(a, GAME))
+                if name.endswith(".toc"):
+                    lines = [l for l in open(a, "rb").read().splitlines() if b"X-Build" not in l]
+                    assert lines == open(b, "rb").read().splitlines(), a
+                else:
+                    assert filecmp.cmp(a, b, shallow=False), a
+
+    print("watching: a save arrives by itself, a broken save is kept out")
+    src = os.path.join(MAIN, "Minimap.lua")
+    dst = game(ROUTES, "Minimap.lua")
+    log = open(os.path.join(SCRATCH, "watch.log"), "w")
+    p = subprocess.Popen([sys.executable, "-u", "build.py", "watch", "--to", GAME], cwd=TOOLS, stdout=log,
+                         stderr=subprocess.STDOUT)
+    try:
+        time.sleep(2.5)
+        with open(src, "ab") as f:
+            f.write(b"\n-- saved while watching\n")
+        t0 = time.time()
+        while time.time() - t0 < 8 and open(dst, "rb").read() != open(src, "rb").read():
+            time.sleep(0.1)
+        took = time.time() - t0
+        assert open(dst, "rb").read() == open(src, "rb").read(), "the save did not arrive"
+        good = open(dst, "rb").read()
+        with open(src, "ab") as f:
+            f.write(b"\nif then\n")
+        time.sleep(3)
+        assert open(dst, "rb").read() == good, "a broken save reached the game"
+    finally:
+        p.terminate()
+        p.wait()
+        log.close()
+    print("    arrived after %.1f s" % took)
+
+    clear(SCRATCH)
+    print("all build checks passed")
+
+
+if __name__ == "__main__":
+    main()

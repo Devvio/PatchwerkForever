@@ -1,9 +1,9 @@
-"""Draw Patchwerk Forever: Wayfarer's own pictures: the pieces its sparkle effects and its dotted trail are made of.
+"""Draw the pictures Thread (Sparkle)'s effects and Thread (Routes)'s dotted trail are made of.
 
     python media.py
 
-Writes plain white shapes with soft edges (the game tints them) as 32-bit TGA files into the addon's
-Media folder, and a PNG copy of each into world/media_preview/ to look at here. Every shape is worked
+Writes plain white shapes with soft edges (the game tints them) as 32-bit TGA files into the Media
+folder of the addon that uses each (the dot into Routes, the rest into Sparkle), and a PNG copy of each into world/media_preview/ to look at here. Every shape is worked
 out from a formula in this file: none is copied from anywhere.
 
     star      a four-pointed twinkle
@@ -22,8 +22,15 @@ import struct
 
 from terrain import write_png
 
-OUT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "addons",
-                                    "PatchwerkForever_Wayfarer", "Media"))
+ADDONS = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "addons"))
+
+
+def out(name):
+    """Where a picture goes: the Media folder of the addon that uses it."""
+    addon = "PatchwerkForever_Thread_Routes" if name == "dot" else "PatchwerkForever_Thread_Sparkle"
+    return os.path.join(ADDONS, addon, "Media")
+
+
 PREVIEW = "world/media_preview"
 
 
@@ -129,11 +136,11 @@ def write_tga(path, rows):
 
 
 def main():
-    os.makedirs(OUT, exist_ok=True)
     os.makedirs(PREVIEW, exist_ok=True)
     for name, (shape, width, height) in SHAPES.items():
         rows = draw(shape, width, height)
-        write_tga(os.path.join(OUT, name + ".tga"), rows)
+        os.makedirs(out(name), exist_ok=True)
+        write_tga(os.path.join(out(name), name + ".tga"), rows)
         # the preview: the shape in white on dark grey
         write_png(os.path.join(PREVIEW, name + ".png"), width, height,
                   [bytes(b for a in row for b in (40 + a * 215 // 255,) * 3) for row in rows])

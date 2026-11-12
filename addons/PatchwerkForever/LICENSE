@@ -22,8 +22,4 @@ SOFTWARE.
 
 ---
 
-Patchwerk contains none of the addons it works with. Console Port is
-(c) Sebastian Lindfors under the Artistic License 2.0; one short function in
-ConsolePort/ItemMenu.lua follows Console Port's own and is marked there.
-MelloUI is (c) MelloCro under the MIT License, with its route data All Rights
-Reserved; Patchwerk ships none of that data and does not read it.
+Patchwerk Forever contains none of the addons its parts work with.
