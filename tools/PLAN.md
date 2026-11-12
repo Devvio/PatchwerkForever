@@ -11,10 +11,19 @@ already has an addon of that name, so Tyrone renamed it for the upload. Folders
 where it was written before the change: read Wayfinder, `WayfinderForever` and `/wayfinder` as the
 new ones. A copy from just before the rename is in `backup/wayfinder-before-rename/`.
 
+**Where it all is (moved 2026-11-12, at Tyrone's request):** the repository is
+`G:\Dev\patchwerk-forever` (addons/, tools/, release/), out of the game's folder. The game's
+`Interface\AddOns` no longer holds junctions: `python build.py` writes the addons there from
+`addons/`, file for file, with a line `## X-Build: <commit>` in each TOC; `python build.py watch`
+does it on every save. Edit in the repository, build, then /reload (or start the game again when
+the build says so). The tools find `addons/` from where they are; only the game's own path
+(`G:/Games/World of Warcraft`) is written into them. The build tool passed its tries on a scratch
+copy and built the real folders; the game has NOT been started on the built folders yet.
+
 **Release (prepared 2026-11-12, not yet uploaded):** version 0.9.0, a beta: only a Horde character
 in Kalimdor has been played. MIT for the code and pictures; README.md, CHANGELOG.md and LICENSE in
 the main folder. `python release.py` checks the four folders (versions agree, every listed file is
-there, no old name left) and writes `G:/Games/World of Warcraft/PatchwerkForever_Wayfarer-release/`:
+there, no old name left) and writes `release/PatchwerkForever_Wayfarer/` in the repository:
 the zip of all four folders, the description (the README) and the changelog; the short summary is
 there too. Tyrone uploads by hand. After a change: CHANGELOG.md, the version in the four TOCs and in
 `pack.py`, then `release.py`. `python carry_saved.py` carried his settings and herb spots over from

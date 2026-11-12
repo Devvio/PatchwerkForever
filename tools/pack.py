@@ -34,7 +34,8 @@ from nav import (Ground, Coarse, BLOCK, STEP, _F, _spread, flight_spot, cell_of,
 from terrain import CELL, TILE
 from world import NONE, WALK, STEEP, WADE, SWIM
 
-ADDONS = r"G:/Games/World of Warcraft/_forever_/Interface/AddOns"
+# the repository's addons/ folder; the game's Interface/AddOns holds junctions to the folders in it
+ADDONS = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "addons"))
 NAMES = {0: "EasternKingdoms", 1: "Kalimdor", 2991: "ZephrasIsle"}
 TITLES = {0: "Eastern Kingdoms", 1: "Kalimdor", 2991: "Zephras Isle"}
 KIND = {NONE: 0, STEEP: 0, WALK: 1, WADE: 2, SWIM: 3}

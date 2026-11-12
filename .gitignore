@@ -5,7 +5,8 @@ tools/backup/
 # Python's own leavings.
 __pycache__/
 *.pyc
-# Built uploads (they go to the release folders beside the repository).
+# Built uploads: the zips and the CurseForge texts release.py writes.
+release/
 *.zip
 # Private names the release check looks for in what is shipped.
 tools/private_words.txt

@@ -22,7 +22,8 @@ import struct
 
 from terrain import write_png
 
-OUT = r"G:/Games/World of Warcraft/_forever_/Interface/AddOns/PatchwerkForever_Wayfarer/Media"
+OUT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "addons",
+                                    "PatchwerkForever_Wayfarer", "Media"))
 PREVIEW = "world/media_preview"
 
 
