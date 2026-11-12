@@ -82,10 +82,13 @@ def _git(*args):
 
 
 def commit(folders):
-    """The commit the folders were built from, short; with a + when they differ from it. None without git."""
+    """The last commit that changed the folders, short; with a + when they differ from it. None without git.
+
+    Not simply the newest commit: one that only touched the tools must not change what an addon says it is."""
     try:
-        mark = _git("rev-parse", "--short", "HEAD")
-        if _git("status", "--porcelain", "--", *["addons/" + f for f in folders]):
+        paths = ["addons/" + f for f in folders]
+        mark = _git("log", "-1", "--format=%h", "--", *paths) or _git("rev-parse", "--short", "HEAD")
+        if _git("status", "--porcelain", "--", *paths):
             mark += "+"
         return mark
     except (OSError, subprocess.CalledProcessError):
