@@ -50,6 +50,24 @@ end }
 Enum.BindingContext = { GamepadModeInGameCore = 5, None = 0 }
 """
 
+# A stand-in for MelloUI, as much of it as the trim to Route and the Quest Tracker uses.
+MELLO = r"""
+MelloUI = { initialized = true, Features = {}, enabled = {},
+	modules = { Chat = { title = 'Chat' }, Map = { title = 'Map' }, QuestTracker = { title = 'QuestTracker' },
+		Route = { title = 'Route' }, Core = { title = 'Core', noSwitch = true } } }
+function MelloUI:IterateModules() return pairs(self.modules) end
+function MelloUI:IsModuleEnabled(name) return self.enabled[name] == true or self.modules[name].noSwitch == true end
+function MelloUI:SetModuleEnabled(name, on) self.enabled[name] = on end
+function MelloUI:RegisterModule() end
+function MelloUI:CharacterProfile() return STUB.profile end
+StaticPopupDialogs = {}
+function StaticPopup_Show(which) STUB.popup = which end
+RELOADUI, LATER = 'Reload', 'Later'
+function ReloadUI() end
+function UnitGUID() return 'Player-1-000A' end
+C_AddOns.GetNumAddOns = function() return 0 end
+"""
+
 # A part made up for the check. It does what the real ones do: a setting with a saved value, a
 # setting depending on it, something to do once loaded, saved data, a fix with a command.
 MADE_UP = "PatchwerkForever_MadeUp"
@@ -289,6 +307,52 @@ def main():
     s = Session()
     s.addon(BASE)
     assert s.g.PatchwerkForever.Link(s.g.PatchwerkForever, "X", s.lua.table(), 99) is False
+
+    step("the MelloUI trim, with MelloUI's profile for each character (2.1.46): once for each profile")
+    part = "PatchwerkForever_Stitch_MelloUI"
+
+    def mello(saved, profile, on, old=False):
+        """A login with a stand-in for MelloUI: which profile the character has, which modules are on."""
+        # (the Route Stitch counts as installed, so the base has nothing to say about it being missing)
+        s = Session(saved=saved, running=["MelloUI"], installed=["PatchwerkForever_Stitch_MelloUIRoute"])
+        s.lua.execute(MELLO)
+        s.stub.profile = profile
+        if old:
+            s.lua.execute("MelloUI.CharacterProfile = nil")
+        for name in on:
+            s.g.MelloUI.enabled[name] = True
+        s.addon(BASE)
+        s.addon(part)
+        s.login()
+        s.stub.Fire("PLAYER_ENTERING_WORLD")
+        s.stub.RunAfters()
+        now = sorted(n for n in ("Chat", "Map", "QuestTracker", "Route") if s.g.MelloUI.enabled[n])
+        return s, now, s.chat()
+
+    ALL = ["Chat", "Map", "QuestTracker", "Route"]
+    before = "{ settings = { melloRouteOnly = true }, MelloUI = { seen = { Chat = true, Map = true, QuestTracker = true, Route = true } } }"
+    # the character it was trimmed on, who has since switched Chat back on: left as it is, and the
+    # account's list from before becomes that profile's
+    s, now, text = mello(before, "Main", ["Chat", "QuestTracker", "Route"])
+    assert now == ["Chat", "QuestTracker", "Route"] and text == [], (now, text)
+    db = s.g.PatchwerkForeverDB.MelloUI
+    assert db.seen is None and db.seenIn.Main.Chat, "the list from before was not handed to the profile"
+    after = "{ settings = { melloRouteOnly = true }, MelloUI = { seenIn = { Main = { Chat = true, Map = true, QuestTracker = true, Route = true } } } }"
+    # another character, whose own profile has everything on: trimmed, once
+    s, now, text = mello(after, "Alt", ALL)
+    assert now == ["QuestTracker", "Route"], now
+    assert any("Switched off: Chat, Map" in t for t in text) and s.stub.popup == "PATCHWERK_MELLOUI_RELOAD", text
+    assert s.g.PatchwerkForeverDB.MelloUI.seenIn.Alt.Map and s.g.PatchwerkForeverDB.MelloUI.seenIn.Main.Map
+    both = "{ settings = { melloRouteOnly = true }, MelloUI = { seenIn = { Main = { Chat = true, Map = true, QuestTracker = true, Route = true }, Alt = { Chat = true, Map = true, QuestTracker = true, Route = true } } } }"
+    # that character again, Chat switched back on there: it stays on
+    s, now, text = mello(both, "Alt", ["Chat", "QuestTracker", "Route"])
+    assert now == ["Chat", "QuestTracker", "Route"] and text == [], (now, text)
+    # the setting off: nothing is touched
+    s, now, text = mello("{ settings = { melloRouteOnly = false } }", "Alt", ALL)
+    assert now == ALL and text == []
+    # a MelloUI from before its profiles were each character's: one list for the account, as it was
+    s, now, text = mello("{ settings = { melloRouteOnly = true } }", "Main", ALL, old=True)
+    assert now == ["QuestTracker", "Route"] and s.g.PatchwerkForeverDB.MelloUI.seen.Map and s.g.PatchwerkForeverDB.MelloUI.seenIn is None
 
     step("every part carries the same joining file")
     for part in PARTS[1:]:

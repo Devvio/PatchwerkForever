@@ -1,5 +1,21 @@
 # Patchwerk Forever
 
+**Every monster needs a table to be stitched on.**
+
+Patchwerk has a laboratory now. One slab, one lantern, one very large needle case, and shelves that go all the way up.
+
+Patchwerk Forever is the slab. By itself it does nothing at all, which Patchwerk finds restful. Everything else gets laid out on it: the settings, the saved bits, the labels on the jars.
+
+There are two drawers. **Stitch** is for other people's addons: what broke gets sewn shut, and what was missing gets sewn on. **Thread** is for the things Patchwerk made himself, out of whole cloth and spare parts.
+
+Take only the pieces you want. Patchwerk does not judge an unfinished monster.
+
+Patchwerk wants more drawers! Patchwerk wants more thread!
+
+*One slab. Many questionable procedures.*
+
+---
+
 *Named for Naxxramas's stitched-together abomination: a patchwork, for Forever.*
 
 The **base** of the Patchwerk Forever addons for **World of Warcraft: Forever**. It holds what they share: one home for their settings, their saved data, the `/patchwerk` command and their art. **By itself it does nothing.** What it does comes as addons of their own, on two tracks, and you install only the ones you want:

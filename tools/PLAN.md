@@ -47,6 +47,15 @@ base), the sparkle split from the route planner, and MelloUI Route's additions u
   the client from names and dependencies when absent; read in Blizzard's AddonList.lua): every TOC now says
   `## Group: PatchwerkForever`, and the map data titles are "Thread (Routes) map: Kalimdor" and so on.
   Both built into the game; neither seen there yet.
+- Checked against the addons updated on 2026-11-12 (Tyrone's ask): MelloUI 2.1.44 to 2.1.48 and RestedXP Guides
+  v4.11.36; Console Port (3.3.13) and EllesmereUI (9.8.4) had not changed. MelloUI's Route files, its game menu
+  button and its guide hookup are untouched (diffed tag to tag in a blobless clone, data files never fetched).
+  One thing mattered: since 2.1.46 MelloUI keeps a profile for each character and a profile carries which
+  modules are on, so the trim's account-wide "seen" list would have left another character untrimmed. It is
+  kept for each profile now (`seenIn`), checked by pretend logins in `lua_patchwerk.py`; not tried in the game
+  (Tyrone does not run MelloUI). RestedXP still sets `RXPG_ARROW.element` with zone, x, y, wx, wy, instance.
+  Also in the repository now: the CurseForge uploader (`upload.py`, `upload_check.py`, `curseforge.json`, the
+  CI workflow), and Patchwerk's flavour text at the top of each README.
 Below, read Wayfarer, `PatchwerkForever_Wayfarer` and `/wayfarer` as Thread (Routes) and its names;
 the log keeps the names things had when it was written.
 

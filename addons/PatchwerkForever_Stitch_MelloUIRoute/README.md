@@ -1,5 +1,19 @@
 # Patchwerk Forever: Stitch (MelloUI Route)
 
+**The map said walk. The cliff said otherwise.**
+
+Patchwerk likes MelloUI's Route. Good roads. Honest roads. But it once walked Patchwerk straight off the edge of Thunder Bluff, and Patchwerk is mostly stitches down that side now.
+
+So Patchwerk sewed on a few extras. Roads come before shortcuts through lakes. A spot you cannot pass gets marked, for every character you own. The hearthstone is suggested when it is plainly quicker. The next guide steps, and a run through your tracked quests, are drawn on ahead.
+
+MelloUI's own road data is not in here. Not copied, not even read. Patchwerk sews on. Patchwerk does not take.
+
+Patchwerk wants more roads! Patchwerk wants fewer cliffs!
+
+*Unofficial surgery. Officially questionable directions.*
+
+---
+
 Additions to the route planner of **MelloUI** on **World of Warcraft: Forever**.
 
 **It needs two addons:** [MelloUI](https://github.com/MelloCro/MelloUI) itself, and **Patchwerk Forever**, the base that holds the settings page and the saved data. (Until Patchwerk Forever 1.0.1 these additions were inside that addon; your settings, blocked spots and learned landing places carry over.)

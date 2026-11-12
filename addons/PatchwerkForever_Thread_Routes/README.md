@@ -1,5 +1,21 @@
 # Patchwerk Forever: Thread (Routes)
 
+**Follow the thread. It knows the way. Patchwerk checked. Twice.**
+
+This one Patchwerk did not fix. This one Patchwerk *made*. Every hill, every tunnel, every bridge, worked out from the game's own files and wound onto one long spool.
+
+Put a pin on the map, or track a quest, and the thread unrolls to it: over the ground, round the lake, up the lift, along the flight path, across the sea by boat or zeppelin. Take a wrong turn and it finds you again.
+
+It also remembers where the herbs and the ore were. Patchwerk forgets many things. The thread does not.
+
+No other addon's parts were used. Patchwerk is very proud. Patchwerk made a whole thing.
+
+Patchwerk wants more maps! Patchwerk wants longer thread!
+
+*Home-made. Hand-wound. Only slightly lost.*
+
+---
+
 A route planner for **World of Warcraft: Forever**. It finds the way to where you are going and draws it on the world map and the minimap: over the ground, through tunnels, over bridges, up lifts, by flight path, and by boat and zeppelin to the other continent.
 
 One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the settings pages, and nothing else: its map data was worked out from the game's own files, and nothing is taken from another addon.

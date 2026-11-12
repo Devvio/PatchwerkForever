@@ -10,3 +10,5 @@ release/
 *.zip
 # Private names the release check looks for in what is shipped.
 tools/private_words.txt
+# A notes app's own settings for this folder (the folder opened as a vault).
+.obsidian/

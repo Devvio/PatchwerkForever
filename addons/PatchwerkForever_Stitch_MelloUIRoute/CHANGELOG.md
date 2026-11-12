@@ -8,3 +8,4 @@ First release as an addon of its own. Until Patchwerk Forever 1.0.1, the additio
 - Nothing changed in what it does. Your settings and saved data from 1.x are used as they are.
 - The Route actions are still listed in Console Port's bindings when Console Port is installed; this part now finds Console Port by itself.
 - An icon in the game's addon list.
+- **Checked against MelloUI 2.1.48.** MelloUI 2.1.45 to 2.1.48 changed nothing these additions build on (its Route is as it was); they work as before.

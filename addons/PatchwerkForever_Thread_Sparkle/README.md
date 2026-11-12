@@ -1,5 +1,19 @@
 # Patchwerk Forever: Thread (Sparkle)
 
+**Ooh. Shiny.**
+
+Patchwerk walks past herbs. Patchwerk walks past ore. Patchwerk once walked past a whole chest. One eye is not what it was, and the other is newer and still settling in.
+
+So Patchwerk sewed a little light onto things. Come up to a herb, a vein, a chest or a quest object and it sparkles, with its name written over it. Twelve kinds of sparkle: loud ones, quiet ones, ones that barely whisper.
+
+Every kind of thing gets a colour of its own. Patchwerk chose green for herbs. Patchwerk is told that is traditional.
+
+Patchwerk wants more shiny! Patchwerk wants ALL the shiny!
+
+*Decorative stitching. Purely cosmetic. Mostly.*
+
+---
+
 A sparkle on things you can use, for **World of Warcraft: Forever**. As you come up to a herb, a vein, a chest or a quest object, a light effect and its name appear over it.
 
 One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the settings pages, and nothing else.

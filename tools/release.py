@@ -25,6 +25,7 @@ to set on each project.
 The version is the one in the main folder's TOC; every other folder of the addon must carry the same.
 Nothing is uploaded: that is done by hand on CurseForge.
 """
+import json
 import os
 import re
 import shutil
@@ -173,13 +174,47 @@ def stamped(data, mark):
     return data[:at] + line + end + data[at:]
 
 
+def curse_id(folder):
+    """A project's number on CurseForge, from tools/curseforge.json, when it has been filled in.
+    Only a project's main folder has one."""
+    path = os.environ.get("CF_CONFIG") or os.path.join(HERE, "curseforge.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            projects = json.load(f).get("projects", {})
+    except (OSError, ValueError):
+        return None
+    for key, project in PROJECTS.items():
+        if project["main"] == folder:
+            number = projects.get(key, {}).get("id")
+            return number if isinstance(number, int) and number > 0 else None
+    return None
+
+
+def with_project_id(data, number):
+    """A TOC's bytes with the line  ## X-Curse-Project-ID: <number>, by which CurseForge's own app
+    knows an installed addon. It goes after the build line, else after the version."""
+    end = b"\r\n" if b"\r\n" in data else b"\n"
+    line = b"## X-Curse-Project-ID: " + str(number).encode("ascii") + end
+    if re.search(rb"^##\s*X-Curse-Project-ID:", data, re.M):
+        return data
+    m = re.search(rb"^##\s*X-Build:[^\n]*\n", data, re.M) or re.search(rb"^##\s*Version:[^\n]*\n", data, re.M)
+    at = m.end() if m else 0
+    return data[:at] + line + data[at:]
+
+
 def contents(folder, mark):
-    """What ships of a folder, as {path from the folder: bytes}: its files, the TOC stamped with the build."""
+    """What ships of a folder, as {path from the folder: bytes}: its files, the TOC stamped with the build
+    and, once the project has one, its number on CurseForge."""
     out = {}
     for name in shipped(folder, quiet=True):
         with open(os.path.join(ADDONS, folder, name), "rb") as f:
             data = f.read()
-        out[name] = stamped(data, mark) if name == folder + ".toc" else data
+        if name == folder + ".toc":
+            data = stamped(data, mark)
+            number = curse_id(folder)
+            if number:
+                data = with_project_id(data, number)
+        out[name] = data
     return out
 
 
@@ -322,7 +357,11 @@ def checklist():
              "**The order matters.** Patchwerk Forever 2.0.0 does nothing by itself, and people who have 1.x get it as",
              "an update. Have the Stitch and Thread projects up (and approved) first, so that when the base's update",
              "tells them which addon to get, it is there to be found. Every project but the base names",
-             "**Patchwerk Forever** as a required dependency.", ""]
+             "**Patchwerk Forever** as a required dependency.", "",
+             "By hand, or with `python upload.py <project>` once the project is made on CurseForge and its id and slug",
+             "are in `tools/curseforge.json` (the repository's README says how). The tool sends the zip, the changelog",
+             "entry, the release type, the game version and the dependency; the name, summary, description, logo,",
+             "category and pictures are set on CurseForge by hand.", ""]
     for n, key in enumerate(ORDER, 1):
         project = PROJECTS[key]
         main = project["main"]

@@ -1,5 +1,19 @@
 # Patchwerk Forever: Stitch (Console Port)
 
+**Why buy a new controller when this one only twitches a little?**
+
+Patchwerk found a gamepad. Very good gamepad. Then Forever happened to it. The menu button stopped opening the menu, and the other buttons started doing things nobody asked for.
+
+So Patchwerk opened it up. The game menu opens again. Forever's own buttons have stopped arguing with yours. Robes go on the body and bows go in the hand, as nature intended. The bag bar is back from wherever Console Port buried it.
+
+Nothing inside Console Port was touched. Patchwerk only sews on the outside. Mostly on the outside.
+
+Patchwerk wants more buttons! Patchwerk has thumbs for at least six!
+
+*Unofficial surgery. Officially questionable results.*
+
+---
+
 Fixes for **Console Port** on **World of Warcraft: Forever**. Console Port's support for Forever is new; this fixes what it doesn't handle yet.
 
 **It needs two addons:** [Console Port](https://github.com/seblindfors/ConsolePort) itself, and **Patchwerk Forever**, the base that holds the settings page and the saved data. (Until Patchwerk Forever 1.0.1 these fixes were inside that addon; your settings carry over.)

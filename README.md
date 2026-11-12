@@ -81,6 +81,8 @@ The tools need Python 3 and the package `lupa` (a Lua 5.1 interpreter). Run them
 | `python art.py` | draws the icons and logos, and takes in your own from `art/` |
 | `python build.py` | builds the addons into the game (see above) |
 | `python release.py [project]` | checks a project and builds its upload: zip, description, changelog, summary, notes on what to set on CurseForge |
+| `python upload.py <project>` | builds a project and uploads its zip to CurseForge (see Releasing); `--dry-run` says what would be sent |
+| `python upload_check.py` | tries the uploader against a pretend CurseForge on this machine; nothing leaves it |
 
 Passing these says the code runs; only playing says it works. `tools/PLAN.md` records which is which. The fixes inside the Stitches cannot be run outside the game at all: they need the addons they are for.
 
@@ -88,8 +90,38 @@ Passing these says the code runs; only playing says it works. `tools/PLAN.md` re
 
 1. Add an entry to the addon's `CHANGELOG.md` and raise the version in its TOC (for Routes: in all four TOCs and in `tools/pack.py`). Every addon has a version of its own; raise only what changed. A change to the base's API that an addon needs means raising `api` in that addon's `Link.lua` and `P.API` in the base.
 2. Commit, then `python release.py`. Each project's upload is written to `release/<its folder>` here. The zip holds the same bytes a build puts in the game, build line included; it warns when built from files that are not committed.
-3. Upload by hand on CurseForge. `CurseForge-notes.txt` in each release folder says what to set; every project but the base must name **Patchwerk Forever** as a required dependency.
+3. Upload: by hand on CurseForge, or with `python upload.py <project>` (below). `release/UPLOAD.md` and `CurseForge-notes.txt` in each release folder say what to set; every project but the base must name **Patchwerk Forever** as a required dependency.
 4. Tag the commit: `patchwerk-forever-2.0.0`, `stitch-consoleport-2.0.0`, `stitch-melloui-2.0.0`, `stitch-melloroute-2.0.0`, `thread-routes-0.11.0`, `thread-sparkle-0.11.0`.
+
+### Uploading with the tool
+
+`tools/upload.py` sends a project's zip through CurseForge's upload API, with the changelog entry for its version, a display name, beta or release, the game version, and Patchwerk Forever as a required dependency where the addon needs it.
+
+Once, for each project:
+
+1. **Make the project on CurseForge by hand.** The API only adds files to a project that is there. Its name, summary, description, logo and category are set there too; `release/UPLOAD.md` has them.
+2. **Put its id and slug in `tools/curseforge.json`.** The id is the Project ID on its CurseForge page; the slug is the last part of the page's address. A Stitch may list the addon it is for under `relations`, as `{ "slug": "...", "type": "requiredDependency" }`. Ids are not secret. Once a project has an id, the build writes `## X-Curse-Project-ID` into its TOC, by which CurseForge's app knows an installed addon.
+
+Once, for you:
+
+3. **Make an API token** in your CurseForge author settings (API Tokens) and set it as the environment variable `CF_API_TOKEN`. It is a password: it is never written into this repository, and the tool never prints it or keeps it.
+
+Then, for a release: commit, and
+
+```
+python upload.py --dry-run routes     what would be sent; needs no token
+python upload.py routes               build it and send it
+python upload.py all                  every project, the Stitches and tools before the base
+python upload.py versions 1.60        the game versions CurseForge knows
+```
+
+The game version is worked out from the TOC's interface number (16001 is 1.60.1) and looked up by that name. If CurseForge calls Forever's version something else, the tool stops and lists the ones like it; put the right id in `curseforge.json` as `"game_version_ids": [id]`.
+
+It will not send a zip built from files that are not committed, and it only talks to an https address.
+
+### Uploading from CI
+
+`.github/workflows/upload.yml` does the same when a release tag is pushed: `git push origin thread-routes-0.12.0` builds that project from the tagged commit and uploads it. It needs this repository on GitHub and a repository secret named `CF_API_TOKEN`. Until both are there, the file does nothing.
 
 ## Rules these addons keep
 

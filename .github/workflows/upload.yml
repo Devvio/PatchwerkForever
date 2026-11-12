@@ -1,0 +1,41 @@
+# Uploads a project's zip to CurseForge when its release tag is pushed.
+#
+#   git tag thread-routes-0.12.0        (the tag names are in tools/release.py: TAGS)
+#   git push origin thread-routes-0.12.0
+#
+# What it needs, once:
+#   - this repository on GitHub;
+#   - a repository secret named CF_API_TOKEN holding your CurseForge API token
+#     (Settings > Secrets and variables > Actions). The token is never written into a file here;
+#   - each project's id and slug in tools/curseforge.json.
+#
+# It runs tools/upload.py, the same command as by hand: it builds the zip from the tagged commit,
+# checks it, and sends it with the changelog entry for that version.
+name: Upload to CurseForge
+
+on:
+  push:
+    tags:
+      - "patchwerk-forever-*"
+      - "stitch-*"
+      - "thread-*"
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # the build line is the last commit that changed the addon
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build and upload
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        working-directory: tools
+        run: python upload.py --tag "$TAG"

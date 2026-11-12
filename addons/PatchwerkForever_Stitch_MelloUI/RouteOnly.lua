@@ -29,7 +29,8 @@ if not ( ns.linked and MelloUI and MelloUI.RegisterModule and MelloUI.SetModuleE
 -- switched off. Switching the setting off and on starts over.
 --
 -- PatchwerkForeverDB.MelloUI = {
---     seen       = { [module] = true }, -- trimmed or kept once already
+--     seenIn     = { [profile] = { [module] = true } }, -- trimmed or kept once already, in that MelloUI profile
+--     seen       = { [module] = true },                 -- the same for the account: MelloUI before 2.1.46
 --     seenAddOns = { [character] = { [addon] = true } },
 -- }
 --
@@ -55,7 +56,7 @@ ns:AddSetting({
 	default = false;
 	section = 'MelloUI';
 	name    = 'Only Route And The Quest Tracker';
-	desc    = "Switches every other MelloUI module off and unticks MelloUI's other addons, for using its Route beside another interface addon. It does this once: anything you switch back on in MelloUI afterwards stays on.";
+	desc    = "Switches every other MelloUI module off and unticks MelloUI's other addons, for using its Route beside another interface addon. It does this once for each character's MelloUI profile: anything you switch back on in MelloUI afterwards stays on.";
 	note    = 'Turning this off does not switch anything back on (use /mello and the addon list for that). Turning it off and on again trims everything once more.';
 })
 
@@ -73,10 +74,43 @@ local function Seen(kind)
 	return saved[kind];
 end
 
+-- Which modules are on belongs to a MelloUI profile, and since
+-- MelloUI 2.1.46 each character has a profile of its own. So what
+-- has been trimmed once is kept for each profile: a character
+-- whose profile was never trimmed is trimmed at its first login,
+-- and what the player switched back on in one profile stays on
+-- there. Before 2.1.46 (no MelloUI:CharacterProfile) there is one
+-- list for the account, as there was.
+--
+-- The account's list from before is handed to the first profile
+-- met: at MelloUI's own change-over that is the profile that was
+-- live, the one the list was made on.
+local function SeenModules()
+	local saved = ns:GetSaved('MelloUI');
+	if not saved then
+		return {};
+	end
+	local profile;
+	if ( type(MelloUI.CharacterProfile) == 'function' ) then
+		local ok, name = pcall(MelloUI.CharacterProfile, MelloUI);
+		profile = ok and type(name) == 'string' and name ~= '' and name or nil;
+	end
+	if not profile then
+		saved.seen = saved.seen or {};
+		return saved.seen;
+	end
+	saved.seenIn = saved.seenIn or {};
+	if not saved.seenIn[profile] then
+		saved.seenIn[profile] = saved.seen or {};
+		saved.seen = nil;
+	end
+	return saved.seenIn[profile];
+end
+
 local function StartOver()
 	local saved = ns:GetSaved('MelloUI');
 	if saved then
-		saved.seen, saved.seenAddOns = nil, nil;
+		saved.seen, saved.seenIn, saved.seenAddOns = nil, nil, nil;
 	end
 end
 
@@ -103,7 +137,7 @@ end
 -- @return off : list of module titles switched off
 -- @return on  : list of kept module titles switched on
 local function TrimModules()
-	local off, on, seen = {}, {}, Seen('seen');
+	local off, on, seen = {}, {}, SeenModules();
 	for name, module in MelloUI:IterateModules() do
 		local enabled = MelloUI:IsModuleEnabled(name);
 		if seen[name] then
