@@ -68,6 +68,8 @@ ns.settings = {
 		desc = 'Fly where that is quicker than walking.' },
 	{ key = 'knownOnly', default = true, name = 'Only Flight Points I Know', parent = 'flights',
 		desc = 'Leave out flight points this character has not found yet.' },
+	{ key = 'rides', default = true, name = 'Use Boats And Zeppelins',
+		desc = 'Take a boat or a zeppelin where that is quicker, and to reach another continent. Only the ones your side can use. How long you wait for one is not known, so the time given allows for half its round trip.' },
 	{ key = 'notify', default = true, name = 'Say The Route In Chat',
 		desc = 'Print the time, the distance and the flights of a new route.' },
 	{ key = 'nodes', default = true, name = 'Remember Herb And Ore Spots',
@@ -136,6 +138,8 @@ ns.settings = {
 		desc = 'The colour of a tunnel, a bridge, a lift or a drop.' },
 	{ page = 'Trail', key = 'trailFly', colour = true, default = 'ff73d9ff', name = 'Colour: Flights',
 		desc = 'The colour of a flight.' },
+	{ page = 'Trail', key = 'trailRide', colour = true, default = 'ff66e6c8', name = 'Colour: Boats And Zeppelins',
+		desc = 'The colour of the course a boat or a zeppelin takes.' },
 }
 -- each kind of thing: how its sparkle looks
 for _, kind in ipairs(ns.KINDS) do

@@ -79,7 +79,14 @@ local function Draw()
 	-- the shown map's corners in world coordinates; inside, the map is a plain rectangle of the world
 	local m1, topLeft = C_Map.GetWorldPosFromMapPos(mapID, CreateVector2D(0, 0))
 	local m2, bottomRight = C_Map.GetWorldPosFromMapPos(mapID, CreateVector2D(1, 1))
-	if not (topLeft and bottomRight) or m1 ~= route.map or m2 ~= route.map then return end
+	if not (topLeft and bottomRight) or m1 ~= m2 then return end
+	-- the part of the route on the map shown: the part being walked, or, of a journey that crosses to
+	-- another continent, the part over there
+	local points, at = route.points, route.at
+	if m1 ~= route.map then
+		points, at = route.parts and route.parts[m1], nil
+		if not points then return end
+	end
 	local top, left = topLeft:GetXY()
 	local bottom, right = bottomRight:GetXY()
 	if top == bottom or left == right then return end
@@ -114,20 +121,19 @@ local function Draw()
 		d:SetPoint('CENTER', parent, 'TOPLEFT', x, y)
 		d:Show()
 	end
-	local points = route.points
 	local px, py = ns.Place()
 	local function spot(i)
 		local p = points[i]
 		local x, y = p[1], p[2]
-		if i == route.at and px then x, y = px, py end         -- the trail starts at the character
+		if i == at and px then x, y = px, py end               -- the trail starts at the character
 		return (left - y) / (left - right), (top - x) / (top - bottom)
 	end
-	for i = math.max(1, route.at), #points - 1 do
+	for i = math.max(1, at or 1), #points - 1 do
 		if used >= MOST then break end
 		local ax, ay = spot(i)
 		local bx, by = spot(i + 1)
 		local cx, cy, ex, ey = Clip(ax, ay, bx, by)
-		if cx then
+		if cx and points[i + 1][3] ~= 'gap' then
 			r, g, b = ns.TrailColour(points[i + 1][3])
 			ns.Stroke(pen, cx * width, -cy * height, ex * width, -ey * height, line, dot)
 		end

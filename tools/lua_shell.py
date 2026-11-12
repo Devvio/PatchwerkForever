@@ -33,9 +33,18 @@ def main():
     lua = LuaRuntime(unpack_returned_tuples=True)
     here = os.path.dirname(os.path.abspath(__file__))
     lua.execute(open(os.path.join(here, "wowstub.lua"), encoding="utf-8").read())
-    for map_id in (1,):
-        for path in toc_files(os.path.join(ADDONS, ADDON + "_" + NAMES[map_id]), ADDON + "_" + NAMES[map_id]):
-            lua.execute(open(path, encoding="ascii").read())
+    # a map's data addon is read when the addon asks the game to load it, as in the game
+    loaded = []
+
+    def load_addon(name):
+        for map_id, short in NAMES.items():
+            if name == ADDON + "_" + short and map_id not in loaded:
+                loaded.append(map_id)
+                for path in toc_files(os.path.join(ADDONS, name), name):
+                    lua.execute(open(path, encoding="ascii").read())
+        return True
+
+    lua.globals().C_AddOns.LoadAddOn = load_addon
     ns = lua.table()
     load = lua.eval("function(code, name, addon, ns) return assert(loadstring(code, name))(addon, ns) end")
     for path in toc_files(os.path.join(ADDONS, ADDON), ADDON):
@@ -72,7 +81,7 @@ def main():
     stub.Fire("PLAYER_LOGIN")
     stub.Fire("PLAYER_ENTERING_WORLD")
     chat("login")
-    assert len(stub.settings) == 69 and stub.category, "the settings page was not built"
+    assert len(stub.settings) == 71 and stub.category, "the settings page was not built"
     assert stub.provider, "the world map layer was not attached"
 
     step("put a pin on Gadgetzan")
@@ -169,7 +178,7 @@ def main():
     assert stub.opened == 7, "the settings page did not open"
 
     step("no pin: the route follows the RestedXP guide's arrow, step by step")
-    assert len(stub.settings) == 69, "the guide setting is missing from the settings page"
+    assert len(stub.settings) == 71, "the guide setting is missing from the settings page"
     stub.pin = None
     stub.Fire("USER_WAYPOINT_UPDATED")
     assert not ns.dest
@@ -289,7 +298,9 @@ def main():
     stub.QuestGone(871)
     look("QUEST_TURNED_IN")
     assert near(*CAMP), "the next tracked quest was not taken up"
-    # a quest on the other continent: the game's own next stop on the way, when it is on this one
+    # a quest on the other continent, with boats and zeppelins switched off: the game's own next stop on
+    # the way, when it is on this one
+    setting("rides", False)
     stub.QuestAt(872, "Message to Stormwind", 0, -9460.0, 60.0)
     stub.QuestStop(872, 1, *RATCHET)
     stub.watched = lua.table_from([870, 872])
@@ -337,6 +348,7 @@ def main():
     stub.watched, stub.focus = lua.table(), 0
     look("QUEST_WATCH_LIST_CHANGED")
     assert not ns.dest, "routed with nothing tracked"
+    setting("rides", True)
     chat("quest")
 
     step("herbs and ore: a spot is remembered when you gather, and shown on both maps")
@@ -416,17 +428,17 @@ def main():
 
     step("the options pages: every control is made, on the page it belongs to")
     by_name = {s.variable[len(ADDON) + 1:]: s for s in stub.settings.values()}
-    assert len(by_name) == 69, "expected 69 settings on the options pages, found %d" % len(by_name)
+    assert len(by_name) == 71, "expected 71 settings on the options pages, found %d" % len(by_name)
     pages = sorted(stub.pages.keys())
     assert pages == ["Name Over Things", "Sparkle: Behind My Character", "Sparkle: Chests", "Sparkle: Herbs", "Sparkle: Ore",
                      "Sparkle: Other Things", "Sparkle: Quest Objects", "Trail"], pages
     for page in pages:
         on_it = [n for n, s in by_name.items() if s.page == page]
-        want = 8 if page == "Name Over Things" else 10 if page == "Trail" else 6
+        want = 8 if page == "Name Over Things" else 11 if page == "Trail" else 6
         assert len(on_it) == want, "%s has %d settings, expected %d" % (page, len(on_it), want)
     buttons = list(stub.buttons.values())
     assert sorted(b.text for b in buttons) == ["Apply", "Forget", "Show"] + ["Test"] * 5, [b.text for b in buttons]
-    assert sum(1 for s in by_name.values() if s.colour) == 9 and sum(1 for s in by_name.values() if s.choices) == 12
+    assert sum(1 for s in by_name.values() if s.colour) == 10 and sum(1 for s in by_name.values() if s.choices) == 12
 
     def setv(name, value):
         by_name[name].set(value)
@@ -748,18 +760,75 @@ def main():
     setv("flights", True)
     chat("trail")
 
-    step("a pin somewhere with no way (the middle of the sea), and a pin on the other continent")
+    step("a pin somewhere with no way (the middle of the sea)")
     stub.PinAt(1, 0.0, 9000.0)
     stub.Fire("USER_WAYPOINT_UPDATED")
     frames()
     chat("sea")
-    stub.PinAt(0, -9460.0, 60.0)
+
+    step("across the sea: a zeppelin to the other continent, and the way on once there")
+    BRILL = (2250.0, 310.0)
+    stub.player.x, stub.player.y, stub.player.map = -442.0, -2598.0, 1
+    setv("rides", False)
+    stub.PinAt(0, *BRILL)
     stub.Fire("USER_WAYPOINT_UPDATED")
     frames()
-    chat("other continent")
+    text = chat("no rides")
+    assert not ns.route and any("Use Boats And Zeppelins is switched off" in t for t in text), text
+    setv("rides", True)
+    n = frames()
+    text = chat("crossing")
+    route = ns.route
+    assert route and any("zeppelin Orgrimmar > Undercity" in t for t in text), text
+    print("      the search took %d frames; %d points here, %d over there" % (n, len(route.points), len(route.parts[0])))
+    hows = [p[3] for p in route.points.values()]
+    assert route.map == 1 and hows[-1] == "ride" and "link" in hows, "the part on this continent does not end aboard the zeppelin"
+    there = [p[3] for p in route.parts[0].values()]
+    assert "ride" in there and there[-1] == "walk", "the part on the other continent does not lead from the zeppelin to the pin"
+    # the other continent's world map shows the part over there
+    minimap_lines = None
+    world_map.mapID = 1415
+    stub.provider.RefreshAllData()
+    with_part = stub.shown
+    rest = route.parts[0]
+    route.parts[0] = None
+    stub.provider.RefreshAllData()
+    assert with_part > stub.shown, "the other continent's map does not show the part of the journey there"
+    route.parts[0] = rest
+    world_map.mapID = 1414
+    stub.provider.RefreshAllData()
+    # walking to the tower and riding: no new search while you are near the trail, the zeppelin's course included
+    aboard = [p for p in route.points.values() if p[3] == "ride"][2]
+    stub.player.x, stub.player.y = aboard[1], aboard[2]
+    stub.time += 5
+    stub.Tick()
+    assert frames() <= 1 and same(ns.route, route), "a new search was made aboard the zeppelin"
+    # the loading screen: you are on the other continent, and the part found for it is followed
+    landing = rest[1]
+    stub.player.x, stub.player.y, stub.player.map = landing[1], landing[2], 0
+    stub.time += 5
+    stub.Tick()
+    assert frames() <= 1 and same(ns.route, route) and route.map == 0, "the part over there was not taken up"
+    assert same(route.points, rest), "the part followed is not the one found for the other continent"
+    said_before = said[0]
+    stub.player.x, stub.player.y = BRILL[0] + 2, BRILL[1]
+    stub.Tick()
+    text = chat("arrived over there")
+    assert not ns.dest and any("you are there" in t for t in text), text
+    # a quest over the sea is followed too
     stub.pin = None
     stub.Fire("USER_WAYPOINT_UPDATED")
+    stub.player.x, stub.player.y, stub.player.map = -442.0, -2598.0, 1
+    stub.QuestAt(873, "A Letter to Brill", 0, *BRILL)
+    stub.watched, stub.focus = lua.table_from([873]), 873
+    stub.Fire("SUPER_TRACKING_CHANGED")
+    stub.Tick(); frames()
+    assert ns.dest and ns.dest.source == "quest" and ns.dest.map == 0 and ns.route and len(ns.route.rides) == 1, "a quest on the other continent was not routed to"
+    stub.QuestGone(873)
+    stub.Fire("QUEST_REMOVED")
+    stub.Tick(); frames()
     assert not ns.dest
+    chat("quest over the sea")
     lua.globals().PatchwerkForever_Wayfarer_Go()
     lua.globals().PatchwerkForever_Wayfarer_Stop()
     chat("bindings")

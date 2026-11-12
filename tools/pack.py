@@ -1,6 +1,7 @@
 """Pack the maps for the game: the data addons of Patchwerk Forever: Wayfarer.
 
-    python pack.py              packs maps 0, 1 and 2991
+    python pack.py              packs maps 0, 1 and 2991, and the boats and zeppelins
+    python pack.py crossings    only the boats and zeppelins (Crossings.lua, in the addon's own folder)
 
 For each map, a folder beside the addon (loaded only when the character is on that map):
 
@@ -186,7 +187,7 @@ def pack_map(map_id, flights):
     with open(os.path.join(folder, "PatchwerkForever_Wayfarer_%s.toc" % NAMES[map_id]), "w", encoding="utf-8", newline="\n") as f:
         f.write("## Interface: 16001\n## Title: Patchwerk Forever: Wayfarer (%s)\n"
                 "## Notes: Map data for Patchwerk Forever: Wayfarer. Loaded by it when needed.\n"
-                "## Author: Tyrone\n## Version: 0.9.0\n"
+                "## Author: Tyrone\n## Version: 0.10.0\n"
                 "## X-License: MIT (code); map data made from the game's own files\n"
                 "## Dependencies: PatchwerkForever_Wayfarer\n## LoadOnDemand: 1\n\n%s\n"
                 % (TITLES[map_id], "\n".join(files)))
@@ -195,7 +196,44 @@ def pack_map(map_id, flights):
         total / 1e6, "; %d links between cells side by side" % odd if odd else ""))
 
 
+def pack_crossings():
+    """The boats and zeppelins (crossings.py) as a file of the addon itself: Crossings.lua."""
+    import crossings
+    found = crossings.load()
+    out = ["-- Made by pack.py from the game's own files (the tools' crossings.py). Do not edit: run pack.py again.\n",
+           "-- Boats and zeppelins. Each: id, kind, sides (A, H), wait (seconds, on average, before one comes),\n",
+           "--   stops = { { map, name, world x, world y, cell x, cell y, seconds to board } },\n",
+           "--   rides = { { from stop, to stop, seconds, { map, world x, world y, ... } } }\n",
+           "-- In a ride's line a map of -1 is a jump: the next point is not sailed to.\n",
+           "local ADDON, ns = ...\nns.Crossings = {\n"]
+    for t in found:
+        sides = ("A" if "alliance" in t["sides"] else "") + ("H" if "horde" in t["sides"] else "")
+        out.append('{ id = %d, kind = "%s", sides = "%s", wait = %.0f,\n\tstops = {\n' % (t["id"], t["kind"], sides, t["wait"]))
+        for st in t["stops"]:
+            out.append('\t\t{ %d, "%s", %.1f, %.1f, %d, %d, %.0f },\n' % (
+                st["map"], st["name"].replace('"', "'"), st["x"], st["y"], st["cell"][0], st["cell"][1], st["board"]))
+        out.append("\t},\n\trides = {\n")
+        for (a, b), ride in sorted(t["rides"].items()):
+            flat, last = [], None
+            for m, x, y in ride["line"]:
+                if last and last[0] == m and math.hypot(last[1] - x, last[2] - y) > crossings.JUMP:
+                    flat.append("-1,0,0")
+                flat.append("%d,%.0f,%.0f" % (m, x, y))
+                last = (m, x, y)
+            out.append("\t\t{ %d, %d, %.0f, { %s } },\n" % (a + 1, b + 1, ride["seconds"], ", ".join(flat)))
+        out.append("\t},\n},\n")
+    out.append("}\n")
+    path = os.path.join(ADDONS, "PatchwerkForever_Wayfarer", "Crossings.lua")
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write("".join(out))
+    print("crossings -> Crossings.lua: %d lines, %d rides, %.1f KB" % (
+        len(found), sum(len(t["rides"]) for t in found), os.path.getsize(path) / 1e3))
+
+
 if __name__ == "__main__":
     flights = flight_data.load()
-    for arg in (sys.argv[1:] or ["0", "1", "2991"]):
-        pack_map(int(arg), flights)
+    for arg in (sys.argv[1:] or ["0", "1", "2991", "crossings"]):
+        if arg == "crossings":
+            pack_crossings()
+        else:
+            pack_map(int(arg), flights)

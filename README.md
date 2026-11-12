@@ -32,7 +32,9 @@ The tools need Python 3 and the package `lupa` (a Lua 5.1 interpreter). Run them
 | `python luacheck.py <addon folder>` | checks that every Lua file of an addon parses |
 | `python lua_shell.py` | runs the whole of Wayfarer through a pretend play session against a stand-in for the game |
 | `python lua_trips.py 1 horde` | checks Wayfarer's route planner against the prototype, trip by trip (`0 alliance` for the Eastern Kingdoms) |
-| `python pack.py 0 1 2991` | writes Wayfarer's map data folders from what the tools read out of the game |
+| `python lua_journeys.py` | checks Wayfarer's journeys by boat and zeppelin against a brute-force reckoning |
+| `python crossings.py` | reads the boats and zeppelins out of the game's files |
+| `python pack.py` | writes Wayfarer's map data folders, and its boats and zeppelins, from what the tools read out of the game |
 | `python media.py` | draws Wayfarer's pictures |
 | `python release.py [wayfarer|patchwerk]` | checks an addon and builds its upload zip, description and changelog |
 

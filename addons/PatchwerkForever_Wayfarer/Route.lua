@@ -73,7 +73,8 @@ end
 local function Known(map)
 	if not ns.Get('knownOnly') then return nil end
 	local id = CONTINENT_MAP[map]
-	local nodes = id and C_TaxiMap and C_TaxiMap.GetTaxiNodesForMap and C_TaxiMap.GetTaxiNodesForMap(id)
+	if not id then return nil end
+	local nodes = C_TaxiMap and C_TaxiMap.GetTaxiNodesForMap and C_TaxiMap.GetTaxiNodesForMap(id)
 	if type(nodes) ~= 'table' or #nodes == 0 then
 		Once('known' .. tostring(map), 'the game did not say which flight points you know here, so all of your side\'s are used.')
 		return nil
@@ -116,6 +117,9 @@ local function Say(route)
 	for _, flight in ipairs(route.flown) do
 		parts[#parts + 1] = 'fly ' .. table.concat(flight, ' > ')
 	end
+	for _, ride in ipairs(route.rides or {}) do
+		parts[#parts + 1] = ('%s %s > %s'):format(ride.kind, ride.from, ride.to)
+	end
 	local text = Duration(route.seconds) .. ': ' .. table.concat(parts, ', ') .. '.'
 	if route.swum > 300 then
 		text = text .. (' It swims %d yd: have a look before you trust it.'):format(route.swum)
@@ -140,55 +144,69 @@ function ns.Plan(announce)
 	if not dest then return end
 	local px, py, map = Place()
 	if not px then return Fail(announce, 'the game does not say where you are here.') end
-	if map ~= dest.map then
-		return Fail(announce, 'that is on another continent (or you are indoors): routes across continents come later.')
+	local rides = ns.Get('rides') and ns.Crossings or nil
+	if map ~= dest.map and not rides then
+		return Fail(announce, 'that is on another continent, and Use Boats And Zeppelins is switched off.')
 	end
 	if not Data(map) then return Fail(false) end
+	if map ~= dest.map and not Data(dest.map) then return Fail(false) end
 	lastPlan = GetTime()
 	job = coroutine.create(function()
 		local sx, sy = P.CellOf(map, px, py)
 		sx, sy = P.Nearest(map, sx, sy, 12)
 		if not sx then
-			return Fail(announce, 'you are not standing on ground the planner knows (inside a building, or on one?).')
+			return Fail(announce, 'you are not standing on ground the planner knows (inside a building, on a boat, or on one?).')
 		end
-		local gx, gy = P.CellOf(map, dest.x, dest.y)
+		local gx, gy = P.CellOf(dest.map, dest.x, dest.y)
 		local tx, ty = gx, gy
-		gx, gy = P.Nearest(map, gx, gy, 24)
+		gx, gy = P.Nearest(dest.map, gx, gy, 24)
 		if not gx then
 			return Fail(announce, 'there is no ground the planner knows within 100 yards of that spot.')
 		end
-		local opts = {}
-		if ns.Get('flights') then
-			opts.side = Side()
-			opts.known = opts.side and Known(map)
-		end
-		local found = P.Route(map, sx, sy, gx, gy, opts)
-		if not found then
+		-- walks found by the planner, joined by boats and zeppelins where that is quicker or the only way
+		local side, flights, known = Side(), ns.Get('flights'), {}
+		local journey = P.Journey({ map = map, x = sx, y = sy }, { map = dest.map, x = gx, y = gy }, {
+			rides = rides, side = side,
+			use = function(m) return DATA[m] ~= nil and Data(m) end,
+			walk = function(m)
+				if not flights then return {} end
+				if known[m] == nil then known[m] = Known(m) or false end
+				return { side = side, known = known[m] or nil }
+			end,
+		})
+		if not journey then
 			P.Forget()
+			if map ~= dest.map then
+				return Fail(announce, 'no way found to that continent: no boat or zeppelin your side can take leads there, or the spot is cut off.')
+			end
 			return Fail(announce, 'no way found. The spot may be cut off by something the planner does not know: a lift, a boat, a locked gate.')
 		end
-		local line = P.Line(map, sx, sy, gx, gy, found)
-		local points = {}
-		for i, p in ipairs(line.points) do
-			local x, y = P.WorldOf(map, p[1], p[2])
-			points[i] = { x, y, p[3] }
-		end
-		points[1][1], points[1][2] = px, py
-		local short = math.sqrt((tx - gx) * (tx - gx) + (ty - gy) * (ty - gy)) * 4.1667
-		if short < 8 and #points > 1 then
-			points[#points][1], points[#points][2] = dest.x, dest.y
-		end
-		local flown = {}
-		for i, flight in ipairs(line.flown) do
-			flown[i] = {}
-			for k, id in ipairs(flight) do
-				flown[i][k] = (P.PointName(map, id):match('^[^,]+')) or tostring(id)
-			end
-		end
+		local line = P.JourneyLine(journey)
 		P.Forget()
 		if ns.dest ~= dest then return end        -- the destination changed while this was being found
-		ns.route = { map = map, points = points, seconds = line.seconds, yards = line.yards, swum = line.swum,
-			flown = flown, at = 1, short = short }
+		-- the part on the map you are on is the one followed; the parts on other maps wait their turn
+		local points = line.parts[1].points
+		points[1][1], points[1][2] = px, py
+		local short = math.sqrt((tx - gx) * (tx - gx) + (ty - gy) * (ty - gy)) * 4.1667
+		local last = line.parts[#line.parts].points
+		if short < 8 and #last > 1 then
+			last[#last][1], last[#last][2] = dest.x, dest.y
+		end
+		local parts = {}
+		for n = 2, #line.parts do
+			local part = line.parts[n]
+			if part.map ~= map then
+				local list = parts[part.map]
+				if not list then
+					parts[part.map] = part.points
+				else                                  -- on that map a second time: joined on, the join not drawn
+					part.points[1][3] = 'gap'
+					for _, p in ipairs(part.points) do list[#list + 1] = p end
+				end
+			end
+		end
+		ns.route = { map = map, points = points, parts = parts, seconds = line.seconds, yards = line.yards,
+			swum = line.swum, flown = line.flown, rides = line.rides, at = 1, short = short }
 		Changed()
 		if announce and ns.Get('notify') then Say(ns.route) end
 	end)
@@ -212,7 +230,8 @@ local function NearestOnTrail(route, px, py, from, to)
 	local points = route.points
 	local best, at
 	for i = math.max(1, from), math.min(#points - 1, to) do
-		if points[i + 1][3] ~= 'fly' then
+		local how = points[i + 1][3]
+		if how ~= 'fly' and how ~= 'gap' then
 			local d = ToSegment(px, py, points[i], points[i + 1])
 			if not best or d < best then best, at = d, i end
 		end
@@ -224,18 +243,33 @@ local function Follow()
 	local dest = ns.dest
 	if not dest or job then return end
 	local px, py, map = Place()
-	if not px or map ~= dest.map then return end
-	local dx, dy = px - dest.x, py - dest.y
-	if dx * dx + dy * dy < ARRIVED * ARRIVED then
-		ns.Stop(false)
-		-- (a guide's steps come one after another: no line in chat for each)
-		if ns.Get('notify') and not dest.source then ns.Print('you are there.') end
-		return
+	if not px then return end
+	if map == dest.map then
+		local dx, dy = px - dest.x, py - dest.y
+		if dx * dx + dy * dy < ARRIVED * ARRIVED then
+			ns.Stop(false)
+			-- (a guide's steps come one after another: no line in chat for each)
+			if ns.Get('notify') and not dest.source then ns.Print('you are there.') end
+			return
+		end
 	end
 	if UnitOnTaxi and UnitOnTaxi('player') then return end
 	local route = ns.route
 	if not route then
 		if GetTime() - lastPlan > 10 then ns.Plan(false) end
+		return
+	end
+	if route.map ~= map then
+		-- you have crossed to another map: the part of the journey found for it is followed from here,
+		-- or, where there is none (you went somewhere else), the way is found again
+		local rest = route.parts and route.parts[map]
+		if rest then
+			route.parts[map] = nil
+			route.map, route.points, route.at = map, rest, 1
+			Changed()
+		elseif GetTime() - lastPlan > AGAIN then
+			ns.Plan(false)
+		end
 		return
 	end
 	local off, at = NearestOnTrail(route, px, py, route.at - 2, route.at + 15)
@@ -354,8 +388,14 @@ ns.On('USER_WAYPOINT_UPDATED', function() PinChanged(true) end)
 ns.On('PLAYER_ENTERING_WORLD', function()
 	if not ns.dest then PinChanged(false) end
 end)
+-- Whether a place on another map can be gone to at all: boats and zeppelins are on, and the map is one
+-- there is data for. (Whether a boat your side can take leads there is only known once it is tried.)
+function ns.CanCross(map)
+	return ns.Get('rides') and DATA[map] ~= nil
+end
+
 ns.OnSetting(function(key, value)
-	if key == 'flights' or key == 'knownOnly' then
+	if key == 'flights' or key == 'knownOnly' or key == 'rides' then
 		if ns.dest then ns.Plan(true) end
 	elseif key == 'auto' and value then
 		PinChanged(true)

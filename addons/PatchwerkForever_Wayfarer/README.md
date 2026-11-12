@@ -1,6 +1,6 @@
 # Patchwerk Forever: Wayfarer
 
-A route planner for **World of Warcraft: Forever**. It finds the way to where you are going and draws it on the world map and the minimap: over the ground, through tunnels, over bridges, up lifts and by flight path.
+A route planner for **World of Warcraft: Forever**. It finds the way to where you are going and draws it on the world map and the minimap: over the ground, through tunnels, over bridges, up lifts, by flight path, and by boat and zeppelin to the other continent.
 
 It works on its own. It needs no other addon, Patchwerk Forever included, and takes nothing from one: its map data was worked out from the game's own files.
 
@@ -22,6 +22,7 @@ When a guide and a quest both lead somewhere, the guide goes first; a setting tu
 - **The ground.** Slopes too steep to walk are avoided. Shallow water is waded, deep water is swum only when that is clearly quicker, and a route with a long swim says so.
 - **Tunnels, bridges and gates** found in the game's buildings, the lifts of Thunder Bluff, and a few safe drops.
 - **Flight paths.** It flies when that is quicker than walking, using only your faction's flight points and, unless you say otherwise, only the ones your character has found.
+- **Boats and zeppelins.** It takes one where that is quicker, and to reach another continent: the trail leads to the dock or the tower, shows the course across, and carries on from where you land. Only the ones your side can use. How long you wait for one is not known, so the time given allows for half its round trip.
 - **A wrong turn.** Stray from the trail and a new route is found from where you are.
 
 The chat says how long the route takes and which flights it uses.
@@ -65,7 +66,9 @@ Three actions can be bound to a key or a gamepad button (Options → Keybindings
 
 ## What it does not do yet
 
-- **Other continents.** A destination on another continent gets no route. For a quest, it routes to the game's own next stop on the way when there is one.
+- **Docks and towers.** The trail ends on the ground beside a dock or a zeppelin tower, and a straight line stands in for the walk along the dock or the climb.
+- **Boats that may not run.** The boat and zeppelin lines come from the game's files, which do not say which of them are in service. If the trail leads you to one that never comes, switch off Use Boats And Zeppelins and please report it.
+- **Portals, the Deeprun Tram and hearthstones** are not used.
 - **Inside buildings.** A place on an upper floor or inside a city's buildings (Booty Bay, parts of the capitals) is routed to the nearest ground outside.
 - **Some lifts and flight masters.** The Great Lift and the Undercity's lifts are not known. Flights are not started or ended at Ironforge or the Undercity.
 - **Locked doors** count as open.

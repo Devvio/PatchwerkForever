@@ -7,12 +7,13 @@
 local ADDON, ns = ...
 
 local sqrt, floor, max, min = math.sqrt, math.floor, math.max, math.min
-local COLOUR_OF = { walk = 'trailWalk', link = 'trailLink', fly = 'trailFly' }
+local COLOUR_OF = { walk = 'trailWalk', link = 'trailLink', fly = 'trailFly', ride = 'trailRide' }
 local FLOW = 30               -- pixels a second the pattern flows at 100 %
 
 ns.MEDIA = 'Interface\\AddOns\\' .. ADDON .. '\\Media\\'
 
--- The colour of a stretch reached by walking ('walk'), by a tunnel, lift or drop ('link') or by flying ('fly').
+-- The colour of a stretch reached by walking ('walk'), by a tunnel, lift or drop ('link'), by flying ('fly')
+-- or aboard a boat or zeppelin ('ride'). (A 'gap' is not drawn at all: the two maps leave it out.)
 function ns.TrailColour(how)
 	return ns.RGB(ns.Get(COLOUR_OF[how] or 'trailWalk'))
 end

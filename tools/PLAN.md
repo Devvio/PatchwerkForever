@@ -271,6 +271,37 @@ Reported in-game:
   sparkles both work. So Forever's quests do have marks on the map. Not yet heard, one by one: which
   subtle effects he kept, a quest on the other continent, guide and quest together, the nearest-quest
   choice with nothing under the game's arrow.
+- Boats and zeppelins, and with them routes to another continent (asked for 2026-11-12; version
+  0.10.0): built, passes the checks here. Confirmed in-game by Tyrone (2026-11-12, after a full
+  start): both addons load through the junctions into the repository, and a pin on the other
+  continent gets a route. Not yet heard: an actual ride (boarding, the loading screen, the trail
+  picking up after landing), whether the waits and boarding spots are right, and which of the
+  lines new to Forever really run.
+  - Where they are: in the game's own TaxiPathNode table, like flights. A line that stops (flag 2,
+    with the seconds it waits) is a boat or zeppelin; a line may change map on the way.
+    `python crossings.py` reads them into `world/crossings.bin`: 12 lines, 28 rides. Classic ones:
+    Ratchet to Booty Bay, Orgrimmar to Undercity, Orgrimmar to Grom'gol, Undercity to Grom'gol,
+    Menethil to Theramore, Rut'theran to Auberdine, the Feathermoon ferry. New to Forever: Menethil
+    to Southshore to Auberdine (11167), Auberdine to Stormwind (11616), a boat from near Gadgetzan
+    to "Powderfuse Port" (11391), zeppelins to Zephras Isle from near the Undercity (11398) and from
+    Thunder Bluff (11457). Left out: 295 (the old Menethil to Auberdine line), 436, 312, 314.
+  - Guessed, since the tables do not say: speed 30 yd/s; the wait (half the round trip); which side
+    may ride (the sides of the flight points nearest each stop); where you board (the nearest
+    walkable ground joined to the largest part of the map, within 250 yards, with the walk along
+    the dock or the climb up the tower allowed for); and whether a line runs at all.
+  - `Journey.lua` (game-free, like the planner): walks found by the planner joined by up to two
+    rides, every chain listed with the least it could cost and worked out in that order.
+    `python lua_journeys.py` sets it against a brute-force reckoning with the Python prototype on
+    14 journeys: same rides, costs within 0.02%. `python pack.py crossings` writes `Crossings.lua`
+    into the addon's own folder.
+  - In the addon: `ns.route.parts[map]` holds the part of a journey on another map; the other
+    continent's world map draws it, and after the loading screen it becomes the part followed
+    without a new search. 'ride' and 'gap' join 'walk', 'link' and 'fly' as ways a point is
+    reached. Settings: Use Boats And Zeppelins, Colour: Boats And Zeppelins (71 settings now).
+  - Known weak spots: the Stormwind harbour and Booty Bay stops sit by city floors the planner does
+    not walk on, so a route from them may not be found (Auberdine to Goldshire goes by Menethil);
+    the Alliance has no line to Zephras Isle in the tables; a line the server does not run would
+    send you to an empty dock.
 - Smoothing the trail: done by a separate session on 2026-11-11 in `P.Line` (`Planner.lua`), checked
   again here. The line is straightened where a straight walk stays on the ground, and its corners
   rounded. `python lua_smooth.py` over 87 trips: points 9531 to 3427 (most in one line 958 to 290),
@@ -282,8 +313,8 @@ Not done yet:
 - In-game so far: Tyrone's first try worked (no detail given on which parts he looked at). Not yet
   heard about: the minimap trail turning with the character, a wrong turn, arriving, the settings page,
   the bindings, a route through a lift or a tunnel.
-- Routes across continents (boats, zeppelins); the time left shown on screen. (Destinations from
-  RestedXP steps and from a tracked quest, and the straightening pass: done, see above.)
+- The time left shown on screen. (Destinations from RestedXP steps and from a tracked quest, the
+  straightening pass, and routes across continents by boat and zeppelin: done, see above.)
 - Flight points known: taken from `C_TaxiMap.GetTaxiNodesForMap` on the continent's map (1414, 1415).
   If the game returns nothing there, all of the side's points are used and it says so once.
 - Memory during a search right across a continent on foot is tens of MB for a moment.

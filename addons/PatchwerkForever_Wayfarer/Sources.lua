@@ -12,8 +12,8 @@
 --                         That mark moves by itself to the next objective, and to whoever takes the
 --                         quest in once it is done.
 --
--- Which of the two goes first is a setting. The first that has a place on the continent you are on
--- is the one followed. They are looked at twice a second.
+-- Which of the two goes first is a setting. The first that has a place you can go to (on your
+-- continent, or on another with boats and zeppelins switched on) is the one followed. They are looked at twice a second.
 local ADDON, ns = ...
 
 local EVERY = 0.5         -- seconds between looks
@@ -114,11 +114,11 @@ local function QuestPlaces(id)
 	return place, stop
 end
 
--- The spot to go to for a quest from where you are: the quest itself when it is on your continent,
--- else the game's next stop when that is. Then: map, x, y, and true if it is only a stop on the way.
+-- The spot to go to for a quest from where you are: the quest itself when it is on your continent or
+-- one a boat or zeppelin may lead to, else the game's next stop when that is on yours. Then: map, x, y, and true if it is only a stop on the way.
 local function QuestSpot(id, here)
 	local place, stop = QuestPlaces(id)
-	if place and (here == nil or place[1] == here) then return place[1], place[2], place[3], false end
+	if place and (here == nil or place[1] == here or ns.CanCross(place[1])) then return place[1], place[2], place[3], false end
 	if stop and (here == nil or stop[1] == here) then return stop[1], stop[2], stop[3], true end
 	return nil
 end
@@ -198,7 +198,7 @@ local function Target()
 	for _, name in ipairs(order) do
 		if ns.Get(SETTING[name]) then
 			local map, x, y = FIND[name]()
-			if map and (here == nil or map == here) then return name, map, x, y end
+			if map and (here == nil or map == here or ns.CanCross(map)) then return name, map, x, y end
 		end
 	end
 	return nil
