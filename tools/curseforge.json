@@ -22,6 +22,11 @@
       "slug": "",
       "relations": []
     },
+    "dungeonjournal": {
+      "id": 0,
+      "slug": "",
+      "relations": []
+    },
     "routes": {
       "id": 0,
       "slug": ""

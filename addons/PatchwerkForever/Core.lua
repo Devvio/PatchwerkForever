@@ -28,7 +28,7 @@ local addonName, ns = ...;
 
 -- API: raised when something is added that a part may need (2: the guides service, Guides.lua;
 -- 3: the gathering service, Gather.lua, and a guide step's items and skipping)
-local P = { API = 3, Fixes = {}, Parts = {}, Settings = { list = {}, byKey = {} } };
+local P = { API = 4, Fixes = {}, Parts = {}, Settings = { list = {}, byKey = {} } };
 PatchwerkForever = P;
 ns.P = P;
 
@@ -41,6 +41,7 @@ P.Family = {
 	{ addon = 'PatchwerkForever_Stitch_ConsolePort',  name = 'Patchwerk Forever: Stitch (Console Port)',  needs = 'ConsolePort', what = 'Console Port' };
 	{ addon = 'PatchwerkForever_Stitch_MelloUI',      name = 'Patchwerk Forever: Stitch (MelloUI)',       needs = 'MelloUI',     what = 'MelloUI' };
 	{ addon = 'PatchwerkForever_Stitch_MelloUIRoute', name = 'Patchwerk Forever: Stitch (MelloUI Route)', needs = 'MelloUI',     what = "MelloUI's Route" };
+	{ addon = 'PatchwerkForever_Stitch_DungeonJournal', name = 'Patchwerk Forever: Stitch (Dungeon Journal)', needs = 'ForeverDungeonJournal', what = 'Dungeon Journal' };
 };
 
 local savedLoaded = false;

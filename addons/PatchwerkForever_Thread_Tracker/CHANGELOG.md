@@ -1,5 +1,11 @@
 # Patchwerk Forever: Thread (Tracker)
 
+## 1.1.0
+
+- **A section for each guide.** With a second guide running beside your levelling guide (the Dungeon Journal's quests, through its Stitch), each has its own section. Click the second one's step to route along its list; click again to go back to your main guide. Its right-click menu skips a step or goes back one.
+- "Hide RestedXP Window" now applies only while RestedXP's own guide is listed.
+- Needs **Patchwerk Forever 2.4.0** or later.
+
 ## 1.0.0
 
 The first full release. Everything in 0.9.0 has been played and works.

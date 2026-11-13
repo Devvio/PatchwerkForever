@@ -40,6 +40,7 @@ What the route follows by itself is the main track: your guide when one is runni
 - **A quest you click in Thread (Tracker)** becomes the route, even while a guide is running. Its walking is drawn in a colour of its own, so you can tell a side path from the main track.
 - **The way back is drawn too**: fainter, on from the quest to the step your guide is waiting at.
 - **Click it again**, or hand the quest in, and the main track is followed once more.
+- **A second guide's list** can be chosen the same way: the Dungeon Journal's quests (with its Stitch), clicked in the tracker, are followed stop after stop until the list is done or you go back.
 - **A gathering run** is a side path of the same kind. There is one at a time: choosing a quest ends a run, and starting a run lets the quest go.
 - A map pin of your own still comes before everything.
 

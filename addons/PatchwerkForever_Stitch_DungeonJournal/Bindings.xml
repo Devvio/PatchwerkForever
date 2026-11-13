@@ -1,0 +1,5 @@
+<Bindings>
+	<Binding name="PATCHWERKFOREVER_DUNGEONJOURNAL_ROUTE" header="PATCHWERKFOREVER_DUNGEONJOURNAL" category="ADDONS">
+		PatchwerkForever_Stitch_DungeonJournal_Route()
+	</Binding>
+</Bindings>

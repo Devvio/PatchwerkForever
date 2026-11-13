@@ -442,3 +442,27 @@ the wow wiki."
   guides service does when RestedXP and the journal both have somewhere to go (today the first reader
   wins: likely a setting, or the journal only while its arrow is on); and a note to the author,
   as a courtesy, since the Stitch leans on names inside his addon.
+
+### Built: Stitch (Dungeon Journal) 1.0.0 (2026-11-13)
+
+He said "Yes, build it". `addons/PatchwerkForever_Stitch_DungeonJournal`: `Link.lua` (API 4),
+`Reader.lua`, a binding, `/patchwerk dj`, two settings on the page Stitch: Dungeon Journal.
+
+- **What the reader reads**, each time it is asked, from the running journal: the dungeons ticked in
+  it (`ForeverDungeonJournalCharacterDB.trackedDungeons`), each one's quests
+  (`ForeverDungeonJournal_NS.DB[name].quests`: id, name, faction, repeatable, hideFromMainList,
+  startMap), where a quest starts (`QUEST_START_MAPS`), what must be done first
+  (`QUEST_PREREQ_CHAINS`), where it is handed in (`TurnInSpotFor`), and the spot its own arrow is on
+  (`WaypointArrowTarget`). Whether a quest is held, finished or handed in is asked of the game.
+- **A stop** is where to accept a quest, or where to hand in a finished one. A quest held and not
+  finished has none. Stops are ordered nearest first, each next nearest the one before; the journal's
+  own arrow spot comes first.
+- **Two guides at once** was the thing to settle. The base now holds several readers (`Read(count,
+  id)`, `ReadAll`, `Leads`). The first is the main route. A second is a side list: the tracker gives
+  it a section, a click chooses it (`Choice:Set('guide', id)`), and Routes then follows it as it
+  follows a guide, until it has no more. "Dungeon Journal Before RestedXP" (off) makes it the main one.
+- **Skips** are the Stitch's own and last the session: the journal is not told.
+
+Not done: a note to the journal's author; leading to a dungeon's entrance; quests the journal gives no
+place for. Not seen in the game: any of it with the real journal. The names read are inside someone
+else's addon and may change with any update of it; every read is wary, and a miss gives no list.

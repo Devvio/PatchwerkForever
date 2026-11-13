@@ -40,7 +40,7 @@ local targets = {
 	{ name = 'RXPFrame', wanted = function()
 		if not (ns.Get('on') and ns.Get('guide') and ns.Get('guideHide')) then return false end
 		if ns.Get('hideInstance') and InInstance() then return false end
-		local info = ns.Base.Guides:Read(0)
+		local info = ns.Base.Guides:Read(0, 'rxp')         -- (its own window: only while its own guide is listed)
 		return type(info) == 'table' and info.index ~= nil
 	end },
 }

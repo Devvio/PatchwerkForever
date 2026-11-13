@@ -11,6 +11,7 @@ local P = ns.P;
 -- neither knows the other: the choice is kept here.
 --
 --     PatchwerkForever.Choice:Set('quest', questID)
+--     PatchwerkForever.Choice:Set('guide', readerID)   a second guide's list (Guides.lua), followed as a side path
 --     PatchwerkForever.Choice:Get()        nil, or { kind = 'quest', id = }
 --     PatchwerkForever.Choice:Is(kind, id)
 --     PatchwerkForever.Choice:Clear()      back to the main track
@@ -27,6 +28,8 @@ P.Choice = Choice;
 local chosen;
 
 local function Stands(choice)
+	-- (a guide stands while its reader has something to say)
+	if ( choice.kind == 'guide' ) then return P.Guides:Read(0, choice.id) ~= nil end;
 	if ( choice.kind ~= 'quest' ) then return true end;
 	local find = C_QuestLog and C_QuestLog.GetLogIndexForQuestID;
 	if ( type(find) ~= 'function' ) then return true end;

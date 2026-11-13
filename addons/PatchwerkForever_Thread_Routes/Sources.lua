@@ -22,7 +22,8 @@
 -- That is the main track. A quest you choose (a click on it in the tracker, kept by the base: its
 -- Choice.lua) is a side path and comes before it: the route goes to that quest, drawn in a colour of
 -- its own, and the way on from there back to the guide is drawn fainter. Choosing it again, or
--- handing the quest in, gives the main track back.
+-- handing the quest in, gives the main track back. A second guide's list can be chosen the same
+-- way (the Dungeon Journal's quests): it is then followed step after step, as the main guide is.
 local ADDON, ns = ...
 if not ns.linked then return end
 
@@ -217,13 +218,28 @@ local function Target()
 	local _, _, here = ns.Place()
 	local order = ns.Get('sourceFirst') == 'quest' and QUEST_FIRST or GUIDE_FIRST
 	guide = nil
-	-- a quest you chose comes before the main track, whatever the settings for followed quests say
-	local id = Picked()
-	if id ~= lastPick then
-		lastPick = id
+	-- what you chose comes before the main track, whatever the settings for followed quests say
+	local choice = ns.Base.Choice and ns.Base.Choice:Get()
+	local chosen = choice and (tostring(choice.kind) .. ':' .. tostring(choice.id)) or nil
+	if chosen ~= lastPick then
+		lastPick = chosen
 		pick = { at = 0 }
 		quest.id, quest.dirty = nil, true                 -- (the main track is worked out afresh, not left on the quest you had chosen)
 	end
+	-- a second guide's list you chose (the Dungeon Journal's quests beside your levelling guide):
+	-- followed the way a guide is, step after step, until it has no more or you go back
+	if choice and choice.kind == 'guide' then
+		guide = Guides:Read(ns.Get('rxpAhead') or 0, choice.id)
+		if guide then
+			guide.words = Guides.Words(guide)
+			if guide.map and (here == nil or guide.map == here or ns.CanCross(guide.map)) then
+				return 'rxp', guide.map, guide.x, guide.y, 'guide'
+			end
+			if not guide.map and guide.kind ~= 'place' then return 'rxp', nil, nil, nil, 'guide' end
+		end
+		guide = nil                                       -- (nowhere it can send you from here: the main track keeps the say)
+	end
+	local id = Picked()
 	if id then
 		local now = GetTime()
 		if quest.dirty or now - pick.at > STALE then
@@ -338,17 +354,19 @@ local function Look()
 			ns.FloatStep(guide.words, ns.route and ns.Summary(ns.route) or nil)
 		end
 		-- (the quest being followed anyway, now chosen, or no longer: the same way, in the other colour)
-		if (dest.chosen or false) ~= (picked or false) then
-			dest.chosen = picked or nil
+		if (dest.chosen and true or false) ~= (picked and true or false) then
+			dest.chosen = picked and true or nil
 			if ns.RouteChanged then ns.RouteChanged() end
 		end
-		if picked then LookBack(dest) else LookAhead(dest) end
+		-- (a quest you chose: the way back to the main track; a guide, main or chosen: on through its next steps)
+		if picked == true then LookBack(dest) else LookAhead(dest) end
 		return
 	end
 	local more = guide and GuideMore()
-		or (source == 'quest' and quest.id and { lines = { 'Quest: ' .. Title(quest.id) }, chosen = picked or nil }) or nil
+		or (source == 'quest' and quest.id and { lines = { 'Quest: ' .. Title(quest.id) } }) or nil
+	if more and picked then more.chosen = true end
 	ns.SetDestination(map, x, y, false, false, source, more)
-	if picked then LookBack(ns.dest) else LookAhead(ns.dest) end
+	if picked == true then LookBack(ns.dest) else LookAhead(ns.dest) end
 end
 
 -- Routes to what the guide or a quest gives now (for /thread go with no pin). Returns true if there is one.

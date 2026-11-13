@@ -87,6 +87,16 @@ def seam(x, y):
     return d, 1.0
 
 
+def book(x, y):
+    """Dungeon Journal: an open book, two pages with lines of writing cut out."""
+    d = min(box(x, y, -0.26, 0.0, 0.22, 0.34, 0.05), box(x, y, 0.26, 0.0, 0.22, 0.34, 0.05))
+    cut = 1.0
+    for side in (-0.26, 0.26):
+        for row in (0.18, 0.02, -0.14):
+            cut = min(cut, box(x, y, side, row, 0.13, 0.03, 0.02))
+    return d, cut
+
+
 def gamepad(x, y):
     """Console Port: a controller, with its cross and two buttons cut out."""
     d = box(x, y, 0, 0.07, 0.50, 0.22, 0.20)
@@ -160,6 +170,7 @@ ICONS = {
     "PatchwerkForever_Stitch_ConsolePort":  ((54, 78, 110), (28, 40, 62), gamepad),
     "PatchwerkForever_Stitch_MelloUI":      ((52, 96, 78), (26, 52, 44), bars),
     "PatchwerkForever_Stitch_MelloUIRoute": ((84, 68, 128), (44, 34, 74), road),
+    "PatchwerkForever_Stitch_DungeonJournal": ((118, 62, 54), (62, 30, 26), book),
     "PatchwerkForever_Thread_Routes":     ((42, 100, 118), (20, 54, 68), compass),
     "PatchwerkForever_Thread_Sparkle":    ((122, 58, 96), (66, 28, 54), glints),
     "PatchwerkForever_Thread_Tracker":    ((150, 108, 62), (92, 60, 32), checklist),

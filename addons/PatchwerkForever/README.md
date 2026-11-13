@@ -28,6 +28,7 @@ Fixes and additions for addons you already use. Each needs this base and the add
 |---|---|---|
 | **Patchwerk Forever: Stitch (Console Port)** | Console Port (gamepad) | The game menu button, Forever's own gamepad bindings, the item menu, interact from rings, the bag bar and micro menu, smaller repairs. |
 | **Patchwerk Forever: Stitch (MelloUI Route)** | MelloUI's route planner | Roads ready at login, roads before shortcuts, blocked spots, hearthstone and teleport suggestions, the next guide steps, a quest run. |
+| **Patchwerk Forever: Stitch (Dungeon Journal)** | DungeonJournal | The quests of the dungeons you track in the journal become a list to route through, from one quest giver to the next. |
 | **Patchwerk Forever: Stitch (MelloUI)** | MelloUI | Keeps its game menu button and EllesmereUI's apart; can trim MelloUI to its Route and Quest Tracker. |
 
 Nothing in those addons' own files is changed: a Stitch hooks its addon while the game runs, so that addon's updates don't undo it. **A fix is meant to be temporary.** When the addon fixes the issue itself, the fix is removed here in the next update. If you notice one that has become unnecessary, please report it.

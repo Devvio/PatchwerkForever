@@ -1,7 +1,7 @@
 """Build the addons into the game's AddOns folder.
 
     python build.py                  build every addon into the game
-    python build.py routes           only that one (patchwerk, consoleport, melloui, melloroute, routes, sparkle, tracker)
+    python build.py routes           only that one (patchwerk, consoleport, melloui, melloroute, dungeonjournal, routes, sparkle, tracker)
     python build.py watch            keep running: build again whenever a source file is saved
     python build.py check            say what a build would change, and write nothing
 

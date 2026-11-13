@@ -711,6 +711,57 @@ def guide():
     s.lua.execute("table.insert(STUB.log, 2, STUB.thieves); STUB.watched = { 869, 845, 786 }")
     s.fire("QUEST_ACCEPTED")
 
+    step("a second guide beside the first: its own section; a click chooses its list, a second goes back")
+    s.lua.execute("""
+        STUB.sideAt = 2
+        PatchwerkForever.Guides:Register('side', { name = 'Side List',
+            Read = function(count)
+                if STUB.sideOff then return nil end
+                local info = { guide = 'Dungeon Journal: The Deadmines', index = STUB.sideAt, total = 6, kind = 'accept', key = 'side' .. STUB.sideAt,
+                    lines = { { text = 'Accept: A Job', done = false } }, ahead = {}, after = {}, items = {} }
+                if count > 0 then info.after[1] = { index = STUB.sideAt + 1, kind = 'turnin', lines = { { text = 'Turn in: Another', done = false } } } end
+                return info
+            end,
+            Go = function(index) STUB.sideGo = index; STUB.sideAt = index; return true end })
+    """)
+    s.tick()
+    got = s.show()
+    assert got[:3] == ["# The Barrens 12-14 | Step 1 of 5", "# Dungeon Journal: The Deadmines | Step 2 of 6", "# Quests | 4/25"], got[:3]
+    at = got.index("Step 2")
+    assert got[at:at + 3] == ["Step 2", "  - Accept: A Job", "3. Turn in: Another"], got[at:at + 3]
+    assert "> Step 1" in got, "the main guide is not marked as the one followed"
+    s.click("Step 2")
+    marked = [t for t in s.shown() if t.startswith(">")]
+    assert marked == ["> Step 2"] and Choice.Is(Choice, "guide", "side"), marked
+    s.click("Step 2")
+    assert [t for t in s.shown() if t.startswith(">")] == ["> Step 1"] and Choice.Get(Choice) is None
+    s.click("Step 2", "RightButton")
+    assert s.stub.menu.title == "Dungeon Journal: The Deadmines"
+    assert [e.text for e in s.stub.menu.entries.values()] == ["Route To This List", "Skip Step", "Previous Step"]
+    s.stub.Press("Route To This List")
+    s.turn()
+    assert Choice.Is(Choice, "guide", "side")
+    s.click("Step 2", "RightButton")
+    assert [e.text for e in s.stub.menu.entries.values()][0] == "Stop Routing To This List"
+    s.stub.Press("Stop Routing To This List")
+    s.turn()
+    assert Choice.Get(Choice) is None
+    # a click on one of its later steps goes to that one and chooses the list
+    s.click("3. Turn in: Another")
+    assert s.stub.sideGo == 3 and Choice.Is(Choice, "guide", "side") and "> Step 3" in s.shown(), s.shown()
+    text = s.slash("back")
+    assert s.stub.sideGo == 2 and any("Back to step 2" in t for t in text), text
+    # the main guide's own clicks are as they were
+    s.click("Step 1")
+    assert s.stub.setStep == 2
+    s.slash("back")
+    # its list done: the section goes, and the main guide is the one followed again
+    s.lua.execute("STUB.sideOff = true")
+    s.tick()
+    got = s.shown()
+    assert got[:2] == ["# The Barrens 12-14 | Step 1 of 5", "# Quests | 4/25"] and "> Step 1" in got and Choice.Get(Choice) is None, got[:4]
+    s.chat()
+
     step("RestedXP's own window: left alone until asked, then quiet while the guide is listed")
     window, piece = s.g.RXPFrame, s.stub.rxpPiece
     s.tick()

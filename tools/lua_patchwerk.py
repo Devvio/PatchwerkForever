@@ -405,7 +405,7 @@ def main():
     s = Session()
     s.addon(BASE)
     G = s.g.PatchwerkForever.Guides
-    assert s.g.PatchwerkForever.API == 3
+    assert s.g.PatchwerkForever.API == 4
     assert G.Read(G, 2) is None, "a guide with no guide addon running"
     assert G.Go(G, None, 3) is False, "a guide moved with no guide running"
     # a made-up guide addon's reader, behind one that fails: the failure is said once and the next is asked
@@ -425,6 +425,23 @@ def main():
     text = s.chat_raw()
     assert len(text) == 1 and "Broken Guides failed and was skipped" in text[0], text
     assert G.Go(G, info, 4) is False, "a reader with no way to move its guide said it had moved"
+    # more than one guide at a time: each can be asked by name; all of them, the main one first; one that
+    # says it leads is asked before the rest
+    s.lua.execute("""
+        PatchwerkForever.Guides:Register('second', { name = 'Second List', Leads = function() return STUB.secondLeads end,
+            Read = function() if STUB.secondOff then return nil end return { index = 1, total = 2, kind = 'accept', key = 's1', lines = {}, ahead = {} } end })
+    """)
+    assert G.Read(G, 0).source == "madeup" and G.Read(G, 0, "second").reader == "Second List" and G.Read(G, 0, "nobody") is None
+    assert [i.source for i in G.ReadAll(G, 0).values()] == ["madeup", "second"]
+    s.stub.secondLeads = True
+    assert G.Read(G, 0).source == "second" and [i.source for i in G.ReadAll(G, 0).values()] == ["second", "madeup"]
+    s.stub.secondLeads = False
+    # a guide chosen as a side path stands while its reader has something to say
+    Ch = s.g.PatchwerkForever.Choice
+    assert Ch.Set(Ch, "guide", "second") and Ch.Is(Ch, "guide", "second")
+    s.stub.secondOff = True
+    assert Ch.Get(Ch) is None, "a guide with nothing left to say is still the choice"
+    s.chat_raw()
     # RestedXP, with a stand-in for what it keeps as it runs
     s = Session()
     s.lua.execute("""
@@ -526,6 +543,130 @@ def main():
     Ch.Set(Ch, "quest", 870)
     Ch.Clear(Ch)
     assert Ch.Get(Ch) is None
+
+    step("the Dungeon Journal's quests as a list: stops in a short order, read from the journal as it runs")
+    JOURNAL = """
+        local function spot(wx, wy, label)        -- a place on Kalimdor's map, as the journal keeps one
+            return { mapID = 1414, x = (17066.6 - wy) / (17066.6 + 19733.21), y = (12799.9 - wx) / (12799.9 + 11733.3), label = label }
+        end
+        STUB.flagged, STUB.complete, STUB.turnins = {}, {}, {}
+        C_QuestLog.IsQuestFlaggedCompleted = function(id) return STUB.flagged[id] == true end
+        C_QuestLog.IsComplete = function(id) return STUB.complete[id] == true end
+        ForeverDungeonJournal_NS = {
+            DB = {
+                ['The Deadmines'] = { quests = {
+                    { id = 214, name = 'Red Silk Bandanas', faction = 'Alliance' },
+                    { id = 5001, name = 'Horde Job', faction = 'Horde' },
+                    { id = 5002, name = 'Deep Job', faction = 'Both' },
+                    { id = 5003, name = 'Second Job', faction = 'Both' },
+                    { id = 5004, name = 'Chained Job', faction = 'Neutral' },
+                    { id = 5005, name = 'Again And Again', faction = 'Both', repeatable = true },
+                    { id = 5006, name = 'No Place', faction = 'Both' },
+                    'not a quest',
+                } },
+                ['Coming Soon'] = { previewOnly = true, quests = { { id = 1, name = 'Hidden', faction = 'Both' } } },
+            },
+            QUEST_START_MAPS = {
+                [5001] = spot(-100, -100, 'Thrall'), [5002] = spot(-1000, -1000), [5003] = spot(-300, -300),
+                [5010] = spot(-400, 0, 'A Scout'),
+            },
+            QUEST_PREREQ_CHAINS = { [5004] = { { id = 5010, name = 'First Things' } } },
+            TurnInSpotFor = function(quest) return STUB.turnins[quest.id] end,
+            WaypointArrowTarget = function() return STUB.arrow end,
+        }
+        STUB.spot = spot
+        STUB.turnins[5002] = spot(-50, 0, 'The Foreman')
+        ForeverDungeonJournalCharacterDB = { trackedDungeons = { 'The Deadmines', 'Coming Soon', 'Not A Dungeon' } }
+        -- you hold the Deep Job and have finished it
+        STUB.QuestAt(5002, 'Deep Job', 1, -1000, -1000)
+        STUB.complete[5002] = true
+    """
+    DJ = "PatchwerkForever_Stitch_DungeonJournal"
+    s = Session(running=["ForeverDungeonJournal"])
+    s.lua.execute(JOURNAL)
+    base = s.addon(BASE)
+    env = s.addon(DJ)
+    assert env.linked, "the Dungeon Journal part did not join"
+    s.login()
+    assert s.chat() == []
+    P = s.g.PatchwerkForever
+    G, Ch = P.Guides, P.Choice
+    info = G.Read(G, 2)
+    assert info.source == "fdj" and info.reader == "Dungeon Journal" and info.guide == "Dungeon Journal: The Deadmines", (info.source, info.guide)
+    # (the finished quest's turn-in is nearest; the other side's quest, the repeatable one and the one
+    # with no place are left out; five quests in all, none handed in)
+    assert (info.index, info.total, info.kind) == (1, 5, "turnin"), (info.index, info.total, info.kind)
+    assert [l.text for l in info.lines.values()] == ["Turn in: Deep Job", "The Foreman"]
+    assert (round(info.x), round(info.y), info.map) == (-50, 0, 1), (info.x, info.y)
+    after = [(a.index, a.lines[1].text) for a in info.after.values()]
+    assert after == [(2, "Accept: Horde Job"), (3, "Accept: Second Job")], after
+    assert [(a.index, round(a.x)) for a in info.ahead.values()] == [(2, -100), (3, -300)]
+    # all of it: the quest that needs another first sends you to that one
+    info = G.Read(G, 9)
+    assert [a.lines[1].text for a in info.after.values()][-1] == "Accept: First Things (needed for Chained Job)"
+    assert len(info.after) == 3
+    # skipping a stop, taking the skip back, bringing a later stop to the front
+    assert G.Go(G, info, info.index + 1) is True
+    assert G.Read(G, 0).lines[1].text == "Accept: Horde Job"
+    info = G.Read(G, 0)
+    assert G.Go(G, info, info.index - 1) is True and G.Read(G, 0).lines[1].text == "Turn in: Deep Job"
+    info = G.Read(G, 9)
+    assert G.Go(G, info, info.index + 2) is True
+    info = G.Read(G, 9)
+    assert info.lines[1].text == "Accept: Second Job", "a later stop was not brought to the front"
+    # as you play: a quest accepted has no stop until it is done; one handed in counts as done
+    s.lua.execute("STUB.QuestAt(5003, 'Second Job', 1, -300, -300)")
+    assert G.Read(G, 0).lines[1].text == "Turn in: Deep Job"
+    s.lua.execute("STUB.QuestGone(5002); STUB.flagged[5002] = true")
+    info = G.Read(G, 9)
+    assert (info.index, info.total) == (2, 5) and info.lines[1].text == "Accept: Horde Job", (info.index, info.lines[1].text)
+    # the journal's own map arrow comes first, and cannot be skipped from here
+    s.lua.execute("STUB.arrow = STUB.spot(-2000, -2000); STUB.arrow.questTitle = 'The Unsent Letter'; STUB.arrow.turnIn = true")
+    info = G.Read(G, 1)
+    assert info.kind == "place" and info.lines[1].text == "Turn in: The Unsent Letter" and round(info.x) == -2000
+    assert info.after[1].lines[1].text == "Accept: Horde Job"
+    assert G.Go(G, info, info.index + 1) is False
+    s.lua.execute("STUB.arrow = nil")
+    # its page, its two settings, and the binding: the list chosen as a side path, and let go again
+    assert list(s.stub.pages.keys()) == ["Stitch: Dungeon Journal"], list(s.stub.pages.keys())
+    intro = list(s.stub.intros.values())[0]
+    assert intro.voice.startswith("The big book knows who has the jobs."), intro.voice
+    assert sorted(x.name for x in s.stub.settings.values()) == ["Dungeon Journal Before RestedXP", "Route Dungeon Journal Quests"]
+    assert G.readers.fdj.Leads() is False
+    P.SetSetting(P, "djLeads", True)
+    assert G.readers.fdj.Leads() is True
+    P.SetSetting(P, "djLeads", False)
+    s.g.PatchwerkForever_Stitch_DungeonJournal_Route()
+    assert Ch.Is(Ch, "guide", "fdj")
+    s.g.PatchwerkForever_Stitch_DungeonJournal_Route()
+    assert Ch.Get(Ch) is None
+    text = s.slash("dj")
+    assert Ch.Is(Ch, "guide", "fdj") and any("routing through the quests" in t for t in text), text
+    # every quest handed in: no list, and the choice lets go by itself
+    s.lua.execute("for _, id in ipairs({ 5001, 5003, 5004, 5006 }) do STUB.flagged[id] = true end")
+    assert G.Read(G, 0) is None and Ch.Get(Ch) is None
+    s.g.PatchwerkForever_Stitch_DungeonJournal_Route()
+    assert any("nothing to route to" in t for t in s.chat())
+    # switched off; a journal changed beyond recognition; no journal at all: no list, no error
+    s.lua.execute("STUB.flagged = {}")
+    assert G.Read(G, 0) is not None
+    P.SetSetting(P, "djList", False)
+    assert G.Read(G, 0) is None
+    P.SetSetting(P, "djList", True)
+    s.lua.execute("ForeverDungeonJournal_NS.DB['The Deadmines'].quests = 'moved'; ForeverDungeonJournal_NS.QUEST_START_MAPS = 7")
+    assert G.Read(G, 0) is None
+    s.lua.execute("ForeverDungeonJournal_NS.DB = 'gone'")
+    assert G.Read(G, 0) is None
+    s.lua.execute("ForeverDungeonJournal_NS = nil")
+    assert G.Read(G, 0) is None
+    s.g.PatchwerkForever_Stitch_DungeonJournal_Route()
+    assert any("Dungeon Journal is not running" in t for t in s.chat())
+    # the journal running without this part: the base says which addon to get, once
+    s = Session(running=["ForeverDungeonJournal"])
+    s.addon(BASE)
+    s.login()
+    text = s.chat()
+    assert len(text) == 1 and "Patchwerk Forever: Stitch (Dungeon Journal)" in text[0], text
 
     step("every part carries the same joining file")
     for part in PARTS[1:]:

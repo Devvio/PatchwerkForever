@@ -22,6 +22,7 @@ Version 1.0. One piece is marked experimental and starts switched off: dungeon o
 
 ## What it lists
 
+- **A second list beside your guide**, with Patchwerk Forever: Stitch (Dungeon Journal): the quests of the dungeons you track in DungeonJournal, in a section of their own. Click it to route along it; click again to go back to your guide.
 - **Your guide's steps**, when a guide addon runs (RestedXP): the step you are on with its lines, the next few steps dimmed under it, and in the heading the guide's name, "step 34 of 120" and a thin bar.
 - **The quests you track**, under the zone each belongs to. The zone you are in comes first, and within a zone the nearest quest. Other orders are a setting: one list nearest first, ready ones first, or as the game has them.
 - **For each quest**: its level in the game's colour for its difficulty, its kind (elite, dungeon, daily, group), how many yards away it is, and its objectives. A count goes from red to green as it fills. A timed quest shows the time left.

@@ -15,6 +15,7 @@ One parent and two tracks. Each addon is its own download (a CurseForge project 
 | `addons/PatchwerkForever` | **Patchwerk Forever**, the base. | nothing |
 | `addons/PatchwerkForever_Stitch_ConsolePort` | **Stitch (Console Port)**: fixes for Console Port on Forever. | the base, Console Port |
 | `addons/PatchwerkForever_Stitch_MelloUIRoute` | **Stitch (MelloUI Route)**: additions to MelloUI's route planner. | the base, MelloUI |
+| `addons/PatchwerkForever_Stitch_DungeonJournal` | **Stitch (Dungeon Journal)**: the quests of the dungeons tracked in DungeonJournal as a list to route through. Reads the journal as it runs; holds none of its data. | the base, DungeonJournal |
 | `addons/PatchwerkForever_Stitch_MelloUI` | **Stitch (MelloUI)**: the game menu button fix and the trim to Route and the Quest Tracker. | the base, MelloUI |
 | `addons/PatchwerkForever_Thread_Routes` | **Thread (Routes)**: a route planner with its own map data, and herb and ore spots. | the base |
 | `addons/PatchwerkForever_Thread_Routes_Kalimdor`, `_EasternKingdoms`, `_ZephrasIsle` | Routes' map data, one folder a continent, loaded on demand. Written by `tools/pack.py`; not edited by hand. They ship in Routes' zip. | Thread (Routes) |

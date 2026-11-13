@@ -382,6 +382,34 @@ def main():
     stub.QuestGone(873)
     stub.Tick(); frames()
     assert Choice.Get(Choice) is None and ns.dest.source == "rxp" and near(*RATCHET), "a quest handed in is still followed"
+    # a second guide's list chosen as a side path (the Dungeon Journal's quests): followed step after step
+    # in the chosen colour, its own next steps drawn on; nothing left to say, and the main guide leads again
+    lua.execute("""
+        STUB.side = { { -600, -2800 }, { -1994, -156 } }
+        PatchwerkForever.Guides:Register('side', { name = 'Side List', Read = function(count)
+            local now = STUB.side[1]
+            if not now then return nil end
+            local info = { index = 1, total = 2, kind = 'accept', key = 'side' .. #STUB.side, map = 1, x = now[1], y = now[2],
+                lines = { { text = 'Accept: A Job', done = false } }, ahead = {}, after = {} }
+            local nxt = STUB.side[2]
+            if nxt and count > 0 then info.ahead[1] = { index = 2, kind = 'turnin', lines = {}, map = 1, x = nxt[1], y = nxt[2] } end
+            return info
+        end })
+    """)
+    assert ns.dest.source == "rxp" and not ns.dest.chosen and near(*RATCHET)
+    Choice.Set(Choice, "guide", "side")
+    stub.Tick(); frames()
+    assert ns.dest.source == "rxp" and ns.dest.chosen and near(*FIELD), "a guide you chose was not followed"
+    assert list(ns.dest.lines.values()) == ["Accept: A Job"]
+    stub.Tick(); frames()
+    assert ns.ahead and len(ns.ahead.legs) == 1, "the chosen guide's next step is not drawn on"
+    lua.execute("table.remove(STUB.side, 1)")                 # (its step done: on to its next)
+    stub.Tick(); frames()
+    assert ns.dest.chosen and near(*CAMP), "the chosen guide did not move on to its next step"
+    lua.execute("STUB.side = {}")                             # (its list done)
+    stub.Tick(); frames()
+    assert Choice.Get(Choice) is None and ns.dest.source == "rxp" and not ns.dest.chosen and near(*RATCHET), "the main guide did not lead again"
+    chat("quest")
     # the quest the game's arrow is on, followed by the settings, then chosen: the same way, marked as chosen
     setting("sourceFirst", "quest")
     stub.focus = 870

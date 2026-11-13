@@ -1,5 +1,11 @@
 # Patchwerk Forever
 
+## 2.4.0
+
+- **More than one guide at a time.** The guides service can hold a levelling guide and a second list beside it (the Dungeon Journal's quests, through its new Stitch). The first is the main route; another is followed while you select it.
+- Knows about **Patchwerk Forever: Stitch (Dungeon Journal)**, and tells you once if DungeonJournal is running without it.
+- For addon authors: `Guides:Read(count, id)`, `Guides:ReadAll(count)`, a reader's `Leads`, and `Choice:Set('guide', id)`. The base's API number is now 4.
+
 ## 2.3.0
 
 - **Reset To Defaults.** Each Thread tool has a button at the foot of its first options page that puts all of its options back to their defaults, after asking. Positions and saved data are not changed.

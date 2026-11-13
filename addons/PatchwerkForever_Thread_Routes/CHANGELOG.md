@@ -15,6 +15,11 @@
 - The spots show where things grow, not whether one is there now.
 - With Thread (Tracker) installed, the runs are listed and started from its Gathering section.
 
+## 0.15.0 (beta)
+
+- **A second guide's list can be selected as a side route**, as a quest can: the route follows it step after step in the selected-route colour, with its next steps drawn fainter, until it has no more or you go back to your main guide. This is what leads you through the Dungeon Journal's quests (with Patchwerk Forever: Stitch (Dungeon Journal)).
+- Needs **Patchwerk Forever 2.4.0** or later.
+
 ## 0.13.0 (beta)
 
 - The guide is now read by the Patchwerk Forever base (its new guides service), which other tools can use too. **Needs Patchwerk Forever 2.1.0 or later.** Nothing changes in how a guide is followed.

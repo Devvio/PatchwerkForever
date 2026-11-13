@@ -14,8 +14,15 @@ local P = ns.P;
 --
 --     PatchwerkForever.Guides:Register(id, { name = 'RestedXP', Read = function(count) ... end })
 --     PatchwerkForever.Guides:Read(count)
+--     PatchwerkForever.Guides:Read(count, id)     what that one reader says
+--     PatchwerkForever.Guides:ReadAll(count)      every reader with a guide, the leading one first
 --
--- Read gives what the first reader with a guide running says, or
+-- More than one may be running: a levelling guide, and a list of
+-- dungeon quests beside it. The first with something to say is the
+-- main one, in the order they joined; a reader that has a Leads
+-- function is asked first while that returns true.
+--
+-- Read gives what the main reader with a guide running says, or
 -- nil. `count` is how many of the steps after the one you are on
 -- are wanted. What is given:
 --     source, reader   the reader's id and the guide addon's name
@@ -55,22 +62,53 @@ end
 
 local reported = {};
 
-function Guides:Read(count)
-	for _, id in ipairs(Guides.order) do
-		local reader = Guides.readers[id];
-		local ok, info = pcall(reader.Read, tonumber(count) or 0);
-		if not ok then
-			-- (a guide addon changed under its reader: said once, and the next reader is asked)
-			if not reported[id] then
-				reported[id] = true;
-				P:Print(('The reader for %s failed and was skipped: %s'):format(reader.name or id, tostring(info)))
-			end
-		elseif type(info) == 'table' then
-			info.source, info.reader = id, reader.name or id;
-			return info;
+-- What one reader says, or nil.
+local function Ask(id, count)
+	local reader = Guides.readers[id];
+	if not reader then return nil end;
+	local ok, info = pcall(reader.Read, tonumber(count) or 0);
+	if not ok then
+		-- (a guide addon changed under its reader: said once, and the next reader is asked)
+		if not reported[id] then
+			reported[id] = true;
+			P:Print(('The reader for %s failed and was skipped: %s'):format(reader.name or id, tostring(info)))
 		end
+		return nil;
+	end
+	if ( type(info) ~= 'table' ) then return nil end;
+	info.source, info.reader = id, reader.name or id;
+	return info;
+end
+
+-- The readers in the order they are asked: the ones that say they lead first, then as they joined.
+local function Order()
+	local first, rest = {}, {};
+	for _, id in ipairs(Guides.order) do
+		local leads = Guides.readers[id].Leads;
+		local ok, yes = false, false;
+		if ( type(leads) == 'function' ) then ok, yes = pcall(leads) end;
+		if ( ok and yes ) then first[#first + 1] = id else rest[#rest + 1] = id end;
+	end
+	for _, id in ipairs(rest) do first[#first + 1] = id end
+	return first;
+end
+
+function Guides:Read(count, source)
+	if ( source ~= nil ) then return Ask(source, count) end;
+	for _, id in ipairs(Order()) do
+		local info = Ask(id, count);
+		if info then return info end;
 	end
 	return nil;
+end
+
+function Guides:ReadAll(count)
+	local all = {};
+	for _, id in ipairs(Order()) do
+		local info = Ask(id, count);
+		if info then all[#all + 1] = info end;
+	end
+	return all;
 end
 
 -- Has the guide move to the step numbered `index`. info: what Read gave.

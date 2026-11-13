@@ -7,6 +7,7 @@
     python release.py routes        Patchwerk Forever: Thread (Routes) (four folders: the tool and its map data)
     python release.py sparkle       Patchwerk Forever: Thread (Sparkle)
     python release.py tracker       Patchwerk Forever: Thread (Tracker)
+    python release.py dungeonjournal   Patchwerk Forever: Stitch (Dungeon Journal)
     python release.py               all of them
 
 Checks the addon's folders, then writes into its release folder in the repository
@@ -91,6 +92,16 @@ PROJECTS = {
         "summary": "Additions to MelloUI's Route on WoW Forever: roads ready at login, roads before shortcuts, "
                    "blocked spots, hearthstone and teleport suggestions, next guide steps, a quest run. "
                    "Needs Patchwerk Forever.",
+    },
+    "dungeonjournal": {
+        "main": "PatchwerkForever_Stitch_DungeonJournal",
+        "more": [],
+        "requires": ["PatchwerkForever"],
+        "with": "DungeonJournal",
+        "stale": PRIVATE + ("wayfinder", "wayfarer"),
+        "needs": ("README.md", "CHANGELOG.md", "LICENSE", "Bindings.xml", "Media/icon.tga", "Link.lua"),
+        "summary": "For DungeonJournal on WoW Forever: the quests of the dungeons you track become a list to route "
+                   "through, from one quest giver to the next. Needs Patchwerk Forever.",
     },
     "routes": {
         "main": "PatchwerkForever_Thread_Routes",
@@ -356,9 +367,9 @@ def listing(main, out):
 # the tag a project's release commit gets, and whether its CurseForge project is there already
 TAGS = {"patchwerk": "patchwerk-forever", "consoleport": "stitch-consoleport", "melloui": "stitch-melloui",
         "melloroute": "stitch-melloroute", "routes": "thread-routes", "sparkle": "thread-sparkle",
-        "tracker": "thread-tracker"}
+        "tracker": "thread-tracker", "dungeonjournal": "stitch-dungeonjournal"}
 EXISTS = {"patchwerk"}
-ORDER = ["consoleport", "melloui", "melloroute", "routes", "sparkle", "tracker", "patchwerk"]
+ORDER = ["consoleport", "melloui", "melloroute", "dungeonjournal", "routes", "sparkle", "tracker", "patchwerk"]
 
 
 def checklist():

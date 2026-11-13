@@ -58,7 +58,7 @@ Everything here is a proposal for him to pick from and reorder. Sizes are rough:
 
 | # | Feature | Where | Size | Needs |
 |---|---|---|---|---|
-| N1 | **Routing from the Dungeon Journal**: its to-do list and map pointing read as it runs; Routes leads to each quest giver and the tracker lists them | a new Stitch | M | see `tools/PLAN-tracker.md`: the shape of two of its functions, a rule for when RestedXP and the journal both lead, a note to its author |
+| N1 (built 2026-11-13, see below) | **Routing from the Dungeon Journal**: its to-do list and map pointing read as it runs; Routes leads to each quest giver and the tracker lists them | a new Stitch | M | see `tools/PLAN-tracker.md`: the shape of two of its functions, a rule for when RestedXP and the journal both lead, a note to its author |
 | N2 | **Hearthstone and teleports as route options**: the planner may say "hearth, then walk" when that is faster | Routes | M | cooldowns and bind location, which the game gives |
 | N3 | **A quest run**: the best order through all tracked quests, shown as one trip | Routes, with a tracker section | M | - |
 | N4 | **Mark a stretch as blocked**: a binding that closes the trail ahead so the route goes round | Routes | S | - |
@@ -79,3 +79,10 @@ Everything here is a proposal for him to pick from and reorder. Sizes are rough:
 4. **Small polish in one pass**: T3, T4, T5, S1, S2, A1, A5.
 5. **The larger new things, his pick**: N5 (places you know) and N3 (quest run) build on what Routes
    already does; N2 changes what a route can be.
+
+## Built since this was written
+
+- **N1, 2026-11-13: Patchwerk Forever: Stitch (Dungeon Journal) 1.0.0**, with base 2.4.0, Routes 0.15.0
+  and Tracker 1.1.0. Passes the checks against a stand-in journal; not yet tried in the game with the
+  real one. What was settled: the journal's list is a second guide beside RestedXP and is followed
+  only while selected (a setting makes it the main route); nothing was sent to its author yet.

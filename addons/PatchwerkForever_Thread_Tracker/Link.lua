@@ -10,7 +10,7 @@ local ADDON, ns = ...
 
 local Base = rawget(_G, 'PatchwerkForever')
 if not (type(Base) == 'table' and type(Base.Tool) == 'function' and Base:Tool(ADDON, ns, {
-	api = 3,                                        -- the base's API this tool was written for (3: guide steps to go to, gathering)
+	api = 4,                                        -- the base's API this tool was written for (3: guide steps to go to, gathering)
 	name = 'Tracker',
 	colour = 'ff5fe0c8',
 	saved = 'PatchwerkForever_Thread_TrackerDB',
