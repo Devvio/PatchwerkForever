@@ -19,7 +19,7 @@ One parent and two tracks. Each addon is its own download (a CurseForge project 
 | `addons/PatchwerkForever_Thread_Routes` | **Thread (Routes)**: a route planner with its own map data, and herb and ore spots. | the base |
 | `addons/PatchwerkForever_Thread_Routes_Kalimdor`, `_EasternKingdoms`, `_ZephrasIsle` | Routes' map data, one folder a continent, loaded on demand. Written by `tools/pack.py`; not edited by hand. They ship in Routes' zip. | Thread (Routes) |
 | `addons/PatchwerkForever_Thread_Sparkle` | **Thread (Sparkle)**: a sparkle and a name on things you can use. | the base |
-| `addons/PatchwerkForever_Thread_Tracker` | **Thread (Tracker)**: a quest tracker of our own. Being built, a milestone at a time: `tools/PLAN-tracker.md`. | the base |
+| `addons/PatchwerkForever_Thread_Tracker` | **Thread (Tracker)**: a quest tracker of our own: quests by zone, the guide's steps, item buttons, recipes, gathering. 0.9, everything for 1.0 built and waiting to be played: `tools/PLAN-tracker.md`. | the base |
 
 Each addon has its own README, changelog and licence in its folder.
 
@@ -77,7 +77,7 @@ The tools need Python 3 and the package `lupa` (a Lua 5.1 interpreter). Run them
 | `python luacheck.py <addon folder>` | checks that every Lua file of an addon parses |
 | `python lua_patchwerk.py` | runs the base and the Stitches through pretend logins: a Stitch's settings, saved data and load order; what someone who had 1.x is told; a Stitch with no base |
 | `python lua_shell.py` | runs the base with both Thread tools through a pretend play session against a stand-in for the game |
-| `python lua_tracker.py` | runs the base with Thread (Tracker) through pretend logins against a stand-in quest log and a stand-in for the game's own tracker |
+| `python lua_tracker.py` | runs the base with Thread (Tracker) through pretend logins against a stand-in quest log, guide, party and secure buttons (which it fails on any touch of during a fight) |
 | `python lua_trips.py 1 horde` | checks Routes' planner against the prototype, trip by trip (`0 alliance` for the Eastern Kingdoms) |
 | `python lua_journeys.py` | checks Routes' journeys by boat and zeppelin against a brute-force reckoning |
 | `python build_check.py` | tries the build tool on a scratch copy: junctions, changed and removed files, broken Lua, retired folders, your own art, watching |

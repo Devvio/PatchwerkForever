@@ -109,8 +109,8 @@ PROJECTS = {
         "requires": ["PatchwerkForever"],
         "stale": PRIVATE + ("wayfinder", "pathfinder", "wayfarer"),
         "needs": ("README.md", "CHANGELOG.md", "LICENSE", "Bindings.xml", "Media/icon.tga", "Link.lua"),
-        "summary": "A quest tracker for WoW Forever: the quests you track and what each still asks of you, in a "
-                   "list you can move, size and colour. Needs Patchwerk Forever.",
+        "summary": "A quest tracker for WoW Forever: your quests by zone with distances, your guide's steps, "
+                   "quest item buttons, recipes and a gathering list. Needs Patchwerk Forever.",
     },
     "sparkle": {
         "main": "PatchwerkForever_Thread_Sparkle",

@@ -1,17 +1,26 @@
 ## Interface: 16001
 ## Title: Patchwerk Forever: Thread (Tracker)
-## Notes: A quest tracker of our own: the quests you track with what each still asks of you, in a list you can move, size and colour. The game's own tracker is kept quiet while it is shown. Needs Patchwerk Forever. Type /tracker.
+## Notes: A quest tracker of our own: your quests by zone with distances, your guide's steps, buttons for quest items, tracked recipes and a gathering list, in a list you can move, size and colour. Needs Patchwerk Forever. Type /tracker.
 ## Author: Tyrone
-## Version: 0.1.0
+## Version: 0.9.0
 ## Group: PatchwerkForever
 ## X-Category: Quests & Leveling
 ## X-License: MIT
 ## IconTexture: Interface\AddOns\PatchwerkForever_Thread_Tracker\Media\icon
+## X-Patchwerk-Voice: The list that cannot be lost. Patchwerk checked. Twice.
 ## Dependencies: PatchwerkForever
 ## SavedVariables: PatchwerkForever_Thread_TrackerDB
 
 Link.lua
 Core.lua
 Frame.lua
+Places.lua
 Quests.lua
+Actions.lua
+Guide.lua
+Items.lua
+Recipes.lua
+Party.lua
+Gather.lua
+Dungeon.lua
 Quiet.lua

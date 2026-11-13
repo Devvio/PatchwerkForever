@@ -136,15 +136,28 @@ local function Read(count)
 	local info = {
 		guide = type(name) == 'string' and name or nil, index = index, total = #steps,
 		kind = kind, lines = lines, map = map, x = x, y = y, key = Key(index, map, x, y), ahead = {},
+		after = {}, items = {},
 	};
+	-- the items RestedXP shows a button for on this step
+	if ( type(step.activeItems) == 'table' ) then
+		for id, on in pairs(step.activeItems) do
+			if ( on and type(id) == 'number' ) then info.items[#info.items + 1] = id end;
+		end
+		table.sort(info.items)
+	end
 
 	local skipped = type(data.stepSkip) == 'table' and data.stepSkip or {};
 	for i = n + 1, math.min(#steps, n + LOOK_AHEAD) do
-		if ( #info.ahead >= count ) then break end;
+		if ( #info.ahead >= count and #info.after >= count ) then break end;
 		local s = steps[i];
 		if ( type(s) == 'table' and not s.completed and not skipped[i] ) then
 			local k, l, p = Describe(s);
-			if p[1] then
+			if ( #info.after < count ) then
+				info.after[#info.after + 1] = { index = i, kind = k, lines = l };
+			end
+			if ( #info.ahead >= count ) then
+				-- (enough places ahead already)
+			elseif p[1] then
 				info.ahead[#info.ahead + 1] = { index = i, kind = k, lines = l, map = p[1][1], x = p[1][2], y = p[1][3] };
 			elseif Guides.AWAY[k] then
 				info.ahead[#info.ahead + 1] = { index = i, kind = k, lines = l };
@@ -154,4 +167,15 @@ local function Read(count)
 	return info;
 end
 
-Guides:Register('rxp', { name = 'RestedXP', Read = Read });
+-- Has RestedXP move to a step, as a click in its own window does (its SetStep). Only ever called
+-- because the player clicked.
+local function Go(index)
+	local rxp = rawget(_G, 'RXP');
+	local steps = type(rxp) == 'table' and type(rxp.currentGuide) == 'table' and rxp.currentGuide.steps;
+	if not ( type(steps) == 'table' and type(rxp.SetStep) == 'function' ) then return false end;
+	if ( index < 1 or index > #steps ) then return false end;
+	rxp.SetStep(index)
+	return true;
+end
+
+Guides:Register('rxp', { name = 'RestedXP', Read = Read, Go = Go });

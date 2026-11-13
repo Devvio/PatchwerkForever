@@ -1,18 +1,28 @@
 -- Thread (Tracker): the frame, and how what is in it is laid out.
 --
 -- The tracker is one frame holding sections one under another: the guide's steps, the quests you
--- track, and in time more. A section is a heading (its name, a short note on the right, a row of
--- stitches under it) and under that its blocks. A block is a title and its lines: a quest and its
--- objectives. Everything drawn is kept and used again, so drawing the list anew makes nothing new.
+-- track, recipes, gathering. A section is a heading (its name, a short note on the right, a row of
+-- stitches under it, and for a guide a thin bar of how far along you are) and under that its blocks.
+-- A block is a title and its lines: a quest and its objectives. Everything drawn is kept and used
+-- again, so drawing the list anew makes nothing new.
 --
 -- Another file adds a section with
 --     ns.AddSection(id, order, read)
--- where read() gives { title =, note =, blocks = { { key =, title =, r =, g =, b =, lines = { { text =, done = } } } } },
--- or nothing when the section has nothing to show. Sections are drawn in the order of `order`.
+-- where read() gives
+--     { title =, note =, bar = 0 to 1 or nil,
+--       blocks = { { key =, title =, r =, g =, b =, note =, lines = { { text =, done =, r =, g =, b = } },
+--                    click = function(button), mark = true, small = true } } }
+-- or nothing when the section has nothing to show. Of a block: `note` is written on the right of
+-- its title (a distance); `click` makes it take the mouse and is called with 'LeftButton' or
+-- 'RightButton'; `mark` draws a bar beside it (the quest being followed); `small` makes it a quiet
+-- heading inside the section (a zone's name). Sections are drawn in the order of `order`.
 -- ns.Refresh() asks for the list to be drawn again; it is done at most ten times a second.
 --
+-- A block whose words change since it was last drawn glows for a moment. The frame can dim in a
+-- fight, dim while the mouse is elsewhere, and hide in dungeons: three settings, all off to begin with.
+--
 -- The frame is as tall as what is in it, up to a height you set; past that the list scrolls with the
--- mouse wheel. Clicking a heading folds its section. The frame lets clicks through everywhere else.
+-- mouse wheel. Clicking a heading folds its section.
 --
 -- Kept in PatchwerkForever_Thread_TrackerDB: place = { point, relative point, x, y } once you have
 -- moved it, and folded = { [section] = true }.
@@ -23,13 +33,20 @@ local PAD = 8                 -- room round the edge
 local GAP = 6                 -- between two blocks
 local INDENT = 10             -- of a block's lines under its title
 local EVERY = 0.1             -- seconds between two drawings, at least
+local TICK = 1                -- seconds between two drawings while something in it changes by itself (a distance, a timer)
 local WHEEL = 40              -- pixels a notch of the mouse wheel scrolls
 local STITCH, STITCH_GAP = 7, 5
+local GLOW = 0.9              -- seconds a changed block glows
+local AWAKE = 4               -- seconds it stays bright after a change, when it dims while the mouse is elsewhere
 
 local sections = {}
+local drawn = {}              -- functions called after each drawing (the item strip)
 local frame, back, body, content, handle
 local heads, blocks = {}, {}
 local scroll, dirty, last, unlocked = 0, true, 0, false
+local seen = {}               -- [section .. block key] = its words when last drawn
+local changed = 0             -- when something in it last changed
+local alpha = 1
 
 function ns.AddSection(id, order, read)
 	sections[#sections + 1] = { id = id, order = order, read = read }
@@ -38,6 +55,11 @@ end
 
 function ns.Refresh()
 	dirty = true
+end
+
+-- fn(frame) is called after each drawing; frame is nil while the tracker is not shown.
+function ns.OnDrawn(fn)
+	drawn[#drawn + 1] = fn
 end
 
 local function Saved()
@@ -61,6 +83,7 @@ local function Font(fs, size)
 		fs:SetShadowColor(0, 0, 0, 0.9)
 	end
 end
+ns.Font = Font
 
 local function Writing(parent, justify)
 	local fs = parent:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
@@ -118,13 +141,14 @@ local function Make()
 	handle.words = Writing(handle, 'CENTER')
 	handle.words:SetPoint('CENTER', handle, 'CENTER', 0, 0)
 	Font(handle.words, 11)
-	handle.words:SetText('drag to move   /tracker lock')
+	handle.words:SetText('Drag to move   /tracker lock')
 	handle:RegisterForDrag('LeftButton')
 	handle:SetScript('OnDragStart', function() frame:StartMoving() end)
 	handle:SetScript('OnDragStop', function()
 		frame:StopMovingOrSizing()
 		local point, _, relative, x, y = frame:GetPoint(1)
 		if point then Saved().place = { point, relative, x, y } end
+		ns.Refresh()
 	end)
 	handle:Hide()
 	Place()
@@ -142,6 +166,7 @@ local function Head(i)
 		head.note = Writing(head, 'RIGHT')
 		head.note:SetPoint('RIGHT', head, 'RIGHT', 0, 1)
 		head.stitches = {}
+		head.bar = head:CreateTexture(nil, 'ARTWORK')
 		head:SetScript('OnClick', function(self)
 			local folded = Saved().folded
 			folded[self.id] = not folded[self.id] or nil
@@ -173,11 +198,30 @@ end
 local function Block(i)
 	local block = blocks[i]
 	if not block then
-		block = CreateFrame('Frame', nil, content)
-		block:EnableMouse(false)
+		block = CreateFrame('Button', nil, content)
+		block:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
 		block.title = Writing(block, 'LEFT')
 		block.title:SetPoint('TOPLEFT', block, 'TOPLEFT', 0, 0)
+		block.note = Writing(block, 'RIGHT')
+		block.note:SetPoint('TOPRIGHT', block, 'TOPRIGHT', 0, 0)
 		block.lines = {}
+		block.mark = block:CreateTexture(nil, 'ARTWORK')
+		block.mark:SetPoint('TOPLEFT', block, 'TOPLEFT', -5, 0)
+		block.over = block:CreateTexture(nil, 'BACKGROUND')
+		block.over:SetAllPoints(block)
+		block.over:SetColorTexture(1, 1, 1, 0.07)
+		block.over:Hide()
+		block.glow = block:CreateTexture(nil, 'BACKGROUND')
+		block.glow:SetAllPoints(block)
+		block.glow:Hide()
+		block:SetScript('OnClick', function(self, button)
+			local data = self.data
+			if data and data.click then ns.Try('a click on the tracker', data.click, button, self) end
+		end)
+		block:SetScript('OnEnter', function(self)
+			if self.data and self.data.click then self.over:Show() end
+		end)
+		block:SetScript('OnLeave', function(self) self.over:Hide() end)
 		blocks[i] = block
 	end
 	return block
@@ -185,8 +229,14 @@ end
 
 -- Writes a block's title and lines into it. Returns how tall it came out.
 local function Fill(block, data, width, size)
-	Font(block.title, size + 1)
-	block.title:SetWidth(width)
+	block.data = data
+	local small = data.small
+	Font(block.title, small and size - 1 or size + 1)
+	Font(block.note, size - 1)
+	block.note:SetText(data.note or '')
+	block.note:SetTextColor(0.7, 0.7, 0.7)
+	local noteWide = (data.note and data.note ~= '') and (#data.note * (size - 1) * 0.6 + 6) or 0
+	block.title:SetWidth(math.max(40, width - noteWide))
 	block.title:SetText(data.title or '')
 	block.title:SetTextColor(data.r or 1, data.g or 0.82, data.b or 0)
 	local h = Tall(block.title, size + 1)
@@ -215,16 +265,43 @@ local function Fill(block, data, width, size)
 		h = h + 2 + Tall(fs, size)
 	end
 	for i = #lines + 1, #block.lines do block.lines[i]:Hide() end
+	if data.mark then
+		local hr, hg, hb = ns.RGB(ns.Get('lookHeader'))
+		block.mark:SetColorTexture(hr, hg, hb, 0.95)
+		block.mark:SetSize(2, h)
+		block.mark:Show()
+	else
+		block.mark:Hide()
+	end
+	block:EnableMouse(data.click ~= nil)
+	if not data.click then block.over:Hide() end
 	return h
+end
+
+-- What a block says, to tell whether it has changed since it was last drawn.
+local function Words(data)
+	local parts = { data.title or '' }
+	for _, line in ipairs(data.lines or {}) do
+		parts[#parts + 1] = tostring(line.text) .. (line.done and '*' or '')
+	end
+	return table.concat(parts, '\n')
 end
 
 ---------------------------------------------------------------------------
 -- Drawing the list
 ---------------------------------------------------------------------------
+local wantsTick = false
+
+local function After(shown)
+	for _, fn in ipairs(drawn) do
+		ns.Try('after drawing the tracker', fn, shown and frame or nil)
+	end
+end
+
 local function Render()
-	if not ns.Get('on') then
+	if not ns.Get('on') or (ns.Get('hideInstance') and IsInInstance and IsInInstance()) then
 		if frame then frame:Hide() end
-		return
+		return After(false)
 	end
 	if not frame then Make() end
 	local width, size = ns.Get('width') or 260, ns.Get('fontSize') or 12
@@ -232,9 +309,12 @@ local function Render()
 	local folded = Saved().folded
 	local hr, hg, hb = ns.RGB(ns.Get('lookHeader'))
 	local y, usedHeads, usedBlocks = PAD, 0, 0
+	local now, live = GetTime(), {}
+	wantsTick = false
 	for _, section in ipairs(sections) do
 		local data = ns.Try('the ' .. section.id .. ' list', section.read)
 		if type(data) == 'table' and type(data.blocks) == 'table' and #data.blocks > 0 then
+			if data.tick then wantsTick = true end
 			usedHeads = usedHeads + 1
 			local head = Head(usedHeads)
 			head.id = section.id
@@ -242,12 +322,28 @@ local function Render()
 			Font(head.note, size - 1)
 			head.title:SetText(data.title or section.id)
 			head.title:SetTextColor(hr, hg, hb)
-			head.note:SetText((data.note or '') .. (folded[section.id] and '  +' or ''))
+			local note = (data.note or '') .. (folded[section.id] and '  +' or '')
+			head.note:SetText(note)
 			head.note:SetTextColor(hr * 0.8, hg * 0.8, hb * 0.8)
+			-- (a long name, a guide's, is cut short of the note beside it, not written over it)
+			head.title:SetWordWrap(false)
+			head.title:SetWidth(math.max(40, inner - (note ~= '' and (#note * (size - 1) * 0.6 + 8) or 0)))
 			head:ClearAllPoints()
 			head:SetPoint('TOPLEFT', content, 'TOPLEFT', PAD, -y)
 			head:SetSize(inner, size + 6)
 			Stitch(head, inner, hr, hg, hb)
+			if data.bar then
+				local part = math.max(0.02, math.min(1, data.bar))
+				local br, bg, bb = ns.RGB(ns.Get('lookGuide'))
+				head.bar:SetColorTexture(br, bg, bb, 0.9)
+				head.bar:SetSize(inner * part, 2)
+				head.bar:ClearAllPoints()
+				head.bar:SetPoint('TOPLEFT', head, 'BOTTOMLEFT', 0, -4)
+				head.bar:Show()
+				y = y + 4
+			else
+				head.bar:Hide()
+			end
 			head:Show()
 			y = y + size + 6 + 6
 			if not folded[section.id] then
@@ -259,17 +355,29 @@ local function Render()
 					block:SetPoint('TOPLEFT', content, 'TOPLEFT', PAD, -y)
 					block:SetSize(inner, h)
 					block:Show()
-					y = y + h + GAP
+					y = y + h + (each.small and 2 or GAP)
+					-- a block whose words have changed since it was last drawn glows for a moment
+					local key = section.id .. '\n' .. tostring(each.key or each.title)
+					local words = Words(each)
+					live[key] = words
+					if seen[key] and seen[key] ~= words and not each.small then
+						changed = now
+						if ns.Get('flash') then block.glowAt = now end
+					end
 				end
 			end
 			y = y + 2
 		end
 	end
+	seen = live
 	for i = usedHeads + 1, #heads do heads[i]:Hide() end
-	for i = usedBlocks + 1, #blocks do blocks[i]:Hide() end
+	for i = usedBlocks + 1, #blocks do
+		blocks[i]:Hide()
+		blocks[i].glowAt, blocks[i].data = nil, nil
+	end
 	if usedHeads == 0 then
 		frame:Hide()
-		return
+		return After(false)
 	end
 	local total = y + PAD - 2
 	local tall = math.min(total, ns.Get('height') or 450)
@@ -284,6 +392,7 @@ local function Render()
 	back:SetColorTexture(0, 0, 0, (ns.Get('back') or 25) / 100)
 	if unlocked then handle:Show() else handle:Hide() end
 	frame:Show()
+	After(true)
 end
 
 -- (for the checks) what is on screen: the headings and blocks in use, as plain text
@@ -295,13 +404,22 @@ function ns.Shown()
 	end
 	for _, block in ipairs(blocks) do
 		if block:IsShown() then
-			out[#out + 1] = block.title:GetText() or ''
+			local note = block.note:GetText()
+			out[#out + 1] = (block.data and block.data.mark and '> ' or '') .. (block.title:GetText() or '')
+				.. ((note and note ~= '') and (' | ' .. note) or '')
 			for _, fs in ipairs(block.lines) do
 				if fs:IsShown() then out[#out + 1] = '  ' .. (fs:GetText() or '') end
 			end
 		end
 	end
 	return out
+end
+
+-- (for the checks) the block shown whose title holds these words
+function ns.BlockOf(words)
+	for _, block in ipairs(blocks) do
+		if block:IsShown() and (block.title:GetText() or ''):find(words, 1, true) then return block end
+	end
 end
 
 ---------------------------------------------------------------------------
@@ -312,26 +430,27 @@ function ns.Unlock(on)
 	if on == nil then on = not unlocked end
 	unlocked = on and true or false
 	if unlocked and not ns.Get('on') then
-		ns.Print('the tracker is switched off: /tracker on shows it.')
+		ns.Print('The tracker is disabled. Type /tracker on to enable it.')
 		unlocked = false
 		return
 	end
-	ns.Print(unlocked and 'drag it by the bar along its top. /tracker lock fixes it there.' or 'fixed where it is.')
+	ns.Print(unlocked and 'Unlocked. Drag the bar above the tracker to move it, then /tracker lock.' or 'Locked.')
 	Render()
 end
 
 function ns.ResetPlace()
 	Saved().place = nil
 	if frame then Place() end
-	ns.Print('back under the minimap.')
+	ns.Print('Position reset.')
+	ns.Refresh()
 end
 
 -- Folds every section up; with all folded already, opens them all.
 function ns.Fold()
 	local folded = Saved().folded
 	local open = false
-	for _, section in ipairs(sections) do
-		if not folded[section.id] then open = true end
+	for _, head in ipairs(heads) do                -- (only the sections on screen count: one with nothing to show is not "open")
+		if head:IsShown() and not folded[head.id] then open = true end
 	end
 	for _, section in ipairs(sections) do
 		folded[section.id] = open or nil
@@ -340,20 +459,55 @@ function ns.Fold()
 end
 
 ---------------------------------------------------------------------------
--- When it is drawn
+-- When it is drawn, and how bright
 ---------------------------------------------------------------------------
+-- How bright the tracker should be now: full, or dimmed in a fight, or dimmed while the mouse is
+-- elsewhere and nothing in it has just changed.
+local function Bright()
+	local low = (ns.Get('fadeTo') or 35) / 100
+	if ns.Get('fadeCombat') and InCombatLockdown() then return low end
+	if ns.Get('fadeIdle') then
+		local over = frame.IsMouseOver and frame:IsMouseOver()
+		if not over and GetTime() - changed > AWAKE then return low end
+	end
+	return 1
+end
+
 local driver = CreateFrame('Frame')
-driver:SetScript('OnUpdate', function()
-	if not dirty then return end
+driver:SetScript('OnUpdate', function(_, elapsed)
 	local now = GetTime()
-	if now - last < EVERY then return end
-	dirty, last = false, now
-	ns.Try('the tracker', Render)
+	if wantsTick and now - last >= TICK then dirty = true end
+	if dirty and now - last >= EVERY then
+		dirty, last = false, now
+		ns.Try('the tracker', Render)
+	end
+	if not (frame and frame:IsShown()) then return end
+	-- its brightness, eased toward what is wanted
+	local want = Bright()
+	if alpha ~= want then
+		local step = (elapsed or 0.02) * 3
+		alpha = alpha < want and math.min(want, alpha + step) or math.max(want, alpha - step)
+		frame:SetAlpha(alpha)
+	end
+	-- the glow of blocks that have just changed
+	for _, block in ipairs(blocks) do
+		if block.glowAt then
+			local t = (now - block.glowAt) / GLOW
+			if t >= 1 or not block:IsShown() then
+				block.glowAt = nil
+				block.glow:Hide()
+			else
+				local r, g, b = ns.RGB(ns.Get('lookHeader'))
+				block.glow:SetColorTexture(r, g, b, 0.38 * (1 - t))
+				block.glow:Show()
+			end
+		end
+	end
 end)
 
 for _, event in ipairs({ 'PLAYER_ENTERING_WORLD', 'QUEST_LOG_UPDATE', 'QUEST_WATCH_LIST_CHANGED', 'QUEST_WATCH_UPDATE',
 	'QUEST_ACCEPTED', 'QUEST_REMOVED', 'QUEST_TURNED_IN', 'UNIT_QUEST_LOG_CHANGED', 'PLAYER_LEVEL_UP',
-	'ZONE_CHANGED_NEW_AREA', 'UI_SCALE_CHANGED' }) do
+	'ZONE_CHANGED_NEW_AREA', 'ZONE_CHANGED', 'SUPER_TRACKING_CHANGED', 'GROUP_ROSTER_UPDATE', 'UI_SCALE_CHANGED' }) do
 	ns.Try('listening for ' .. event, ns.On, event, ns.Refresh)
 end
 ns.OnSetting(function() ns.Refresh() end)

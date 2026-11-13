@@ -255,3 +255,151 @@ when he says so.
 After 4 it is a better tracker than the one it replaces for everyday questing; 5 is the riskiest;
 8 and 9 are the largest and could each be left to a 1.1 if the week of play is wanted sooner. That is
 his to decide when they come up.
+
+## Version 1, as built (2026-11-13)
+
+Tyrone's word after the interview: "approved, lets build the entirety, then I can test and advise from
+there." So steps 2 to 9 of the table above were built in one go, as tracker 0.9.0 on base 2.2.0 (API 3)
+and Routes 0.14.0. **None of it has been in the game yet.** It passes the checks here, which play it
+against stand-ins.
+
+| Step | What was built | Where |
+|---|---|---|
+| 2 | The guide section: the step, the steps after dimmed, name, "step n of N", a bar. RestedXP's window made quiet with a switch (off to begin with). | tracker `Guide.lua`, `Quiet.lua`; the reader's new `after` list |
+| 3 | Clicks: follow (a second click takes the arrow off), shift to read, a right-click menu (follow, read, share, stop tracking, abandon). A click on a guide step skips or goes to it; `/tracker back`. | `Actions.lua`, `Guide.lua`; the base's `Guides:Go` |
+| 4 | Order by zone (yours first, nearest first) and three other orders; the ready group; distance; kind; a timed quest's clock; counts coloured by progress; a bar beside the quest the game's arrow is on. | `Quests.lua`, `Places.lua` |
+| 5 | The item strip: eight secure buttons made at load, placed against the screen, never touched in a fight; the guide step's items after the quests'; a binding that clicks a ninth, unseen button holding the nearest quest's item. | `Items.lua`, `Bindings.xml` |
+| 6 | Tracked recipes with what they need and what you have. | `Recipes.lua` |
+| 7 | Follow the nearest quest (off to begin with); a flash on a quest that changes; three fades (off to begin with); who in the party has a quest, and progress between two trackers. | `Actions.lua`, `Frame.lua`, `Party.lua` |
+| 8 | Gathering: in Routes the runs (`any`, `kind`, `round`, on to the next at each spot, `/thread gather`); in the base a `Gather` service; in the tracker the section. | Routes `Gather.lua`, base `Gather.lua`, tracker `Gather.lua` |
+| 9 | A dungeon's stages from `C_Scenario`: off to begin with and marked untried. | `Dungeon.lua` |
+
+Settings: 43, on five pages (Thread: Tracker, Tracker: Quests, Tracker: Guide, Tracker: More, Tracker: Look).
+
+Choices made while building, open to change:
+
+- **Version 0.9.0**, not 1.0: his own bar for 1.0 is every feature seen working, a week of play, and
+  working with nothing else installed.
+- **Sharing party progress starts ticked.** It sends the quest's number and a percentage to the party
+  only. Without it the party's progress, which he asked for, cannot be shown at all. A switch turns it off.
+- **A click on the guide's step skips it** (he chose that), so a stray click can skip a step:
+  `/tracker back` undoes it, and a switch turns clicks on steps off.
+- **The binding never uses the guide's item**, only a quest's: a hearthstone on a quest-item key would
+  be a bad surprise.
+- **The item strip does not dim or follow the tracker while it is dragged.** It is placed again when
+  the drag ends.
+- **Opening a quest, a recipe or the abandon question is refused in a fight**, with a line of chat,
+  so as not to set off a blocked action.
+- **The mark beside a quest** is the game's arrow only. With Routes following the nearest quest by
+  itself (no arrow), nothing is marked; ticking "Follow The Nearest Quest By Itself" makes the two agree.
+
+What only the game can show, to be tried one by one:
+
+- The item buttons: that a click uses the item, that the binding does (key and gamepad), that nothing
+  is blocked in a fight, and where the strip stands beside the tracker at his UI scale.
+- The menu (`MenuUtil`), reading a quest (`QuestUtil.OpenQuestDetails`), sharing, and that abandon
+  asks first.
+- Distances: that the game marks each quest on its map as the stand-in does; quests with no mark show none.
+- The kind tag (`QuestUtilsOverrides.GetQuestTagText`) and the zone headings as his quest log has them.
+- The guide section with real RestedXP wording; that a click skips a step (`RXP.SetStep`); whether
+  RestedXP's window stays invisible or RestedXP makes it visible again (it is looked at every three seconds).
+- Party lines, and progress between two trackers (needs a second player running it).
+- Recipes: what Forever gives for a recipe's reagents.
+- Gathering in the tracker and `/thread gather`: which professions the game says he has, and how a
+  run feels with real spots.
+- A dungeon's stages: whether Forever's dungeons say anything through `C_Scenario` at all.
+- The fades, and how the list wraps and looks with everything in it.
+
+### First play, 2026-11-13
+
+Tyrone: "list works and well so far. clicking on the quest doesnt switch the tracking." The click moved the
+game's arrow, and Routes put the guide before any quest, so nothing changed. He set the order he wants:
+the guide, when there is one, is the main route; selecting a quest highlights the path to it, the same
+with gathering; clicking it a second time resets to the main track.
+
+Built the same day (not yet in the game when written):
+
+- The base keeps the choice (`Choice.lua`: `Set`, `Get`, `Is`, `Clear`). A chosen quest stands until
+  cleared or the quest leaves the log. One side path at a time with a gathering run.
+- Routes follows a chosen quest before the main track, whatever its settings for quests say; draws its
+  walking in a colour of its own (`trailChosen`); and draws the way from the quest on to the guide's
+  step fainter, found ahead of time so going back is instant.
+- The tracker's click sets and clears the choice (and the game's arrow with it). The bar beside a
+  block marks what is followed: the guide's step, the chosen quest, or the run.
+
+My reading of "highlight": the chosen path becomes the route, in its own colour, with the main track
+kept in sight as the fainter way back. Not built: both whole paths drawn from where you stand at once.
+
+He also asked for the options pages to be assessed and made "a little more elaborate", with "an
+immersive feel". Assessment and a proposal were given the same day; nothing of it is built until he
+has seen the proposal.
+
+### The options pages, dressed (2026-11-13)
+
+He said "Yes, build it" to the mock-up. Built the same day, in the base (2.2.0), so every addon of the
+family gets it:
+
+- **A front page** (`Front.lua`), drawn by us inside the game's options window
+  (`Settings.RegisterCanvasLayoutCategory`): his banner picture across the top
+  (`Media/banner.tga`, made from `art/PatchwerkForever/listing/banner.png` by `tools/art.py`), the
+  name and a line in Patchwerk's voice on its dark side, "What is sewn on" (every part with picture,
+  version, a line from Patchwerk and an Open button), the missing parts greyed, the base's switch.
+- **Two rows of our own** for the other pages (`Look.lua`, `Look.xml`): an intro (picture, the
+  page's name in the game's storybook lettering, a line in Patchwerk's voice, stitches) and a
+  stitched heading. Where the game does not know them, the plain pages are used.
+- **What Patchwerk says** of an addon is the `X-Patchwerk-Voice` line of its TOC; of a tool's other
+  pages, a `voice` entry in its settings list.
+- **Sentence case** for setting names, done when shown (`ns.Sentence` in `Look.lua`; one constant
+  puts them back).
+- **Fewer pages**: Sparkle's five look pages are one (Sparkle: Looks); Routes' pages are named
+  Routes: Trail and Routes: Step Text. Thirteen pages under the first, where there were seventeen.
+
+Passes here against the stand-in, which makes each row from its mixin and opens the front page.
+What only the game can show: that the two row templates load and sit right in the list; how the
+front page lays out at his window size; that the banner draws; that the storybook font
+(`Fonts\MORPHEUS.TTF`) is there; that Console Port's cursor reaches the Open buttons and the tick box.
+
+### Plain, standard wording (2026-11-13)
+
+Tyrone: "we need to use simple language which everyone can understand, at least in english, such as
+changing the font size ... either we change it to be more patchwerk, or more easy to understand
+standard way of other addons. i.e whats the best practice here". The setting names had been written in
+a plain-words style of mine ("Size Of The Writing", "Tallest It Grows", "Stepping Back"), which read
+as neither.
+
+The practice followed from here on, for anything the player reads in the game:
+
+- **Labels, tooltips, menus, headings, chat lines and bindings use the words the game and other
+  addons use**: Enable, Show, Hide, Lock, Reset Position, Scale, Font Size, Opacity, Width, Max
+  Height, Color, combat, instance, turn in, node, default tracker. Title Case for labels, as the
+  game's own options have them. American spelling in what the player reads (Color), as the game has.
+- **Patchwerk's voice is kept to places made for it**: the line at the top of each options page,
+  the front page, the listings. Never a label or a tooltip.
+- **A tooltip says what the option does in a sentence**, then any limit worth knowing.
+
+Done for every setting of the Tracker, Routes and Sparkle, the base's switch, the tracker's menus,
+chat lines, headings and bindings, and then (he said "Yes, reword them") for the chat lines, command
+help and binding names of Routes and Sparkle. Not done: the Stitches' settings (mostly in standard
+words already), the READMEs' prose, and comments in the code.
+
+## After the tracker: routing from the Dungeon Journal's quest to-do list
+
+Asked for by Tyrone on 2026-11-13, while the above was being built: "another feature to add here, but
+would be another addon. is routing based on dungeon journals quest todo list".
+
+How I read it: the addon ForeverDungeonJournal keeps a to-do list of the quests for a dungeon. A small
+addon of ours reads that list as it runs and hands it to the base's guides service as one more reader,
+so Thread (Routes) leads to the next quest on it and Thread (Tracker) lists it, as both do for RestedXP.
+Nothing of the journal is changed or copied.
+
+Not looked at yet, and to be done first:
+
+- Which track. It reads someone else's addon, so by the rule (Stitch is for third-party addons, Thread
+  depends on none) it is a **Stitch**, or a reader file inside the base like RestedXP's. To ask him.
+- How the journal keeps its list while it runs: where the quests are, whether each has a place or
+  only a quest number, and whether done ones are marked.
+- Its licence, before anything of it is read closely.
+- Whether "routing" means to the quest giver, to the dungeon's entrance, or through the list in the
+  best order. To ask him.
+- Whether the guides service needs a second reader to be heard while RestedXP is running too: today
+  the first reader with a guide wins.

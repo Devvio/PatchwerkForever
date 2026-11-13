@@ -1,0 +1,16 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<!-- Rows of ours for the game's options pages. What each holds is made in Look.lua (its OnLoad);
+	     the game reads the height from here. -->
+	<Frame name="PatchwerkForeverIntroTemplate" mixin="PatchwerkForeverIntroMixin" virtual="true">
+		<Size y="84"/>
+		<Scripts>
+			<OnLoad method="OnLoad"/>
+		</Scripts>
+	</Frame>
+	<Frame name="PatchwerkForeverHeaderTemplate" mixin="PatchwerkForeverHeaderMixin" virtual="true">
+		<Size y="44"/>
+		<Scripts>
+			<OnLoad method="OnLoad"/>
+		</Scripts>
+	</Frame>
+</Ui>

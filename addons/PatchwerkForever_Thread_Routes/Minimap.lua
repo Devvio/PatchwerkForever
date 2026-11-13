@@ -171,7 +171,7 @@ local function Trail()
 			local bx, by = spot(i + 1)
 			local cx, cy, ex, ey = InCircle(ax, ay, bx, by, edge)
 			if cx and points[i + 1][3] ~= 'gap' then
-				r, g, b = ns.TrailColour(points[i + 1][3])
+				r, g, b = ns.TrailColour(points[i + 1][3], follow and ns.dest and ns.dest.chosen)
 				ns.Stroke(pen, cx, cy, ex, ey, line, dot)
 			end
 		end

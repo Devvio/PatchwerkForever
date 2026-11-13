@@ -10,55 +10,144 @@ ns.TITLE = 'Patchwerk Forever: Thread (Tracker)'
 -- One entry a setting, in the order they are shown. The base makes the pages from this list and
 -- says what each kind of entry becomes (its Tools.lua). page: the page it is on (none: the first,
 -- "Thread: Tracker"). parent: greyed out while that tick box is off.
+--
+-- What starts unticked: anything that changes something of the game's or of another addon's by
+-- itself (moving the game's arrow, hiding RestedXP's window), the three ways of stepping back, and
+-- the dungeon stages, which have not been seen in a dungeon yet.
+local QUESTS, GUIDE, MORE, LOOK = 'Tracker: Quests', 'Tracker: Guide', 'Tracker: More', 'Tracker: Appearance'
+
 ns.settings = {
-	{ key = 'on', default = true, name = 'Show The Tracker',
-		desc = 'A list of the quests you track, with what each still asks of you. Unticked, it is gone and the game\'s own tracker is as it was.' },
-	{ key = 'quiet', default = true, name = 'Hide The Game\'s Own Tracker', parent = 'on',
-		desc = 'While this tracker is shown, the game\'s own is made invisible and lets clicks through, so you do not see every quest twice. It is not removed: unticking this brings it back.' },
-	{ key = 'quietInstance', default = true, name = 'But Not In Dungeons And Raids', parent = 'quiet',
-		desc = 'Inside a dungeon, a raid or a battleground the game\'s own tracker is let back, because it shows things there that this one does not: a dungeon\'s stages, timers, scores.' },
-	{ key = 'levels', default = true, name = 'Quest Levels',
-		desc = 'Write a quest\'s level before its name.' },
-	{ key = 'doneLines', default = true, name = 'Objectives Already Done',
-		desc = 'Keep an objective in the list, dimmed, once it is done. Unticked, it goes as soon as it is done.' },
+	{ header = true, name = 'General' },
+	{ key = 'on', default = true, name = 'Enable Tracker',
+		desc = 'Show the Patchwerk quest tracker. When disabled, the default quest tracker is used.' },
+	{ key = 'quiet', default = true, name = 'Hide Default Quest Tracker', parent = 'on',
+		desc = 'Hide the default quest tracker while this one is shown, so quests are not listed twice. Disabling this option brings it back.' },
+	{ key = 'quietInstance', default = true, name = 'Keep Default Tracker In Instances', parent = 'quiet',
+		desc = 'Show the default tracker in dungeons, raids and battlegrounds, where it displays stage objectives, timers and scores.' },
+	{ header = true, name = 'Size' },
 	{ key = 'width', default = 260, min = 180, max = 500, step = 10, name = 'Width',
-		desc = 'How wide the tracker is.' },
-	{ key = 'height', default = 450, min = 150, max = 1000, step = 25, name = 'Tallest It Grows',
-		desc = 'The tracker is as tall as what is in it, up to this; past it, the list scrolls with the mouse wheel.' },
-	{ header = true, name = 'Its Place' },
-	{ button = 'Move', name = 'Move It With The Mouse', click = function() ns.Unlock() end,
-		desc = 'Shows a bar along the tracker\'s top to drag it by. Press the button again, or type /tracker lock, to fix it there.' },
-	{ button = 'Reset', name = 'Put It Back', click = function() ns.ResetPlace() end,
-		desc = 'Puts the tracker back where it began, under the minimap.' },
+		desc = 'Width of the tracker.' },
+	{ key = 'height', default = 450, min = 150, max = 1000, step = 25, name = 'Max Height',
+		desc = 'Maximum height of the tracker. A longer list scrolls with the mouse wheel.' },
+	{ header = true, name = 'Position' },
+	{ button = 'Unlock', name = 'Unlock Position', click = function() ns.Unlock() end,
+		desc = 'Show a drag bar above the tracker so you can move it. Click again, or type /tracker lock, to lock it in place.' },
+	{ button = 'Reset', name = 'Reset Position', click = function() ns.ResetPlace() end,
+		desc = 'Move the tracker back to its default position under the minimap.' },
+	{ header = true, name = 'Fading' },
+	{ key = 'fadeCombat', default = false, name = 'Fade In Combat',
+		desc = 'Fade the tracker while you are in combat.' },
+	{ key = 'fadeIdle', default = false, name = 'Fade When Not Hovered',
+		desc = 'Fade the tracker unless the mouse is over it or something in it has just changed.' },
+	{ key = 'fadeTo', default = 35, min = 10, max = 90, step = 5, name = 'Faded Opacity',
+		desc = 'Opacity of the tracker while it is faded, in percent.' },
+	{ key = 'hideInstance', default = false, name = 'Hide In Instances',
+		desc = 'Hide the tracker in dungeons, raids and battlegrounds.' },
+
+	-- the quests
+	{ page = QUESTS, voice = 'So many jobs. Patchwerk does the near one first.' },
+	{ page = QUESTS, header = true, name = 'Quest List' },
+	{ page = QUESTS, key = 'quests', default = true, name = 'Show Quests',
+		desc = 'List your tracked quests and their objectives.' },
+	{ page = QUESTS, key = 'order', default = 'zone', name = 'Sort Order',
+		choices = { { 'zone', 'By zone (current zone first)' }, { 'near', 'By distance' },
+			{ 'ready', 'Completed first, then by zone' }, { 'game', 'Default order' } },
+		desc = 'How quests are sorted.' },
+	{ page = QUESTS, key = 'readyGroup', default = true, name = 'Group Completed Quests',
+		desc = 'Move quests that are ready to turn in to a separate group at the bottom of the list. Your tracked quests are not changed.' },
+	{ page = QUESTS, header = true, name = 'Quest Details' },
+	{ page = QUESTS, key = 'levels', default = true, name = 'Show Quest Level',
+		desc = 'Show the quest level before its name.' },
+	{ page = QUESTS, key = 'kinds', default = true, name = 'Show Quest Type',
+		desc = 'Show the quest type after its name: elite, dungeon, raid, daily or group. Timed quests always show the time left.' },
+	{ page = QUESTS, key = 'distance', default = true, name = 'Show Distance',
+		desc = 'Show the distance to each quest, in yards.' },
+	{ page = QUESTS, key = 'progress', default = true, name = 'Color Objectives By Progress',
+		desc = 'Color counted objectives (4/10) from red through yellow to green as they fill.' },
+	{ page = QUESTS, key = 'doneLines', default = true, name = 'Show Completed Objectives',
+		desc = 'Keep completed objectives in the list, dimmed. When disabled, they are removed as soon as they are done.' },
+	{ page = QUESTS, key = 'flash', default = true, name = 'Flash On Progress',
+		desc = 'Briefly highlight a quest when its progress changes.' },
+	{ page = QUESTS, header = true, name = 'Party' },
+	{ page = QUESTS, key = 'party', default = true, name = 'Show Party Members On Quest',
+		desc = 'Show which party members are on each quest.' },
+	{ page = QUESTS, key = 'partyShare', default = true, name = 'Share Progress With Party', parent = 'party',
+		desc = 'Send your quest progress (quest and percent complete) to party members who also use this addon, and show theirs. The game does not provide party progress, so this only works between players running the addon.' },
+	{ page = QUESTS, header = true, name = 'Automation' },
+	{ page = QUESTS, key = 'followNearest', default = false, name = 'Auto-Track Nearest Quest',
+		desc = 'When no guide is active and you have not selected a quest, automatically put the quest arrow on your nearest tracked quest.' },
+
+	-- the guide
+	{ page = GUIDE, voice = 'The clever book says where to go. Patchwerk reads the pictures.' },
+	{ page = GUIDE, key = 'guide', default = true, name = 'Show Guide Steps',
+		desc = 'Show the current step of your guide addon (RestedXP) above your quests, with the guide name and your progress.' },
+	{ page = GUIDE, key = 'guideAhead', default = 3, min = 0, max = 8, step = 1, name = 'Upcoming Steps',
+		desc = 'Number of upcoming steps shown below the current one.' },
+	{ page = GUIDE, key = 'guideDone', default = false, name = 'Show Completed Lines',
+		desc = 'Keep completed lines of the current step in the list, dimmed.' },
+	{ page = GUIDE, key = 'guideSkip', default = true, name = 'Click To Skip Steps',
+		desc = 'Click the current step to skip it, or an upcoming step to jump to it. /tracker back undoes the last skip.' },
+	{ page = GUIDE, key = 'guideItems', default = true, name = 'Show Guide Item Buttons',
+		desc = 'Add buttons for items the current step uses (such as your hearthstone) to the quest item bar.' },
+	{ page = GUIDE, key = 'guideHide', default = false, name = 'Hide RestedXP Window',
+		desc = 'Hide the RestedXP guide window while the tracker shows the guide. RestedXP settings are not changed, and its arrow and item buttons stay visible.' },
+
+	-- item buttons, recipes, gathering, dungeons
+	{ page = MORE, voice = 'Pockets, pots and flowers. All the small jobs.' },
+	{ page = MORE, header = true, name = 'Quest Item Bar' },
+	{ page = MORE, key = 'items', default = true, name = 'Show Quest Item Bar',
+		desc = 'Show a bar of buttons for usable quest items next to the tracker, nearest quest first. You can bind a key to the first button. The bar does not update during combat.' },
+	{ page = MORE, key = 'itemSize', default = 32, min = 20, max = 56, step = 2, name = 'Button Size', parent = 'items',
+		desc = 'Size of the item buttons.' },
+	{ page = MORE, key = 'itemSide', default = 'left', name = 'Position', choices = { { 'left', 'Left of the tracker' }, { 'right', 'Right of the tracker' } },
+		desc = 'Which side of the tracker the item bar is on.' },
+	{ page = MORE, header = true, name = 'Recipes' },
+	{ page = MORE, key = 'recipes', default = true, name = 'Show Tracked Recipes',
+		desc = 'List tracked profession recipes with their reagents and how many you have.' },
+	{ page = MORE, header = true, name = 'Gathering' },
+	{ page = MORE, key = 'gather', default = true, name = 'Show Gathering Nodes',
+		desc = 'List the nearest herb and ore nodes you have gathered before. Click one to route to it. Requires Thread (Routes).' },
+	{ page = MORE, key = 'gatherMost', default = 4, min = 1, max = 8, step = 1, name = 'Nodes Shown', parent = 'gather',
+		desc = 'Number of node types listed, nearest first.' },
+	{ page = MORE, header = true, name = 'Dungeons' },
+	{ page = MORE, key = 'dungeon', default = false, name = 'Show Dungeon Objectives (Experimental)',
+		desc = 'Show the current stage and objectives of a dungeon or scenario. Not yet tested in a dungeon; the default tracker is still shown in instances unless you disable that option.' },
 
 	-- how it looks
-	{ page = 'Tracker: Look', key = 'scale', default = 100, min = 60, max = 160, step = 5, name = 'Size',
-		desc = 'How large the whole tracker is, in percent.' },
-	{ page = 'Tracker: Look', key = 'fontSize', default = 12, min = 9, max = 20, step = 1, name = 'Size Of The Writing',
-		desc = 'How large the words are written.' },
-	{ page = 'Tracker: Look', key = 'back', default = 25, min = 0, max = 90, step = 5, name = 'Background',
-		desc = 'How dark the tracker\'s background is, in percent. Zero is none.' },
-	{ page = 'Tracker: Look', key = 'titleByLevel', default = true, name = 'Colour Quests By Difficulty',
-		desc = 'A quest\'s name in the game\'s colours for its difficulty: grey, green, yellow, orange, red. Unticked, every name has the one colour below.' },
-	{ page = 'Tracker: Look', key = 'lookTitle', colour = true, default = 'ffffd200', name = 'Colour: Quest Names',
-		desc = 'The colour of a quest\'s name, when names are not coloured by difficulty.' },
-	{ page = 'Tracker: Look', key = 'lookHeader', colour = true, default = 'ffd6a35b', name = 'Colour: Headings',
-		desc = 'The colour of the headings and of the stitches under them.' },
-	{ page = 'Tracker: Look', key = 'lookLine', colour = true, default = 'ffd8d8d8', name = 'Colour: Objectives',
-		desc = 'The colour of an objective still to be done.' },
-	{ page = 'Tracker: Look', key = 'lookDone', colour = true, default = 'ff6fbf73', name = 'Colour: Done',
-		desc = 'The colour of an objective that is done, and of a quest ready to hand in.' },
+	{ page = LOOK, voice = 'Patchwerk picked the colours himself. You can pick again.' },
+	{ page = LOOK, header = true, name = 'Size' },
+	{ page = LOOK, key = 'scale', default = 100, min = 60, max = 160, step = 5, name = 'Scale',
+		desc = 'Scale of the tracker, in percent.' },
+	{ page = LOOK, key = 'fontSize', default = 12, min = 9, max = 20, step = 1, name = 'Font Size',
+		desc = 'Font size of the tracker text.' },
+	{ page = LOOK, key = 'back', default = 25, min = 0, max = 90, step = 5, name = 'Background Opacity',
+		desc = 'Opacity of the tracker background, in percent. 0 hides it.' },
+	{ page = LOOK, header = true, name = 'Colors' },
+	{ page = LOOK, key = 'titleByLevel', default = true, name = 'Color Quests By Difficulty',
+		desc = 'Color quest names by difficulty (grey, green, yellow, orange, red). When disabled, all names use the color below.' },
+	{ page = LOOK, key = 'lookTitle', colour = true, default = 'ffffd200', name = 'Quest Name Color',
+		desc = 'Color of quest names when they are not colored by difficulty.' },
+	{ page = LOOK, key = 'lookHeader', colour = true, default = 'ffd6a35b', name = 'Header Color',
+		desc = 'Color of section headers and their underline.' },
+	{ page = LOOK, key = 'lookGuide', colour = true, default = 'ff5fe0c8', name = 'Guide Color',
+		desc = 'Color of the current guide step and the guide progress bar.' },
+	{ page = LOOK, key = 'lookLine', colour = true, default = 'ffd8d8d8', name = 'Objective Color',
+		desc = 'Color of objectives that are not yet complete.' },
+	{ page = LOOK, key = 'lookDone', colour = true, default = 'ff6fbf73', name = 'Completed Color',
+		desc = 'Color of completed objectives and of quests that are ready to turn in.' },
 }
 
 ---------------------------------------------------------------------------
 -- /tracker
 ---------------------------------------------------------------------------
 local function Help()
-	ns.Print('the quests you track, in a list of our own.')
-	ns.Print('  /tracker on, /tracker off: show it, or go back to the game\'s own')
-	ns.Print('  /tracker move: drag it somewhere else;  /tracker lock: fix it there;  /tracker reset: put it back')
-	ns.Print('  /tracker fold: fold it up, or open it again')
-	ns.Print('  /tracker config: open the settings')
+	ns.Print('Quest tracker commands:')
+	ns.Print('  /tracker on, /tracker off: enable or disable the tracker')
+	ns.Print('  /tracker move: unlock to drag;  /tracker lock: lock in place;  /tracker reset: reset position')
+	ns.Print('  /tracker fold: collapse or expand all sections')
+	ns.Print('  /tracker back: undo the last guide step you skipped by clicking')
+	ns.Print('  /tracker config: open the options')
+	ns.Print('  In the list: click a quest to route to it, shift-click for details, right-click for more.')
 end
 
 SLASH_PATCHWERKFOREVER_TRACKER1 = '/tracker'
@@ -67,7 +156,7 @@ SlashCmdList.PATCHWERKFOREVER_TRACKER = function(text)
 	local word = (text or ''):lower():match('^%s*(%S*)')
 	if word == 'on' or word == 'off' then
 		ns.Set('on', word == 'on')
-		ns.Print(word == 'on' and 'shown.' or 'hidden. The game\'s own tracker is as it was.')
+		ns.Print(word == 'on' and 'Tracker enabled.' or 'Tracker disabled. The default quest tracker is back.')
 	elseif word == 'move' or word == 'unlock' then
 		ns.Try('move', ns.Unlock, true)
 	elseif word == 'lock' then
@@ -76,16 +165,20 @@ SlashCmdList.PATCHWERKFOREVER_TRACKER = function(text)
 		ns.Try('reset', ns.ResetPlace)
 	elseif word == 'fold' or word == 'toggle' then
 		ns.Try('fold', ns.Fold)
+	elseif word == 'back' then
+		ns.Try('back', ns.GuideBack)
 	elseif word == 'config' or word == 'settings' or word == 'options' then
 		if not ns.OpenSettings() then
-			ns.Print('the settings are under Options > AddOns > Patchwerk Forever > Thread: Tracker.')
+			ns.Print('Options are under Options > AddOns > Patchwerk Forever > Thread: Tracker.')
 		end
 	else
 		Help()
 	end
 end
 
--- For key and gamepad bindings (Bindings.xml).
+-- For key and gamepad bindings (Bindings.xml). The second is a click on a button of the item strip
+-- (Items.lua): using an item is something only a button of the game's secure kind may do.
 BINDING_HEADER_PATCHWERKFOREVER_TRACKER = ns.TITLE
-BINDING_NAME_PATCHWERKFOREVER_TRACKER_FOLD = 'Fold the tracker up, or open it'
+BINDING_NAME_PATCHWERKFOREVER_TRACKER_FOLD = 'Collapse / Expand Tracker'
+_G['BINDING_NAME_CLICK PatchwerkForeverTrackerNearestItem:LeftButton'] = 'Use Nearest Quest Item'
 function PatchwerkForever_Thread_Tracker_Fold() ns.Try('fold', ns.Fold) end

@@ -2,11 +2,12 @@
 ## Title: Patchwerk Forever: Thread (Sparkle)
 ## Notes: A sparkle and a name on the herb, vein, chest or quest object you are coming up to: twelve effects, a look for each kind of thing. Works best with the interact key or a gamepad. Needs Patchwerk Forever. Type /sparkle.
 ## Author: Tyrone
-## Version: 0.11.0
+## Version: 0.12.0
 ## Group: PatchwerkForever
 ## X-Category: Miscellaneous
 ## X-License: MIT
 ## IconTexture: Interface\AddOns\PatchwerkForever_Thread_Sparkle\Media\icon
+## X-Patchwerk-Voice: Shiny thing! Patchwerk sewed a little light on it.
 ## Dependencies: PatchwerkForever
 ## OptionalDeps: PatchwerkForever_Thread_Routes
 ## SavedVariables: PatchwerkForever_Thread_SparkleDB

@@ -191,11 +191,32 @@ def main():
     step("the base alone, for someone who had 1.x and runs Console Port")
     s = Session(saved="{ settings = { foreverNotify = false }, ConsolePort = { cleared = { X = true } } }",
                 running=["ConsolePort"])
-    s.addon(BASE)
+    base = s.addon(BASE)
     s.login()
     text = s.chat()
     assert len(text) == 1 and "Patchwerk Forever: Stitch (Console Port)" in text[0], text
-    assert len(s.stub.settings) == 1 and s.stub.category, "the base's page was not built"
+    assert s.stub.category and s.stub.front, "the base's page was not built"
+    # its first page is drawn by the base: what Patchwerk says, what is sewn on, its own switch
+    assert len(s.stub.settings) == 0, "the base's switch is still a row of the game's"
+    front = s.stub.front
+    front.shown = True
+    front.scripts.OnShow(front)
+    page = base.FrontShown()
+    print("      front page: " + page.said)
+    assert "Nothing sewn on yet" in page.said, page.said
+    # (Console Port is running and its Stitch is not installed: listed greyed, with no button)
+    parts = list(page.parts.values())
+    assert len(parts) == 1 and parts[0].name == "Stitch (Console Port)" and not parts[0].open, [x.name for x in parts]
+    assert "Not sewn on. It is for Console Port, which is running." == parts[0].says, parts[0].says
+    switches = list(page.switches.values())
+    assert len(switches) == 1 and switches[0].key == "baseTellMissing" and switches[0].checked is True
+    assert switches[0].Label.text == "Notify About Missing Addons", switches[0].Label.text
+    switches[0].checked = False
+    switches[0].scripts.OnClick(switches[0])
+    assert s.g.PatchwerkForever.GetSetting(s.g.PatchwerkForever, "baseTellMissing") is False
+    switches[0].checked = True
+    switches[0].scripts.OnClick(switches[0])
+    assert s.chat() == []
     assert s.g.PatchwerkForeverDB.ConsolePort.cleared.X, "the old saved data was touched"
     assert s.g.PatchwerkForeverDB.settings.foreverNotify is False
     text = s.slash("")
@@ -232,17 +253,31 @@ def main():
 
     step("the base with a made-up part: settings, saved data, load hooks, a fix")
     s = Session(saved="{ settings = { madeUpOn = false, madeUpSteps = 9 }, MadeUp = { kept = 'from before' } }")
-    s.addon(BASE)
+    base = s.addon(BASE)
     ns = s.addon(MADE_UP, files=MADE_UP_FILES, version="1.2.3")
     # the hook first (it saw the second file), then the setting with its saved value
     assert s.log() == ["hook, second file ran: true", "setting false true"], s.log()
     s.login()
     assert s.chat() == []
     assert s.log() == ["hook, second file ran: true", "setting false true"], "run twice"
-    assert len(s.stub.settings) == 3, len(s.stub.settings)
+    assert len(s.stub.settings) == 2, len(s.stub.settings)
     # the part's settings are on a page of its own under the base's; one section needs no heading there
     heads = list(s.stub.headers.values())
-    assert heads == ["Patchwerk Forever"], heads
+    assert heads == [], heads
+    # the page opens with its name; the rows of our own are made and filled without error
+    intros = list(s.stub.intros.values())
+    assert len(intros) == 1 and intros[0].name == "PatchwerkForever_MadeUp", [i.name for i in intros]
+    assert s.stub.Rows() == 1
+    # and the front page lists the part, with a button that opens its page
+    front = s.stub.front
+    front.shown = True
+    front.scripts.OnShow(front)
+    page = base.FrontShown()
+    parts = list(page.parts.values())
+    assert [x.name for x in parts][0].startswith("PatchwerkForever_MadeUp") and parts[0].open, [x.name for x in parts]
+    assert "One " in page.said and "Nothing" not in page.said, page.said
+    parts[0].row.Open.scripts.OnClick(parts[0].row.Open)
+    assert s.stub.opened == 8, "the part's page was not opened from the front page"
     assert list(s.stub.pages.keys()) == ["PatchwerkForever_MadeUp"], list(s.stub.pages.keys())
     on = sorted(x.variable for x in s.stub.settings.values() if x.page == "PatchwerkForever_MadeUp")
     assert on == ["PatchwerkForever_madeUpOn", "PatchwerkForever_madeUpSteps"], on
@@ -280,7 +315,7 @@ def main():
         assert ns.linked, part
     s.login()
     assert s.chat() == []
-    assert len(s.g.PatchwerkForever.Fixes) == 0 and len(s.stub.settings) == 1
+    assert len(s.g.PatchwerkForever.Fixes) == 0 and len(s.stub.settings) == 0
     text = s.slash("")
     for part in PARTS:
         title = toc(part)[0]["Title"]
@@ -295,11 +330,15 @@ def main():
     s.login()
     assert s.chat() == []
     assert env.NativeContext == 5 and env.db is not None
-    assert len(s.stub.settings) == 10, len(s.stub.settings)
-    assert list(s.stub.headers.values()) == ["Patchwerk Forever"]
+    assert len(s.stub.settings) == 9, len(s.stub.settings)
+    assert list(s.stub.headers.values()) == []
     assert list(s.stub.pages.keys()) == ["Stitch: Console Port"], list(s.stub.pages.keys())
     assert sum(1 for x in s.stub.settings.values() if x.page == "Stitch: Console Port") == 9
-    assert sum(1 for x in s.stub.settings.values() if x.page == "Patchwerk Forever") == 1
+    # the Stitch's page opens with its name, its picture and what Patchwerk says of it (its TOC)
+    intro = list(s.stub.intros.values())[0]
+    assert intro.name == "Stitch: Console Port" and intro.icon.endswith("Stitch_ConsolePort\\Media\\icon"), (intro.name, intro.icon)
+    assert intro.voice == "Buttons were loose. Patchwerk sewed them back on the stick.", intro.voice
+    assert s.stub.Rows() == 1
     assert env.GetSetting(env, "foreverNotify") is False and env.GetSetting(env, "foreverClearPing") is True
     assert env.GetConsolePortSaved(env).cleared.X, "the part does not see what 1.x saved"
 
@@ -366,8 +405,9 @@ def main():
     s = Session()
     s.addon(BASE)
     G = s.g.PatchwerkForever.Guides
-    assert s.g.PatchwerkForever.API == 2
+    assert s.g.PatchwerkForever.API == 3
     assert G.Read(G, 2) is None, "a guide with no guide addon running"
+    assert G.Go(G, None, 3) is False, "a guide moved with no guide running"
     # a made-up guide addon's reader, behind one that fails: the failure is said once and the next is asked
     s.lua.execute("""
         local G = PatchwerkForever.Guides
@@ -384,6 +424,7 @@ def main():
     G.Read(G, 1)
     text = s.chat_raw()
     assert len(text) == 1 and "Broken Guides failed and was skipped" in text[0], text
+    assert G.Go(G, info, 4) is False, "a reader with no way to move its guide said it had moved"
     # RestedXP, with a stand-in for what it keeps as it runs
     s = Session()
     s.lua.execute("""
@@ -400,8 +441,10 @@ def main():
             for _, e in ipairs(lines) do e.step = step end
             steps[i] = step
         end
+        steps[1].activeItems = { [6948] = true, [4854] = true, [77] = false }
         RXPCData = { currentStep = 1, stepSkip = {} }
-        RXP = { currentGuide = { name = 'raw name', displayname = 'The Barrens 12-14', steps = steps } }
+        RXP = { currentGuide = { name = 'raw name', displayname = 'The Barrens 12-14', steps = steps },
+            SetStep = function(n) STUB.setStep = n; RXPCData.currentStep = n end }
         RXPG_ARROW = { shown = true, element = steps[1].elements[3], IsShown = function(self) return self.shown end }
     """)
     s.addon(BASE)
@@ -417,6 +460,15 @@ def main():
     # (the step that is only words is passed over; the hearthstone, which carries you off, is not)
     assert ahead == [(2, "fly", 1), (4, "hearth", None), (5, "turnin", 1)], ahead
     assert len(G.Read(G, 1).ahead) == 1 and len(G.Read(G, 0).ahead) == 0
+    # every step after it, for a list of them: the one that is only words too
+    after = [(a.index, a.kind) for a in info.after.values()]
+    assert after == [(2, "fly"), (3, "train"), (4, "hearth")], after
+    assert len(G.Read(G, 0).after) == 0
+    assert list(info["items"].values()) == [4854, 6948], "the items the step wants used"
+    # the guide moved to another step, as a click in its own window does; never past its ends
+    assert G.Go(G, info, 3) is True and s.stub.setStep == 3 and G.Read(G, 0).index == 3
+    assert G.Go(G, info, 6) is False and G.Go(G, info, 0) is False and s.stub.setStep == 3
+    assert G.Go(G, info, 1) is True
     # the arrow hidden: its last spot is not gone to; the step's own place is
     s.lua.execute("RXPG_ARROW.shown = false; RXPG_ARROW.element = RXP.currentGuide.steps[5].elements[2]")
     info = G.Read(G, 0)
@@ -432,6 +484,48 @@ def main():
     s.lua.execute("RXPG_ARROW = nil")
     assert G.Read(G, 2) is None
     assert s.chat() == []
+
+    step("the gathering service: nothing offered, then a provider; one that fails is said once")
+    s = Session()
+    s.addon(BASE)
+    Ga = s.g.PatchwerkForever.Gather
+    assert Ga.Has(Ga) is False and len(Ga.Near(Ga, 3)) == 0 and Ga.State(Ga) is None and Ga.Start(Ga, "any") is None
+    s.lua.execute("""
+        local state
+        PatchwerkForever.Gather:Offer({
+            Near = function(count) STUB.askedNear = count; return { { name = 'Peacebloom', kind = 'h', yards = 40 } } end,
+            Start = function(mode, name) state = { mode = mode, name = name, going = name or 'Peacebloom' }; return true end,
+            Stop = function() state = nil end,
+            State = function() if STUB.breakGather then error('its spots moved') end return state end,
+        })
+    """)
+    assert Ga.Has(Ga) is True
+    near = Ga.Near(Ga)
+    assert s.stub.askedNear == 5 and near[1].name == "Peacebloom"
+    assert Ga.Start(Ga, "kind", "Peacebloom") is True and Ga.State(Ga).mode == "kind" and Ga.State(Ga).going == "Peacebloom"
+    Ga.Stop(Ga)
+    assert Ga.State(Ga) is None
+    s.stub.breakGather = True
+    assert Ga.State(Ga) is None and Ga.State(Ga) is None
+    text = s.chat_raw()
+    assert len(text) == 1 and "Gathering failed and was skipped" in text[0], text
+    ok = s.lua.eval("function() return (pcall(PatchwerkForever.Gather.Offer, PatchwerkForever.Gather, { Near = function() end })) end")()
+    assert ok is False, "a provider with pieces missing was taken"
+
+    step("a choice: one side path at a time; a quest that leaves the log is a choice no longer")
+    Ch = s.g.PatchwerkForever.Choice
+    s.stub.breakGather = False
+    s.lua.execute("STUB.QuestAt(870, 'The Forgotten Pools', 1, -400, -2600)")
+    assert Ch.Get(Ch) is None and Ch.Set(Ch, "quest", 870) is True
+    assert Ch.Get(Ch).id == 870 and Ch.Is(Ch, "quest", 870) and not Ch.Is(Ch, "quest", 871)
+    assert Ga.Start(Ga, "any") is True and Ch.Get(Ch) is None, "a gathering run left the choice standing"
+    assert Ch.Set(Ch, "quest", 870) and Ga.State(Ga) is None, "a choice left the gathering run on"
+    s.lua.execute("STUB.QuestGone(870)")
+    assert Ch.Get(Ch) is None, "a quest handed in is still the choice"
+    assert Ch.Set(Ch, "quest", None) is False
+    Ch.Set(Ch, "quest", 870)
+    Ch.Clear(Ch)
+    assert Ch.Get(Ch) is None
 
     step("every part carries the same joining file")
     for part in PARTS[1:]:

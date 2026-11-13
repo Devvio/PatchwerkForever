@@ -109,7 +109,7 @@ end
 -- /thread step: the last one, again.
 function ns.FloatAgain()
 	if not last then
-		ns.Print('no step has been described yet: it is said when the route gets a new destination.')
+		ns.Print('No step text to show yet. It appears when the route gets a new destination.')
 		return
 	end
 	Show(last.lines, ns.Get('floatRoute') and last.route or nil)

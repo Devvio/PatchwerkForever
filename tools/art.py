@@ -37,6 +37,10 @@ LOGO = 512                   # the logo's side
 GOLD = (214, 163, 91)        # Patchwerk's gold, the stitching
 CREAM = (244, 226, 184)      # the emblems
 RIM = (20, 15, 12)
+# Pictures in an addon's art folder, under listing/, that are also made into a picture the addon
+# shows in the game: { addon: { path under art/<addon>/: (width, height) in the game } }. The game
+# wants each side a power of two; the addon draws it at whatever shape it likes.
+ALSO_SHIPPED = {"PatchwerkForever": {"listing/banner.png": (1024, 512)}}
 
 
 # ----------------------------------------------------------------------------------------------
@@ -366,15 +370,19 @@ def take_in(only=None, say=print):
         if not os.path.isdir(os.path.join(ADDONS, folder)):
             say("  art/%s: there is no addon of that name" % folder)
             continue
-        for name in sorted(os.listdir(src)):
-            stem, ext = os.path.splitext(name)
+        names = [(name, None) for name in sorted(os.listdir(src))]
+        # (pictures made for the listing that the addon shows in the game too, at a size given here)
+        names += [(name, size) for name, size in sorted(ALSO_SHIPPED.get(folder, {}).items())
+                  if os.path.exists(os.path.join(src, name))]
+        for name, size in names:
+            stem, ext = os.path.splitext(os.path.basename(name))
             if ext.lower() != ".png" or stem == "logo":
                 continue
             # (reading a large PNG takes seconds: one that has not changed since it was last made into
             # the game's picture is left alone)
             out = os.path.join(ADDONS, folder, "Media", stem + ".tga")
             stat = os.stat(os.path.join(src, name))
-            stamp = [stat.st_mtime_ns, stat.st_size]
+            stamp = [stat.st_mtime_ns, stat.st_size] + list(size or ())
             key = folder + "/" + name
             if os.path.exists(out) and _taken().get(key) == stamp:
                 continue
@@ -384,7 +392,7 @@ def take_in(only=None, say=print):
                 say("  art/%s/%s could not be read: %s" % (folder, name, e))
                 continue
             h, w = len(rows), len(rows[0])
-            tw, th = (ICON, ICON) if stem == "icon" else (_power_of_two(w), _power_of_two(h))
+            tw, th = size or ((ICON, ICON) if stem == "icon" else (_power_of_two(w), _power_of_two(h)))
             if _write(out, tga_bytes(resize(rows, tw, th))):
                 wrote.append(out)
                 say("  art/%s/%s (%d x %d) -> Media/%s.tga (%d x %d)" % (folder, name, w, h, stem, tw, th))

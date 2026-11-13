@@ -484,9 +484,9 @@ end
 -- Why nothing is to be shown just now, or nil.
 local fighting = false        -- (kept from the game's two events: the first comes a moment before the game says so itself)
 local function Barred()
-	if not ns.Get('sparkle') then return 'the sparkle is switched off' end
+	if not ns.Get('sparkle') then return 'sparkles are disabled' end
 	if ns.Get('sparkleCombat') and (fighting or (InCombatLockdown and InCombatLockdown())) then return 'you are in combat' end
-	if ns.Get('sparkleInstance') and IsInInstance and IsInInstance() then return 'you are in a dungeon or raid' end
+	if ns.Get('sparkleInstance') and IsInInstance and IsInInstance() then return 'you are in an instance' end
 	return nil
 end
 
@@ -599,7 +599,7 @@ function ns.SparkleSubtle()
 	for _, kind in ipairs(ns.KINDS) do
 		ns.Set('look.' .. kind[1] .. '.effect', SUBTLE[kind[1]] or 'shimmer')
 	end
-	ns.Print('every kind of thing now has a subtle sparkle: glints on herbs and ore, a faint shimmer on chests, a ground ripple on quest objects, fireflies on the rest. Each can be changed on its own page.')
+	ns.Print('Subtle preset applied: glints on herbs and ore, a faint shimmer on chests, a ground ripple on quest objects, fireflies on the rest. Change any of them under Sparkle: Looks.')
 end
 
 ---------------------------------------------------------------------------
@@ -614,21 +614,21 @@ end
 -- Ignores the thing the game points at, or pointed at last.
 function ns.IgnoreThis()
 	if not (last and last.name) then
-		ns.Print('the game has not pointed at a thing to ignore. Walk up to one first.')
+		ns.Print('No object targeted. Walk up to one first.')
 		return
 	end
 	IgnoreList()[last.name] = true
-	ns.Print('"' .. last.name .. '" will not sparkle any more. /sparkle undo takes that back.')
+	ns.Print('"' .. last.name .. '" added to the ignore list. /sparkle undo to revert.')
 	Refresh()
 end
 
 function ns.IgnoreUndo()
 	if last and last.name and IgnoreList()[last.name] then
 		IgnoreList()[last.name] = nil
-		ns.Print('"' .. last.name .. '" sparkles again.')
+		ns.Print('"' .. last.name .. '" removed from the ignore list.')
 		Refresh()
 	else
-		ns.Print('the thing you last pointed at is not on the list. /sparkle list shows it.')
+		ns.Print('The last targeted object is not on the ignore list. /sparkle list shows the list.')
 	end
 end
 
@@ -637,9 +637,9 @@ function ns.IgnoreSay()
 	for name in pairs(IgnoreList()) do names[#names + 1] = name end
 	table.sort(names)
 	if #names == 0 then
-		ns.Print('you ignore nothing. Point at a thing and type /sparkle ignore to add it.')
+		ns.Print('The ignore list is empty. Target an object and type /sparkle ignore to add it.')
 	else
-		ns.Print('you ignore: ' .. table.concat(names, ', ') .. '.')
+		ns.Print('Ignored: ' .. table.concat(names, ', ') .. '.')
 	end
 end
 
@@ -647,7 +647,7 @@ function ns.IgnoreClear()
 	local count = 0
 	for _ in pairs(IgnoreList()) do count = count + 1 end
 	PatchwerkForever_Thread_SparkleDB.sparkleIgnored = {}
-	ns.Print(('%d ignored thing(s) forgotten: everything sparkles again.'):format(count))
+	ns.Print(('Ignore list cleared (%d object(s)).'):format(count))
 	Refresh()
 end
 
@@ -679,39 +679,39 @@ function ns.SparkleSay()
 		'SoftTargetNameplateInteract', 'SoftTargetIconGameObject', 'SoftTargetIconInteract' }) do
 		parts[#parts + 1] = (name:gsub('SoftTarget', '')) .. ' ' .. tostring(GetCVar(name))
 	end
-	ns.Print('the game\'s soft-target settings: ' .. table.concat(parts, ', ') .. '.')
+	ns.Print('Soft-target settings: ' .. table.concat(parts, ', ') .. '.')
 	local barred = Barred()
-	if barred then ns.Print('nothing is shown just now: ' .. barred .. '.') end
+	if barred then ns.Print('Sparkles are currently hidden: ' .. barred .. '.') end
 	Refresh()
 	local function Told(what, was)
-		ns.Print(('%s: %s; cursor: %s; taken as %s%s; nameplate: %s; it %s.'):format(what,
-			tostring(was.name or '(name hidden by the game)'), tostring(was.cursor), was.kind,
-			was.known and '' or ' (a guess)', was.plate and 'yes' or 'NO',
+		ns.Print(('%s: %s; cursor: %s; type: %s%s; nameplate: %s; it %s.'):format(what,
+			tostring(was.name or '(name hidden)'), tostring(was.cursor), was.kind,
+			was.known and '' or ' (guessed)', was.plate and 'yes' or 'NO',
 			was.ignored and 'is on your ignore list' or was.shown and 'sparkles' or 'does not sparkle'))
 	end
 	if ns.Get('sparkleBehind') then
 		local zoom, told = Zoom()
 		if not told then
-			ns.Print('fading behind your character: the game does not say how far out the camera is, so ' .. ASSUMED .. ' yards is taken. Set Character Size by eye with the Show button.')
+			ns.Print('Fade Behind Character: camera distance is not available, so ' .. ASSUMED .. ' yards is assumed. Adjust Character Height using the Preview Area button.')
 		end
 		if not Body() then
-			ns.Print(('fading behind your character: the camera is too close (%.1f yards), so nothing fades.'):format(zoom))
+			ns.Print(('Fade Behind Character: the camera is too close (%.1f yards), so nothing fades.'):format(zoom))
 		elseif live and live:IsShown() and live.unplaced then
-			ns.Print('fading behind your character: the game will not say where the sparkle is on screen, so it cannot fade.')
+			ns.Print('Fade Behind Character: the sparkle\'s screen position is not available, so it cannot fade.')
 		elseif live and live:IsShown() then
-			ns.Print(('fading behind your character: the camera is %.0f yards out; the sparkle is %d%% covered just now.'):format(zoom, (live.covered or 0) * 100))
+			ns.Print(('Fade Behind Character: camera distance %.0f yards; the sparkle is %d%% covered.'):format(zoom, (live.covered or 0) * 100))
 		else
-			ns.Print(('fading behind your character: on; the camera is %.0f yards out.'):format(zoom))
+			ns.Print(('Fade Behind Character: enabled; camera distance %.0f yards.'):format(zoom))
 		end
 	end
 	if IsThing(UNIT) and last then
-		Told('pointing at', last)
+		Told('Targeted', last)
 	else
-		ns.Print('the game is not pointing at a thing to use just now (typing on the keyboard can make it let go).')
+		ns.Print('No object is currently targeted for interaction (using the keyboard can clear the target).')
 		if last then
-			Told(('%d s ago it pointed at'):format(GetTime() - last.time), last)
+			Told(('Targeted %d s ago'):format(GetTime() - last.time), last)
 		else
-			ns.Print('it has not pointed at one since you logged in or reloaded. Walk up to a herb, a vein or a chest, then try again.')
+			ns.Print('Nothing has been targeted since you logged in or reloaded. Walk up to a herb, an ore node or a chest, then try again.')
 		end
 	end
 end

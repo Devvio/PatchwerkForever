@@ -136,9 +136,16 @@ function CreateFrame(kind, name, parent)
 		function fs:SetPoint(point, to, rel, x, y) assert(to and x == x and y == y) end
 		function fs:Show() self.shown = true end
 		function fs:Hide() self.shown = false end
+		function fs:IsShown() return self.shown end
+		function fs:SetMaxLines(n) assert(n > 0) end
 		return fs
 	end
 	function frame:SetSize(w, h) assert(w > 0 and h > 0) self.width, self.height = w, h end
+	function frame:SetHeight(h) assert(h > 0) self.height = h end
+	function frame:SetWidth(w) assert(w > 0) self.width = w end
+	function frame:SetText(text) assert(type(text) == 'string') self.text = text end
+	function frame:SetChecked(on) assert(type(on) == 'boolean') self.checked = on end
+	function frame:GetChecked() return self.checked end
 	function frame:SetParent(other) assert(other) self.parent = other end
 	function frame:GetParent() return self.parent end
 	function frame:SetPoint(point, to, rel, x, y) assert(to and x == x and y == y) self.anchor = to end
@@ -147,6 +154,9 @@ function CreateFrame(kind, name, parent)
 		STUB.allTextures[#STUB.allTextures + 1] = tex
 		function tex:SetTexCoord(a, b, c, d) assert(a and b and c and d) end
 		function tex:SetSize(w, h) assert(w > 0 and h > 0) end
+		function tex:SetHeight(h) assert(h > 0) end
+		function tex:SetColorTexture(r, g, b, a) assert(r and g and b) self.colour = { r, g, b, a } end
+		function tex:IsShown() return self.shown end
 		function tex:SetTexture(icon) assert(icon ~= nil) self.icon = icon end
 		function tex:GetTexture() return self.icon end
 		function tex:GetAtlas() return self.atlas end
@@ -262,6 +272,7 @@ C_QuestLog = {
 		local q = STUB.quests[id]
 		if q and q.stop then return q.stop[1], q.stop[2], q.stop[3] end
 	end,
+	GetLogIndexForQuestID = function(id) return STUB.quests[id] and 1 or nil end,
 	GetNumQuestWatches = function() return #STUB.watched end,
 	GetQuestIDForQuestWatchIndex = function(i) return STUB.watched[i] end,
 	GetTitleForQuestID = function(id) return STUB.quests[id] and STUB.quests[id].title end,
@@ -334,7 +345,7 @@ Settings = {
 		assert(not variable:find('[^%w_]'), 'a bad name for a setting: ' .. variable)
 		for _, other in ipairs(STUB.settings) do assert(other.variable ~= variable, 'two settings named ' .. variable) end
 		assert(type(get()) == kind, variable .. ': what it reads is not a ' .. tostring(kind))
-		local s = { variable = variable, kind = kind, default = default, get = get, set = set, page = category.title }
+		local s = { variable = variable, name = name, kind = kind, default = default, get = get, set = set, page = category.title }
 		STUB.settings[#STUB.settings + 1] = s
 		return s
 	end,
@@ -372,7 +383,47 @@ Settings = {
 		setting.colour = true
 		return NewControl()
 	end,
+	RegisterCanvasLayoutCategory = function(frame, title)
+		assert(type(frame) == 'table' and type(title) == 'string' and not frame.shown, 'a drawn page must be a hidden frame')
+		STUB.front = frame
+		return { title = title, frame = frame, GetID = function() return 7 end }
+	end,
+	-- a row of the addon's own: made from a template the addon names in an XML file. The stand-in
+	-- has no XML; STUB.Rows() makes each row from the template's mixin, as the game would.
+	CreateElementInitializer = function(template, data)
+		assert(type(template) == 'string' and type(data) == 'table')
+		local row = { template = template, data = data, GetData = function(self) return self.data end }
+		STUB.rows[#STUB.rows + 1] = row
+		if template == 'PatchwerkForeverHeaderTemplate' then STUB.headers[#STUB.headers + 1] = data.name end
+		if template == 'PatchwerkForeverIntroTemplate' then STUB.intros[#STUB.intros + 1] = data end
+		return row
+	end,
 	RegisterAddOnCategory = function(category) STUB.category = category end,
 	OpenToCategory = function(id) STUB.opened = id end,
 }
 GameFontNormal = { GetFont = function() return 'Fonts\\FRIZQT__.TTF', 12, '' end }
+
+-- (the game knows a row's template once its XML file is read: the stand-in is told here; STUB.noRows = true: it is not)
+C_XMLUtil = { GetTemplateInfo = function(name)
+	if STUB.noRows then return nil end
+	local tall = ({ PatchwerkForeverIntroTemplate = 84, PatchwerkForeverHeaderTemplate = 44 })[name]
+	if tall then return { type = 'Frame', width = 0, height = tall } end
+end }
+
+-- Rows of an addon's own in the options (Settings.CreateElementInitializer): each is made as the
+-- game makes it, from its template's mixin, loaded, filled and given a width. Returns how many.
+STUB.rows, STUB.intros = {}, {}
+function STUB.Rows()
+	for _, row in ipairs(STUB.rows) do
+		local mixin = _G[(row.template:gsub('Template$', 'Mixin'))]
+		assert(type(mixin) == 'table', 'no mixin for ' .. row.template)
+		local frame = CreateFrame('Frame')
+		for key, value in pairs(mixin) do frame[key] = value end
+		frame.width = 600
+		frame:OnLoad()
+		frame:Init(row)
+		if frame.scripts.OnSizeChanged then frame.scripts.OnSizeChanged(frame, 640, 84) end
+		row.frame = frame
+	end
+	return #STUB.rows
+end

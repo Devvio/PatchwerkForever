@@ -14,6 +14,7 @@ tinsert = table.insert
 -- Frames: what a list on screen asks of them
 ---------------------------------------------------------------------------
 STUB.touchedInCombat = {}            -- pieces whose mouse was changed during a fight: there must be none
+STUB.secureInCombat = {}             -- touches of a secure button during a fight: there must be none
 
 local function Writing(fs)
 	function fs:GetText() return self.text end
@@ -77,7 +78,36 @@ function CreateFrame(kind, name, parent, template)
 	function frame:IsForbidden() return false end
 	function frame:GetChildren() return unpack(self.children) end
 	function frame:RegisterForDrag(button) assert(button == 'LeftButton') end
-	function frame:RegisterForClicks(...) end
+	function frame:RegisterForClicks(...) self.clicks = { ... } end
+	function frame:GetRight() return self:GetLeft() + (self.width or 0) end
+	function frame:IsMouseOver() return self.over == true end
+	-- a button of the game's secure kind: made from its template. In a fight an addon may not show,
+	-- hide, move, size or change it; every such touch is written down, and there must be none.
+	if type(template) == 'string' and template:find('Secure', 1, true) then
+		frame.secure, frame.protected, frame.attributes, frame.shown = true, true, {}, true
+		local function Guard(what, fn)
+			frame[what] = function(self, ...)
+				if STUB.combat then STUB.secureInCombat[#STUB.secureInCombat + 1] = what .. ' on ' .. tostring(name) end
+				return fn(self, ...)
+			end
+		end
+		local show, hide, size = frame.Show, frame.Hide, frame.SetSize
+		Guard('Show', show)
+		Guard('Hide', hide)
+		Guard('SetSize', size)
+		Guard('SetPoint', function(self, point, to, rel, x, y)
+			assert(to == UIParent, 'a secure button was hung from a frame that moves')
+			assert(x == x and y == y, 'not a number')
+			self.points[#self.points + 1] = { point, to, rel, x, y }
+		end)
+		Guard('ClearAllPoints', function(self) self.points = {} end)
+		Guard('SetAttribute', function(self, key, value) self.attributes[key] = value end)
+		function frame:GetAttribute(key) return self.attributes[key] end
+	end
+	if kind == 'Cooldown' then
+		function frame:SetCooldown(start, duration) assert(start and duration > 0) self.cooling = { start, duration } end
+		function frame:Clear() self.cooling = nil end
+	end
 	function frame:StartMoving() assert(self.movable, 'a frame that cannot be moved was dragged') self.moving = true end
 	function frame:StopMovingOrSizing()
 		self.moving = false
@@ -131,7 +161,8 @@ C_QuestLog.GetInfo = function(i)
 	local e = STUB.log[i]
 	if not e then return nil end
 	if e.heading then return { title = e.heading, isHeader = true } end
-	return { title = e.title, questID = e.id, level = e.level, difficultyLevel = e.level, isHeader = false, isHidden = e.hidden }
+	return { title = e.title, questID = e.id, level = e.level, difficultyLevel = e.level, isHeader = false, isHidden = e.hidden,
+		frequency = e.daily and 1 or 0, suggestedGroup = e.group or 0 }
 end
 C_QuestLog.GetLogIndexForQuestID = function(id) return (Entry(id)) end
 C_QuestLog.GetTitleForQuestID = function(id) local _, e = Entry(id) return e and e.title end
@@ -139,7 +170,7 @@ C_QuestLog.GetQuestObjectives = function(id)
 	local _, e = Entry(id)
 	local out = {}
 	for _, o in ipairs(e and e.objectives or {}) do
-		out[#out + 1] = { text = o[1], finished = o[2] and true or false, type = 'monster' }
+		out[#out + 1] = { text = o[1], finished = o[2] and true or false, type = 'monster', numFulfilled = o[3], numRequired = o[4] }
 	end
 	return out
 end
@@ -154,3 +185,148 @@ function GetQuestDifficultyColor(level)
 	return { r = 1, g = 0.82, b = 0 }
 end
 C_AddOns.IsAddOnLoaded = function(name) return STUB.loaded and STUB.loaded[name] == true end
+
+---------------------------------------------------------------------------
+-- What a click asks of the game
+---------------------------------------------------------------------------
+-- STUB.zone: the zone you stand in. A quest of the log may also have: tag = '(Elite)', daily, group,
+-- timed = { total, gone }, item = { id, whenDone }, pushable.
+STUB.zone = 'The Barrens'
+function GetRealZoneText() return STUB.zone end
+function IsShiftKeyDown() return STUB.shift == true end
+C_SuperTrack.SetSuperTrackedQuestID = function(id)
+	assert(type(id) == 'number', 'the arrow put on something that is not a quest')
+	STUB.focus = id
+	STUB.Fire('SUPER_TRACKING_CHANGED')
+end
+C_QuestLog.RemoveQuestWatch = function(id)
+	for i = #STUB.watched, 1, -1 do
+		if STUB.watched[i] == id then table.remove(STUB.watched, i) end
+	end
+	STUB.Fire('QUEST_WATCH_LIST_CHANGED')
+end
+C_QuestLog.IsPushableQuest = function(id) local _, e = Entry(id) return e and e.pushable == true end
+C_QuestLog.GetTimeAllowed = function(id)
+	local _, e = Entry(id)
+	if e and e.timed then return e.timed[1], e.timed[2] end
+	return 0, 0
+end
+QuestUtilsOverrides = { GetQuestTagText = function(id) local _, e = Entry(id) return e and e.tag end }
+QuestUtil = {
+	OpenQuestDetails = function(id) assert(not STUB.combat) STUB.read = id end,
+	ShareQuest = function(id) STUB.shared = id end,
+}
+function QuestMapQuestOptions_AbandonQuest(id) STUB.abandonAsked = id end
+-- a menu at the mouse: kept, so that a check can press one of its entries
+MenuUtil = { CreateContextMenu = function(owner, make)
+	assert(type(owner) == 'table' and type(make) == 'function')
+	local menu = { entries = {} }
+	make(owner, {
+		CreateTitle = function(_, text) assert(type(text) == 'string') menu.title = text end,
+		CreateButton = function(_, text, fn)
+			assert(type(text) == 'string' and type(fn) == 'function')
+			menu.entries[#menu.entries + 1] = { text = text, press = fn }
+		end,
+	})
+	STUB.menu = menu
+end }
+function STUB.Press(text)                -- press the entry of the last menu that says this
+	for _, entry in ipairs(STUB.menu and STUB.menu.entries or {}) do
+		if entry.text == text then return entry.press() or true end
+	end
+	error('no such entry in the menu: ' .. text)
+end
+
+---------------------------------------------------------------------------
+-- Items, and the quests that give one to use
+---------------------------------------------------------------------------
+-- STUB.bags[item] = how many you carry; STUB.cooling[item] = { start, duration }.
+STUB.bags, STUB.cooling, STUB.itemNames = {}, {}, {}
+function GetQuestLogSpecialItemInfo(index)
+	local e = STUB.log[index]
+	if e and e.item then return 'item:' .. e.item[1] .. ':0:0', 5000 + e.item[1], 1, e.item[2] == true end
+end
+C_Item.GetItemCount = function(id) assert(type(id) == 'number') return STUB.bags[id] or 0 end
+C_Item.GetItemIconByID = function(id) return 7000 + id end
+C_Item.GetItemNameByID = function(id) return STUB.itemNames[id] end
+C_Item.RequestLoadItemDataByID = function(id) STUB.askedFor = id end
+C_Container = { GetItemCooldown = function(id)
+	local c = STUB.cooling[id]
+	if c then return c[1], c[2], 1 end
+	return 0, 0, 1
+end }
+
+---------------------------------------------------------------------------
+-- Recipes you track
+---------------------------------------------------------------------------
+-- STUB.recipes = { { id =, name =, needs = { { item, howMany } } } }
+STUB.recipes = {}
+Enum.CraftingReagentType = { Modifying = 0, Basic = 1, Finishing = 2 }
+C_TradeSkillUI = {
+	GetRecipesTracked = function(recraft)
+		local out = {}
+		if not recraft then
+			for _, r in ipairs(STUB.recipes) do out[#out + 1] = r.id end
+		end
+		return out
+	end,
+	GetRecipeSchematic = function(id)
+		for _, r in ipairs(STUB.recipes) do
+			if r.id == id then
+				local slots = {}
+				for _, need in ipairs(r.needs) do
+					slots[#slots + 1] = { reagents = { { itemID = need[1] } }, quantityRequired = need[2], reagentType = 1, required = true }
+				end
+				slots[#slots + 1] = { reagents = { { itemID = 999 } }, quantityRequired = 1, reagentType = 2, required = false }   -- (an extra, not needed)
+				return { name = r.name, reagentSlotSchematics = slots }
+			end
+		end
+	end,
+	SetRecipeTracked = function(id, on)
+		assert(on == false)
+		for i = #STUB.recipes, 1, -1 do
+			if STUB.recipes[i].id == id then table.remove(STUB.recipes, i) end
+		end
+	end,
+	OpenRecipe = function(id) assert(not STUB.combat) STUB.openedRecipe = id end,
+}
+
+---------------------------------------------------------------------------
+-- The party
+---------------------------------------------------------------------------
+-- STUB.party = { { name =, quests = { [id] = true } } }; STUB.raid = true in a raid.
+STUB.party, STUB.told = {}, {}
+function IsInGroup() return #STUB.party > 0 end
+function IsInRaid() return STUB.raid == true end
+function GetNumSubgroupMembers() return #STUB.party end
+local unitName = UnitName
+function UnitName(unit)
+	local i = type(unit) == 'string' and tonumber(unit:match('^party(%d)$'))
+	if i then return STUB.party[i] and STUB.party[i].name end
+	return unitName(unit)
+end
+C_QuestLog.IsUnitOnQuest = function(unit, id)
+	local i = tonumber(unit:match('^party(%d)$'))
+	return STUB.party[i] ~= nil and STUB.party[i].quests[id] == true
+end
+C_ChatInfo = {
+	RegisterAddonMessagePrefix = function(prefix) assert(#prefix <= 16) STUB.prefix = prefix end,
+	SendAddonMessage = function(prefix, text, channel)
+		assert(prefix == STUB.prefix and #text <= 255 and channel == 'PARTY', 'a message the game would refuse')
+		STUB.told[#STUB.told + 1] = text
+	end,
+}
+
+---------------------------------------------------------------------------
+-- A place run in stages
+---------------------------------------------------------------------------
+-- STUB.scenario = { name =, stage =, stages =, stageName =, criteria = { { description, quantity, totalQuantity, completed, duration, elapsed } } }
+C_Scenario = {
+	IsInScenario = function() return STUB.scenario ~= nil end,
+	GetInfo = function() local s = STUB.scenario; if s then return s.name, s.stage, s.stages end end,
+	GetStepInfo = function() local s = STUB.scenario; if s then return s.stageName, 'what the stage is about', #s.criteria end end,
+}
+C_ScenarioInfo = { GetCriteriaInfo = function(i)
+	local c = STUB.scenario and STUB.scenario.criteria[i]
+	if c then return { description = c[1], quantity = c[2], totalQuantity = c[3], completed = c[4] == true, duration = c[5] or 0, elapsed = c[6] or 0 } end
+end }

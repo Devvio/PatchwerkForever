@@ -1,5 +1,15 @@
 # Patchwerk Forever
 
+## 2.2.0
+
+- **A gathering service**: Thread (Routes) offers its remembered herb and ore spots through the base, and the tracker lists them and starts a round, without either tool knowing the other.
+- The guides service also gives every step after the one you are on (`after`), the items a step wants used (`items`), and can have the guide move to another step when the player clicks one (`Guides:Go`), by the guide addon's own means.
+- **A choice**: a quest picked in one tool (a click in the tracker) is kept by the base and followed in another (the route planner) as a side path off the main track, until it is cleared or the quest leaves the log (`PatchwerkForever.Choice`). One side path at a time: choosing a quest ends a gathering run, and a run clears the choice.
+- **The options pages are dressed.** Patchwerk Forever's first page is drawn: the picture of Patchwerk at his bench, a line in his voice, every part that is installed with its picture, version and a button to its page, the parts you are missing, and the base's own switch. Every other page opens with its name, its picture and a line from Patchwerk, and its sections have stitched headings.
+- Setting names and tooltips across the family use the words the game and other addons use (Font Size, Scale, Opacity, Show, Hide, Enable), in Title Case like the game's own options. Patchwerk's voice is kept to the line at the top of each page.
+- A client that will not take these pieces gets the plain pages as before.
+- The base's API number is now 3.
+
 ## 2.1.0
 
 - **A guides service.** The base now reads the guide you are running (RestedXP, for a start) for any of the Thread tools that want it: the step you are on, its lines, where it sends you, and the steps after it. Thread (Routes) uses it from 0.13.0, where it had a reader of its own. Nothing of the guide addon is changed, and with none running the service says nothing.

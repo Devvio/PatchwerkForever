@@ -2,9 +2,10 @@
 ## Title: Patchwerk Forever: Stitch (Console Port)
 ## Notes: Fixes for Console Port on WoW Forever: the game menu button, Forever's own gamepad bindings, the item menu, interact from rings, the bag bar and micro menu, and smaller repairs. Needs Patchwerk Forever and Console Port.
 ## Author: Tyrone
-## Version: 2.0.0
+## Version: 2.0.1
 ## Group: PatchwerkForever
 ## IconTexture: Interface\AddOns\PatchwerkForever_Stitch_ConsolePort\Media\icon
+## X-Patchwerk-Voice: Buttons were loose. Patchwerk sewed them back on the stick.
 ## X-Category: Miscellaneous
 ## X-License: MIT
 ## Dependencies: PatchwerkForever, ConsolePort

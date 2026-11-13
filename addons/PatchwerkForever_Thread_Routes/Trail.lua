@@ -15,7 +15,10 @@ ns.MEDIA = 'Interface\\AddOns\\' .. ADDON .. '\\Media\\'
 
 -- The colour of a stretch reached by walking ('walk'), by a tunnel, lift or drop ('link'), by flying ('fly')
 -- or aboard a boat or zeppelin ('ride'). (A 'gap' is not drawn at all: the two maps leave it out.)
-function ns.TrailColour(how)
+-- chosen: the stretch is of a side path you chose yourself (a quest you clicked, a gathering run),
+-- whose walking is drawn in a colour of its own to tell it from the main track.
+function ns.TrailColour(how, chosen)
+	if chosen and (how == 'walk' or not COLOUR_OF[how]) then return ns.RGB(ns.Get('trailChosen')) end
 	return ns.RGB(ns.Get(COLOUR_OF[how] or 'trailWalk'))
 end
 

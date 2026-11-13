@@ -49,6 +49,15 @@ def main():
         return True
 
     lua.globals().C_AddOns.LoadAddOn = load_addon
+    # what each addon's TOC says of it (its title, its picture, what Patchwerk says of it), as the game gives it
+    meta = {}
+    for addon in (BASE, ADDON, SPARKLE):
+        meta[addon] = {}
+        for line in open(os.path.join(ADDONS, addon, addon + ".toc"), encoding="utf-8"):
+            if line.startswith("## ") and ":" in line:
+                key, value = line[3:].split(":", 1)
+                meta[addon][key.strip()] = value.strip()
+    lua.globals().C_AddOns.GetAddOnMetadata = lambda name, field: meta.get(name, {}).get(field)
     # the base says things with print; the tools through the chat frame
     lua.execute("""
         function print(...)
@@ -85,7 +94,7 @@ def main():
         said[0] += len(new)
         for text in new:
             print("      chat: " + text.replace("|cff7fd4ff", "").replace("|r", ""))
-        problems = [t for t in new if "a problem in" in t or "stopped on an error" in t]
+        problems = [t for t in new if "a problem in" in t or "Route search failed" in t]
         assert not problems, "%s: %s" % (label, problems)
         return new
 
@@ -107,7 +116,7 @@ def main():
     stub.Fire("PLAYER_LOGIN")
     stub.Fire("PLAYER_ENTERING_WORLD")
     chat("login")
-    assert len(stub.settings) == 80 and stub.category, "the settings pages were not built"
+    assert len(stub.settings) == 80 and stub.category and stub.front, "the settings pages were not built"
     assert stub.provider, "the world map layer was not attached"
 
     step("put a pin on Gadgetzan")
@@ -191,7 +200,7 @@ def main():
     stub.player.x, stub.player.y = -7141.0, -3791.0
     stub.Tick()
     text = chat("arrive")
-    assert not ns.dest and any("you are there" in t for t in text)
+    assert not ns.dest and any("You have arrived" in t for t in text)
     stub.Tick()
     assert stub.shown == 0 or True
 
@@ -244,7 +253,7 @@ def main():
     for _ in range(6):
         stub.Tick(); frames()
     assert not ns.dest, "kept routing to a step you are standing on"
-    assert not any("you are there" in m for m in list(stub.messages.values())[said_before:])
+    assert not any("You have arrived" in m for m in list(stub.messages.values())[said_before:])
     # walking away with the step still open: routed back to it
     stub.player.x, stub.player.y = -442.0, -2598.0
     stub.time += 20
@@ -306,7 +315,7 @@ def main():
     for _ in range(6):
         stub.Tick(); frames()
     assert not ns.dest, "kept routing to a quest you are standing at"
-    assert not any("you are there" in m for m in list(stub.messages.values())[said_before:])
+    assert not any("You have arrived" in m for m in list(stub.messages.values())[said_before:])
     stub.player.x, stub.player.y = FIELD[0] + 60, FIELD[1]
     for _ in range(12):
         stub.Tick(); frames()
@@ -335,7 +344,7 @@ def main():
     assert near(*RATCHET), "the game's next stop on the way was not routed to"
     slash("go"); frames()
     text = chat("quest")
-    assert any('on the way to your quest "Message to Stormwind"' in t for t in text), text
+    assert any('Routing toward quest "Message to Stormwind"' in t for t in text), text
     stub.QuestStop(872, None)                                     # no stop given: the nearest tracked quest instead
     look()
     assert near(*CAMP), "a quest on another continent was not passed over"
@@ -345,7 +354,50 @@ def main():
     stub.Tick(); frames()
     assert ns.dest.source == "rxp" and near(*RATCHET), "the guide did not come before the quest"
     slash("quest")
-    assert any("your RestedXP guide, which comes first" in t for t in chat("quest"))
+    assert any("your RestedXP guide (it has priority" in t for t in chat("quest"))
+    # a quest you choose (a click in the tracker) is a side path: it takes over from the guide, in a
+    # colour of its own, with the way back to the guide drawn on from it
+    Choice = lua.globals().PatchwerkForever.Choice
+    walking = list(ns.TrailColour("walk", ns.dest.chosen))
+    assert Choice.Get(Choice) is None and not ns.dest.chosen
+    Choice.Set(Choice, "quest", 870)
+    stub.Tick(); frames()
+    assert ns.dest.source == "quest" and ns.dest.chosen and near(*CAMP), "a quest you chose did not take over from the guide"
+    assert list(ns.TrailColour("walk", ns.dest.chosen)) != walking, "a chosen path is drawn like the main track"
+    assert list(ns.TrailColour("fly", ns.dest.chosen)) == list(ns.TrailColour("fly")), "a flight on a chosen path lost its colour"
+    stub.Tick(); frames()
+    assert ns.ahead and len(ns.ahead.legs) == 1, "the way back to the guide is not drawn on from the quest"
+    slash("quest")
+    assert any("selected by you" in t for t in chat("quest"))
+    assert Choice.Is(Choice, "quest", 870) and not Choice.Is(Choice, "quest", 872)
+    # chosen again (the choice cleared): the guide has the say once more
+    Choice.Clear(Choice)
+    stub.Tick(); frames()
+    assert ns.dest.source == "rxp" and not ns.dest.chosen and near(*RATCHET), "the guide was not gone back to"
+    # a quest that is not tracked can be chosen too; handed in, the main track comes back by itself
+    stub.QuestAt(873, "A Side Job", 1, *FIELD)
+    Choice.Set(Choice, "quest", 873)
+    stub.Tick(); frames()
+    assert ns.dest.chosen and near(*FIELD)
+    stub.QuestGone(873)
+    stub.Tick(); frames()
+    assert Choice.Get(Choice) is None and ns.dest.source == "rxp" and near(*RATCHET), "a quest handed in is still followed"
+    # the quest the game's arrow is on, followed by the settings, then chosen: the same way, marked as chosen
+    setting("sourceFirst", "quest")
+    stub.focus = 870
+    look("SUPER_TRACKING_CHANGED")
+    assert ns.dest.source == "quest" and near(*CAMP) and not ns.dest.chosen
+    Choice.Set(Choice, "quest", 870)
+    stub.Tick(); frames()
+    assert ns.dest.chosen and near(*CAMP)
+    Choice.Clear(Choice)
+    stub.Tick(); frames()
+    assert not ns.dest.chosen and near(*CAMP)
+    stub.focus = 872
+    setting("sourceFirst", "rxp")
+    stub.Tick(); frames()
+    assert ns.dest.source == "rxp"
+    chat("quest")
     setting("sourceFirst", "quest")
     frames()
     assert ns.dest.source == "quest" and near(*CAMP), "the quest did not come first when asked"
@@ -360,8 +412,8 @@ def main():
     assert ns.dest and ns.dest.source == "quest", "did not go back to the quest when the pin went"
     slash("quest")
     text = chat("quest")
-    assert any('followed now: "The Forgotten Pools"' in t for t in text), text
-    assert any("not the one you are on" in t for t in text), text
+    assert any('Following: "The Forgotten Pools"' in t for t in text), text
+    assert any("not your current continent" in t for t in text), text
     # the setting off: the guide is followed; both off: nothing
     setting("quests", False)
     frames()
@@ -449,8 +501,103 @@ def main():
     slash("nodes forget")
     assert spots() == 1, "forget did not clear the spot you stand on"
     text = chat("nodes")
-    assert any("1 herb spots and 1 ore spots" in t for t in text), text
+    assert any("1 herb nodes and 1 ore nodes" in t for t in text), text
     stub.player.x, stub.player.y = -442.0, -2598.0
+
+    step("gathering: to the nearest spot and on to the next at each; one kind; a round; offered through the base")
+    G = lua.globals().PatchwerkForever.Gather
+    assert G.Has(G), "Routes did not offer gathering to the base"
+    gather("Peacebloom", -460.0, -2640.0, [herb])
+    gather("Peacebloom", -700.0, -2900.0, [herb])
+    gather("Tin Vein", -2500.0, -2600.0, [ore])
+    stub.player.x, stub.player.y = -442.0, -2598.0
+    got = [(n.name, round(n.yards)) for n in G.Near(G, 5).values()]
+    assert got == [("Peacebloom", 46), ("Copper Vein", 94), ("Tin Vein", 2058)], got
+    assert len(G.Near(G, 1)) == 1 and G.State(G) is None
+
+    def go(x=None, y=None):
+        if x is not None:
+            stub.player.x, stub.player.y = x, y
+        for _ in range(2):
+            stub.Tick(); frames()
+
+    def at(x, y):
+        return ns.dest and abs(ns.dest.x - x) < 1 and abs(ns.dest.y - y) < 1
+
+    assert G.Start(G, "any") is True
+    go()
+    assert ns.dest and ns.dest.source == "gather" and at(-460.0, -2640.0) and ns.route, "no way to the nearest spot"
+    assert G.State(G).mode == "any" and G.State(G).going == "Peacebloom"
+    # reach it: on to the next nearest, not back to the one just visited
+    go(-460.0, -2640.0)
+    assert at(-520.0, -2650.0) and G.State(G).going == "Copper Vein", "the run did not go on to the next spot"
+    go(-520.0, -2650.0)
+    assert at(-700.0, -2900.0), "the run went back to a spot just visited"
+    # stopped by you: the run is over
+    slash("stop")
+    go()
+    assert not ns.dest and G.State(G) is None, "a run you stopped went on"
+    # one kind: its spot here was just visited, so there is none; later there is
+    assert G.Start(G, "kind", "Copper Vein") is False and G.State(G) is None
+    text = chat("gather")
+    assert any("No unvisited Copper Vein node" in t for t in text), text
+    stub.time += 400
+    stub.player.x, stub.player.y = -442.0, -2598.0
+    assert G.Start(G, "kind", "Copper Vein") is True
+    go()
+    assert at(-520.0, -2650.0) and G.State(G).name == "Copper Vein"
+    assert G.Stop(G) is True and not ns.dest and G.State(G) is None
+    go()
+    assert not ns.dest, "something was routed to after the run was stopped"
+    # a round keeps to the spots near where it began: the far vein is left out, and the round ends
+    assert G.Start(G, "round") is True
+    go()
+    assert at(-460.0, -2640.0)
+    go(-460.0, -2640.0)
+    assert at(-520.0, -2650.0)
+    go(-520.0, -2650.0)
+    assert at(-700.0, -2900.0)
+    go(-700.0, -2900.0)
+    text = chat("gather")
+    assert G.State(G) is None and not ns.dest and any("Gathering stopped" in t for t in text), text
+    # the commands
+    stub.time += 400
+    stub.player.x, stub.player.y = -442.0, -2598.0
+    for words in ("gather list", "gather stop", "gather thistle", "gather peacebloom"):
+        slash(words)
+    go()
+    text = chat("gather")
+    assert any("Peacebloom: 46 yd" in t for t in text) and any("No gathering run is active" in t for t in text), text
+    assert any('No "thistle" node' in t for t in text) and at(-460.0, -2640.0) and G.State(G).name == "Peacebloom"
+    slash("gather stop")
+    slash("gather round")
+    go()
+    assert G.State(G).mode == "round"
+    slash("gather stop")
+    go()
+    assert not ns.dest and G.State(G) is None
+    # one side path at a time: a run clears a chosen quest, and choosing a quest ends a run
+    stub.QuestAt(874, "A Side Job", 1, -600.0, -2800.0)
+    Choice.Set(Choice, "quest", 874)
+    go()
+    assert ns.dest and ns.dest.source == "quest" and ns.dest.chosen
+    assert G.Start(G, "any") is True and Choice.Get(Choice) is None, "a gathering run left the chosen quest standing"
+    go()
+    assert ns.dest.source == "gather" and ns.dest.chosen, "a gathering run is not drawn as a path you chose"
+    Choice.Set(Choice, "quest", 874)
+    assert G.State(G) is None, "choosing a quest left the gathering run on"
+    go()
+    assert ns.dest.source == "quest" and ns.dest.chosen and at(-600.0, -2800.0)
+    stub.QuestGone(874)
+    go()
+    assert not ns.dest and Choice.Get(Choice) is None
+    # (the spots made for this are forgotten again, so that what follows finds what it did before)
+    for x, y in ((-460.0, -2640.0), (-700.0, -2900.0), (-2500.0, -2600.0)):
+        stub.player.x, stub.player.y = x, y
+        slash("nodes forget")
+    assert spots() == 1
+    stub.player.x, stub.player.y = -442.0, -2598.0
+    chat("gather")
 
     step("the options pages: every control is made, on the page it belongs to")
     # each tool's settings carry its own addon's name; the base's one setting is on the parent page
@@ -462,21 +609,42 @@ def main():
                 by_name[s.variable[len(addon) + 1:]] = s
                 break
     assert len(by_name) == 80, "expected 80 settings on the options pages, found %d" % len(by_name)
-    assert by_name["baseTellMissing"].page == "Patchwerk Forever"
+    assert "baseTellMissing" not in by_name, "the base's switch is on its front page, not a row of the game's"
     pages = sorted(stub.pages.keys())
-    WANT = {"Thread: Routes": 14, "Thread: Trail": 11, "Thread: Step Text": 6, "Thread: Sparkle": 4, "Sparkle: Names": 8,
-            "Sparkle: Behind My Character": 6, "Sparkle: Chests": 6, "Sparkle: Herbs": 6, "Sparkle: Ore": 6,
-            "Sparkle: Other Things": 6, "Sparkle: Quest Objects": 6}
+    WANT = {"Thread: Routes": 14, "Routes: Trail": 12, "Routes: Step Text": 6, "Thread: Sparkle": 4, "Sparkle: Names": 8,
+            "Sparkle: Behind My Character": 6, "Sparkle: Looks": 30}
     assert pages == sorted(WANT), pages
     for page in pages:
         on_it = [n for n, s in by_name.items() if s.page == page]
         assert len(on_it) == WANT[page], "%s has %d settings, expected %d" % (page, len(on_it), WANT[page])
-    assert list(stub.headers.values()) == ["Patchwerk Forever", "Herb And Ore Spots"], list(stub.headers.values())
+    # headings, each kind of sparkle under its own on the one page of looks
+    assert list(stub.headers.values()) == [
+        "Destinations", "Travel Options", "Chat", "Gathering Nodes", "Display", "Line Style", "Colors",
+        "Herbs", "Ore", "Chests", "Quest Objects", "Other Objects"], list(stub.headers.values())
+    # every page opens with its name, its tool's picture and a line in Patchwerk's voice
+    intros = {i.name: i for i in stub.intros.values()}
+    assert sorted(intros) == sorted(WANT), sorted(intros)
+    assert intros["Thread: Routes"].voice == "Follow the thread. Patchwerk knows the way. Mostly."
+    assert intros["Routes: Trail"].voice.startswith("A line on the ground.") and intros["Sparkle: Looks"].voice.startswith("Every shiny thing")
+    assert all(i.voice and i.icon and i.icon.endswith("icon") for i in intros.values()), [n for n, i in intros.items() if not i.voice]
+    assert stub.Rows() == len(WANT) + 12, "a row of our own could not be made"
+    # the front page: what is sewn on, each with a button to its page
+    front = stub.front
+    front.shown = True
+    front.scripts.OnShow(front)
+    page = tables[BASE].FrontShown()
+    parts = [(x.name, x.says, x.open) for x in page.parts.values()]
+    for part in parts:
+        print("      front page: %s | %s" % part[:2])
+    assert [x[0].split("  ")[0] for x in parts] == ["Thread (Routes)", "Thread (Sparkle)"] and all(x[2] for x in parts), parts
+    assert "Two threads" in page.said, page.said
+    names = [s.name for s in by_name.values()]
+    assert "Route To Map Pin" in names and "Follow RestedXP Guide" in names and "Font Size" in names and "Walking Color" in names, names
     sdb = lua.globals().PatchwerkForever_Thread_SparkleDB
     assert sdb and not lua.globals().PatchwerkForever_Thread_RoutesDB.sparkleWas, "the sparkle keeps its things in the routes' saved data"
     buttons = list(stub.buttons.values())
-    assert sorted(b.text for b in buttons) == ["Apply", "Forget", "Show", "Show"] + ["Test"] * 5, [b.text for b in buttons]
-    assert sum(1 for s in by_name.values() if s.colour) == 10 and sum(1 for s in by_name.values() if s.choices) == 12
+    assert sorted(b.text for b in buttons) == ["Apply", "Clear", "Show", "Show"] + ["Test"] * 5, [b.text for b in buttons]
+    assert sum(1 for s in by_name.values() if s.colour) == 11 and sum(1 for s in by_name.values() if s.choices) == 12
 
     def setv(name, value):
         by_name[name].set(value)
@@ -615,7 +783,7 @@ def main():
     assert s.shown, "undoing did not bring it back"
     lua.globals().PatchwerkForever_Thread_Sparkle_Ignore()                       # the bound key
     assert not s.shown
-    [b for b in buttons if b.text == "Forget"][0].click()
+    [b for b in buttons if b.text == "Clear"][0].click()
     assert s.shown, "the Forget button did not clear the list"
     slash("ignore list")
 
@@ -652,7 +820,7 @@ def main():
     stub.zoom = None                                              # a client that does not say: 15 yards is taken
     assert alpha_at(cx, cy) == 0.0 and alpha_at(cx + 6 * hw, cy) == 1.0, "no fading where the game does not tell the camera's distance"
     slash("sparkle")
-    assert any("15 yards is taken" in t for t in chat("sparkle")), "the command does not say the distance is assumed"
+    assert any("15 yards is assumed" in t for t in chat("sparkle")), "the command does not say the distance is assumed"
     stub.zoom = 15.0
     setv("sparkleBehindSize", 200)
     setv("sparkleBehindWide", 100)
@@ -666,10 +834,10 @@ def main():
     assert alpha_at(None, None) == 1.0, "a sparkle the game gives no place for should stay bright"
     assert alpha_at("hidden", "hidden") == 1.0 and s.unplaced, "a place the game will not let it reckon with should leave it bright"
     slash("sparkle")
-    assert any("will not say where the sparkle is" in t for t in chat("sparkle")), "the command does not say it cannot place the sparkle"
+    assert any("screen position is not available" in t for t in chat("sparkle")), "the command does not say it cannot place the sparkle"
     # the Show button
     assert alpha_at(cx, cy) == 0.0
-    [b for b in buttons if b.name == "Show Where"][0].click()
+    [b for b in buttons if b.name == "Preview Area"][0].click()
     ovals = [f for f in stub.frames.values() if f.ring is not None]
     assert len(ovals) == 1 and ovals[0].shown, "the Show button showed nothing"
     assert abs(ovals[0].width - 2 * hw / 0.82) < 0.01 and abs(ovals[0].height - 2 * hh / 0.82) < 0.01, "the oval shown is not the oval used"
@@ -682,7 +850,7 @@ def main():
     assert not ovals[0].shown, "the oval did not go away"
     slash("sparkle")
     text = chat("sparkle")
-    assert any("15 yards out" in t and "100% covered" in t for t in text), text
+    assert any("camera distance 15 yards" in t and "100% covered" in t for t in text), text
     setv("sparkleBehind", False)
     assert s.alpha == 1.0 and alpha_at(cx, cy) == 1.0, "the sparkle stayed faded with the setting off"
 
@@ -812,7 +980,7 @@ def main():
     stub.Fire("USER_WAYPOINT_UPDATED")
     frames()
     text = chat("no rides")
-    assert not ns.route and any("Use Boats And Zeppelins is switched off" in t for t in text), text
+    assert not ns.route and any("Use Boats And Zeppelins is disabled" in t for t in text), text
     setv("rides", True)
     n = frames()
     text = chat("crossing")
@@ -852,7 +1020,7 @@ def main():
     stub.player.x, stub.player.y = BRILL[0] + 2, BRILL[1]
     stub.Tick()
     text = chat("arrived over there")
-    assert not ns.dest and any("you are there" in t for t in text), text
+    assert not ns.dest and any("You have arrived" in t for t in text), text
     # a quest over the sea is followed too
     stub.pin = None
     stub.Fire("USER_WAYPOINT_UPDATED")
@@ -1014,7 +1182,7 @@ def main():
     stub.Tick(); frames()
     assert ns.dest and near(*CAMP) and ns.FloatShown() is None, "words on screen with the setting off"
     setting("float", True)
-    [b for b in buttons if b.name == "Show Me"][0].click()
+    [b for b in buttons if b.name == "Preview Step Text"][0].click()
     assert words()[0].startswith("Turn in The Forgotten Pools")
     quiet()
     # your own pin: said too

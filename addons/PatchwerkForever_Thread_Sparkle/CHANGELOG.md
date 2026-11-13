@@ -1,5 +1,10 @@
 # Patchwerk Forever: Thread (Sparkle)
 
+## 0.12.0 (beta)
+
+- **One page for the looks.** The five pages for how each kind of thing sparkles (herbs, ore, chests, quest objects, other things) are one page now, **Sparkle: Looks**, with a heading for each kind. Your settings are kept.
+- Its pages open with its picture and a line from Patchwerk, and its settings are renamed in standard terms (Enable Sparkles, Font Size, Color Mode, Hide In Instances), and chat messages, command help and the key binding are reworded to match; nothing changes in what they do.
+
 ## 0.11.0 (beta)
 
 First release as an addon of its own. Until now the sparkle was part of the route planner (then called Wayfarer, now *Patchwerk Forever: Thread (Routes)*).

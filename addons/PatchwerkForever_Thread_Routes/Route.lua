@@ -54,13 +54,13 @@ local function Data(map)
 	if P.Use(map) then return true end
 	local name = DATA[map]
 	if not name then
-		Once('map' .. tostring(map), 'there is no map data for this place (map ' .. tostring(map) .. ').')
+		Once('map' .. tostring(map), 'No map data for this area (map ' .. tostring(map) .. ').')
 		return false
 	end
 	local load = C_AddOns and C_AddOns.LoadAddOn or LoadAddOn
 	local ok, reason = load(name)
 	if P.Use(map) then return true end
-	Once('data' .. name, 'the map data "' .. name .. '" could not be loaded (' .. tostring(reason or ok)
+	Once('data' .. name, 'Map data "' .. name .. '" could not be loaded (' .. tostring(reason or ok)
 		.. '). It is a separate addon: check it is installed and ticked in the addon list.')
 	return false
 end
@@ -77,7 +77,7 @@ local function Known(map)
 	if not id then return nil end
 	local nodes = C_TaxiMap and C_TaxiMap.GetTaxiNodesForMap and C_TaxiMap.GetTaxiNodesForMap(id)
 	if type(nodes) ~= 'table' or #nodes == 0 then
-		Once('known' .. tostring(map), 'the game did not say which flight points you know here, so all of your side\'s are used.')
+		Once('known' .. tostring(map), 'Known flight points are not available here, so all of your faction\'s flight points are used.')
 		return nil
 	end
 	local known = {}
@@ -104,7 +104,7 @@ runner:SetScript('OnUpdate', function()
 		local ok, err = coroutine.resume(job)
 		if not ok then
 			job = nil
-			ns.Print('the search stopped on an error: ' .. tostring(err))
+			ns.Print('Route search failed: ' .. tostring(err))
 		elseif coroutine.status(job) == 'dead' then
 			job = nil
 		end
@@ -165,10 +165,10 @@ ns.Summary = Summary
 local function Say(route)
 	local text = Summary(route) .. '.'
 	if route.swum > 300 then
-		text = text .. (' It swims %d yd: have a look before you trust it.'):format(route.swum)
+		text = text .. (' Includes %d yd of swimming; check it before relying on it.'):format(route.swum)
 	end
 	if route.short and route.short > 25 then
-		text = text .. (' It ends on the nearest ground it knows, %d yd from the spot (a building?).'):format(route.short)
+		text = text .. (' Ends at the nearest known ground, %d yd from the destination (possibly a building).'):format(route.short)
 	end
 	ns.Print(text)
 end
@@ -198,7 +198,7 @@ Search = function(from, to, opts)
 	local map = from.map
 	local rides = ns.Get('rides') and ns.Crossings or nil
 	if map ~= to.map and not rides then
-		return nil, 'that is on another continent, and Use Boats And Zeppelins is switched off.'
+		return nil, 'That location is on another continent, and Use Boats And Zeppelins is disabled.'
 	end
 	if not Data(map) then return nil end
 	if map ~= to.map and not Data(to.map) then return nil end
@@ -212,7 +212,7 @@ Search = function(from, to, opts)
 	local tx, ty = gx, gy
 	gx, gy = P.Nearest(to.map, gx, gy, 24)
 	if not gx then
-		return nil, 'there is no ground the planner knows within 100 yards of that spot.'
+		return nil, 'No known walkable ground within 100 yards of that location.'
 	end
 	-- walks found by the planner, joined by boats and zeppelins where that is quicker or the only way
 	local side, flights, known = Side(), ns.Get('flights') and not opts.walkOnly, {}
@@ -228,9 +228,9 @@ Search = function(from, to, opts)
 	if not journey then
 		P.Forget()
 		if map ~= to.map then
-			return nil, 'no way found to that continent: no boat or zeppelin your side can take leads there, or the spot is cut off.'
+			return nil, 'No route found to that continent: no boat or zeppelin available to your faction goes there, or the location is unreachable.'
 		end
-		return nil, 'no way found. The spot may be cut off by something the planner does not know: a lift, a boat, a locked gate.'
+		return nil, 'No route found. The location may be unreachable by something the planner does not know: a lift, a boat or a locked gate.'
 	end
 	local line = P.JourneyLine(journey)
 	P.Forget()
@@ -267,11 +267,11 @@ function ns.Plan(announce)
 	local px, py, map = Place()
 	if not px then
 		Fresh(dest)
-		return Fail(announce, 'the game does not say where you are here.')
+		return Fail(announce, 'Your position is not available here.')
 	end
 	if map ~= dest.map and not (ns.Get('rides') and ns.Crossings) then
 		Fresh(dest)
-		return Fail(announce, 'that is on another continent, and Use Boats And Zeppelins is switched off.')
+		return Fail(announce, 'That location is on another continent, and Use Boats And Zeppelins is disabled.')
 	end
 	if not Data(map) or (map ~= dest.map and not Data(dest.map)) then
 		Fresh(dest)
@@ -335,7 +335,7 @@ local function Follow()
 		if dx * dx + dy * dy < ARRIVED * ARRIVED then
 			ns.Stop(false)
 			-- (a guide's steps come one after another: no line in chat for each)
-			if ns.Get('notify') and not dest.source then ns.Print('you are there.') end
+			if ns.Get('notify') and not dest.source then ns.Print('You have arrived.') end
 			return
 		end
 	end
@@ -429,14 +429,14 @@ function ns.Stop(announce)
 	ns.stopped = had and { dest = had, user = announce and true or false } or nil
 	Watch(false)
 	Changed()
-	if announce then ns.Print(had and 'stopped.' or 'there is no route to stop.') end
+	if announce then ns.Print(had and 'Routing stopped.' or 'No active route.') end
 end
 
 function ns.Go()
 	local map, x, y = PinPlace()
 	if not map then
 		if ns.GoToSource and ns.GoToSource() then return end
-		ns.Print('put a pin on the world map or track a quest first, then try again.')
+		ns.Print('Place a map pin or track a quest first.')
 		return
 	end
 	ns.SetDestination(map, x, y, true, true)
@@ -445,32 +445,32 @@ end
 function ns.GoToMapSpot(xPercent, yPercent)
 	local uiMap = C_Map.GetBestMapForUnit('player')
 	if not uiMap then
-		ns.Print('the game does not say which map you are on.')
+		ns.Print('Your current map is not available.')
 		return
 	end
 	local map, world = C_Map.GetWorldPosFromMapPos(uiMap, CreateVector2D(xPercent / 100, yPercent / 100))
 	if not world then
-		ns.Print('the game could not place that spot.')
+		ns.Print('Those coordinates could not be resolved.')
 		return
 	end
 	local x, y = world:GetXY()
 	ns.SetDestination(map, x, y, false, true)
 end
 
-local KINDS = { [0] = 'no ground the planner can use', 'walkable ground', 'shallow water', 'deep water' }
+local KINDS = { [0] = 'not walkable', 'walkable ground', 'shallow water', 'deep water' }
 function ns.SayWhere()
 	local x, y, map = Place()
 	if not x then
-		ns.Print('the game does not say where you are here.')
+		ns.Print('Your position is not available here.')
 		return
 	end
-	ns.Print(('map %d, world %.1f, %.1f.'):format(map, x, y))
+	ns.Print(('Map %d, world %.1f, %.1f.'):format(map, x, y))
 	if not Data(map) then return end
 	local cx, cy = P.CellOf(map, x, y)
-	ns.Print(('cell %d, %d: %s.'):format(cx, cy, KINDS[P.KindAt(map, cx, cy)] or '?'))
+	ns.Print(('Cell %d, %d: %s.'):format(cx, cy, KINDS[P.KindAt(map, cx, cy)] or '?'))
 	local nx, ny = P.Nearest(map, cx, cy, 12)
 	if nx and (nx ~= cx or ny ~= cy) then
-		ns.Print(('nearest usable ground: %d yd away.'):format(math.sqrt((nx - cx) ^ 2 + (ny - cy) ^ 2) * 4.1667))
+		ns.Print(('Nearest walkable ground: %d yd away.'):format(math.sqrt((nx - cx) ^ 2 + (ny - cy) ^ 2) * 4.1667))
 	end
 	P.Forget()
 end

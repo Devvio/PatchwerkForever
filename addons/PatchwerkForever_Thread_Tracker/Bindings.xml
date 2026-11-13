@@ -2,4 +2,5 @@
 	<Binding name="PATCHWERKFOREVER_TRACKER_FOLD" header="PATCHWERKFOREVER_TRACKER" category="ADDONS">
 		PatchwerkForever_Thread_Tracker_Fold()
 	</Binding>
+	<Binding name="CLICK PatchwerkForeverTrackerNearestItem:LeftButton" category="ADDONS"/>
 </Bindings>

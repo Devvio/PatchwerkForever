@@ -99,7 +99,7 @@ local function Remember(p, kind, icon)
 	Sort(p.map, node)
 	if not db.nodesTold then
 		db.nodesTold = true
-		ns.Print('remembered your first spot (' .. p.name .. '). It will show on the minimap and the world map; /thread nodes says how many there are.')
+		ns.Print('Recorded your first gathering node (' .. p.name .. '). Nodes are shown on the minimap and world map; /thread nodes counts them.')
 	end
 	Watch()
 	if ns.RedrawWorldMap then ns.RedrawWorldMap() end
@@ -266,8 +266,8 @@ end
 ---------------------------------------------------------------------------
 function ns.NodesSay()
 	local herbs, ore, here = Count()
-	ns.Print(('%d herb spots and %d ore spots remembered, %d of them on this map.'):format(herbs, ore, here))
-	if not ns.Get('nodes') then ns.Print('remembering new ones is switched off in the settings.') end
+	ns.Print(('%d herb nodes and %d ore nodes recorded, %d on this map.'):format(herbs, ore, here))
+	if not ns.Get('nodes') then ns.Print('Recording new nodes is disabled in the options.') end
 end
 
 function ns.NodesForget()
@@ -288,7 +288,7 @@ function ns.NodesForget()
 		Watch()
 		if ns.RedrawWorldMap then ns.RedrawWorldMap() end
 	end
-	ns.Print(('%d spot(s) within %d yards of you forgotten.'):format(gone, FORGET))
+	ns.Print(('%d node(s) within %d yards deleted.'):format(gone, FORGET))
 end
 
 ns.On('ADDON_LOADED', function(name)
@@ -309,3 +309,17 @@ ns.OnSetting(function(key)
 		ns.RedrawWorldMap()
 	end
 end)
+
+---------------------------------------------------------------------------
+-- For gathering runs (Gather.lua)
+---------------------------------------------------------------------------
+-- Calls fn(spot) for each remembered spot within `reach` yards of a place; a spot is { x, y, name }.
+function ns.NodesAround(map, x, y, reach, fn)
+	if db then Around(map, x, y, reach, fn) end
+end
+
+-- What grows at spots of this name: 'h' for a herb, 'o' for ore; nothing when it is not known.
+function ns.NodeKind(name)
+	local kind = db and db.nodeKinds and db.nodeKinds[name]
+	return kind and kind.kind or nil
+end

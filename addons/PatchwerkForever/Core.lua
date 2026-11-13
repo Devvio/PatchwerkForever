@@ -26,8 +26,9 @@
 
 local addonName, ns = ...;
 
--- API: raised when something is added that a part may need (2: the guides service, Guides.lua)
-local P = { API = 2, Fixes = {}, Parts = {}, Settings = { list = {}, byKey = {} } };
+-- API: raised when something is added that a part may need (2: the guides service, Guides.lua;
+-- 3: the gathering service, Gather.lua, and a guide step's items and skipping)
+local P = { API = 3, Fixes = {}, Parts = {}, Settings = { list = {}, byKey = {} } };
 PatchwerkForever = P;
 ns.P = P;
 
@@ -227,6 +228,7 @@ local function IsInstalled(name)
 	if not ok then return true end;
 	return found ~= nil and reason ~= 'MISSING';
 end
+ns.IsLoaded, ns.IsInstalled = IsLoaded, IsInstalled;
 
 -- The picture an addon of the family shows in the game's addon list
 -- (the IconTexture line of its TOC), for use anywhere a texture goes.
@@ -296,8 +298,8 @@ P:AddSetting({
 	key     = 'baseTellMissing';
 	default = true;
 	section = 'Patchwerk Forever';
-	name    = 'Tell Me About Missing Parts';
-	desc    = 'Says once, in chat, when an addon Patchwerk Forever has fixes for is running but the part with those fixes is not installed.';
+	name = 'Notify About Missing Addons';
+	desc = 'Print a one-time chat message when an addon Patchwerk Forever has fixes for is enabled, but the Stitch addon with those fixes is not installed.';
 })
 
 -- Since 2.0.0 the fixes are addons of their own. Someone who had

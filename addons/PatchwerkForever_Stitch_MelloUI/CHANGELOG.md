@@ -1,5 +1,9 @@
 # Patchwerk Forever: Stitch (MelloUI)
 
+## 2.0.1
+
+- Its options page opens with its picture and a line from Patchwerk, on Patchwerk Forever 2.2.0. Nothing changes in what it does.
+
 ## 2.0.0
 
 First release as an addon of its own. Until Patchwerk Forever 1.0.1, the MelloUI game menu button fix and the trim to Route and the Quest Tracker were part of that addon; its history up to then is in Patchwerk Forever's changelog.

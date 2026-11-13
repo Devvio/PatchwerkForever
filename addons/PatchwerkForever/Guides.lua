@@ -29,6 +29,14 @@ local P = ns.P;
 --     key              changes when the step or its place does
 --     ahead            the steps after it that have a place (or that carry you off), each
 --                      { index, kind, lines, map, x, y }
+--     after            the steps after it, whether they have a place or not, each { index, kind, lines }
+--     items           the ids of the items the step wants used (a hearthstone, a quest's item)
+--
+-- One thing here acts on the guide addon instead of reading it, and only when the player asks:
+--     PatchwerkForever.Guides:Go(info, index)
+-- has the guide move to the step of that number (the one after the step you are on skips it;
+-- the one before goes back), by the guide addon's own means. It returns true when the reader
+-- can do that and did.
 
 local Guides = { readers = {}, order = {} };
 P.Guides = Guides;
@@ -63,6 +71,14 @@ function Guides:Read(count)
 		end
 	end
 	return nil;
+end
+
+-- Has the guide move to the step numbered `index`. info: what Read gave.
+function Guides:Go(info, index)
+	local reader = type(info) == 'table' and Guides.readers[info.source];
+	if not ( reader and type(reader.Go) == 'function' and tonumber(index) ) then return false end;
+	local ok, went = pcall(reader.Go, tonumber(index));
+	return ok and went and true or false;
 end
 
 -- The words of a step still to be done, as plain strings: `most` of them at most (three when not said).

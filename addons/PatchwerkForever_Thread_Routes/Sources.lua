@@ -18,6 +18,11 @@
 --
 -- Which of the two goes first is a setting. The first that has a place you can go to (on your
 -- continent, or on another with boats and zeppelins switched on) is the one followed. They are looked at twice a second.
+--
+-- That is the main track. A quest you choose (a click on it in the tracker, kept by the base: its
+-- Choice.lua) is a side path and comes before it: the route goes to that quest, drawn in a colour of
+-- its own, and the way on from there back to the guide is drawn fainter. Choosing it again, or
+-- handing the quest in, gives the main track back.
 local ADDON, ns = ...
 if not ns.linked then return end
 
@@ -151,6 +156,15 @@ end
 -- The quest chosen and its spot, kept for a few seconds: asking goes through every quest on a map.
 local quest = { dirty = true, at = 0 }
 
+-- The quest you chose yourself (the base's Choice), or nil.
+local function Picked()
+	local Choice = ns.Base.Choice
+	local pick = Choice and Choice:Get()
+	if pick and pick.kind == 'quest' and type(pick.id) == 'number' then return pick.id end
+	return nil
+end
+local lastPick, pick = nil, { at = 0 }
+
 local function ChooseQuest()
 	local px, py, here = ns.Place()
 	local id = Focused()
@@ -197,11 +211,32 @@ end
 ---------------------------------------------------------------------------
 local FIND = { rxp = GuideTarget, quest = QuestTarget }
 
--- The place to go when you have not said: what gives it ('rxp' or 'quest'), map, world x, world y.
+-- The place to go when you have not said: what gives it ('rxp' or 'quest'), map, world x, world y,
+-- and true when it is a quest you chose yourself.
 local function Target()
 	local _, _, here = ns.Place()
 	local order = ns.Get('sourceFirst') == 'quest' and QUEST_FIRST or GUIDE_FIRST
 	guide = nil
+	-- a quest you chose comes before the main track, whatever the settings for followed quests say
+	local id = Picked()
+	if id ~= lastPick then
+		lastPick = id
+		pick = { at = 0 }
+		quest.id, quest.dirty = nil, true                 -- (the main track is worked out afresh, not left on the quest you had chosen)
+	end
+	if id then
+		local now = GetTime()
+		if quest.dirty or now - pick.at > STALE then
+			pick.at = now
+			pick.map, pick.x, pick.y, pick.stop = QuestSpot(id, here)
+		end
+		if pick.map then
+			quest.id, quest.map, quest.x, quest.y, quest.stop = id, pick.map, pick.x, pick.y, pick.stop
+			quest.dirty, quest.at = false, now
+			return 'quest', pick.map, pick.x, pick.y, true
+		end
+		-- (the game gives it no place you can go to: the main track keeps the say)
+	end
 	for _, name in ipairs(order) do
 		if ns.Get(SETTING[name]) then
 			local map, x, y = FIND[name]()
@@ -229,9 +264,27 @@ local function LookAhead(from)
 	ns.Ahead.Set(chain)
 end
 
+-- On a side path: the main track drawn fainter on from where the side path ends, so you see the way
+-- back to your guide. (With that way found ahead of time, the trail changes at once when you go back.)
+local function LookBack(from)
+	local main = ns.Get('rxp') and (ns.Get('rxpAhead') or 0) > 0 and Guides:Read(ns.Get('rxpAhead')) or nil
+	if not (main and main.map and from) then return ns.Ahead.Set({}) end
+	local travel = ns.Get('rxpTravel')
+	local chain = { { map = from.map, x = from.x, y = from.y, kind = 'place' },
+		{ map = main.map, x = main.x, y = main.y, kind = travel and main.kind or 'place' } }
+	for _, step in ipairs(main.ahead) do
+		chain[#chain + 1] = { map = step.map, x = step.x, y = step.y, kind = travel and step.kind or 'place' }
+	end
+	ns.Ahead.Set(chain)
+end
+
 local said       -- the guide's step last said on screen with no new destination to go with it
 
 local function Look()
+	if ns.GatherActive and ns.GatherActive() then            -- a gathering run is on: it has the say (Gather.lua)
+		ns.Ahead.Set({})
+		return
+	end
 	local dest = ns.dest
 	if dest and not dest.source then                         -- your own pin or spot comes first
 		ns.Ahead.Set({})
@@ -245,7 +298,7 @@ local function Look()
 			skip = { source = was.source, map = was.map, x = was.x, y = was.y, reached = not stopped.user }
 		end
 	end
-	local source, map, x, y = Target()
+	local source, map, x, y, picked = Target()
 	if not source then
 		if dest then
 			ns.Stop(false)
@@ -284,12 +337,18 @@ local function Look()
 			dest.step, dest.lines, dest.kind = guide.index, guide.words, guide.kind
 			ns.FloatStep(guide.words, ns.route and ns.Summary(ns.route) or nil)
 		end
-		LookAhead(dest)
+		-- (the quest being followed anyway, now chosen, or no longer: the same way, in the other colour)
+		if (dest.chosen or false) ~= (picked or false) then
+			dest.chosen = picked or nil
+			if ns.RouteChanged then ns.RouteChanged() end
+		end
+		if picked then LookBack(dest) else LookAhead(dest) end
 		return
 	end
-	local more = guide and GuideMore() or (source == 'quest' and quest.id and { lines = { 'Quest: ' .. Title(quest.id) } }) or nil
+	local more = guide and GuideMore()
+		or (source == 'quest' and quest.id and { lines = { 'Quest: ' .. Title(quest.id) }, chosen = picked or nil }) or nil
 	ns.SetDestination(map, x, y, false, false, source, more)
-	LookAhead(ns.dest)
+	if picked then LookBack(ns.dest) else LookAhead(ns.dest) end
 end
 
 -- Routes to what the guide or a quest gives now (for /thread go with no pin). Returns true if there is one.
@@ -300,11 +359,11 @@ function ns.GoToSource()
 	skip = nil
 	if not map then                                    -- the guide's step has no place: its words, again
 		ns.FloatStep(guide.words)
-		ns.Print('your guide\'s step has nowhere to go to: ' .. (guide.words[1] or 'it has no words either') .. '.')
+		ns.Print('The current guide step has no location: ' .. (guide.words[1] or 'no text') .. '.')
 		return true
 	end
 	if source == 'quest' and ns.Get('notify') then
-		ns.Print((quest.stop and 'on the way to your quest "%s":' or 'to your quest "%s":'):format(Title(quest.id)))
+		ns.Print((quest.stop and 'Routing toward quest "%s":' or 'Routing to quest "%s":'):format(Title(quest.id)))
 	end
 	local more = (source == 'rxp' and GuideMore()) or (source == 'quest' and quest.id and { lines = { 'Quest: ' .. Title(quest.id) } }) or nil
 	ns.SetDestination(map, x, y, false, true, source, more)
@@ -313,15 +372,15 @@ end
 
 -- /thread quest: what the game says of the quests you track, and which one is followed.
 function ns.QuestSay()
-	if not ns.Get('quests') then ns.Print('following tracked quests is switched off (Follow My Tracked Quest, on the options page).') end
+	if not ns.Get('quests') then ns.Print('Following tracked quests is disabled (Follow Tracked Quests, in the options).') end
 	if not (C_QuestLog and C_QuestLog.GetQuestsOnMap and GetQuestUiMapID) then
-		ns.Print('this client lacks the functions the quest places are read with (C_QuestLog.GetQuestsOnMap, GetQuestUiMapID).')
+		ns.Print('This client does not provide quest locations (C_QuestLog.GetQuestsOnMap, GetQuestUiMapID).')
 		return
 	end
 	local _, _, here = ns.Place()
 	local focused, watched = Focused(), Watched()
-	ns.Print(('the game\'s arrow is on: %s. Quests in your tracker: %d. You are on continent %s.'):format(
-		focused and ('"' .. Title(focused) .. '"') or 'no quest', #watched, tostring(here)))
+	ns.Print(('Quest arrow: %s. Tracked quests: %d. Continent: %s.'):format(
+		focused and ('"' .. Title(focused) .. '"') or 'none', #watched, tostring(here)))
 	local seen, said = {}, 0
 	local function Tell(id)
 		if seen[id] or said >= 10 then return end
@@ -330,11 +389,11 @@ function ns.QuestSay()
 		local where
 		if place then
 			where = ('at %.0f, %.0f on continent %d%s'):format(place[2], place[3], place[1],
-				(here ~= nil and place[1] ~= here) and ' (not the one you are on)' or '')
+				(here ~= nil and place[1] ~= here) and ' (not your current continent)' or '')
 		else
-			where = 'the game gives no place on the map'
+			where = 'no map location'
 		end
-		if stop then where = where .. ('; the game\'s next stop on the way: %.0f, %.0f on continent %d'):format(stop[2], stop[3], stop[1]) end
+		if stop then where = where .. ('; next waypoint: %.0f, %.0f on continent %d'):format(stop[2], stop[3], stop[1]) end
 		ns.Print(('  "%s" (%d): %s.'):format(Title(id), id, where))
 	end
 	if focused then Tell(focused) end
@@ -342,13 +401,14 @@ function ns.QuestSay()
 	quest.dirty = true
 	local source = Target()
 	if source == 'quest' then
-		ns.Print(('followed now: "%s"%s.'):format(Title(quest.id), quest.stop and ' (to the game\'s next stop on the way)' or ''))
+		ns.Print(('Following: "%s"%s%s.'):format(Title(quest.id), quest.stop and ' (via the next waypoint)' or '',
+			Picked() == quest.id and ' (selected by you; click it again to return to your main route)' or ''))
 	elseif source == 'rxp' then
-		ns.Print('followed now: your RestedXP guide, which comes first (the order is on the options page).')
+		ns.Print('Following: your RestedXP guide (it has priority; change this in the options).')
 	elseif ns.dest and not ns.dest.source then
-		ns.Print('followed now: your own pin or spot, which always comes first.')
+		ns.Print('Following: your map pin or coordinates (always first).')
 	else
-		ns.Print('followed now: nothing.')
+		ns.Print('Following: nothing.')
 	end
 end
 

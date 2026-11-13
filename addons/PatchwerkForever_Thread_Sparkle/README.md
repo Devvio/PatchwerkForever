@@ -34,7 +34,7 @@ With **Patchwerk Forever: Thread (Routes)** installed too, a herb or a vein is k
 
 ## Settings
 
-**Options → AddOns → Patchwerk Forever → Thread: Sparkle**, or `/sparkle config`. The name has the page **Sparkle: Names**, and each kind of thing a page of its own.
+**Options → AddOns → Patchwerk Forever → Thread: Sparkle**, or `/sparkle config`. The name has the page **Sparkle: Names**; how each kind of thing sparkles is on **Sparkle: Looks**, a heading for each kind; and **Sparkle: Behind My Character** has the fading.
 
 ## Commands
 

@@ -25,3 +25,10 @@ The addon folders are `PatchwerkForever`, `PatchwerkForever_Stitch_ConsolePort`,
 To go back to a drawn icon, delete your `icon.png` and run `python art.py`.
 
 In Lua, a picture is `Interface\AddOns\<addon folder>\Media\<name>` (no extension). A part of Patchwerk Forever can ask the base for any family addon's icon: `ns:Icon('PatchwerkForever_Stitch_ConsolePort')`, or `ns:IconText(addon, 14)` for a piece of text that shows it in a chat line.
+
+## Pictures the addon shows in the game too
+
+A picture under `listing/` is for the CurseForge page and does not ship. One that the addon also
+shows in the game is named in `tools/art.py` (`ALSO_SHIPPED`), with the size it is made at:
+`art/PatchwerkForever/listing/banner.png` becomes `addons/PatchwerkForever/Media/banner.tga`
+(1024 by 512), the picture across the top of Patchwerk Forever's first options page.

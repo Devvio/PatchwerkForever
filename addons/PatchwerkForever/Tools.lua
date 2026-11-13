@@ -38,6 +38,8 @@ local P = ns.P;
 --     colour = true                       a colour (default 'ffRRGGBB')
 --     button = 'text', click = function   a button; no value
 --     header = true                       a heading; no value
+--     voice  = 'words'                    what Patchwerk says at the top of the page it names
+--                                         (the first page says the TOC's X-Patchwerk-Voice line)
 --     page   = 'name'                     the page it is on (none: the tool's first)
 --     parent = key                        greyed out while that tick box is off
 -- Values are kept in <saved>.settings.
@@ -183,32 +185,35 @@ local function Page(category, tool, name)
 		local sub, layout = Settings.RegisterVerticalLayoutSubcategory(category, name);
 		page = { category = sub, layout = layout };
 		tool.pages[name] = page;
-		tool.first = tool.first or page;
+		-- every page opens with its name, the tool's picture and a line in Patchwerk's voice (Look.lua)
+		local voice = tool.voices and tool.voices[name];
+		if not tool.first then
+			tool.first = page;
+			ns.pageOf[tool.addon] = sub;
+			voice = voice or ns.VoiceOf(tool.addon);
+		end
+		pcall(ns.PlaceIntro, page, name, tool.addon, voice)
 	end
 	return page;
 end
 
 -- puts something that is not a setting (a heading, a button) on a page
 local function Place(page, initializer)
-	if Settings.RegisterInitializer then
-		Settings.RegisterInitializer(page.category, initializer)
-	elseif ( page.layout and page.layout.AddInitializer ) then
-		page.layout:AddInitializer(initializer)
-	end
+	ns.PlaceOn(page, initializer)
 end
 
 local function Control(category, tool, def)
 	local env = tool.env;
+	if def.voice then return end;                    -- (said in the page's intro: Page)
 	local page = Page(category, tool, def.page);
+	local shown = ns.Sentence(def.name);
 	if def.header then
-		if CreateSettingsListSectionHeaderInitializer then
-			Place(page, CreateSettingsListSectionHeaderInitializer(def.name))
-		end
+		ns.PlaceHeader(page, shown)
 		return;
 	end
 	if def.button then
 		if CreateSettingsButtonInitializer then
-			Place(page, CreateSettingsButtonInitializer(def.name, def.button, def.click, def.desc, true))
+			Place(page, CreateSettingsButtonInitializer(shown, def.button, def.click, def.desc, true))
 		end
 		return;
 	end
@@ -219,12 +224,12 @@ local function Control(category, tool, def)
 	local control;
 	if def.colour then
 		if not Settings.CreateColorSwatch then return end;
-		local setting = Settings.RegisterProxySetting(page.category, variable, Settings.VarType.String, def.name,
+		local setting = Settings.RegisterProxySetting(page.category, variable, Settings.VarType.String, shown,
 			def.default, get, set);
 		control = Settings.CreateColorSwatch(page.category, setting, def.desc);
 	elseif def.choices then
 		if not ( Settings.CreateDropdown and Settings.CreateControlTextContainer ) then return end;
-		local setting = Settings.RegisterProxySetting(page.category, variable, Settings.VarType.String, def.name,
+		local setting = Settings.RegisterProxySetting(page.category, variable, Settings.VarType.String, shown,
 			def.default, get, set);
 		local function Options()
 			local container = Settings.CreateControlTextContainer();
@@ -236,7 +241,7 @@ local function Control(category, tool, def)
 		control = Settings.CreateDropdown(page.category, setting, Options, def.desc);
 	elseif ( type(def.default) == 'number' ) then
 		if not ( Settings.CreateSlider and Settings.CreateSliderOptions ) then return end;
-		local setting = Settings.RegisterProxySetting(page.category, variable, Settings.VarType.Number, def.name,
+		local setting = Settings.RegisterProxySetting(page.category, variable, Settings.VarType.Number, shown,
 			def.default, get, set);
 		local options = Settings.CreateSliderOptions(def.min, def.max, def.step);
 		if ( options.SetLabelFormatter and MinimalSliderWithSteppersMixin and MinimalSliderWithSteppersMixin.Label ) then
@@ -244,7 +249,7 @@ local function Control(category, tool, def)
 		end
 		control = Settings.CreateSlider(page.category, setting, options, def.desc);
 	else
-		local setting = Settings.RegisterProxySetting(page.category, variable, Settings.VarType.Boolean, def.name,
+		local setting = Settings.RegisterProxySetting(page.category, variable, Settings.VarType.Boolean, shown,
 			def.default, get, set);
 		control = Settings.CreateCheckbox(page.category, setting, def.desc);
 	end
@@ -262,6 +267,10 @@ function ns.BuildToolPages(category)
 	if not Settings.RegisterVerticalLayoutSubcategory then return end;
 	for _, tool in ipairs(P.Tools) do
 		local env = tool.env;
+		tool.voices = {};
+		for _, def in ipairs(type(env.settings) == 'table' and env.settings or {}) do
+			if def.voice then tool.voices[def.page or tool.spec.page or tool.addon] = def.voice end;
+		end
 		env.Try('the options page', Page, category, tool)   -- (its first page, even when it has nothing on it)
 		for _, def in ipairs(type(env.settings) == 'table' and env.settings or {}) do
 			env.Try('the options page (' .. tostring(def.name) .. ')', Control, category, tool, def)

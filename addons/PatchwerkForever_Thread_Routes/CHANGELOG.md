@@ -1,3 +1,20 @@
+## 0.14.0 (beta)
+
+### The main track, and a path you choose
+- Your guide (or, with none, your tracked quests) is the main track. **A quest you click in Thread (Tracker) is a side path that comes first**: the route goes to it even while a guide is running.
+- The side path's walking is drawn in a colour of its own (new setting: Selected Route Color), and the way on from the quest back to your guide's step is drawn fainter.
+- Clicking the quest again, or handing it in, gives the main track back. A gathering run is a side path too, in the same colour; there is one side path at a time.
+
+### Its options pages
+- The pages are now **Thread: Routes**, **Routes: Trail** and **Routes: Step Text**, each opening with a line from Patchwerk, with headings for their sections (with Patchwerk Forever 2.2.0). Settings are renamed in standard terms (Line Style, Animation Speed, Walking Color, Font Size), and chat messages, command help and key bindings are reworded to match; nothing changes in what they do.
+
+### Gathering runs
+- `/thread gather` leads to the nearest herb or ore spot you have gathered at before, and on reaching it goes on to the next, leaving out the ones you have just been to, until `/thread gather stop`.
+- `/thread gather round` keeps to the spots near where you began; `/thread gather <name>` goes only to spots of one thing; `/thread gather list` shows what is near.
+- Only spots your character can gather are gone to. While a run is on, your guide and quests are not followed; a pin of your own still comes first.
+- The spots show where things grow, not whether one is there now.
+- With Thread (Tracker) installed, the runs are listed and started from its Gathering section.
+
 ## 0.13.0 (beta)
 
 - The guide is now read by the Patchwerk Forever base (its new guides service), which other tools can use too. **Needs Patchwerk Forever 2.1.0 or later.** Nothing changes in how a guide is followed.

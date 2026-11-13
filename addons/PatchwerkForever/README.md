@@ -45,11 +45,13 @@ Tools made here, needing nothing but this base.
 
 Everything is under **Options → AddOns → Patchwerk Forever**, or `/patchwerk config`. Beneath that page, each Stitch you have installed has a page of its own (**Stitch: Console Port**), and each Thread tool has its pages beside them (**Thread: Routes**); what is not installed is not listed. Nothing is added to the settings of the addons a Stitch works with.
 
+The first page is Patchwerk's own: his picture, what he has to say, and everything that is sewn on, each part with its version and a button that opens its page. A part that is for an addon you run and is not installed is listed there too, greyed. The base's one switch, **Notify About Missing Addons**, is at its foot. Every other page opens with its name and a line from Patchwerk.
+
 ## If you had Patchwerk Forever 1.x
 
 Until 1.0.1 the Console Port and MelloUI fixes were all inside this one addon. From 2.0.0 they are the Stitch addons above. **Install the ones you want**; your settings, blocked spots and everything else saved come back as they were, because they are still kept by this base.
 
-The base tells you once, in chat, when Console Port or MelloUI is running and the Stitch for it is not installed. One you have installed but unticked in the addon list is taken as switched off on purpose and is not mentioned. The setting **Tell Me About Missing Parts** turns the telling off.
+The base tells you once, in chat, when Console Port or MelloUI is running and the Stitch for it is not installed. One you have installed but unticked in the addon list is taken as switched off on purpose and is not mentioned. The setting **Notify About Missing Addons** turns the telling off.
 
 ## Commands
 
@@ -76,7 +78,7 @@ ns:OnSetting('myFix', function(value) ... end)
 ns:RegisterFix('myfix', { name = 'My fix', addon = 'TheAddonItFixes' })
 ```
 
-A Thread tool joins with `PatchwerkForever:Tool(addonName, ns, { saved = 'MyToolDB', name = 'Mine', page = 'Thread: Mine' })` and lists its settings in `ns.settings`; the base makes its pages and gives it `ns.Get`, `ns.Set`, `ns.On`, `ns.Print`. Either way the TOC needs `## Dependencies: PatchwerkForever`. A tool that wants to know what the player's guide says asks `PatchwerkForever.Guides:Read(count)`: the step, its lines, where it sends you, and the steps after it. RestedXP is read for a start; a reader for another guide addon is registered with `Guides:Register`. `Icon(addon)` gives the picture a family addon shows in the addon list.
+A Thread tool joins with `PatchwerkForever:Tool(addonName, ns, { saved = 'MyToolDB', name = 'Mine', page = 'Thread: Mine' })` and lists its settings in `ns.settings`; the base makes its pages and gives it `ns.Get`, `ns.Set`, `ns.On`, `ns.Print`. Either way the TOC needs `## Dependencies: PatchwerkForever`. A tool that wants to know what the player's guide says asks `PatchwerkForever.Guides:Read(count)`: the step, its lines, where it sends you, and the steps after it. RestedXP is read for a start; a reader for another guide addon is registered with `Guides:Register`. `Guides:Go(info, index)` has the guide move to another step, by the guide addon's own means, and is only for a player's click. `PatchwerkForever.Gather` passes gathering between tools that do not know each other: Thread (Routes) offers its remembered herb and ore spots there (`Offer`), and a tool that lists them asks `Has`, `Near(count)`, `Start(mode, name)`, `Stop` and `State`. `PatchwerkForever.Choice` keeps the one side path the player chose off the main track (`Set('quest', id)`, `Get`, `Is`, `Clear`): the tracker sets it on a click and the route planner goes there first. `Icon(addon)` gives the picture a family addon shows in the addon list.
 
 ## Credits
 
