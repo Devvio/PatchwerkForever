@@ -18,7 +18,7 @@ A quest tracker for **World of Warcraft: Forever**: your quests by zone with how
 
 One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the settings pages, and nothing else. It works with no other addon installed; RestedXP Guides and Thread (Routes) each add a section when they are there.
 
-**This is a beta, 0.9: everything meant for 1.0 is in it, and little of it has been played yet.** What has been seen working in the game is the plain list of quests. The rest runs against a stand-in for the game and is waiting to be tried. The dungeon stages are marked untried in the settings and start switched off.
+Version 1.0. One piece is marked experimental and starts switched off: dungeon objectives, which depend on what Forever's dungeons report.
 
 ## What it lists
 
@@ -52,6 +52,7 @@ Skipping a guide step is done by the guide addon itself, as a click in its own w
 
 A quest that gives you an item to use gets a button in a strip beside the tracker, the nearest quest's item first. The items your guide's step wants used (a hearthstone) follow them.
 
+- **Without a mouse**: bind "Route To Next Quest" and "Route To Previous Quest" (Key Bindings, under AddOns) to step through the list; one step past either end returns to your main route.
 - **A key or gamepad button** can be bound to "Use Nearest Quest Item" (Key Bindings, under AddOns). It only ever uses a quest's item, never the guide's.
 - **In a fight the strip does not change.** The game does not let an addon show, hide or move such buttons then. What changed meanwhile is applied when the fight is over, so the binding uses the item that was nearest when the fight began.
 
@@ -100,6 +101,7 @@ While this one is shown, the game's tracker is made invisible and lets clicks th
 | `/tracker on` / `off` | shows it, or goes back to the game's own |
 | `/tracker move` / `lock` / `reset` | drag it somewhere; fix it there; put it back under the minimap |
 | `/tracker fold` | folds it up, or opens it again |
+| `/tracker next` / `previous` | routes to the next or previous quest in the list |
 | `/tracker back` | takes back the last guide step skipped by a click |
 | `/tracker config` | opens the settings |
 

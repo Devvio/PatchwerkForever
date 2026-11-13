@@ -21,6 +21,8 @@
 local ADDON, ns = ...
 if not ns.linked then return end
 
+ns.questOrder = {}           -- the quests in the order they are listed, when last drawn
+
 -- Asks the game; an error or a function this client lacks gives nothing.
 local function Ask(fn, ...)
 	if type(fn) ~= 'function' then return nil end
@@ -141,6 +143,7 @@ end
 
 -- One quest as a block of the tracker. brief: its name and where to hand it in, no more.
 local function BlockOf(quest, brief)
+	ns.questOrder[#ns.questOrder + 1] = quest.id         -- (the order on screen, for the next and previous quest: Actions.lua)
 	local r, g, b
 	if quest.failed then
 		r, g, b = 0.9, 0.25, 0.25
@@ -192,6 +195,7 @@ local function ZoneHeading(name)
 end
 
 ns.AddSection('quests', 50, function()
+	ns.questOrder = {}
 	if not ns.Get('quests') then return nil end
 	local data = ns.ReadQuests()
 	local order = ns.Get('order') or 'zone'

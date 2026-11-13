@@ -1,5 +1,11 @@
 # Patchwerk Forever: Thread (Sparkle)
 
+## 1.0.0
+
+The first full release. Everything in 0.12.0 has been played and works.
+
+- **Reset To Defaults** at the foot of its first options page (with Patchwerk Forever 2.3.0).
+
 ## 0.12.0 (beta)
 
 - **One page for the looks.** The five pages for how each kind of thing sparkles (herbs, ore, chests, quest objects, other things) are one page now, **Sparkle: Looks**, with a heading for each kind. Your settings are kept.

@@ -231,14 +231,14 @@ def first_login():
     mine = [x for x in s.stub.settings.values() if x.variable.startswith(TRACKER + "_")]
     count = {page: sum(1 for x in mine if x.page == page) for page in pages}
     assert count == {"Thread: Tracker": 9, "Tracker: Quests": 12, "Tracker: Guide": 6, "Tracker: More": 7, "Tracker: Appearance": 9}, count
-    assert sorted(b.text for b in s.stub.buttons.values()) == ["Reset", "Unlock"]
+    assert sorted(b.text for b in s.stub.buttons.values()) == ["Defaults", "Reset", "Unlock"]
     # each page opens with its name and a line in Patchwerk's voice, and is grouped under stitched headings
     heads = list(s.stub.headers.values())
     assert heads == ["General", "Size", "Position", "Fading", "Quest List", "Quest Details", "Party",
-                     "Automation", "Quest Item Bar", "Recipes", "Gathering", "Dungeons", "Size", "Colors"], heads
+                     "Automation", "Quest Item Bar", "Recipes", "Gathering", "Dungeons", "Size", "Colors", "Defaults"], heads
     intros = {i.name: i.voice for i in s.stub.intros.values()}
     assert sorted(intros) == pages and intros["Tracker: Quests"] == "So many jobs. Patchwerk does the near one first.", intros
-    assert s.stub.Rows() == 19, "a row of our own could not be made"
+    assert s.stub.Rows() == 20, "a row of our own could not be made"
     names = [x.name for x in mine]
     assert "Hide Default Quest Tracker" in names and "Font Size" in names and "Hide RestedXP Window" in names, names
 
@@ -397,6 +397,29 @@ def first_login():
     s.slash("config")
     assert s.stub.opened == 8, "the tracker's own settings page did not open"
 
+    step("Reset To Defaults: asks first, then every option is as it began; its place is left alone")
+    s.setting("width", 400)
+    s.setting("order", "near")
+    s.setting("lookTitle", "ff00ff00")
+    s.setting("fadeCombat", True)
+    s.slash("move")
+    handle = [f for f in s.stub.frames.values() if f.scripts.OnDragStart][0]
+    handle.scripts.OnDragStop(handle)
+    s.slash("lock")
+    [b for b in s.stub.buttons.values() if b.text == "Defaults"][0].click()
+    assert "Reset all Thread: Tracker options" in s.stub.asked.text, s.stub.asked.text
+    s.stub.Answer(False)
+    assert ns.Get("width") == 400 and ns.Get("order") == "near", "the options were reset without a yes"
+    [b for b in s.stub.buttons.values() if b.text == "Defaults"][0].click()
+    s.stub.Answer(True)
+    s.turn()
+    text = s.chat()
+    assert any("Options reset to defaults" in t for t in text), text
+    assert (ns.Get("width"), ns.Get("order"), ns.Get("lookTitle"), ns.Get("fadeCombat")) == (260, "zone", "ffffd200", False)
+    assert frame.width == 260 and s.g.PatchwerkForever_Thread_TrackerDB.place is not None, "its place was reset with its options"
+    s.slash("reset")
+    s.chat()
+
     step("EllesmereUI's tracker running too: said once")
     s = Session(LOG + "STUB.loaded = { EllesmereUIQuestTracker = true }")
     s.load()
@@ -551,6 +574,42 @@ def clicks():
     s.click("Raptor Thieves", "RightButton")
     text = s.chat()
     assert len([t for t in text if "Right-click menus are not available" in t]) == 1, text
+
+    step("with no mouse: a key or gamepad button routes to the next or the previous quest in the list")
+    assert s.g.BINDING_NAME_PATCHWERKFOREVER_TRACKER_NEXT == "Route To Next Quest"
+    order = [t.split(" | ")[0].lstrip("> ") for t in s.shown() if t.lstrip("> ").startswith("[")]
+    assert order == ["[13] The Forgotten Pools", "[13] Raptor Thieves", "[4] Thwarting Kolkar Aggression", "[13] The Zhevra"], order
+    Choice = s.g.PatchwerkForever.Choice
+    assert Choice.Get(Choice) is None
+    for want in (870, 869, 786, 845):
+        s.g.PatchwerkForever_Thread_Tracker_Next()
+        s.turn()
+        assert Choice.Is(Choice, "quest", want) and s.stub.focus == want, (want, s.stub.focus)
+    assert "> [13] The Zhevra | 5 yd" in s.shown()
+    s.g.PatchwerkForever_Thread_Tracker_Next()               # one past the last: no quest, the main route
+    s.turn()
+    assert Choice.Get(Choice) is None and s.stub.focus == 0 and not any(t.startswith(">") for t in s.shown())
+    s.g.PatchwerkForever_Thread_Tracker_Previous()           # from none, backwards: the last
+    s.turn()
+    assert Choice.Is(Choice, "quest", 845)
+    s.g.PatchwerkForever_Thread_Tracker_Previous()
+    s.turn()
+    assert Choice.Is(Choice, "quest", 786)
+    s.slash("next")
+    assert Choice.Is(Choice, "quest", 845)
+    s.slash("previous")
+    s.slash("previous")
+    s.slash("previous")
+    text = s.slash("previous")
+    assert Choice.Get(Choice) is None and any("Back to your main route" in t for t in text), text
+    # nothing tracked: said, no error
+    s.lua.execute("STUB.kept = STUB.watched; STUB.watched = {}")
+    s.fire("QUEST_WATCH_LIST_CHANGED")
+    text = s.slash("next")
+    assert any("No tracked quests" in t for t in text) and Choice.Get(Choice) is None, text
+    s.lua.execute("STUB.watched = STUB.kept")
+    s.fire("QUEST_WATCH_LIST_CHANGED")
+    s.chat()
 
     step("following the nearest quest by itself: only when asked, never over a quest you chose")
     assert s.stub.focus == 0

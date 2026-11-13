@@ -382,24 +382,63 @@ chat lines, headings and bindings, and then (he said "Yes, reword them") for the
 help and binding names of Routes and Sparkle. Not done: the Stitches' settings (mostly in standard
 words already), the READMEs' prose, and comments in the code.
 
+### Confirmed, and version 1.0 (2026-11-13)
+
+Tyrone, after playing the build: "everything is working, lets go live". Taken as his confirmation of
+what `V1.md` listed as built and waiting: the quest list, clicks and menus, the guide section, the item
+bar, the default tracker hidden, recipes, gathering, the fades, the chosen path in Routes, gathering
+runs, the Sparkle's pages, and the dressed options pages. He did not go through them one by one in
+writing, so "works" is his word for the whole, not a line-by-line report.
+
+Asked which versions go live, he chose: **Tracker 1.0.0 and Sparkle 1.0.0** as full releases, Routes
+still beta. Routes had not changed since 0.14.0, so it goes live as 0.14.0. The base is 2.3.0.
+
+Built for it:
+
+- **Reset To Defaults** for every Thread tool, by the base (`Tools.lua`): a button at the foot of the
+  tool's first page, the game's yes-or-no box first, each option set through the game's own setting so
+  an open page shows it.
+- **Route To Next Quest / Route To Previous Quest** bindings in the tracker (`ns.Cycle` in
+  `Actions.lua`), in the listed order; one past either end clears the choice.
+
+Not in 1.0, by his choice of going live now: the week of play first, the check with nothing else
+installed, the tracker's own icon (the drawn stand-in ships). Going live itself is his: the CurseForge
+projects have to be made and their numbers put in `tools/curseforge.json`.
+
 ## After the tracker: routing from the Dungeon Journal's quest to-do list
 
-Asked for by Tyrone on 2026-11-13, while the above was being built: "another feature to add here, but
-would be another addon. is routing based on dungeon journals quest todo list".
+Asked for by Tyrone on 2026-11-13: "another feature to add here, but would be another addon. is routing
+based on dungeon journals quest todo list". Later the same day: "it has the list they generate to
+track, but its only a list of quests not and location data. however, in the dungeon journal addon,
+they allow for map pointing. could we utilize this, / perhaps retrieve some of this information from
+the wow wiki."
 
-How I read it: the addon ForeverDungeonJournal keeps a to-do list of the quests for a dungeon. A small
-addon of ours reads that list as it runs and hands it to the base's guides service as one more reader,
-so Thread (Routes) leads to the next quest on it and Thread (Tracker) lists it, as both do for RestedXP.
-Nothing of the journal is changed or copied.
+### What the journal has (looked at 2026-11-13, version 2.0.4, by Exehn)
 
-Not looked at yet, and to be done first:
+- **No licence** in its folder or TOC: all rights reserved by default. Nothing of it is copied, and
+  none of its data goes into our files. It is read as it runs, as RestedXP is.
+- **It has the locations itself.** `Data/QuestMaps.lua` fills a table of quest starts keyed by quest
+  number, each a map, a spot on it and a label naming who gives the quest and where. Its notes say
+  the coordinates were gathered and checked by its author from public sources.
+- **It is reachable while it runs**: its own table is a global (`ForeverDungeonJournal_NS`), and on it
+  are the quest-start table and what its "map pointing" follows now (`WaypointArrowTarget`,
+  `FollowWaypoint`).
+- **Its map pointing is its own.** It draws its own pins and arrow and does not set the game's map
+  pin (its code says Forever's is not reliable for it), so Thread (Routes) does not see it today.
+- Its tracked list is kept in its saved data (`questTracker`).
 
-- Which track. It reads someone else's addon, so by the rule (Stitch is for third-party addons, Thread
-  depends on none) it is a **Stitch**, or a reader file inside the base like RestedXP's. To ask him.
-- How the journal keeps its list while it runs: where the quests are, whether each has a place or
-  only a quest number, and whether done ones are marked.
-- Its licence, before anything of it is read closely.
-- Whether "routing" means to the quest giver, to the dungeon's entrance, or through the list in the
-  best order. To ask him.
-- Whether the guides service needs a second reader to be heard while RestedXP is running too: today
-  the first reader with a guide wins.
+### So: yes, without the wiki
+
+- A small **Stitch** (it is for someone else's addon): *Patchwerk Forever: Stitch (Dungeon Journal)*.
+  It registers one more reader with the base's guides service. The reader asks the running journal
+  what its arrow is following, and for each quest on its to-do list where that quest starts, and
+  gives that as the step and the steps after. Routes then leads there and the tracker lists it, as
+  both do for RestedXP. Nothing of the journal is changed.
+- **The wiki is not needed and would be worse**: the journal already has Forever's own quests, which
+  a Classic wiki does not; wiki text is under a share-alike licence that our MIT addons could not
+  carry; and it would mean shipping a data file to keep up to date.
+- **To settle before building**: the shape of what `WaypointArrowTarget` gives and of the to-do list
+  (both to be read from the running addon, in the game or by reading those two functions); what the
+  guides service does when RestedXP and the journal both have somewhere to go (today the first reader
+  wins: likely a setting, or the journal only while its arrow is on); and a note to the author,
+  as a courtesy, since the Stitch leans on names inside his addon.

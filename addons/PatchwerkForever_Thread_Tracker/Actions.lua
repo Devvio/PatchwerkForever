@@ -53,6 +53,41 @@ function ns.Follow(id)
 	ns.Refresh()
 end
 
+-- Chooses the quest after (step 1) or before (step -1) the one chosen now, in the order they are
+-- listed: for a key or a gamepad button, where there is no mouse to click a quest with. From no
+-- quest, the first (or the last); one step past either end is no quest again: your main route.
+function ns.Cycle(step)
+	local order = ns.questOrder
+	if not (order and #order > 0) then                       -- (the list is not drawn: the game's own order)
+		order = {}
+		for i = 1, Ask(C_QuestLog.GetNumQuestWatches) or 0 do
+			order[#order + 1] = Ask(C_QuestLog.GetQuestIDForQuestWatchIndex, i)
+		end
+	end
+	if #order == 0 then
+		ns.Print('No tracked quests.')
+		return
+	end
+	local Choice = ns.Base.Choice
+	local pick = Choice:Get()
+	local at
+	for i, id in ipairs(order) do
+		if pick and pick.kind == 'quest' and pick.id == id then at = i end
+	end
+	local to = at and (at + step) or (step > 0 and 1 or #order)
+	auto = nil
+	if to < 1 or to > #order then
+		Choice:Clear()
+		PutArrow(0)
+		ns.Print('Back to your main route.')
+	else
+		Choice:Set('quest', order[to])
+		PutArrow(order[to])
+		ns.Print('Routing to: ' .. tostring(Ask(C_QuestLog.GetTitleForQuestID, order[to]) or order[to]))
+	end
+	ns.Refresh()
+end
+
 -- (for the gathering list: a run takes the place of a quest you chose, and the arrow put on it goes too)
 function ns.ArrowOff() PutArrow(0) end
 

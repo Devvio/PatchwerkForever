@@ -45,7 +45,7 @@ Tools made here, needing nothing but this base.
 
 Everything is under **Options → AddOns → Patchwerk Forever**, or `/patchwerk config`. Beneath that page, each Stitch you have installed has a page of its own (**Stitch: Console Port**), and each Thread tool has its pages beside them (**Thread: Routes**); what is not installed is not listed. Nothing is added to the settings of the addons a Stitch works with.
 
-The first page is Patchwerk's own: his picture, what he has to say, and everything that is sewn on, each part with its version and a button that opens its page. A part that is for an addon you run and is not installed is listed there too, greyed. The base's one switch, **Notify About Missing Addons**, is at its foot. Every other page opens with its name and a line from Patchwerk.
+The first page is Patchwerk's own: his picture, what he has to say, and everything that is sewn on, each part with its version and a button that opens its page. A part that is for an addon you run and is not installed is listed there too, greyed. The base's one switch, **Notify About Missing Addons**, is at its foot. Every other page opens with its name and a line from Patchwerk, and each Thread tool's first page ends with **Reset To Defaults**.
 
 ## If you had Patchwerk Forever 1.x
 

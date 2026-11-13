@@ -346,6 +346,7 @@ Settings = {
 		for _, other in ipairs(STUB.settings) do assert(other.variable ~= variable, 'two settings named ' .. variable) end
 		assert(type(get()) == kind, variable .. ': what it reads is not a ' .. tostring(kind))
 		local s = { variable = variable, name = name, kind = kind, default = default, get = get, set = set, page = category.title }
+		function s:SetValue(value) assert(type(value) == self.kind, variable .. ': set to a value of the wrong kind') self.set(value) end
 		STUB.settings[#STUB.settings + 1] = s
 		return s
 	end,
@@ -426,4 +427,18 @@ function STUB.Rows()
 		row.frame = frame
 	end
 	return #STUB.rows
+end
+
+-- The game's yes-or-no box: what was asked is kept, and STUB.Answer(true) presses Yes.
+StaticPopupDialogs = {}
+function StaticPopup_Show(which, text, _, data)
+	local dialog = StaticPopupDialogs[which]
+	assert(type(dialog) == 'table' and type(dialog.text) == 'string' and dialog.button1 and dialog.OnAccept, 'a box the game could not show: ' .. tostring(which))
+	STUB.asked = { which = which, text = dialog.text:format(text), data = data }
+end
+function STUB.Answer(yes)
+	local asked = STUB.asked
+	STUB.asked = nil
+	assert(asked, 'nothing was asked')
+	if yes then StaticPopupDialogs[asked.which].OnAccept({}, asked.data) end
 end

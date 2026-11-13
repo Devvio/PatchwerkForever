@@ -145,6 +145,7 @@ local function Help()
 	ns.Print('  /tracker on, /tracker off: enable or disable the tracker')
 	ns.Print('  /tracker move: unlock to drag;  /tracker lock: lock in place;  /tracker reset: reset position')
 	ns.Print('  /tracker fold: collapse or expand all sections')
+	ns.Print('  /tracker next, /tracker previous: route to the next or previous quest in the list')
 	ns.Print('  /tracker back: undo the last guide step you skipped by clicking')
 	ns.Print('  /tracker config: open the options')
 	ns.Print('  In the list: click a quest to route to it, shift-click for details, right-click for more.')
@@ -165,6 +166,10 @@ SlashCmdList.PATCHWERKFOREVER_TRACKER = function(text)
 		ns.Try('reset', ns.ResetPlace)
 	elseif word == 'fold' or word == 'toggle' then
 		ns.Try('fold', ns.Fold)
+	elseif word == 'next' then
+		ns.Try('the next quest', ns.Cycle, 1)
+	elseif word == 'previous' or word == 'prev' then
+		ns.Try('the previous quest', ns.Cycle, -1)
 	elseif word == 'back' then
 		ns.Try('back', ns.GuideBack)
 	elseif word == 'config' or word == 'settings' or word == 'options' then
@@ -181,4 +186,8 @@ end
 BINDING_HEADER_PATCHWERKFOREVER_TRACKER = ns.TITLE
 BINDING_NAME_PATCHWERKFOREVER_TRACKER_FOLD = 'Collapse / Expand Tracker'
 _G['BINDING_NAME_CLICK PatchwerkForeverTrackerNearestItem:LeftButton'] = 'Use Nearest Quest Item'
+BINDING_NAME_PATCHWERKFOREVER_TRACKER_NEXT = 'Route To Next Quest'
+BINDING_NAME_PATCHWERKFOREVER_TRACKER_PREV = 'Route To Previous Quest'
 function PatchwerkForever_Thread_Tracker_Fold() ns.Try('fold', ns.Fold) end
+function PatchwerkForever_Thread_Tracker_Next() ns.Try('the next quest', ns.Cycle, 1) end
+function PatchwerkForever_Thread_Tracker_Previous() ns.Try('the previous quest', ns.Cycle, -1) end

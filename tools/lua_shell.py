@@ -619,15 +619,15 @@ def main():
         assert len(on_it) == WANT[page], "%s has %d settings, expected %d" % (page, len(on_it), WANT[page])
     # headings, each kind of sparkle under its own on the one page of looks
     assert list(stub.headers.values()) == [
-        "Destinations", "Travel Options", "Chat", "Gathering Nodes", "Display", "Line Style", "Colors",
-        "Herbs", "Ore", "Chests", "Quest Objects", "Other Objects"], list(stub.headers.values())
+        "Destinations", "Travel Options", "Chat", "Gathering Nodes", "Display", "Line Style", "Colors", "Defaults",
+        "Herbs", "Ore", "Chests", "Quest Objects", "Other Objects", "Defaults"], list(stub.headers.values())
     # every page opens with its name, its tool's picture and a line in Patchwerk's voice
     intros = {i.name: i for i in stub.intros.values()}
     assert sorted(intros) == sorted(WANT), sorted(intros)
     assert intros["Thread: Routes"].voice == "Follow the thread. Patchwerk knows the way. Mostly."
     assert intros["Routes: Trail"].voice.startswith("A line on the ground.") and intros["Sparkle: Looks"].voice.startswith("Every shiny thing")
     assert all(i.voice and i.icon and i.icon.endswith("icon") for i in intros.values()), [n for n, i in intros.items() if not i.voice]
-    assert stub.Rows() == len(WANT) + 12, "a row of our own could not be made"
+    assert stub.Rows() == len(WANT) + 14, "a row of our own could not be made"
     # the front page: what is sewn on, each with a button to its page
     front = stub.front
     front.shown = True
@@ -643,11 +643,25 @@ def main():
     sdb = lua.globals().PatchwerkForever_Thread_SparkleDB
     assert sdb and not lua.globals().PatchwerkForever_Thread_RoutesDB.sparkleWas, "the sparkle keeps its things in the routes' saved data"
     buttons = list(stub.buttons.values())
-    assert sorted(b.text for b in buttons) == ["Apply", "Clear", "Show", "Show"] + ["Test"] * 5, [b.text for b in buttons]
+    assert sorted(b.text for b in buttons) == ["Apply", "Clear", "Defaults", "Defaults", "Show", "Show"] + ["Test"] * 5, [b.text for b in buttons]
     assert sum(1 for s in by_name.values() if s.colour) == 11 and sum(1 for s in by_name.values() if s.choices) == 12
 
     def setv(name, value):
         by_name[name].set(value)
+
+    # Reset To Defaults, one tool at a time: Routes' options go back, Sparkle's are left as they are
+    setv("trailStyle", "dots")
+    setv("flights", False)
+    setv("nameSize", 20)
+    [b for b in buttons if b.text == "Defaults" and b.page == "Thread: Routes"][0].click()
+    assert "Reset all Thread: Routes options" in stub.asked.text, stub.asked.text
+    stub.Answer(True)
+    assert ns.Get("trailStyle") == "solid" and ns.Get("flights") is True, "Routes' options were not reset"
+    assert sparkle.Get("nameSize") == 20, "resetting Routes reset the Sparkle too"
+    [b for b in buttons if b.text == "Defaults" and b.page == "Thread: Sparkle"][0].click()
+    stub.Answer(True)
+    assert sparkle.Get("nameSize") == 13
+    chat("reset")
 
     step("a sparkle on the thing the game points at, each kind with its own look")
     cvars = stub.cvars

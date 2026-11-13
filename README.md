@@ -19,7 +19,7 @@ One parent and two tracks. Each addon is its own download (a CurseForge project 
 | `addons/PatchwerkForever_Thread_Routes` | **Thread (Routes)**: a route planner with its own map data, and herb and ore spots. | the base |
 | `addons/PatchwerkForever_Thread_Routes_Kalimdor`, `_EasternKingdoms`, `_ZephrasIsle` | Routes' map data, one folder a continent, loaded on demand. Written by `tools/pack.py`; not edited by hand. They ship in Routes' zip. | Thread (Routes) |
 | `addons/PatchwerkForever_Thread_Sparkle` | **Thread (Sparkle)**: a sparkle and a name on things you can use. | the base |
-| `addons/PatchwerkForever_Thread_Tracker` | **Thread (Tracker)**: a quest tracker of our own: quests by zone, the guide's steps, item buttons, recipes, gathering. 0.9, everything for 1.0 built and waiting to be played: `tools/PLAN-tracker.md`. | the base |
+| `addons/PatchwerkForever_Thread_Tracker` | **Thread (Tracker)**: a quest tracker of our own: quests by zone, the guide's steps, item buttons, recipes, gathering. 1.0. Its history is in `tools/PLAN-tracker.md`. | the base |
 
 Each addon has its own README, changelog and licence in its folder.
 

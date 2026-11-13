@@ -38,6 +38,7 @@ local P = ns.P;
 --     colour = true                       a colour (default 'ffRRGGBB')
 --     button = 'text', click = function   a button; no value
 --     header = true                       a heading; no value
+--     (a Reset To Defaults button is put at the foot of the tool's first page by the base)
 --     voice  = 'words'                    what Patchwerk says at the top of the page it names
 --                                         (the first page says the TOC's X-Patchwerk-Voice line)
 --     page   = 'name'                     the page it is on (none: the tool's first)
@@ -63,7 +64,7 @@ function P:Tool(name, env, spec)
 	and type(spec.saved) == 'string' and ( tonumber(spec.api) or 1 ) <= P.API ) then
 		return false;
 	end
-	local tool = { addon = name, env = env, spec = spec, pages = {}, controls = {} };
+	local tool = { addon = name, env = env, spec = spec, pages = {}, controls = {}, proxies = {} };
 	local prefix = ('|c%s%s|r: '):format(spec.colour or 'ffd6a35b', spec.name or name);
 
 	function env.Print(...)
@@ -221,15 +222,15 @@ local function Control(category, tool, def)
 	local variable = tool.addon .. '_' .. ( key:gsub('%.', '_') );
 	local function get() return env.Get(key) end
 	local function set(value) env.Set(key, value) end
-	local control;
+	local control, setting;
 	if def.colour then
 		if not Settings.CreateColorSwatch then return end;
-		local setting = Settings.RegisterProxySetting(page.category, variable, Settings.VarType.String, shown,
+		setting = Settings.RegisterProxySetting(page.category, variable, Settings.VarType.String, shown,
 			def.default, get, set);
 		control = Settings.CreateColorSwatch(page.category, setting, def.desc);
 	elseif def.choices then
 		if not ( Settings.CreateDropdown and Settings.CreateControlTextContainer ) then return end;
-		local setting = Settings.RegisterProxySetting(page.category, variable, Settings.VarType.String, shown,
+		setting = Settings.RegisterProxySetting(page.category, variable, Settings.VarType.String, shown,
 			def.default, get, set);
 		local function Options()
 			local container = Settings.CreateControlTextContainer();
@@ -241,7 +242,7 @@ local function Control(category, tool, def)
 		control = Settings.CreateDropdown(page.category, setting, Options, def.desc);
 	elseif ( type(def.default) == 'number' ) then
 		if not ( Settings.CreateSlider and Settings.CreateSliderOptions ) then return end;
-		local setting = Settings.RegisterProxySetting(page.category, variable, Settings.VarType.Number, shown,
+		setting = Settings.RegisterProxySetting(page.category, variable, Settings.VarType.Number, shown,
 			def.default, get, set);
 		local options = Settings.CreateSliderOptions(def.min, def.max, def.step);
 		if ( options.SetLabelFormatter and MinimalSliderWithSteppersMixin and MinimalSliderWithSteppersMixin.Label ) then
@@ -249,17 +250,48 @@ local function Control(category, tool, def)
 		end
 		control = Settings.CreateSlider(page.category, setting, options, def.desc);
 	else
-		local setting = Settings.RegisterProxySetting(page.category, variable, Settings.VarType.Boolean, shown,
+		setting = Settings.RegisterProxySetting(page.category, variable, Settings.VarType.Boolean, shown,
 			def.default, get, set);
 		control = Settings.CreateCheckbox(page.category, setting, def.desc);
 	end
 	tool.controls[key] = control;
+	tool.proxies[key] = setting;
 	-- a setting that only matters while a tick box is on: greyed out with it
 	local parent = def.parent and tool.controls[def.parent];
 	if ( parent and control and control.SetParentInitializer ) then
 		local parentKey = def.parent;
 		control:SetParentInitializer(parent, function() return env.Get(parentKey) == true end)
 	end
+end
+
+-- Puts every setting of a tool back to its default. Each goes through the game's own setting where
+-- there is one, so an options page that is open shows the new value at once.
+local function Reset(tool)
+	local env = tool.env;
+	for _, def in ipairs(type(env.settings) == 'table' and env.settings or {}) do
+		if ( def.key and def.default ~= nil ) then
+			local proxy = tool.proxies[def.key];
+			if not ( proxy and proxy.SetValue and pcall(proxy.SetValue, proxy, def.default) ) then
+				env.Set(def.key, def.default)
+			end
+		end
+	end
+	env.Print('Options reset to defaults.')
+end
+
+-- Asks first, with the game's own yes-or-no box.
+local function AskReset(tool)
+	local show, dialogs = rawget(_G, 'StaticPopup_Show'), rawget(_G, 'StaticPopupDialogs');
+	if not ( type(show) == 'function' and type(dialogs) == 'table' ) then return Reset(tool) end;
+	if not dialogs.PATCHWERKFOREVER_RESET then
+		dialogs.PATCHWERKFOREVER_RESET = {
+			text = 'Reset all %s options to their defaults?',
+			button1 = rawget(_G, 'YES') or 'Yes', button2 = rawget(_G, 'NO') or 'No',
+			OnAccept = function(_, which) if which then which.env.Try('resetting the options', Reset, which) end end,
+			timeout = 0, whileDead = true, hideOnEscape = true,
+		};
+	end
+	show('PATCHWERKFOREVER_RESET', tool.spec.page or tool.addon, nil, tool)
 end
 
 -- @param category : Patchwerk Forever's own page, not yet handed to the game
@@ -275,6 +307,13 @@ function ns.BuildToolPages(category)
 		for _, def in ipairs(type(env.settings) == 'table' and env.settings or {}) do
 			env.Try('the options page (' .. tostring(def.name) .. ')', Control, category, tool, def)
 		end
+		-- at the foot of its first page: every setting back to its default
+		env.Try('the options page (reset)', function()
+			if not ( tool.first and CreateSettingsButtonInitializer ) then return end;
+			ns.PlaceHeader(tool.first, 'Defaults')
+			Place(tool.first, CreateSettingsButtonInitializer('Reset To Defaults', 'Defaults', function() AskReset(tool) end,
+				'Reset every option of this addon, on all of its pages, to its default. Positions and saved data are not changed.', true))
+		end)
 	end
 end
 

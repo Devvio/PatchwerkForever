@@ -1,5 +1,13 @@
 # Patchwerk Forever: Thread (Tracker)
 
+## 1.0.0
+
+The first full release. Everything in 0.9.0 has been played and works.
+
+- **Route To Next Quest** and **Route To Previous Quest**: two key or gamepad bindings (and `/tracker next`, `/tracker previous`) that step through the quests in the order they are listed, so a quest can be chosen without a mouse. One step past either end returns to your main route.
+- **Reset To Defaults** at the foot of its first options page (with Patchwerk Forever 2.3.0).
+- Dungeon objectives stay experimental and off by default.
+
 ## 0.9.0 (beta)
 
 Everything meant for 1.0, to be tried. **Needs Patchwerk Forever 2.2.0 or later.**

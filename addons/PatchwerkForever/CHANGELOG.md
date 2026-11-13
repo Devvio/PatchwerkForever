@@ -1,5 +1,9 @@
 # Patchwerk Forever
 
+## 2.3.0
+
+- **Reset To Defaults.** Each Thread tool has a button at the foot of its first options page that puts all of its options back to their defaults, after asking. Positions and saved data are not changed.
+
 ## 2.2.0
 
 - **A gathering service**: Thread (Routes) offers its remembered herb and ore spots through the base, and the tracker lists them and starts a round, without either tool knowing the other.
