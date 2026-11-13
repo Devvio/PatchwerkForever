@@ -4,6 +4,8 @@ Goal: a route planner for WoW Forever that is ours end to end: map data made fro
 game's own files by our tools, a planner written by us, shipped as its own addon. No
 MelloUI code or data in it.
 
+**Next: a quest tracker of our own, Thread (Tracker).** Planned 2026-11-12, not begun: see `PLAN-tracker.md`.
+
 **Two tracks under one parent (2026-11-12, later the same day; Tyrone's design and names):**
 Patchwerk Forever is the parent (the base). **Stitch** is for third-party addons: fixes and
 additions sewn onto Console Port and MelloUI. **Thread** is first-party: tools made by us. He

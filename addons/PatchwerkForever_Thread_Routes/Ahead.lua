@@ -1,6 +1,6 @@
 -- Thread (Routes): the way on, past the step you are on.
 --
--- A guide's steps come one after another, and the ones to come are known (Guide.lua). The way from
+-- A guide's steps come one after another, and the ones to come are known (the base's guides service). The way from
 -- each to the next is found here ahead of time, behind the search for your own route, and kept:
 --   ns.ahead = { legs = { route, route, ... } }   drawn fainter by the world map and the minimap
 -- The first of them does a second job. When you finish a step, the way to the next has usually been
@@ -51,7 +51,7 @@ function Ahead.Set(chain)
 	order = {}
 	for i = 1, #chain - 1 do
 		local a, b = chain[i], chain[i + 1]
-		if a.map and b.map and not ns.Guide.AWAY[a.kind] then
+		if a.map and b.map and not ns.Base.Guides.AWAY[a.kind] then
 			-- (the way to a step that has you fly is found on foot, as it will be asked for: Sources.lua)
 			local onFoot = b.kind == 'fly'
 			local leg = Leg(a, b) .. (onFoot and ' on foot' or '')

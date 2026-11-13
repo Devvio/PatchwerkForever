@@ -76,7 +76,7 @@ ns:OnSetting('myFix', function(value) ... end)
 ns:RegisterFix('myfix', { name = 'My fix', addon = 'TheAddonItFixes' })
 ```
 
-A Thread tool joins with `PatchwerkForever:Tool(addonName, ns, { saved = 'MyToolDB', name = 'Mine', page = 'Thread: Mine' })` and lists its settings in `ns.settings`; the base makes its pages and gives it `ns.Get`, `ns.Set`, `ns.On`, `ns.Print`. Either way the TOC needs `## Dependencies: PatchwerkForever`. `Icon(addon)` gives the picture a family addon shows in the addon list.
+A Thread tool joins with `PatchwerkForever:Tool(addonName, ns, { saved = 'MyToolDB', name = 'Mine', page = 'Thread: Mine' })` and lists its settings in `ns.settings`; the base makes its pages and gives it `ns.Get`, `ns.Set`, `ns.On`, `ns.Print`. Either way the TOC needs `## Dependencies: PatchwerkForever`. A tool that wants to know what the player's guide says asks `PatchwerkForever.Guides:Read(count)`: the step, its lines, where it sends you, and the steps after it. RestedXP is read for a start; a reader for another guide addon is registered with `Guides:Register`. `Icon(addon)` gives the picture a family addon shows in the addon list.
 
 ## Credits
 

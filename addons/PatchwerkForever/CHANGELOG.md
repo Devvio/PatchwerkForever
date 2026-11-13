@@ -1,5 +1,10 @@
 # Patchwerk Forever
 
+## 2.1.0
+
+- **A guides service.** The base now reads the guide you are running (RestedXP, for a start) for any of the Thread tools that want it: the step you are on, its lines, where it sends you, and the steps after it. Thread (Routes) uses it from 0.13.0, where it had a reader of its own. Nothing of the guide addon is changed, and with none running the service says nothing.
+- For addon authors: `PatchwerkForever.Guides:Read(count)`, and `Guides:Register(id, reader)` for another guide addon. The base's API number is now 2.
+
 ## 2.0.0
 
 Patchwerk Forever is now a base with separate addons on two tracks, so you install only what you use: **Stitch**, what is sewn onto other people's addons, and **Thread**, our own tools.

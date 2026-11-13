@@ -12,3 +12,5 @@ release/
 tools/private_words.txt
 # A notes app's own settings for this folder (the folder opened as a vault).
 .obsidian/
+# Which of the PNGs in art/ have been made into the game's pictures on this machine.
+art/.taken.json

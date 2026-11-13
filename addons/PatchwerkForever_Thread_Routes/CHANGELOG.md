@@ -1,3 +1,7 @@
+## 0.13.0 (beta)
+
+- The guide is now read by the Patchwerk Forever base (its new guides service), which other tools can use too. **Needs Patchwerk Forever 2.1.0 or later.** Nothing changes in how a guide is followed.
+
 ## 0.12.0 (beta)
 
 ### RestedXP guides, read ahead

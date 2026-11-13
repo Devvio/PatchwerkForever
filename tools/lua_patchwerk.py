@@ -167,6 +167,14 @@ class Session:
         assert not bad, bad
         return new
 
+    def chat_raw(self):
+        new = list(self.stub.messages.values())[self.said:]
+        self.said += len(new)
+        new = [re.sub(r"\|c\w{8}|\|r|\|T[^|]*\|t ?", "", text) for text in new]
+        for text in new:
+            print("      chat: " + text)
+        return new
+
     def slash(self, text):
         self.g.SlashCmdList.PATCHWERK(text)
         return self.chat()
@@ -191,7 +199,7 @@ def main():
     assert s.g.PatchwerkForeverDB.ConsolePort.cleared.X, "the old saved data was touched"
     assert s.g.PatchwerkForeverDB.settings.foreverNotify is False
     text = s.slash("")
-    assert text[0] == "Patchwerk Forever 2.0.0. Its parts:" and any("none. This is the base" in t for t in text), text
+    assert text[0] == "Patchwerk Forever %s. Its parts:" % toc(BASE)[0]["Version"] and any("none. This is the base" in t for t in text), text
     assert any("Patchwerk Forever: Stitch (Console Port) (for Console Port): not installed" in t for t in text), text
     icon = s.g.PatchwerkForever.Icon(s.g.PatchwerkForever, BASE)
     assert icon == "Interface\\AddOns\\PatchwerkForever\\Media\\icon", icon
@@ -353,6 +361,77 @@ def main():
     # a MelloUI from before its profiles were each character's: one list for the account, as it was
     s, now, text = mello("{ settings = { melloRouteOnly = true } }", "Main", ALL, old=True)
     assert now == ["QuestTracker", "Route"] and s.g.PatchwerkForeverDB.MelloUI.seen.Map and s.g.PatchwerkForeverDB.MelloUI.seenIn is None
+
+    step("the guides service: readers asked in turn, a failing one skipped, RestedXP read as it runs")
+    s = Session()
+    s.addon(BASE)
+    G = s.g.PatchwerkForever.Guides
+    assert s.g.PatchwerkForever.API == 2
+    assert G.Read(G, 2) is None, "a guide with no guide addon running"
+    # a made-up guide addon's reader, behind one that fails: the failure is said once and the next is asked
+    s.lua.execute("""
+        local G = PatchwerkForever.Guides
+        G:Register('broken', { name = 'Broken Guides', Read = function() error('its tables moved') end })
+        G:Register('madeup', { name = 'Made Up Guides', Read = function(count)
+            return { index = 3, total = 9, kind = 'turnin', key = '3',
+                lines = { { text = 'Done already', done = true }, { text = 'Hand it in', done = false }, { text = '' } },
+                ahead = {}, asked = count }
+        end })
+    """)
+    info = G.Read(G, 4)
+    assert info.source == "madeup" and info.reader == "Made Up Guides" and info.asked == 4 and info.index == 3
+    assert list(G.Words(info).values()) == ["Hand it in"], "the words still to be done are not picked out"
+    G.Read(G, 1)
+    text = s.chat_raw()
+    assert len(text) == 1 and "Broken Guides failed and was skipped" in text[0], text
+    # RestedXP, with a stand-in for what it keeps as it runs
+    s = Session()
+    s.lua.execute("""
+        local function at(x, y) return { tag = 'goto', wx = y, wy = x, instance = 1 } end
+        local steps = {
+            { { tag = 'accept', text = 'Accept Plainstrider Menace', completed = true }, { tag = 'complete', text = ' Kill 7 plainstriders ' }, at(-600, -2800) },
+            { { tag = 'fly', text = 'Fly to Orgrimmar' }, at(-437, -2596) },
+            { { tag = 'train', text = 'Train your skills' } },
+            { { tag = 'hs', text = 'Hearth to the Crossroads' } },
+            { { tag = 'turnin', text = 'Turn in your report' }, at(1600, -4400) },
+        }
+        for i, lines in ipairs(steps) do
+            local step = { index = i, elements = lines }
+            for _, e in ipairs(lines) do e.step = step end
+            steps[i] = step
+        end
+        RXPCData = { currentStep = 1, stepSkip = {} }
+        RXP = { currentGuide = { name = 'raw name', displayname = 'The Barrens 12-14', steps = steps } }
+        RXPG_ARROW = { shown = true, element = steps[1].elements[3], IsShown = function(self) return self.shown end }
+    """)
+    s.addon(BASE)
+    G = s.g.PatchwerkForever.Guides
+    info = G.Read(G, 3)
+    assert info.source == "rxp" and info.reader == "RestedXP" and info.guide == "The Barrens 12-14"
+    assert info.index == 1 and info.total == 5 and info.kind == "complete", (info.index, info.total, info.kind)
+    lines = [(l.text, l.done, l.kind) for l in info.lines.values()]
+    assert lines == [("Accept Plainstrider Menace", True, "accept"), ("Kill 7 plainstriders", False, "complete")], lines
+    assert list(G.Words(info).values()) == ["Kill 7 plainstriders"]
+    assert (info.map, info.x, info.y) == (1, -600, -2800), "its place is not where RestedXP's arrow points"
+    ahead = [(a.index, a.kind, a.map) for a in info.ahead.values()]
+    # (the step that is only words is passed over; the hearthstone, which carries you off, is not)
+    assert ahead == [(2, "fly", 1), (4, "hearth", None), (5, "turnin", 1)], ahead
+    assert len(G.Read(G, 1).ahead) == 1 and len(G.Read(G, 0).ahead) == 0
+    # the arrow hidden: its last spot is not gone to; the step's own place is
+    s.lua.execute("RXPG_ARROW.shown = false; RXPG_ARROW.element = RXP.currentGuide.steps[5].elements[2]")
+    info = G.Read(G, 0)
+    assert (info.x, info.y) == (-600, -2800), "the hidden arrow's last spot was taken"
+    # a step with nowhere to go
+    s.lua.execute("RXPCData.currentStep = 4")
+    info = G.Read(G, 0)
+    assert info.kind == "hearth" and info.map is None and info.key == "4:nowhere"
+    # no steps to be found (RestedXP changed, or an older one): the arrow's spot alone
+    s.lua.execute("RXP = nil; RXPG_ARROW.shown = true")
+    info = G.Read(G, 2)
+    assert info.kind == "place" and (info.x, info.y) == (1600, -4400) and len(info.lines) == 0 and len(info.ahead) == 0
+    s.lua.execute("RXPG_ARROW = nil")
+    assert G.Read(G, 2) is None
+    assert s.chat() == []
 
     step("every part carries the same joining file")
     for part in PARTS[1:]:

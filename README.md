@@ -29,6 +29,8 @@ Its TOC says `## Dependencies: PatchwerkForever` and lists `Link.lua` first. Eve
 - **A Stitch** calls `PatchwerkForever:Link(addonName, ns, 1)`. That puts the base's functions on its own table: `ns:AddSetting`, `ns:GetSetting`, `ns:OnSetting`, `ns:GetSaved`, `ns:WhenLoaded`, `ns:RegisterFix`, `ns:Print`, `ns:Icon`. Its settings are tick boxes and sliders in a section of the base's own page, and its saved data stays in the base's `PatchwerkForeverDB`, so a Stitch can be added or removed without losing anything. `Link.lua` is the same file in every Stitch.
 - **A Thread tool** calls `PatchwerkForever:Tool(addonName, ns, { name, colour, saved, page, slash })`. It gets `ns.Print`, `ns.Try`, `ns.On`, `ns.Get`, `ns.Set`, `ns.OnSetting`, `ns.RGB`, `ns.OpenSettings`, lists its settings in `ns.settings` (tick boxes, sliders, lists, colours, buttons, headings, on named pages), and the base makes those pages under its own. A tool has a saved variable of its own. The base's `Tools.lua` describes all of it.
 
+- **The guide you are running** is read by the base, for any tool that wants it: `PatchwerkForever.Guides:Read(count)` gives the step you are on, its lines, where it sends you and the steps after it (the base's `Guides.lua` describes all of it). There is one reader for each guide addon, in `addons/PatchwerkForever/Guides/` (RestedXP for a start). A reader looks at its guide addon as it runs, changes nothing of it, and says nothing when that addon is not running. **To add a guide addon:** one file there that ends in `Guides:Register(id, { name = ..., Read = ... })`, and one line in the base's TOC. First find where that addon keeps its steps while it runs, and read its licence: nothing of it is copied.
+
 To add one: a new folder under `addons/` named for its track (`PatchwerkForever_Stitch_<Addon>` or `PatchwerkForever_Thread_<Tool>`) with a TOC, `Link.lua`, a README, a CHANGELOG, a LICENSE; an entry in `PROJECTS` in `tools/release.py`; an icon in `tools/art.py` (or your own in `art/`); and, for a Stitch, a line in the base's `P.Family` if players should be told when it is missing.
 
 ## Other folders
@@ -54,6 +56,8 @@ A build writes, file for file, what ships (the same files the upload holds) and 
 A folder in the game that a build made and that the repository no longer has (an addon renamed or dropped) is taken away, so the game does not load the old addon beside the new one.
 
 It will not write a folder whose Lua does not parse or whose TOC lists a missing file (the last good build stays in the game), and it will not replace a folder it did not build unless told `--take-over`. After a build it says whether `/reload` is enough or the game must be started again.
+
+**While the game is running**, a build that adds or takes away a file, or changes a TOC, writes nothing at all and says what is waiting. The game only takes those in when it starts; written in between, a `/reload` would load the new Lua against the old list of files, which is half an addon. Close the game and build again (`--now` writes it anyway). A build that only changes Lua the game already knows is written as ever.
 
 Where the game is: `GAME` at the top of `build.py`, or the environment variable `PATCHWERK_ADDONS`. An edit reaches the game only through a build; edit in `addons/`, never in the game's folder, where the next build would overwrite it.
 

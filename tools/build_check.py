@@ -47,8 +47,14 @@ def git(*args):
                     "-c", "core.autocrlf=false"] + list(args), check=True, capture_output=True)
 
 
-def run(*args, expect=0):
-    r = subprocess.run([sys.executable, "build.py", "--to", GAME] + list(args), cwd=TOOLS, capture_output=True, text=True)
+def run(*args, expect=0, running=None):
+    # running: None for no game to mind; True or False to have the build mind one that is, or is not, running
+    env = dict(os.environ)
+    env.pop("PATCHWERK_GUARD", None)
+    env.pop("PATCHWERK_GAME_RUNNING", None)
+    if running is not None:
+        env["PATCHWERK_GUARD"], env["PATCHWERK_GAME_RUNNING"] = "on", "1" if running else "0"
+    r = subprocess.run([sys.executable, "build.py", "--to", GAME] + list(args), cwd=TOOLS, capture_output=True, text=True, env=env)
     print(">>> build.py " + " ".join(args))
     for line in r.stdout.rstrip().splitlines():
         if not line.startswith("  + "):
@@ -130,6 +136,29 @@ def main():
     assert "Trail.lua" in out and "/reload is enough" in out, out
     assert build_line(ROUTES).endswith("+")
     assert not build_line("PatchwerkForever").endswith("+"), "another addon's build line changed"
+
+    print("the game running: Lua it already knows is written; a new file, or one going, waits for the game to close")
+    with open(os.path.join(MAIN, "Trail.lua"), "a", encoding="utf-8") as f:
+        f.write("\n-- another change\n")
+    out = run(running=True)
+    assert "Trail.lua" in out and "/reload is enough" in out and "NOT WRITTEN" not in out, out
+    open(os.path.join(MAIN, "New.lua"), "w").write("-- new\n")
+    toc = os.path.join(MAIN, ROUTES + ".toc")
+    kept = open(toc, "rb").read()
+    open(toc, "ab").write(b"New.lua\n")
+    with open(os.path.join(MAIN, "Trail.lua"), "a", encoding="utf-8") as f:
+        f.write("\n-- and one more\n")
+    before = open(game(ROUTES, "Trail.lua"), "rb").read()
+    out = run(running=True)
+    assert "NOT WRITTEN" in out and ROUTES in out, out
+    assert not os.path.exists(game(ROUTES, "New.lua")), "a new file was written with the game running"
+    assert open(game(ROUTES, "Trail.lua"), "rb").read() == before, "half of a build was written with the game running"
+    out = run("--now", running=True)
+    assert os.path.exists(game(ROUTES, "New.lua")) and "start the game again" in out
+    os.remove(os.path.join(MAIN, "New.lua"))
+    open(toc, "wb").write(kept)
+    out = run(running=False)                    # the game closed: written as ever
+    assert not os.path.exists(game(ROUTES, "New.lua")) and "start the game again" in out, out
 
     print("a development-only file is left out; a file that stops shipping is taken away")
     open(os.path.join(MAIN, "notes.tmp"), "w").write("scratch")

@@ -7,6 +7,12 @@
 
     --to <folder>                    build somewhere else than the game's AddOns folder
     --take-over                      allow replacing a folder there that this tool did not build
+    --now                            write even though the game is running and the build needs it restarted
+
+While the game is running, a build that adds or takes away a file or changes a TOC writes nothing:
+the game only takes those in when it starts, and a /reload in between would load the new Lua against
+the old list of files. It says what is waiting; close the game and build again. A build that only
+changes Lua the game already knows is written, and /reload takes it in.
 
 The source is the repository's addons/ folder. For each addon folder the build writes, file for
 file, what ships (the same files release.py zips), and takes away what is there and no longer
@@ -72,6 +78,8 @@ def is_link(path):
 
 
 def game_running():
+    if os.environ.get("PATCHWERK_GAME_RUNNING"):                # (for build_check.py: "1" yes, "0" no)
+        return os.environ["PATCHWERK_GAME_RUNNING"] == "1"
     try:
         out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq Wow*", "/FO", "CSV", "/NH"],
                              capture_output=True, text=True).stdout
@@ -196,7 +204,7 @@ def retired(game):
     return out
 
 
-def build(keys, game, write=True, take_over=False, quiet_when_same=False):
+def build(keys, game, write=True, take_over=False, quiet_when_same=False, now=False):
     """Build the addons named. Returns whether every folder is as it should be."""
     if not os.path.isdir(game):
         print("there is no folder %s" % game)
@@ -205,6 +213,30 @@ def build(keys, game, write=True, take_over=False, quiet_when_same=False):
     if write:                                   # your own PNGs in art/, made into the game's pictures
         for path in art.take_in():
             said = True
+    if write and not now and GUARD and game_running():
+        # The game only takes in a new file, a file's going, or a changed TOC when it starts. Written
+        # while it runs, a /reload would load the new Lua against the old list of files: half an addon.
+        # So with the game running, a build that needs a restart writes nothing at all.
+        waits = []
+        for key in keys:
+            project = PROJECTS[key]
+            folders = [project["main"]] + project["more"]
+            mark = commit(folders) or "unversioned"
+            for folder in folders:
+                try:
+                    ok, says, again = build_folder(folder, mark, game, False, take_over)
+                except (OSError, RuntimeError):
+                    ok, says, again = False, [], False
+                if ok and again:
+                    waits.append(folder)
+        waits += retired(game)
+        if waits:
+            print("NOT WRITTEN: the game is running, and this build adds or takes away files or changes a TOC")
+            print("  (%s)." % ", ".join(waits))
+            print("  The game only takes those in when it starts, and a /reload in between would load half of it.")
+            print("  Close the game and build again. (--now writes it anyway.)")
+            sys.stdout.flush()
+            return True
     for key in keys:
         project = PROJECTS[key]
         folders = [project["main"]] + project["more"]
@@ -253,9 +285,9 @@ def snapshot(keys):
     return out
 
 
-def watch(keys, game, take_over):
+def watch(keys, game, take_over, now=False):
     print("watching %s (Ctrl+C stops)" % os.path.normpath(ADDONS))
-    build(keys, game, take_over=take_over)
+    build(keys, game, take_over=take_over, now=now)
     seen = snapshot(keys)
     try:
         while True:
@@ -271,23 +303,25 @@ def watch(keys, game, take_over):
                 now = later
             seen = now
             print(time.strftime("%H:%M:%S"))
-            build(keys, game, take_over=take_over, quiet_when_same=True)
+            build(keys, game, take_over=take_over, quiet_when_same=True, now=now)
     except KeyboardInterrupt:
         print("stopped")
 
 
 def main():
     args = sys.argv[1:]
-    game, take_over, mode, keys = GAME, False, "build", []
+    game, take_over, mode, keys, now = GAME, False, "build", [], False
     while args:
         a = args.pop(0)
         if a == "--to":
             if not args:
                 sys.exit("--to needs a folder")
             game = args.pop(0)
-            globals()["GUARD"] = False
+            globals()["GUARD"] = os.environ.get("PATCHWERK_GUARD") == "on"      # (on: for build_check.py)
         elif a == "--take-over":
             take_over = True
+        elif a == "--now":
+            now = True
         elif a in ("watch", "check"):
             mode = a
         elif a in PROJECTS:
@@ -297,8 +331,8 @@ def main():
                      % (a, ", ".join(sorted(PROJECTS))))
     keys = keys or sorted(PROJECTS)
     if mode == "watch":
-        watch(keys, game, take_over)
-    elif not build(keys, game, write=(mode == "build"), take_over=take_over):
+        watch(keys, game, take_over, now)
+    elif not build(keys, game, write=(mode == "build"), take_over=take_over, now=now):
         sys.exit(1)
 
 

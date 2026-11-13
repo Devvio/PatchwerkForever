@@ -26,7 +26,8 @@
 
 local addonName, ns = ...;
 
-local P = { API = 1, Fixes = {}, Parts = {}, Settings = { list = {}, byKey = {} } };
+-- API: raised when something is added that a part may need (2: the guides service, Guides.lua)
+local P = { API = 2, Fixes = {}, Parts = {}, Settings = { list = {}, byKey = {} } };
 PatchwerkForever = P;
 ns.P = P;
 

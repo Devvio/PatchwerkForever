@@ -20,6 +20,7 @@ build.py takes these in on every build (take_in below), so saving a PNG is enoug
 8 or 16 bits a channel and not interlaced. Pictures for the game are made a power of two on each
 side, which the game wants.
 """
+import json
 import math
 import os
 import struct
@@ -356,6 +357,14 @@ def take_in(only=None, say=print):
             stem, ext = os.path.splitext(name)
             if ext.lower() != ".png" or stem == "logo":
                 continue
+            # (reading a large PNG takes seconds: one that has not changed since it was last made into
+            # the game's picture is left alone)
+            out = os.path.join(ADDONS, folder, "Media", stem + ".tga")
+            stat = os.stat(os.path.join(src, name))
+            stamp = [stat.st_mtime_ns, stat.st_size]
+            key = folder + "/" + name
+            if os.path.exists(out) and _taken().get(key) == stamp:
+                continue
             try:
                 rows = read_png(os.path.join(src, name))
             except (ValueError, KeyError, zlib.error, struct.error, IndexError) as e:
@@ -363,11 +372,32 @@ def take_in(only=None, say=print):
                 continue
             h, w = len(rows), len(rows[0])
             tw, th = (ICON, ICON) if stem == "icon" else (_power_of_two(w), _power_of_two(h))
-            out = os.path.join(ADDONS, folder, "Media", stem + ".tga")
             if _write(out, tga_bytes(resize(rows, tw, th))):
                 wrote.append(out)
                 say("  art/%s/%s (%d x %d) -> Media/%s.tga (%d x %d)" % (folder, name, w, h, stem, tw, th))
+            _taken()[key] = stamp
+            _taken(save=True)
     return wrote
+
+
+_TAKEN = None
+
+
+def _taken(save=False):
+    """Which of your PNGs have been made into the game's pictures, and as they were then (their time
+    and size): art/.taken.json, a file of this machine's that git does not keep."""
+    global _TAKEN
+    path = os.path.join(ART, ".taken.json")
+    if _TAKEN is None:
+        try:
+            with open(path, encoding="utf-8") as f:
+                _TAKEN = json.load(f)
+        except (OSError, ValueError):
+            _TAKEN = {}
+    if save:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(_TAKEN, f, indent=1, sort_keys=True)
+    return _TAKEN
 
 
 def sheet(icons):

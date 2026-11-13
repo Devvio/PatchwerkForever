@@ -3,7 +3,7 @@
 -- A map pin, or a spot given with /thread to, always comes first. With neither, the route goes
 -- where one of these says, and moves on as it does:
 --
---   your RestedXP guide   the step you are on, read from RestedXP as it runs (Guide.lua): where it
+--   your RestedXP guide   the step you are on, read from RestedXP as it runs (by the base): where it
 --                         sends you, what it asks for, and the steps after it. A step that has you
 --                         fly is gone to on foot, to the flight master the guide names; one with no
 --                         place (a hearthstone, training) is said on screen. The way on through the
@@ -39,18 +39,22 @@ local function Apart(ax, ay, bx, by)
 end
 
 -- A spot on one of the game's maps (0 to 1 across and down) as: continent, world x, world y.
-local World = ns.WorldOf
+local Guides = ns.Base.Guides
+local World = Guides.WorldOf
 
 ---------------------------------------------------------------------------
 -- The RestedXP guide
 ---------------------------------------------------------------------------
--- What the guide says now (Guide.lua): the step you are on, what it asks for, its words, where it
--- sends you, and the steps after it. Read again at every look; nil with no guide running.
+-- What the guide says now, from the base's guides service (which reads RestedXP, and in time other
+-- guide addons): the step you are on, what it asks for, its lines, where it sends you, and the steps
+-- after it. Read again at every look; nil with no guide running. guide.words: the lines still to be
+-- done, as plain strings.
 local guide
 
 -- The place the guide sends you: map, world x, world y; nothing when there is none.
 local function GuideTarget()
-	guide = ns.Guide.Read(ns.Get('rxpAhead') or 0)
+	guide = Guides:Read(ns.Get('rxpAhead') or 0)
+	if guide then guide.words = Guides.Words(guide) end
 	if not (guide and guide.map) then return nil end
 	return guide.map, guide.x, guide.y
 end
@@ -60,7 +64,7 @@ end
 -- flight; the planner is not to think of another).
 local function GuideMore()
 	if not guide then return nil end
-	return { lines = guide.lines, kind = guide.kind, step = guide.index,
+	return { lines = guide.words, kind = guide.kind, step = guide.index,
 		walkOnly = (guide.kind == 'fly' and ns.Get('rxpTravel')) or nil }
 end
 
@@ -258,7 +262,7 @@ local function Look()
 		end
 		if said ~= guide.key then
 			said = guide.key
-			ns.FloatStep(guide.lines)
+			ns.FloatStep(guide.words)
 		end
 		-- (nothing is drawn on ahead: there is no telling from here where the next walk begins)
 		ns.Ahead.Set({})
@@ -277,8 +281,8 @@ local function Look()
 		-- the same place still. A guide that has moved on to another step there (take the quest, then
 		-- hand one in to the same person) gets its new words said, with the route as it stands.
 		if guide and dest.step ~= guide.index then
-			dest.step, dest.lines, dest.kind = guide.index, guide.lines, guide.kind
-			ns.FloatStep(guide.lines, ns.route and ns.Summary(ns.route) or nil)
+			dest.step, dest.lines, dest.kind = guide.index, guide.words, guide.kind
+			ns.FloatStep(guide.words, ns.route and ns.Summary(ns.route) or nil)
 		end
 		LookAhead(dest)
 		return
@@ -295,8 +299,8 @@ function ns.GoToSource()
 	if not source then return false end
 	skip = nil
 	if not map then                                    -- the guide's step has no place: its words, again
-		ns.FloatStep(guide.lines)
-		ns.Print('your guide\'s step has nowhere to go to: ' .. (guide.lines[1] or 'it has no words either') .. '.')
+		ns.FloatStep(guide.words)
+		ns.Print('your guide\'s step has nowhere to go to: ' .. (guide.words[1] or 'it has no words either') .. '.')
 		return true
 	end
 	if source == 'quest' and ns.Get('notify') then
