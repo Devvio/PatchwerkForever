@@ -117,7 +117,8 @@ def main():
     assert meta["displayName"] == "Patchwerk Forever: Thread (Routes) " + version, meta["displayName"]
     assert meta["releaseType"] == "beta" and meta["changelogType"] == "markdown" and meta["gameVersions"] == [502], meta
     assert meta["relations"] == {"projects": [{"slug": "patchwerk-forever", "type": "requiredDependency"}]}, meta
-    assert meta["changelog"].strip() and "## " not in meta["changelog"], "the changelog is not one entry"
+    # (one entry: no heading of another version in it; its own sub-headings, "### ...", are part of it)
+    assert meta["changelog"].strip() and not any(line.startswith("## ") for line in meta["changelog"].splitlines()),         "the changelog is not one entry"
     assert name == "PatchwerkForever_Thread_Routes-%s.zip" % version
     with zipfile.ZipFile(io.BytesIO(data)) as z:
         assert z.testzip() is None
