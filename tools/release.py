@@ -6,6 +6,7 @@
     python release.py melloroute    Patchwerk Forever: Stitch (MelloUI Route)
     python release.py routes        Patchwerk Forever: Thread (Routes) (four folders: the tool and its map data)
     python release.py sparkle       Patchwerk Forever: Thread (Sparkle)
+    python release.py tracker       Patchwerk Forever: Thread (Tracker)
     python release.py               all of them
 
 Checks the addon's folders, then writes into its release folder in the repository
@@ -101,6 +102,15 @@ PROJECTS = {
         "summary": "A route planner for WoW Forever: finds the way to your map pin, tracked quest or RestedXP step "
                    "over ground, by flight path, boat and zeppelin, and remembers herb and ore spots. "
                    "Needs Patchwerk Forever.",
+    },
+    "tracker": {
+        "main": "PatchwerkForever_Thread_Tracker",
+        "more": [],
+        "requires": ["PatchwerkForever"],
+        "stale": PRIVATE + ("wayfinder", "pathfinder", "wayfarer"),
+        "needs": ("README.md", "CHANGELOG.md", "LICENSE", "Bindings.xml", "Media/icon.tga", "Link.lua"),
+        "summary": "A quest tracker for WoW Forever: the quests you track and what each still asks of you, in a "
+                   "list you can move, size and colour. Needs Patchwerk Forever.",
     },
     "sparkle": {
         "main": "PatchwerkForever_Thread_Sparkle",
@@ -345,9 +355,10 @@ def listing(main, out):
 
 # the tag a project's release commit gets, and whether its CurseForge project is there already
 TAGS = {"patchwerk": "patchwerk-forever", "consoleport": "stitch-consoleport", "melloui": "stitch-melloui",
-        "melloroute": "stitch-melloroute", "routes": "thread-routes", "sparkle": "thread-sparkle"}
+        "melloroute": "stitch-melloroute", "routes": "thread-routes", "sparkle": "thread-sparkle",
+        "tracker": "thread-tracker"}
 EXISTS = {"patchwerk"}
-ORDER = ["consoleport", "melloui", "melloroute", "routes", "sparkle", "patchwerk"]
+ORDER = ["consoleport", "melloui", "melloroute", "routes", "sparkle", "tracker", "patchwerk"]
 
 
 def checklist():

@@ -66,6 +66,12 @@ Hand-painted stylised fantasy game icon. A ragged square patch of warm tan parch
 Hand-painted stylised fantasy game icon. A ragged square patch of warm tan parchment-leather, its edges torn and slightly curled, pinned at each of its four corners by a big cross-stitch of glowing teal-cyan thread. Set into the middle of the patch, a large glowing teal-cyan four-pointed sparkle, a twinkling star with long thin points, with two much smaller sparkles beside it, like inlaid gems with a bright inner glow and a few tiny motes of light drifting off them. Chunky faceted shapes, thick visible square brushstrokes, bold dark outline, hard edge highlights, teal rim light on the patch. Deep violet-purple painterly background, darker at the corners. Square 1:1, one centred object filling most of the frame, bold and simple enough to read at tiny size. No text, no letters, no border, no watermark.
 ```
 
+### Thread (Tracker): `art/PatchwerkForever_Thread_Tracker/icon.png`
+
+```text
+Hand-painted stylised fantasy game icon. A ragged square patch of warm tan parchment-leather, its edges torn and slightly curled, pinned at each of its four corners by a big cross-stitch of glowing teal-cyan thread. Set into the middle of the patch, a large glowing teal-cyan checklist: three thick horizontal bars stacked one above the other, each with a small mark at its left end, the top two marks bold ticks and the bottom one an empty ring, like inlaid gems with a soft inner glow. Chunky faceted shapes, thick visible square brushstrokes, bold dark outline, hard edge highlights, teal rim light on the patch. Deep violet-purple painterly background, darker at the corners. Square 1:1, one centred object filling most of the frame, bold and simple enough to read at tiny size. No text, no letters, no border, no watermark.
+```
+
 ## If a result drifts
 
 - **Too detailed to read small:** add "flat, bold emblem, no small details inside the emblem".

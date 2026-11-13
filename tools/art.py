@@ -10,7 +10,7 @@ and one sheet of all of them to look at: release/art-preview.png.
 
 The icons are a family: a sewn-on patch with gold stitching, the cloth a colour of its own for each
 addon and an emblem in the middle (a stitched seam for the base, a gamepad, menu bars, a winding
-road, a compass star, a twinkle). Every one is worked out from the formulas in this file; nothing is copied.
+road, a compass star, a twinkle, a ticked list). Every one is worked out from the formulas in this file; nothing is copied.
 
 Your own art. Put a PNG in the repository's art folder and it is used in place of the drawn one:
     art/<folder>/icon.png        the icon (any square size; made 64 x 64 for the game)
@@ -138,6 +138,18 @@ def glints(x, y):
     return d, 1.0
 
 
+def checklist(x, y):
+    """Thread (Tracker): a list of three things, the first two ticked."""
+    d, cut = 9.0, 1.0
+    for row, ticked in ((0.32, True), (0.0, True), (-0.32, False)):
+        d = min(d, box(x, y, 0.12, row, 0.30, 0.06, 0.06))
+        if ticked:
+            d = min(d, stroke(x, y, -0.42, row, -0.35, row - 0.08, 0.04), stroke(x, y, -0.35, row - 0.08, -0.24, row + 0.09, 0.04))
+        else:
+            d = min(d, abs(circle(x, y, -0.33, row, 0.075)) - 0.03)
+    return d, cut
+
+
 # folder: (the cloth's colour at the top, at the bottom, the emblem)
 ICONS = {
     "PatchwerkForever":              ((92, 66, 50), (52, 36, 28), seam),
@@ -146,6 +158,7 @@ ICONS = {
     "PatchwerkForever_Stitch_MelloUIRoute": ((84, 68, 128), (44, 34, 74), road),
     "PatchwerkForever_Thread_Routes":     ((42, 100, 118), (20, 54, 68), compass),
     "PatchwerkForever_Thread_Sparkle":    ((122, 58, 96), (66, 28, 54), glints),
+    "PatchwerkForever_Thread_Tracker":    ((150, 108, 62), (92, 60, 32), checklist),
 }
 
 

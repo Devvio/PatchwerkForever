@@ -3,11 +3,36 @@
   "game_version": "",
   "game_version_ids": [],
   "projects": {
-    "patchwerk":   { "id": 0, "slug": "" },
-    "consoleport": { "id": 0, "slug": "", "relations": [] },
-    "melloui":     { "id": 0, "slug": "", "relations": [] },
-    "melloroute":  { "id": 0, "slug": "", "relations": [] },
-    "routes":      { "id": 0, "slug": "" },
-    "sparkle":     { "id": 0, "slug": "" }
+    "patchwerk": {
+      "id": 0,
+      "slug": ""
+    },
+    "consoleport": {
+      "id": 0,
+      "slug": "",
+      "relations": []
+    },
+    "melloui": {
+      "id": 0,
+      "slug": "",
+      "relations": []
+    },
+    "melloroute": {
+      "id": 0,
+      "slug": "",
+      "relations": []
+    },
+    "routes": {
+      "id": 0,
+      "slug": ""
+    },
+    "sparkle": {
+      "id": 0,
+      "slug": ""
+    },
+    "tracker": {
+      "id": 0,
+      "slug": ""
+    }
   }
 }
