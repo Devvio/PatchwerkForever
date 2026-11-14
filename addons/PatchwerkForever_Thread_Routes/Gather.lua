@@ -25,6 +25,9 @@ local HERBS, ORE = 2383, 2580 -- Find Herbs and Find Minerals: learned with the 
 
 local state                   -- nil, or { mode =, name =, map =, x =, y = (where it began), going = the spot gone to }
 local visited = {}            -- [spot] = when you reached it
+-- [spot] = when no way was found to it. Left out like one you have been to, but only for the run that
+-- is on: that was from where you stood, and the next run may start where there is a way.
+local noWay = {}
 
 -- What this character can gather: { h = true, o = true }. The game is asked whether the profession's
 -- tracking spell is known; when it will not say, or says neither, both are taken as possible.
@@ -75,6 +78,7 @@ local function Pick()
 		if state.mode == 'kind' and node[3] ~= state.name then return end
 		if state.mode == 'round' and (map ~= state.map or Far(node, state.x, state.y) > ROUND) then return end
 		if visited[node] and now - visited[node] < AGAIN then return end
+		if noWay[node] and now - noWay[node] < AGAIN then return end
 		local d = Far(node, px, py)
 		if not far or d < far then best, far = node, d end
 	end)
@@ -112,6 +116,7 @@ local function Start(mode, name)
 	if mode ~= 'kind' and mode ~= 'round' then mode = 'any' end
 	if mode == 'kind' and type(name) ~= 'string' then return false end
 	state = { mode = mode, name = name, map = map, x = px, y = py }
+	noWay = {}
 	Go()
 	return state ~= nil
 end
@@ -124,7 +129,18 @@ end
 local function Watch()
 	if not state then return end
 	local dest = ns.dest
-	if dest then return end                               -- on the way; or a pin of your own, which comes first
+	if dest then                                          -- on the way; or a pin of your own, which comes first
+		-- a spot no way was found to (Route.lua) is not waited at: it is left out for now, and the next is gone to
+		if dest.source == 'gather' and dest.failed and state.going then
+			noWay[state.going] = GetTime()
+			Go()
+			if not state then                                 -- (there is no next: the run is over, and so is the way to this one)
+				ns.Stop(false)
+				ns.stopped = nil
+			end
+		end
+		return
+	end
 	local stopped = ns.stopped
 	if stopped and stopped.dest and stopped.dest.source == 'gather' then
 		ns.stopped = nil

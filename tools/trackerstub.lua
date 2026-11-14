@@ -39,7 +39,24 @@ local function Picture(tex)
 	end
 	function tex:SetHeight(h) assert(h > 0) end
 	function tex:IsShown() return self.shown end
+	-- (which point it was hung by first is kept, so a check can tell a top edge from a bottom one)
+	local setPoint = tex.SetPoint
+	function tex:SetPoint(point, ...)
+		self.at = self.at or point
+		return setPoint(self, point, ...)
+	end
+	-- a gradient: the first colour at the bottom (or left), the second at the top (or right)
+	function tex:SetGradient(orientation, from, to)
+		assert(orientation == 'VERTICAL' or orientation == 'HORIZONTAL', 'no such orientation: ' .. tostring(orientation))
+		assert(type(from) == 'table' and from.made and type(to) == 'table' and to.made, 'a gradient takes two colours made by CreateColor')
+		self.gradient = { orientation, from, to }
+	end
 	return tex
+end
+
+function CreateColor(r, g, b, a)
+	assert(r and g and b, 'a colour needs red, green and blue')
+	return { r = r, g = g, b = b, a = a or 1, made = true }
 end
 
 local make = CreateFrame
@@ -79,7 +96,38 @@ function CreateFrame(kind, name, parent, template)
 	function frame:GetChildren() return unpack(self.children) end
 	function frame:RegisterForDrag(button) assert(button == 'LeftButton') end
 	function frame:RegisterForClicks(...) self.clicks = { ... } end
-	function frame:GetRight() return self:GetLeft() + (self.width or 0) end
+	function frame:GetScale() return self.scale or 1 end
+	-- Where a frame hung from the screen is, in its own units as the game gives it: worked out from
+	-- its last SetPoint, its size and its scale (the offsets of a SetPoint are counted in the frame's
+	-- own scale, and the screen is UIParent's size over that scale). A frame hung from anything else
+	-- is where wowstub.lua says. STUB.unplaced = true: the game has not placed frames yet, and says nothing.
+	local getLeft, getTop = frame.GetLeft, frame.GetTop
+	local function Edges(self)
+		local p = self.points[1]
+		if not (p and p[2] == UIParent and type(p[1]) == 'string') then return nil end
+		local s = self.scale or 1
+		local wide, high = UIParent.width / s, UIParent.height / s
+		local w, h = self.width or 0, self.height or 0
+		local point, rel = p[1], p[3] or p[1]
+		local x = (rel:find('LEFT') and 0 or rel:find('RIGHT') and wide or wide / 2) + (p[4] or 0)
+		local y = (rel:find('TOP') and high or rel:find('BOTTOM') and 0 or high / 2) + (p[5] or 0)
+		local left = point:find('LEFT') and x or point:find('RIGHT') and x - w or x - w / 2
+		local top = point:find('TOP') and y or point:find('BOTTOM') and y + h or y + h / 2
+		return left, top
+	end
+	function frame:GetLeft()
+		if STUB.unplaced then return nil end
+		return (Edges(self)) or getLeft(self)
+	end
+	function frame:GetTop()
+		if STUB.unplaced then return nil end
+		local _, top = Edges(self)
+		return top or getTop(self)
+	end
+	function frame:GetRight()
+		local left = self:GetLeft()
+		return left and left + (self.width or 0)
+	end
 	function frame:IsMouseOver() return self.over == true end
 	-- a button of the game's secure kind: made from its template. In a fight an addon may not show,
 	-- hide, move, size or change it; every such touch is written down, and there must be none.
@@ -109,9 +157,13 @@ function CreateFrame(kind, name, parent, template)
 		function frame:Clear() self.cooling = nil end
 	end
 	function frame:StartMoving() assert(self.movable, 'a frame that cannot be moved was dragged') self.moving = true end
+	-- Where it was let go: the game hangs a dragged frame from whichever point of the screen it picks
+	-- (the middle of an edge, a bottom corner ...), with offsets in the frame's own scale.
+	-- STUB.drop = { point, relative point, x, y } says which; without it, the top left.
 	function frame:StopMovingOrSizing()
 		self.moving = false
-		self.points = { { 'TOPLEFT', UIParent, 'TOPLEFT', 300, -200 } }      -- (where it was let go)
+		local drop = STUB.drop or { 'TOPLEFT', 'TOPLEFT', 300, -200 }
+		self.points = { { drop[1], UIParent, drop[2], drop[3], drop[4] } }
 	end
 	return frame
 end
@@ -120,6 +172,11 @@ end
 for _, old in ipairs({ UIParent, Minimap, WorldMapFrame }) do
 	old.children, old.points = {}, {}
 end
+-- The screen, in UIParent's units. (Its size is chosen so that the tracker's place before it is
+-- moved, 40 in from the right and 260 down, has its left edge at 800 and its top at 700: where
+-- wowstub.lua says a frame is that it knows no better of, and what the item buttons were checked
+-- against before a frame's place was worked out from its SetPoint.)
+UIParent.width, UIParent.height = 1100, 960
 
 ---------------------------------------------------------------------------
 -- The game's own tracker: a frame with pieces, one of them protected

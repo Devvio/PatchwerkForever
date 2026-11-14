@@ -5,14 +5,21 @@
 
 Plays logins, each in a Lua of its own: the quests you track drawn as a list and kept up to date,
 their orders, distances, kinds and timers; clicks and the menu; following the nearest quest; the
-guide's steps and skipping one; the item buttons, which must not be touched in a fight; recipes; the
+guide's steps and skipping one; a side list with no main guide beside it, which a click selects, and
+a list whose step number stays when it is moved, as the Dungeon Journal's does; the
+item buttons, which must not be touched in a fight; recipes; the
 party; the gathering list; a dungeon's stages; the fades; the settings, folding, scrolling, moving
-it; and the game's own tracker and RestedXP's window kept quiet. It fails loudly on any Lua error.
+it; and the game's own tracker and RestedXP's window kept quiet. Then what was smoothed later: its
+place kept as a top corner whatever the scale; a list longer than its frame (the edges, the scroll
+bindings, the chosen quest brought into view); an order that holds while two quests are about as
+near as each other. A key binding is pressed by running its own entry of Bindings.xml. It fails
+loudly on any Lua error.
 
 What this proves: the tracker's own code runs and does sensible things with the stand-in's answers.
 What it cannot prove: that the game's real quest log, its real tracker, its secure buttons, RestedXP
 or a real party answer as the stand-ins do, or how any of it looks.
 """
+import math
 import os
 import re
 
@@ -34,6 +41,16 @@ def toc_files(name):
         line = line.strip()
         if line.endswith(".lua"):
             yield os.path.join(folder, line)
+
+
+def bindings():
+    """The tracker's Bindings.xml: each entry's name and the Lua the game runs for it ('' for a click on a button)."""
+    text = open(os.path.join(ADDONS, TRACKER, "Bindings.xml"), encoding="utf-8").read()
+    found = re.findall(r'<Binding\s+name="([^"]+)"[^>]*?(?:/>|>(.*?)</Binding>)', text, re.S)
+    return {name: code.strip() for name, code in found}
+
+
+BINDINGS = bindings()
 
 
 class Session:
@@ -127,6 +144,19 @@ class Session:
         strip, nearest = self.ns.ItemsShown()
         return list(strip.values()), nearest
 
+    def press(self, name):
+        """A key bound to this entry of Bindings.xml is pressed: the entry's own Lua is run, as the game runs it."""
+        assert BINDINGS.get(name), name + " is not in Bindings.xml, or runs nothing"
+        assert isinstance(self.g["BINDING_NAME_" + name], str), name + " has no name in the Key Bindings list"
+        self.lua.execute(BINDINGS[name])
+        self.turn()
+
+    def marked(self):
+        """The one block shown with the bar beside it (what is being followed)."""
+        got = [f for f in self.stub.frames.values() if f.kind == "Button" and f.shown and f.data is not None and f.data.mark]
+        assert len(got) == 1, "%d blocks are marked" % len(got)
+        return got[0]
+
     def button(self, i):
         return self.g["PatchwerkForeverTrackerItem%d" % i]
 
@@ -183,6 +213,58 @@ RXP = """
 """
 
 
+# a made-up guide addon's reader that says it is a side list (as the Dungeon Journal's does, unless set
+# to lead). For after the login: the base must be there to join.
+SIDE = """
+    STUB.sideAt, STUB.isSide = 2, true
+    PatchwerkForever.Guides:Register('side', { name = 'Side List',
+        Side = function() return STUB.isSide end,
+        Leads = function() return not STUB.isSide end,
+        Read = function(count)
+            local info = { guide = 'Dungeon Journal: The Deadmines', index = STUB.sideAt, total = 6, kind = 'accept', key = 'side' .. STUB.sideAt,
+                lines = { { text = 'Accept: A Job', done = false } }, ahead = {}, after = {}, items = {} }
+            if count > 0 then info.after[1] = { index = STUB.sideAt + 1, kind = 'turnin', lines = { { text = 'Turn in: Another', done = false } } } end
+            return info
+        end,
+        Go = function(index) STUB.sideGo = index; STUB.sideAt = index; return true end })
+"""
+
+# The same made-up reader, moving as the Dungeon Journal's list really does (its Reader.lua; that it
+# does is checked in lua_patchwerk.py): the step number counts quests turned in, so it stays, and Go
+# goes by how far the number asked for is from it. One on skips the stop in front; further on brings
+# that stop to the front; back takes the last skip back; the number itself is refused.
+STAYS = """
+    STUB.isSide, STUB.stops, STUB.skips = true, { 'Accept: A Job', 'Turn in: Another', 'Accept: A Third' }, {}
+    PatchwerkForever.Guides:Register('side', { name = 'Side List',
+        Side = function() return STUB.isSide end,
+        Leads = function() return not STUB.isSide end,
+        Read = function(count)
+            local stops = STUB.stops
+            if not stops[1] then return nil end
+            local info = { guide = 'Dungeon Journal: The Deadmines', index = 2, total = 6, kind = 'accept', key = 'side:' .. stops[1],
+                lines = { { text = stops[1], done = false } }, ahead = {}, after = {}, items = {} }
+            for i = 2, math.min(#stops, count + 1) do
+                info.after[i - 1] = { index = i + 1, kind = 'accept', lines = { { text = stops[i], done = false } } }
+            end
+            return info
+        end,
+        Go = function(index)
+            local stops, offset = STUB.stops, index - 2
+            STUB.sideGo = index
+            if offset == 1 then
+                STUB.skips[#STUB.skips + 1] = table.remove(stops, 1)
+            elseif offset > 1 and stops[offset + 1] then
+                table.insert(stops, 1, table.remove(stops, offset + 1))
+            elseif offset < 0 and #STUB.skips > 0 then
+                table.insert(stops, 1, table.remove(STUB.skips))
+            else
+                return false
+            end
+            return true
+        end })
+"""
+
+
 def step(label):
     print("  " + label)
 
@@ -195,16 +277,42 @@ def near(a, b):
     return all(abs(x - y) < 0.01 for x, y in zip(a, b))
 
 
+def edges(frame):
+    """Where a frame is on the screen, in the screen's own units: its left, its right, its top.
+    (The game gives a frame's edges in the frame's own scale; times that scale they are the screen's.)"""
+    scale = frame.GetScale(frame)
+    return frame.GetLeft(frame) * scale, frame.GetRight(frame) * scale, frame.GetTop(frame) * scale
+
+
+def beside(s, frame, size=32):
+    """Where the first item button must be, on the left of the tracker: as Items.lua rounds it."""
+    left, _, top = edges(frame)
+    return math.floor(left - 4 - size + 0.5), math.floor(top + 0.5)
+
+
+# twenty more quests than fit
+LONG = """
+    for i = 1, 20 do
+        STUB.Quest({ id = 2000 + i, title = 'A Long List ' .. i, level = 12, objectives = { { 'something to do', false } } })
+        STUB.watched[#STUB.watched + 1] = 2000 + i
+    end
+"""
+
+
 def main():
     first_login()
     orders_and_detail()
     clicks()
     guide()
+    side_list()
     item_buttons()
     recipes()
     party()
     gathering()
     dungeon_and_fades()
+    its_place()
+    long_list()
+    steady_order()
     print("all steps ran")
 
 
@@ -241,6 +349,30 @@ def first_login():
     assert s.stub.Rows() == 20, "a row of our own could not be made"
     names = [x.name for x in mine]
     assert "Hide Default Quest Tracker" in names and "Font Size" in names and "Hide RestedXP Window" in names, names
+    # every entry of Bindings.xml has a name in the Key Bindings list, and what it runs is there to be run
+    assert list(BINDINGS) == ["PATCHWERKFOREVER_TRACKER_FOLD", "PATCHWERKFOREVER_TRACKER_SCROLL_UP",
+                              "PATCHWERKFOREVER_TRACKER_SCROLL_DOWN", "PATCHWERKFOREVER_TRACKER_NEXT",
+                              "PATCHWERKFOREVER_TRACKER_PREV", "CLICK PatchwerkForeverTrackerNearestItem:LeftButton",
+                              "PATCHWERKFOREVER_TRACKER_BACK"], list(BINDINGS)
+    for name, code in BINDINGS.items():
+        assert isinstance(s.g["BINDING_NAME_" + name], str), name + " has no name in the Key Bindings list"
+        if name.startswith("CLICK "):
+            assert code == "" and s.g[name[6:].split(":")[0]] is not None, name + " clicks a button that is not there"
+        else:
+            called = re.fullmatch(r"(\w+)\(\)", code)
+            assert called and s.g[called.group(1)] is not None, name + " runs something that is not there: " + code
+    label = {name: s.g["BINDING_NAME_" + name] for name in BINDINGS}
+    assert label["PATCHWERKFOREVER_TRACKER_SCROLL_UP"] == "Scroll Tracker Up", label
+    assert label["PATCHWERKFOREVER_TRACKER_SCROLL_DOWN"] == "Scroll Tracker Down", label
+    assert label["PATCHWERKFOREVER_TRACKER_BACK"] == "Undo Skipped Guide Step", label
+    for unwanted in ("Skip Guide Step", "Previous Guide Step"):
+        assert unwanted not in label.values(), unwanted + " was not asked for"
+    # the tooltips that say how: each names the key bindings as the Key Bindings list has them
+    tips = {d.key: d.desc for d in ns.settings.values() if d.key}
+    assert label["PATCHWERKFOREVER_TRACKER_SCROLL_UP"] in tips["height"] and label["PATCHWERKFOREVER_TRACKER_SCROLL_DOWN"] in tips["height"]
+    assert label["PATCHWERKFOREVER_TRACKER_BACK"] in tips["guideSkip"] and "/tracker back" in tips["guideSkip"], tips["guideSkip"]
+    # (the arrow is left alone while a list is the selected route, as while a quest is: the tooltip says both)
+    assert "have not selected a quest or a list" in tips["followNearest"], tips["followNearest"]
 
     # a client that does not know our rows (their XML not read): the game's own headings, no intro, no error
     s2 = Session(LOG + "STUB.noRows = true")
@@ -347,7 +479,8 @@ def first_login():
     handle.scripts.OnDragStart(handle)
     handle.scripts.OnDragStop(handle)
     place = s.g.PatchwerkForever_Thread_TrackerDB.place
-    assert list(place.values()) == ["TOPLEFT", "TOPLEFT", 300, -200], list(place.values())
+    # (a top corner in the screen's units; the fifth field marks that form: more of it in its_place)
+    assert list(place.values()) == ["TOPLEFT", "TOPLEFT", 300, -200, 1], list(place.values())
     s.slash("lock")
     assert not handle.shown
     [b for b in s.stub.buttons.values() if b.text == "Unlock"][0].click()
@@ -360,16 +493,25 @@ def first_login():
     assert s.g.PatchwerkForever_Thread_TrackerDB.place is None and frame.points[1][1] == "TOPRIGHT"
     s.chat()
 
-    step("the game's tracker: let back in a dungeon, never touched in a fight, as it was when ours goes")
+    step("the game's tracker: let back in a dungeon, where ours steps aside for it; never touched in a fight, as it was when ours goes")
     s.stub.instance = True
     s.fire("ZONE_CHANGED_NEW_AREA")
     assert not ns.Quiet() and game.frame.alpha == 1 and game.block.mouse is True, "not let back in a dungeon"
+    assert s.shown() is None and ns.AsideInInstance() is True, "both trackers are shown in a dungeon"
     s.setting("quietInstance", False)
     assert ns.Quiet() and game.frame.alpha == 0
+    assert s.shown() is not None and ns.AsideInInstance() is False, "ours is not shown in a dungeon where the game's is not kept"
     s.setting("quietInstance", True)
+    assert s.shown() is None and not ns.Quiet()
+    # with the game's tracker left alone everywhere, both are shown there as they are anywhere
+    s.setting("quiet", False)
+    assert s.shown() is not None and not ns.Quiet() and game.frame.alpha == 1, "ours hid in a dungeon with the game's tracker never hidden"
+    s.setting("quiet", True)
+    assert s.shown() is None and not ns.Quiet()
     s.stub.instance = False
     s.fire("ZONE_CHANGED_NEW_AREA")
     assert ns.Quiet() and game.block.mouse is False
+    assert s.shown() is not None and ns.AsideInInstance() is False, "ours did not come back outside the dungeon"
     # a new piece of the game's tracker (a quest taken) is quietened too
     s.lua.execute("local b = CreateFrame('Button', nil, STUB.gameTracker.module); b.blizzard = true; STUB.gameTracker.newer = b")
     s.fire("QUEST_ACCEPTED")
@@ -666,20 +808,28 @@ def guide():
     s.lua.execute("RXPCData.currentStep = 1")
     s.turn()
 
-    step("a click on the step skips it; on a later one goes to it; /tracker back takes it back")
+    step("a click on the step skips it; on a later one goes to it; /tracker back takes it back; each is said in chat")
+    assert s.chat() == []
     s.click("Step 1")
     assert s.stub.setStep == 2 and "> Step 2" in s.shown()
+    text = s.chat()
+    assert text == ["Tracker: Skipped step 1. Use the Undo Skipped Guide Step key binding or type /tracker back to undo."], text
     text = s.slash("back")
     assert s.stub.setStep == 1 and "> Step 1" in s.shown() and any("Back to step 1" in t for t in text)
+    assert text == ["Tracker: Back to step 1."], text
     text = s.slash("back")
     assert any("No skipped step" in t for t in text)
     s.click("4. Hearth")
     assert s.stub.setStep == 4 and "> Step 4" in s.shown() and "5. Turn in your report" in s.shown()
+    text = s.chat()
+    assert text == ["Tracker: Jumped to step 4. Type /tracker back to return to step 1."], text
     s.click("Step 4", "RightButton")
     assert [e.text for e in s.stub.menu.entries.values()] == ["Skip Step", "Previous Step"]
     s.stub.Press("Previous Step")
     s.turn()
     assert s.stub.setStep == 3
+    text = s.chat()
+    assert text == ["Tracker: Back to step 3."], text
     s.lua.execute("RXPCData.currentStep = 5")
     s.turn()
     s.click("Step 5")
@@ -690,6 +840,47 @@ def guide():
     s.setting("guideSkip", False)
     assert s.block("Step 1").mouse is False, "a step takes clicks with skipping switched off"
     s.setting("guideSkip", True)
+
+    step("the Undo Skipped Guide Step key does what /tracker back does; a skip from long ago, or in another guide")
+    back = "PATCHWERKFOREVER_TRACKER_BACK"
+    s.click("Step 1")
+    assert s.stub.setStep == 2 and len(s.chat()) == 1
+    s.press(back)
+    text = s.chat()
+    assert s.stub.setStep == 1 and "> Step 1" in s.shown() and text == ["Tracker: Back to step 1."], text
+    s.press(back)
+    text = s.chat()
+    assert s.stub.setStep == 1 and text == ["Tracker: No skipped step to undo."], text
+    # the guide has moved on by itself since the skip: it still goes back, and says from where
+    s.click("Step 1")
+    s.lua.execute("RXPCData.currentStep = 4")
+    s.turn()
+    s.chat()
+    s.press(back)
+    text = s.chat()
+    assert s.stub.setStep == 1 and text == ["Tracker: Back to step 1 (from step 4)."], text
+    # the guide is on that step again already (gone back to in RestedXP's own window): there is no "from" to say
+    s.click("Step 1")
+    s.lua.execute("RXPCData.currentStep = 1; STUB.setStep = nil")
+    s.turn()
+    s.chat()
+    s.press(back)
+    text = s.chat()
+    assert s.stub.setStep == 1 and text == ["Tracker: Back to step 1."], text
+    # RestedXP has loaded another guide since the skip: the step's number means nothing there, and the undo is forgotten
+    s.click("Step 1")
+    s.lua.execute("RXP.currentGuide.displayname = 'Durotar 1-12'; RXPCData.currentStep = 4; STUB.setStep = nil")
+    s.turn()
+    s.chat()
+    s.press(back)
+    text = s.chat()
+    assert s.stub.setStep is None and text == ["Tracker: No skipped step to undo."], "a step of another guide was gone back to: %r" % text
+    s.lua.execute("RXP.currentGuide.displayname = 'The Barrens 12-14'; RXPCData.currentStep = 2")
+    s.turn()
+    text = s.slash("back")
+    assert s.stub.setStep is None and text == ["Tracker: No skipped step to undo."], "the undo outlived the guide it was made in"
+    s.lua.execute("RXPCData.currentStep = 1")
+    s.turn()
 
     step("the guide is the main track: a quest you click takes its mark, a second click gives it back")
     Choice = s.g.PatchwerkForever.Choice
@@ -782,9 +973,170 @@ def guide():
     s.tick()
     s.turn()
     assert ns.Quiet("RXPFrame") and s.shown()[0].startswith("# The Barrens 12-14")
+    # in a dungeon, where ours steps aside for the game's tracker, RestedXP's window is back too
+    s.stub.instance = True
+    s.fire("ZONE_CHANGED_NEW_AREA")
+    assert s.shown() is None and not ns.Quiet("RXPFrame") and window.alpha == 1 and piece.mouse is True, "RestedXP's window stayed hidden with ours gone"
+    s.stub.instance = False
+    s.fire("ZONE_CHANGED_NEW_AREA")
+    assert ns.Quiet("RXPFrame") and window.alpha == 0 and s.shown()[0].startswith("# The Barrens 12-14")
     s.setting("guideHide", False)
     assert window.alpha == 1 and piece.mouse is True
     assert s.chat() == []
+
+
+def side_list():
+    step("a side list with no main guide beside it: listed, not followed by itself; a click selects it and skips nothing")
+    s = Session(LOG + PLACES)
+    ns = s.load()
+    Choice = s.g.PatchwerkForever.Choice
+    s.lua.execute(SIDE)
+    s.tick()
+    got = s.show()
+    assert got[:2] == ["# Dungeon Journal: The Deadmines | Step 2 of 6", "# Quests | 4/25"], got[:2]
+    assert "Step 2" in got and "> Step 2" not in got, "a side list with no main guide beside it is drawn as the main guide"
+    at = got.index("Step 2")
+    assert got[at:at + 3] == ["Step 2", "  - Accept: A Job", "3. Turn in: Another"], got[at:at + 3]
+    assert not any(t.startswith(">") for t in got), "a side list nobody selected is marked as the one followed"
+    assert ns.GuideNow() is None, "a side list is taken for the main guide"
+    # the game's arrow on a quest by another hand: that quest is the one followed, not the list
+    s.lua.execute("STUB.focus = 869")
+    s.fire("SUPER_TRACKING_CHANGED")
+    assert [t for t in s.shown() if t.startswith(">")] == ["> [13] Raptor Thieves | 112 yd"], s.shown()
+    s.lua.execute("STUB.focus = 0")
+    s.fire("SUPER_TRACKING_CHANGED")
+    # a click selects the list, as it does beside a main guide: no stop is skipped, nothing is said
+    s.click("Step 2")
+    marked = [t for t in s.shown() if t.startswith(">")]
+    assert s.stub.sideGo is None and s.stub.sideAt == 2, "a click on a side list skipped a stop"
+    assert marked == ["> Step 2"] and Choice.Is(Choice, "guide", "side"), marked
+    assert s.chat() == []
+    s.click("Step 2")
+    assert Choice.Get(Choice) is None and not any(t.startswith(">") for t in s.shown()), s.shown()
+    # its menu is a side list's: route to it, and skipping
+    s.click("Step 2", "RightButton")
+    assert s.stub.menu.title == "Dungeon Journal: The Deadmines"
+    assert [e.text for e in s.stub.menu.entries.values()] == ["Route To This List", "Skip Step", "Previous Step"]
+    s.stub.Press("Route To This List")
+    s.turn()
+    assert Choice.Is(Choice, "guide", "side") and s.stub.sideGo is None
+    s.click("Step 2", "RightButton")
+    assert [e.text for e in s.stub.menu.entries.values()][0] == "Stop Routing To This List"
+    s.stub.Press("Stop Routing To This List")
+    s.turn()
+    assert Choice.Get(Choice) is None
+    # a click on one of its later steps goes to that one and selects the list
+    s.click("3. Turn in: Another")
+    assert s.stub.sideGo == 3 and Choice.Is(Choice, "guide", "side") and "> Step 3" in s.shown(), s.shown()
+    s.chat()
+    text = s.slash("back")
+    assert s.stub.sideGo == 2 and text == ["Tracker: Back to step 2."], text
+    s.click("Step 2")
+    assert Choice.Get(Choice) is None
+    assert s.chat() == []
+
+    step("Auto-Track Nearest Quest beside a side list: the nearest quest until the list is selected, then the arrow is left alone")
+    assert s.stub.focus == 0
+    s.setting("followNearest", True)
+    s.tick()
+    assert s.stub.focus == 845 and ns.AutoFollowed() == 845, "a side list nobody selected kept the nearest quest from being followed"
+    s.click("Step 2")
+    assert Choice.Is(Choice, "guide", "side") and [t for t in s.shown() if t.startswith(">")] == ["> Step 2"]
+    # another quest becomes clearly nearer: the arrow would move, but the list is the selected route
+    s.lua.execute("STUB.QuestAt(870, 'The Forgotten Pools', 1, -451, -2600)")
+    s.stub.time += 10
+    s.tick()
+    assert s.stub.focus == 845, "the quest arrow was moved while a list is the selected route"
+    s.click("Step 2")
+    s.tick()
+    assert Choice.Get(Choice) is None and s.stub.focus == 870, "with the list let go, the nearest quest was not followed again"
+    # no arrow at all while the list is selected: none is put on a quest
+    s.click("Step 2")
+    s.lua.execute("STUB.focus = 0")
+    s.fire("SUPER_TRACKING_CHANGED")
+    s.stub.time += 10
+    s.tick()
+    assert Choice.Is(Choice, "guide", "side") and s.stub.focus == 0, "the quest arrow was put on a quest while a list is the selected route"
+    s.click("Step 2")
+    s.setting("followNearest", False)
+    s.lua.execute("STUB.focus = 0")
+    s.fire("SUPER_TRACKING_CHANGED")
+    assert s.chat() == []
+
+    step("the same list set to lead: the main guide as before, followed by itself, and a click skips its step")
+    s.lua.execute("STUB.isSide = false")
+    s.tick()
+    assert Choice.Get(Choice) is None and [t for t in s.shown() if t.startswith(">")] == ["> Step 2"], s.shown()
+    assert ns.GuideNow() is not None and ns.GuideNow().source == "side"
+    s.setting("followNearest", True)
+    s.tick()
+    assert s.stub.focus == 0, "the quest arrow was moved while a guide leads"
+    s.setting("followNearest", False)
+    s.click("Step 2")
+    text = s.chat()
+    assert s.stub.sideGo == 3 and Choice.Get(Choice) is None and "> Step 3" in s.shown(), s.shown()
+    assert text == ["Tracker: Skipped step 2. Use the Undo Skipped Guide Step key binding or type /tracker back to undo."], text
+    s.click("Step 3", "RightButton")
+    assert [e.text for e in s.stub.menu.entries.values()] == ["Skip Step", "Previous Step"]
+
+    step("a list whose step number stays when it is moved (the Dungeon Journal's): chat says no number and promises no undo")
+    s = Session(LOG + PLACES)
+    ns = s.load()
+    Choice = s.g.PatchwerkForever.Choice
+    back = "PATCHWERKFOREVER_TRACKER_BACK"
+    s.lua.execute(STAYS)
+    s.tick()
+    heading = "# Dungeon Journal: The Deadmines | Step 2 of 6"
+
+    def stops():
+        got = s.shown()
+        at = got.index("Step 2") if "Step 2" in got else got.index("> Step 2")
+        return [t.strip(" -") for t in got[at + 1:at + 4]]
+
+    assert s.shown()[0] == heading and stops() == ["Accept: A Job", "3. Turn in: Another", "4. Accept: A Third"], s.shown()
+    assert s.chat() == []
+    # Skip Step in its menu: the stop is gone from the front, the number is as it was
+    s.click("Step 2", "RightButton")
+    s.stub.Press("Skip Step")
+    s.turn()
+    text = s.chat()
+    assert s.stub.sideGo == 3 and s.shown()[0] == heading and stops()[:2] == ["Turn in: Another", "3. Accept: A Third"], s.shown()
+    assert text == ["Tracker: Step skipped."], "a step number or an undo was said for a list whose number stays: %r" % text
+    # the undo goes back to a step number, which such a list refuses: it is said as it is
+    s.press(back)
+    text = s.chat()
+    assert s.stub.sideGo == 2 and text == ["Tracker: Side List could not go back."], text
+    assert stops()[0] == "Turn in: Another"
+    # Previous Step in its menu takes the skip back: no "Back to step 1" beside a heading that says Step 2
+    s.click("Step 2", "RightButton")
+    s.stub.Press("Previous Step")
+    s.turn()
+    text = s.chat()
+    assert s.stub.sideGo == 1 and stops() == ["Accept: A Job", "3. Turn in: Another", "4. Accept: A Third"], s.shown()
+    assert text == ["Tracker: Went back one step."], text
+    # a click on a later stop brings it to the front and selects the list: no step number to have jumped to
+    s.click("4. Accept: A Third")
+    text = s.chat()
+    assert s.stub.sideGo == 4 and Choice.Is(Choice, "guide", "side") and "> Step 2" in s.shown(), s.shown()
+    assert s.shown()[0] == heading and stops() == ["Accept: A Third", "3. Accept: A Job", "4. Turn in: Another"], s.shown()
+    assert text == ["Tracker: Jumped to that step."], text
+    assert s.slash("back") == ["Tracker: Side List could not go back."]
+    assert s.slash("back") == ["Tracker: No skipped step to undo."]
+    s.click("Step 2")
+    assert Choice.Get(Choice) is None
+    # set to lead, a plain click on its step is the skip: said the same way; the last stop skipped, the list is gone
+    s.lua.execute("STUB.isSide = false")
+    s.tick()
+    for left in (["Accept: A Job", "3. Turn in: Another"], ["Turn in: Another"], None):
+        s.click("Step 2")
+        text = s.chat()
+        assert text == ["Tracker: Step skipped."], text
+        if left:
+            assert s.shown()[0] == heading and stops()[:len(left)] == left, s.shown()
+        else:
+            assert s.shown()[0] == "# Quests | 4/25", "a list with every stop skipped is still listed"
+    s.press(back)
+    assert s.chat() == ["Tracker: No skipped step to undo."]
 
 
 def item_buttons():
@@ -1075,12 +1427,353 @@ def dungeon_and_fades():
     assert frame.alpha == 1
     s.stub.instance = True
     s.fire("ZONE_CHANGED_NEW_AREA")
-    assert s.shown() is not None, "it hides in a dungeon unasked"
+    assert s.shown() is None, "both trackers are shown in a dungeon"
+    s.setting("quietInstance", False)
+    assert s.shown() is not None, "it hides in a dungeon with nothing asking for it"
     s.setting("hideInstance", True)
+    assert s.shown() is None
+    s.setting("quietInstance", True)
     assert s.shown() is None
     s.stub.instance = False
     s.fire("ZONE_CHANGED_NEW_AREA")
     assert s.shown() is not None
+    assert s.chat() == []
+
+
+def its_place():
+    step("its place: the Scale slider does not move it, and the quest item bar stays beside it")
+    s = Session(LOG + PLACES + "STUB.thieves.item = { 4854, false }")
+    s.load()
+    frame, first = s.g.PatchwerkForeverTracker, s.button(1)
+    db = s.g.PatchwerkForever_Thread_TrackerDB
+    assert (s.g.UIParent.width, s.g.UIParent.height) == (1100, 960)
+    # under the minimap: 40 in from the right of the screen, 260 down
+    assert near(edges(frame), (800, 1060, 700)), edges(frame)
+    assert s.items() == ([4854], 4854) and (first.points[1][4], first.points[1][5]) == (764, 700)
+    for scale in (160, 60, 125, 100):
+        s.setting("scale", scale)
+        assert abs(frame.GetScale(frame) - scale / 100) < 0.001
+        assert near(edges(frame)[1:], (1060, 700)), "at %d%% its top right corner is at %r" % (scale, edges(frame)[1:])
+        assert (first.points[1][4], first.points[1][5]) == beside(s, frame), "at %d%% the item bar is not beside it" % scale
+    assert (first.points[1][4], first.points[1][5]) == (764, 700)
+
+    step("moving it: wherever the game hangs it after a drag, a top corner is kept, and the list grows downward from it")
+    handle = [f for f in s.stub.frames.values() if f.scripts.OnDragStart][0]
+    s.slash("move")
+    # let go at the right of the screen, where the game hangs a tall frame from the middle of the right edge
+    s.lua.execute("STUB.drop = { 'RIGHT', 'RIGHT', -30, 40 }")
+    tall = frame.height
+    handle.scripts.OnDragStart(handle)
+    handle.scripts.OnDragStop(handle)
+    s.turn()
+    top = 960 / 2 + 40 + tall / 2
+    place = list(db.place.values())
+    assert place[:2] == ["TOPRIGHT", "TOPRIGHT"] and len(place) == 5 and near(place[2:], (-30, top - 960, 1)), place
+    assert frame.points[1][1] == "TOPRIGHT" and near(edges(frame), (810, 1070, top)), edges(frame)
+    assert (first.points[1][4], first.points[1][5]) == beside(s, frame) == (774, math.floor(top + 0.5))
+    # quests go: it is shorter, and its first heading has not moved
+    s.lua.execute("STUB.watched = { 869 }")
+    s.fire("QUEST_WATCH_LIST_CHANGED")
+    assert frame.height < tall and near(edges(frame), (810, 1070, top)), "the top of a moved tracker moved with its height"
+    # the Scale slider does not move a tracker that has been moved either
+    s.setting("scale", 160)
+    assert near(edges(frame), (1070 - 260 * 1.6, 1070, top)), edges(frame)
+    # let go right of the middle while scaled up: which half it is in is told on the screen, not in the
+    # frame's own scale (its middle is at 430 of its own units, which is 688 of the screen's 1100)
+    s.lua.execute("STUB.drop = { 'BOTTOMLEFT', 'BOTTOMLEFT', 300, 100 }")
+    handle.scripts.OnDragStart(handle)
+    handle.scripts.OnDragStop(handle)
+    s.turn()
+    top = (100 + frame.height) * 1.6
+    place = list(db.place.values())
+    assert place[:2] == ["TOPRIGHT", "TOPRIGHT"] and len(place) == 5 and near(place[2:], (560 * 1.6 - 1100, top - 960, 1)), place
+    assert frame.points[1][1] == "TOPRIGHT" and near(edges(frame), (480, 896, top)), edges(frame)
+    # let go at the bottom left while scaled up: what the game gives is in the frame's own scale
+    s.lua.execute("STUB.drop = { 'BOTTOMLEFT', 'BOTTOMLEFT', 50, 100 }")
+    handle.scripts.OnDragStart(handle)
+    handle.scripts.OnDragStop(handle)
+    s.turn()
+    top = (100 + frame.height) * 1.6
+    place = list(db.place.values())
+    assert place[:2] == ["TOPLEFT", "TOPLEFT"] and len(place) == 5 and near(place[2:], (80, top - 960, 1)), place
+    assert frame.points[1][1] == "TOPLEFT" and near(edges(frame), (80, 80 + 260 * 1.6, top)), edges(frame)
+    s.setting("scale", 100)
+    assert near(edges(frame), (80, 340, top)), "the Scale slider moved a tracker that had been moved"
+    assert (first.points[1][4], first.points[1][5]) == beside(s, frame) == (44, math.floor(top + 0.5))
+    # let go while the game cannot say where the frame is: its place is kept as the game gave it, and
+    # made a top corner at the first drawing that can measure it, without moving it
+    s.lua.execute("STUB.drop = { 'RIGHT', 'RIGHT', -30, 40 }; STUB.unplaced = true")
+    handle.scripts.OnDragStart(handle)
+    handle.scripts.OnDragStop(handle)
+    s.turn()
+    assert list(db.place.values()) == ["RIGHT", "RIGHT", -30, 40], list(db.place.values())
+    assert frame.points[1][1] == "RIGHT", "a frame that could not be measured was placed all the same"
+    s.stub.unplaced = False
+    was = edges(frame)
+    s.turn()
+    place = list(db.place.values())
+    assert place[:2] == ["TOPRIGHT", "TOPRIGHT"] and len(place) == 5 and near(place[2:], (was[1] - 1100, was[2] - 960, 1)), place
+    assert frame.points[1][1] == "TOPRIGHT" and near(edges(frame), was), "it moved when its place was made a top corner"
+    assert (first.points[1][4], first.points[1][5]) == beside(s, frame), "the item bar is not beside it after that"
+    s.slash("lock")
+
+    step("Reset Position puts it back under the minimap, at any scale")
+    s.setting("scale", 140)
+    s.slash("reset")
+    assert db.place is None and frame.points[1][1] == "TOPRIGHT" and near(edges(frame)[1:], (1060, 700)), edges(frame)
+    s.setting("scale", 100)
+    assert near(edges(frame), (800, 1060, 700)), edges(frame)
+    s.chat()
+
+    step("a place saved by an earlier version: put back as it was, then kept as a top corner once it can be measured")
+    old = "PatchwerkForever_Thread_TrackerDB = { place = { 'RIGHT', 'RIGHT', -30, 40 }, settings = { scale = 120 } }"
+    s = Session(LOG + old + " STUB.unplaced = true; STUB.thieves.item = { 4854, false }")
+    s.load()
+    frame, first = s.g.PatchwerkForeverTracker, s.button(1)
+    db = s.g.PatchwerkForever_Thread_TrackerDB
+    # (the game has not placed the frame yet: nothing to measure, so nothing is changed)
+    assert list(db.place.values()) == ["RIGHT", "RIGHT", -30, 40], list(db.place.values())
+    assert list(frame.points[1].values())[0] == "RIGHT" and (frame.points[1][4], frame.points[1][5]) == (-30, 40)
+    s.stub.unplaced = False
+    was = edges(frame)
+    assert near(was[1:2], (1100 - 30 * 1.2,)), was             # (the old offsets were in the frame's own scale)
+    s.fire("QUEST_LOG_UPDATE")
+    place = list(db.place.values())
+    assert place[:2] == ["TOPRIGHT", "TOPRIGHT"] and len(place) == 5 and near(place[2:], (was[1] - 1100, was[2] - 960, 1)), place
+    assert frame.points[1][1] == "TOPRIGHT" and near(edges(frame), was), "it moved when its place was converted"
+    assert s.items() == ([4854], 4854) and (first.points[1][4], first.points[1][5]) == beside(s, frame), "the item bar is not beside a tracker whose place was converted"
+    s.lua.execute("STUB.watched = { 869 }")
+    s.fire("QUEST_WATCH_LIST_CHANGED")
+    s.setting("scale", 100)
+    assert near(edges(frame)[1:], was[1:]), "after the conversion its top right corner still moves"
+    assert (first.points[1][4], first.points[1][5]) == beside(s, frame), "after the conversion the Scale slider leaves the item bar behind"
+    assert s.chat() == []
+
+
+def long_list():
+    step("a list longer than Max Height: the edge with more past it is darkened; Scroll Tracker Up and Scroll Tracker Down")
+    s = Session(LOG + FLAT + LONG)
+    ns = s.load()
+    s.setting("height", 150)
+    frame = s.g.PatchwerkForeverTracker
+    body = [f for f in s.stub.frames.values() if f.scripts.OnMouseWheel][0]
+    content = [f for f in s.stub.frames.values() if f.parent is not None and same(s, f.parent, body)][0]
+    end = content.height - 150
+    assert frame.height == 150 and end > 400, (frame.height, end)
+    up, down = "PATCHWERKFOREVER_TRACKER_SCROLL_UP", "PATCHWERKFOREVER_TRACKER_SCROLL_DOWN"
+    # (how far it is scrolled, the top edge darkened, the bottom edge darkened)
+    assert ns.Scrolled() == (0, False, True), ns.Scrolled()
+    s.press(down)
+    assert ns.Scrolled() == (80, True, True) and content.points[1][5] == 80, ns.Scrolled()
+    s.press(up)
+    assert ns.Scrolled() == (0, False, True), ns.Scrolled()
+    s.press(up)
+    assert ns.Scrolled() == (0, False, True), "it scrolled past its top"
+    for _ in range(20):
+        s.press(down)
+    assert ns.Scrolled() == (end, True, False), "at its end: %r" % (ns.Scrolled(),)
+    body.scripts.OnMouseWheel(body, 1)                       # (the wheel still scrolls, and the edges follow it)
+    s.turn()
+    assert ns.Scrolled() == (end - 40, True, True), ns.Scrolled()
+    # each edge is dark at the rim and clear toward the middle
+    shades = {t.at: t.gradient for t in s.stub.allTextures.values() if t.gradient is not None}
+    assert sorted(shades) == ["BOTTOMLEFT", "TOPLEFT"], sorted(shades)
+    top, bottom = shades["TOPLEFT"], shades["BOTTOMLEFT"]
+    assert top[1] == "VERTICAL" and (top[2].a, top[3].a) == (0, 0.75), "the top edge is not dark at its top"
+    assert bottom[1] == "VERTICAL" and (bottom[2].a, bottom[3].a) == (0.75, 0), "the bottom edge is not dark at its bottom"
+
+    step("Route To Next Quest and Route To Previous Quest bring the quest they select into view; nothing else scrolls the list")
+    Choice = s.g.PatchwerkForever.Choice
+    following, previous = "PATCHWERKFOREVER_TRACKER_NEXT", "PATCHWERKFOREVER_TRACKER_PREV"
+    for _ in range(20):
+        s.press(up)
+    assert ns.Scrolled()[0] == 0
+
+    def in_view():
+        block = s.marked()
+        top, at = -block.points[1][5], ns.Scrolled()[0]
+        return top >= at and top + block.height <= at + 150
+
+    order = list(ns.questOrder.values())
+    assert len(order) == 23 and order[-1] == 2020, order
+    for i, want in enumerate(order):
+        s.press(following)
+        assert Choice.Is(Choice, "quest", want) and s.marked().data.key == want
+        assert in_view(), "quest %d was selected out of view" % want
+        if i == 0:
+            assert ns.Scrolled()[0] == 0, "a quest already in view was scrolled to"
+    # (the last quest's foot is at the frame's, with the rim's room under it: only the empty rim of the
+    # list is past the bottom edge, which is not darkened for that)
+    foot = ns.Scrolled()[0]
+    assert end - 8 <= foot < end and ns.Scrolled() == (foot, True, False), (ns.Scrolled(), end)
+    # back up through the whole list: a quest above the frame is brought into view as one below it is
+    for want in reversed(order[:-1]):
+        s.press(previous)
+        assert Choice.Is(Choice, "quest", want) and s.marked().data.key == want
+        assert in_view(), "quest %d was selected out of view, above the frame" % want
+    assert ns.Scrolled()[0] < 40, "at the first quest the list is still scrolled down: %r" % (ns.Scrolled(),)
+    for want in order[1:]:
+        s.press(following)
+    assert Choice.Is(Choice, "quest", 2020) and in_view() and ns.Scrolled()[0] == foot, ns.Scrolled()
+    s.chat()
+    s.press(following)                                       # one past the last: the main route, and the top of the list
+    text = s.chat()
+    assert Choice.Get(Choice) is None and any("Back to your main route" in t for t in text), text
+    assert ns.Scrolled() == (0, False, True), "back on the main route the list is not at its top"
+    s.press(previous)                                        # from none, backwards: the last quest, at the foot
+    assert Choice.Is(Choice, "quest", 2020) and in_view() and ns.Scrolled()[0] == foot, ns.Scrolled()
+    s.press(previous)
+    assert Choice.Is(Choice, "quest", 2019) and in_view()
+    text = s.slash("next")
+    text = s.slash("next")
+    assert Choice.Get(Choice) is None and ns.Scrolled()[0] == 0, "the command does not scroll as the key does"
+    # the mark moved by another hand (the game's arrow, with nothing selected): the list stays where it is
+    s.lua.execute("STUB.focus = 2020")
+    s.fire("SUPER_TRACKING_CHANGED")
+    assert s.marked().data.key == 2020 and not in_view() and ns.Scrolled()[0] == 0, "the list scrolled by itself"
+    s.lua.execute("STUB.focus = 0")
+    s.fire("SUPER_TRACKING_CHANGED")
+    # a quest selected, then scrolled away from with the wheel: drawing the list again does not scroll back to it
+    s.press(previous)
+    for _ in range(3):
+        body.scripts.OnMouseWheel(body, 1)
+    s.turn()
+    assert ns.Scrolled()[0] == foot - 120 and not in_view()
+    s.lua.execute("STUB.thieves.objectives[1] = { '11/12 Raptor Head', false, 11, 12 }")
+    s.fire("QUEST_LOG_UPDATE")
+    assert ns.Scrolled()[0] == foot - 120, "drawing the list again scrolled it back to the selected quest"
+    # the selected quest in a section that is folded: nothing to scroll to, and no error
+    s.slash("fold")
+    s.press(previous)
+    s.slash("fold")
+    s.press(following)
+    assert Choice.Is(Choice, "quest", 2020) and in_view()
+    s.press(following)
+    s.chat()
+
+    step("everything fits, or nothing is shown: no darkened edge, and the scroll bindings do nothing")
+    s.setting("height", 1000)
+    assert ns.Scrolled() == (0, False, False) and body.wheel is False, ns.Scrolled()
+    s.press(down)
+    assert ns.Scrolled() == (0, False, False), ns.Scrolled()
+    s.setting("height", 150)
+    s.slash("off")
+    for _ in range(5):
+        s.press(down)
+    s.press(previous)                                        # (the last quest is selected all the same)
+    assert Choice.Is(Choice, "quest", 2020) and ns.Scrolled() is None
+    s.slash("on")
+    assert s.marked().data.key == 2020 and ns.Scrolled() == (0, False, True), "it scrolled while it was not shown: %r" % (ns.Scrolled(),)
+    s.press(following)
+    assert Choice.Get(Choice) is None
+    s.chat()
+
+    step("a tracker faded while not hovered wakes for a few seconds when a key steps through it or scrolls it")
+    s.setting("fadeIdle", True)
+
+    def frames(n=40):
+        for _ in range(n):
+            s.stub.Frame()
+
+    for key in (following, down, previous, up):
+        s.stub.time += 10
+        frames()
+        assert abs(frame.alpha - 0.35) < 0.001, "it is not faded with the mouse elsewhere: %r" % frame.alpha
+        s.press(key)
+        frames()
+        assert frame.alpha == 1, key + " did not wake it"
+    s.setting("fadeIdle", False)
+    s.chat()
+
+    step("a client that cannot draw a gradient: no darkened edges, and the list is drawn and scrolls as before")
+    s = Session(LOG + FLAT + LONG + "CreateColor = nil")
+    ns = s.load()
+    s.setting("height", 150)
+    assert ns.Scrolled() == (0, False, False) and len(s.shown()) > 40, ns.Scrolled()
+    s.press(down)
+    assert ns.Scrolled() == (80, False, False), ns.Scrolled()
+    assert s.chat() == []
+
+
+def steady_order():
+    step("two quests about as near as each other: rows and item buttons hold their order until one is clearly nearer")
+    s = Session(LOG + PLACES + """
+        STUB.QuestAt(869, 'Raptor Thieves', 1, -510, -2600)
+        STUB.thieves.item = { 4854, false }
+        STUB.pools.item = { 5000, false }
+    """)
+    ns = s.load()
+
+    def rows():
+        return [t for t in s.shown() if t.startswith("[13]") and ("Pools" in t or "Thieves" in t)]
+
+    assert rows() == ["[13] The Forgotten Pools | 50 yd", "[13] Raptor Thieves | 60 yd"], rows()
+    assert s.items() == ([5000, 4854], 5000), s.items()
+    # you walk 12 yards toward the farther one: the distances cross, the rows and the buttons stay
+    s.stub.player.x = -462
+    s.turn()
+    assert rows() == ["[13] The Forgotten Pools | 62 yd", "[13] Raptor Thieves | 48 yd"], "two rows swapped as their distances crossed: %r" % rows()
+    assert list(ns.questOrder.values())[:2] == [870, 869], "the order the next and previous quest step through changed"
+    assert s.items() == ([5000, 4854], 5000), "the item buttons swapped as two distances crossed"
+    # the quest log stirs, as it does every few seconds of play: the places are asked for again, but the
+    # distances the order is held by are not dropped with them
+    for event in ("QUEST_LOG_UPDATE", "QUEST_POI_UPDATE", "ZONE_CHANGED_NEW_AREA"):
+        s.fire(event)
+        assert rows() == ["[13] The Forgotten Pools | 62 yd", "[13] Raptor Thieves | 48 yd"], "%s let two rows swap: %r" % (event, rows())
+        assert list(ns.questOrder.values())[:2] == [870, 869], event + " changed the order the next and previous quest step through"
+        assert s.items() == ([5000, 4854], 5000), event + " let the item buttons swap"
+    # a quest that leaves the log and is taken again starts afresh, from the distance measured then
+    s.lua.execute("STUB.watched = { 869, 845, 786 }")
+    s.fire("QUEST_REMOVED", 870)
+    assert rows() == ["[13] Raptor Thieves | 48 yd"], rows()
+    s.lua.execute("STUB.watched = { 869, 845, 786, 870 }")
+    s.fire("QUEST_ACCEPTED", 870)
+    assert rows() == ["[13] Raptor Thieves | 48 yd", "[13] The Forgotten Pools | 62 yd"], "a quest taken again is sorted by a distance from before: %r" % rows()
+    assert s.items() == ([4854, 5000], 4854), s.items()
+    # a clear change: the order follows
+    s.stub.player.x = -420
+    s.turn()
+    assert rows() == ["[13] The Forgotten Pools | 20 yd", "[13] Raptor Thieves | 90 yd"], rows()
+    assert s.items() == ([5000, 4854], 5000), s.items()
+
+    step("with Show Quests off the item binding is sorted the same way")
+    s.setting("quests", False)
+    assert s.shown() is None and s.items() == ([], 5000), s.items()
+    s.stub.player.x = -490
+    s.fire("QUEST_LOG_UPDATE")
+    assert s.items() == ([], 4854), "with the quests not listed, the item binding did not follow a clear change"
+    s.stub.player.x = -478
+    s.fire("QUEST_LOG_UPDATE")
+    assert s.items() == ([], 4854), s.items()
+    s.setting("quests", True)
+    assert rows() == ["[13] Raptor Thieves | 32 yd", "[13] The Forgotten Pools | 78 yd"], rows()
+    assert s.items() == ([4854, 5000], 4854), s.items()
+    assert s.chat() == []
+
+    step("far away a clear change is 15 percent of the distance, not 15 yards; a quest whose mark goes and comes back starts afresh")
+    s = Session(LOG + PLACES + """
+        STUB.QuestAt(869, 'Raptor Thieves', 1, -1080, -2600)
+        STUB.QuestAt(870, 'The Forgotten Pools', 1, 150, -2600)
+    """)
+    ns = s.load()
+    assert rows() == ["[13] The Forgotten Pools | 600 yd", "[13] Raptor Thieves | 630 yd"], rows()
+    # you walk 40 yards toward the farther one: the distances cross, by less than 15 percent of either
+    s.stub.player.x = -490
+    s.turn()
+    assert rows() == ["[13] The Forgotten Pools | 640 yd", "[13] Raptor Thieves | 590 yd"], "two far rows swapped on a change of 40 yards: %r" % rows()
+    assert list(ns.questOrder.values())[:2] == [870, 869]
+    # the game takes a quest's mark away (nothing to go to for a moment) and gives it back: the quest
+    # is sorted by the distance measured then, not by the one held from before
+    s.lua.execute("STUB.mark = STUB.quests[870]; STUB.quests[870] = nil")
+    s.fire("QUEST_POI_UPDATE")
+    assert rows() == ["[13] Raptor Thieves | 590 yd", "[13] The Forgotten Pools"], rows()
+    s.lua.execute("STUB.quests[870] = STUB.mark")
+    s.fire("QUEST_POI_UPDATE")
+    assert rows() == ["[13] Raptor Thieves | 590 yd", "[13] The Forgotten Pools | 640 yd"], "a quest whose mark came back is sorted by a distance from before: %r" % rows()
+    # a clear change, far away too: the order follows
+    s.stub.player.x = -150
+    s.turn()
+    assert rows() == ["[13] The Forgotten Pools | 300 yd", "[13] Raptor Thieves | 930 yd"], rows()
     assert s.chat() == []
 
 

@@ -93,7 +93,7 @@ local function Draw()
 	local thick, alpha = full, 0.95
 	local pen = ns.TrailPen(1 / scale)
 	local r, g, b = 1, 1, 1
-	local points, at
+	local points, at, loose
 	local function line(x1, y1, x2, y2)
 		if used >= MOST then return end
 		local l = Line(parent)
@@ -123,13 +123,15 @@ local function Draw()
 	local function spot(i)
 		local p = points[i]
 		local x, y = p[1], p[2]
-		if i == at and px then x, y = px, py end               -- the trail starts at the character
+		-- the trail starts at the character (but not one found while you were on a flight path, with
+		-- no flight on it: Route.lua)
+		if i == at and px and not loose then x, y = px, py end
 		return (left - y) / (left - right), (top - x) / (top - bottom)
 	end
 	-- one trail: the part of it on the map shown (the part being walked, or, of a journey that crosses to
 	-- another continent, the part over there)
 	local function Run(trail, follow)
-		points, at = trail.points, follow and trail.at or nil
+		points, at, loose = trail.points, follow and trail.at or nil, follow and trail.loose
 		if m1 ~= trail.map then
 			points, at = trail.parts and trail.parts[m1], nil
 		end

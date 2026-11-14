@@ -1,8 +1,11 @@
 -- Thread (Routes): where to, where from, and keeping the route up to date.
 --
--- ns.dest    where the route goes: { map =, x =, y =, pin = true if it came from the map pin }
+-- ns.dest    where the route goes: { map =, x =, y =, pin = true if it came from the map pin,
+--            failed = where and when the last search found no way to it, wait = how long the next
+--            one waits (see NoWay) }
 -- ns.route   the route found: { map =, points = { { x, y, how }, ... }, seconds =, yards =, swum =,
---            flown = { { name, name, ... }, ... }, at = the point the character has reached }
+--            flown = { { name, name, ... }, ... }, at = the point the character has reached,
+--            loose = true while it is not to be joined to the character (see Aloft) }
 -- x and y are the game's world coordinates (x north, y west), `how` is "walk", "link" or "fly".
 local ADDON, ns = ...
 if not ns.linked then return end
@@ -18,6 +21,11 @@ local CONTINENT_MAP = { [0] = 1415, [1] = 1414 }     -- the world-map ids of the
 local ARRIVED = 12        -- yards from the destination that count as there
 local STRAYED = 35        -- yards from the trail before a new route is found
 local AGAIN = 3           -- seconds between two searches, at least
+local RETRY = 10          -- seconds before a route that could not be made is tried for again
+local WAIT, WAIT_MOST = 20, 120   -- the same where a whole search found no way: doubled each time, up to the most
+local MOVED = 300         -- yards from where that search began that bring the next one at once
+local NO_WAY = 'No route found'   -- said under the step on screen (Float.lua)
+ns.NO_WAY = NO_WAY                -- (Sources.lua says it too, under a new step at a place there is still no way to)
 
 P.clock = debugprofilestop
 
@@ -43,25 +51,27 @@ end
 ns.Place = Place
 
 local told = {}
-local function Once(key, text)
-	if not told[key] then
+local function Once(key, text, again)
+	if again or not told[key] then
 		told[key] = true
 		ns.Print(text)
 	end
 end
 
-local function Data(map)
+-- say: you asked for the route yourself, so why there is no map data is said even when it has been
+-- said before. Otherwise it is said once.
+local function Data(map, say)
 	if P.Use(map) then return true end
 	local name = DATA[map]
 	if not name then
-		Once('map' .. tostring(map), 'No map data for this area (map ' .. tostring(map) .. ').')
+		Once('map' .. tostring(map), 'No map data for this area (map ' .. tostring(map) .. ').', say)
 		return false
 	end
 	local load = C_AddOns and C_AddOns.LoadAddOn or LoadAddOn
 	local ok, reason = load(name)
 	if P.Use(map) then return true end
 	Once('data' .. name, 'Map data "' .. name .. '" could not be loaded (' .. tostring(reason or ok)
-		.. '). It is a separate addon: check it is installed and ticked in the addon list.')
+		.. '). It is a separate addon: check it is installed and ticked in the addon list.', say)
 	return false
 end
 
@@ -70,19 +80,16 @@ local function Side()
 	return side == 'Alliance' and 'A' or side == 'Horde' and 'H' or nil
 end
 
--- The flight points this character has found: { [id] = true }, or nil for "all of them".
+-- The flight points this character has found: { [id] = true }, or nil for "all of them" (the
+-- setting off). How they are learned is in Flights.lua. With nothing known of a continent yet, none
+-- count as found and the route goes on foot: better a walk than a flight you cannot take.
 local function Known(map)
 	if not ns.Get('knownOnly') then return nil end
-	local id = CONTINENT_MAP[map]
-	if not id then return nil end
-	local nodes = C_TaxiMap and C_TaxiMap.GetTaxiNodesForMap and C_TaxiMap.GetTaxiNodesForMap(id)
-	if type(nodes) ~= 'table' or #nodes == 0 then
-		Once('known' .. tostring(map), 'Known flight points are not available here, so all of your faction\'s flight points are used.')
-		return nil
-	end
-	local known = {}
-	for _, node in ipairs(nodes) do
-		if not node.isUndiscovered then known[node.nodeID] = true end
+	if not CONTINENT_MAP[map] then return nil end
+	local known, sure = ns.FlightsKnown(map)
+	if not sure then
+		-- (said once, whichever continent it is first true of)
+		Once('known', 'Your known flight points have not been read yet, so routes go on foot where they are unknown. Open the flight map at a flight master once on each continent and they are remembered.')
 	end
 	return known
 end
@@ -95,7 +102,7 @@ end
 -- steps, Ahead.lua). A job that starts while one of those is under way puts it back to wait.
 local job, lastPlan = nil, 0
 local waiting, behind, behindAsk = {}, nil, nil
-local Search
+local Search, Threw
 local runner = CreateFrame('Frame')
 runner:Hide()
 runner:SetScript('OnUpdate', function()
@@ -104,7 +111,8 @@ runner:SetScript('OnUpdate', function()
 		local ok, err = coroutine.resume(job)
 		if not ok then
 			job = nil
-			ns.Print('Route search failed: ' .. tostring(err))
+			P.Forget()
+			Threw(err)
 		elseif coroutine.status(job) == 'dead' then
 			job = nil
 		end
@@ -182,18 +190,46 @@ local function Fail(announce, text)
 end
 
 -- A destination you have just been given is described on screen once its route is known (Float.lua):
--- not again when the way is found anew after a wrong turn.
-local function Fresh(dest, route)
+-- not again when the way is found anew after a wrong turn. note: what to say under it where there is
+-- no route to describe.
+local function Fresh(dest, route, note)
 	if dest and dest.fresh then
 		dest.fresh = nil
-		if ns.FloatRoute then ns.Try('the step on screen', ns.FloatRoute, dest, route) end
+		if ns.FloatRoute then ns.Try('the step on screen', ns.FloatRoute, dest, route, note) end
 	end
+end
+
+-- A whole search that finds no way is the dearest there is, and one made again from the same place
+-- would end the same. So it is noted on the destination: dest.failed, where you stood and when, and
+-- dest.wait, the seconds before the next try, longer each time. Follow reads both.
+local function NoWay(dest, map, x, y)
+	dest.wait = math.min(WAIT_MOST, (dest.wait or WAIT / 2) * 2)
+	dest.failed = { map = map, x = x, y = y, at = GetTime() }
+end
+
+-- Whether you are on a flight path. What a search finds from mid-air says nothing of the way from where you land.
+local function Flying()
+	return UnitOnTaxi and UnitOnTaxi('player') and true or false
+end
+
+-- A search that threw an error would throw again: said once, and the destination left as one with no way.
+Threw = function(err)
+	ns.Try('a route search', error, tostring(err), 0)     -- (said once, not thrown)
+	local dest = ns.dest
+	if not dest then return end
+	Fail(false)
+	local note = not Flying() and NO_WAY or nil
+	if note and not dest.wait then dest.fresh = true end  -- (said under its words the first time, as a way not found is)
+	local x, y, map = Place()
+	if x then NoWay(dest, map, x, y) end
+	Fresh(dest, nil, note)
 end
 
 -- Finds the way from one place to another. It is run inside a search (a coroutine) and gives up its
 -- turn as it goes. from, to: { map =, x =, y = } in world coordinates. opts.walkOnly: on foot (no
 -- flights, and no boats where both ends are on one map). Returns the route, or nothing and why not
--- (no reason given: the map data could not be had, which has been said already).
+-- (no reason given: the map data could not be had, which has been said already), and true where a
+-- whole search was made to learn it.
 Search = function(from, to, opts)
 	local map = from.map
 	local rides = ns.Get('rides') and ns.Crossings or nil
@@ -222,15 +258,15 @@ Search = function(from, to, opts)
 		walk = function(m)
 			if not flights then return {} end
 			if known[m] == nil then known[m] = Known(m) or false end
-			return { side = side, known = known[m] or nil }
+			return { side = side, known = known[m] or nil }       -- (false: every point; a table, even an empty one: only those)
 		end,
 	})
 	if not journey then
 		P.Forget()
 		if map ~= to.map then
-			return nil, 'No route found to that continent: no boat or zeppelin available to your faction goes there, or the location is unreachable.'
+			return nil, 'No route found to that continent: no boat or zeppelin available to your faction goes there, or the location is unreachable.', true
 		end
-		return nil, 'No route found. The location may be unreachable by something the planner does not know: a lift, a boat or a locked gate.'
+		return nil, 'No route found. The location may be unreachable by something the planner does not know: a lift, a boat or a locked gate.', true
 	end
 	local line = P.JourneyLine(journey)
 	P.Forget()
@@ -264,6 +300,7 @@ end
 function ns.Plan(announce)
 	local dest = ns.dest
 	if not dest then return end
+	dest.failed = nil                             -- (how the search before this one ended)
 	local px, py, map = Place()
 	if not px then
 		Fresh(dest)
@@ -273,7 +310,7 @@ function ns.Plan(announce)
 		Fresh(dest)
 		return Fail(announce, 'That location is on another continent, and Use Boats And Zeppelins is disabled.')
 	end
-	if not Data(map) or (map ~= dest.map and not Data(dest.map)) then
+	if not Data(map, announce) or (map ~= dest.map and not Data(dest.map, announce)) then
 		Fresh(dest)
 		return Fail(false)
 	end
@@ -285,16 +322,34 @@ function ns.Plan(announce)
 		P.Forget()
 	end
 	job = coroutine.create(function()
-		local route, why = Search({ map = map, x = px, y = py }, dest, { walkOnly = dest.walkOnly })
+		local route, why, dead = Search({ map = map, x = px, y = py }, dest, { walkOnly = dest.walkOnly })
 		if ns.dest ~= dest then return end        -- the destination changed while this was being found
+		-- (not taken as final on a flight path: no note, no wait, and it is tried again once you land)
+		if dead and Flying() then dead = nil end
 		if not route then
 			Fail(announce, why)
+			if dead then
+				-- said in chat once for a destination (dest.wait is set from the first time on); where you
+				-- asked, Fail has said it. Not for a node of a gathering run: each is a destination of its
+				-- own and the run goes on to the next by itself (Gather.lua), so the line would come once a
+				-- node; the step text says it
+				if not (announce or dest.wait) and dest.source ~= 'gather' and ns.Get('notify') then ns.Print(why) end
+				-- (the first whole search to find no way is said under the destination's words, also where
+				-- those went out earlier with nothing under them: a search given up before it began, one
+				-- made on a flight path, or a way that was lost after a wrong turn)
+				if not dest.wait then dest.fresh = true end
+				NoWay(dest, map, px, py)
+			end
 		else
+			-- (a way found where none was before: the words kept for /thread step get it under them in
+			-- place of the note, and are not shown again)
+			if dest.wait then dest.fresh, dest.quiet = true, true end
+			dest.wait = nil
 			ns.route = route
 			Changed()
 			if announce and ns.Get('notify') then Say(route) end
 		end
-		Fresh(dest, route)
+		Fresh(dest, route, dead and NO_WAY or nil)
 	end)
 	runner:Show()
 end
@@ -325,6 +380,27 @@ local function NearestOnTrail(route, px, py, from, to)
 	return best, at
 end
 
+-- On a flight path the trail runs from you to where you land and on from there, not back to the
+-- flight master you left: the point reached is moved up to the last one before the landing. A trail
+-- with no flight ahead on it (it was found while you were in the air) is drawn as it lies, not joined
+-- to you: route.loose, which the two maps read.
+local function Aloft(route)
+	local points, land = route.points, nil
+	for i = route.at + 1, #points do
+		if points[i][3] == 'fly' then
+			land = i
+			while points[land + 1] and points[land + 1][3] == 'fly' do land = land + 1 end
+			break
+		end
+	end
+	local at, loose = route.at, nil
+	if land then at = land - 1 else loose = true end
+	if at ~= route.at or loose ~= route.loose then
+		route.at, route.loose = at, loose
+		Changed()
+	end
+end
+
 local function Follow()
 	local dest = ns.dest
 	if not dest or job then return end
@@ -339,11 +415,29 @@ local function Follow()
 			return
 		end
 	end
-	if UnitOnTaxi and UnitOnTaxi('player') then return end
 	local route = ns.route
-	if not route then
-		if GetTime() - lastPlan > 10 then ns.Plan(false) end
+	if Flying() then
+		if route and route.map == map then Aloft(route) end
 		return
+	end
+	if not route then
+		-- No route could be made. Most reasons mend themselves as you move (no position, not on ground
+		-- the planner knows): tried again every few seconds. Where a whole search found no way, the next
+		-- one waits longer each time, unless you have changed map or come well away from where it began.
+		local failed = dest.failed
+		if failed then
+			if map ~= failed.map or GetTime() - failed.at > dest.wait
+				or (px - failed.x) ^ 2 + (py - failed.y) ^ 2 > MOVED * MOVED then
+				ns.Plan(false)
+			end
+		elseif GetTime() - lastPlan > RETRY then
+			ns.Plan(false)
+		end
+		return
+	end
+	if route.loose then                           -- (landed: the trail starts at you again)
+		route.loose = nil
+		Changed()
 	end
 	if route.map ~= map then
 		-- you have crossed to another map: the part of the journey found for it is followed from here,
@@ -397,7 +491,8 @@ end
 
 -- source: nil for a place you chose (the pin, /thread to), or what chose it for you ('rxp' or 'quest': Sources.lua).
 -- more: what else is known of it (Sources.lua): lines, the words that describe it on screen; kind, what
--- a guide's step asks for; walkOnly, to be gone to on foot.
+-- a guide's step asks for; walkOnly, to be gone to on foot; quiet, its words have been on screen
+-- already and are not shown again.
 function ns.SetDestination(map, x, y, pin, announce, source, more)
 	local dest = { map = map, x = x, y = y, pin = pin, source = source, fresh = true }
 	for key, value in pairs(more or {}) do
@@ -429,7 +524,20 @@ function ns.Stop(announce)
 	ns.stopped = had and { dest = had, user = announce and true or false } or nil
 	Watch(false)
 	Changed()
-	if announce then ns.Print(had and 'Routing stopped.' or 'No active route.') end
+	if not announce then return end
+	-- what was stopped is said: only a guide's step or a quest is left alone afterwards (Sources.lua),
+	-- and with a pin, a spot or a gathering run gone your guide or quest is routed to at the next look
+	if not had then
+		ns.Print('No active route.')
+	elseif had.source == 'gather' then
+		ns.Print('Gathering stopped.')
+	elseif had.pin then
+		ns.Print('Routing to your map pin stopped.')
+	elseif not had.source then
+		ns.Print('Routing to your coordinates stopped.')
+	else
+		ns.Print('Routing stopped. It resumes when the guide step or quest objective changes, or with /thread go.')
+	end
 end
 
 function ns.Go()
@@ -489,8 +597,10 @@ local function PinChanged(announce)
 end
 
 ns.On('USER_WAYPOINT_UPDATED', function() PinChanged(true) end)
-ns.On('PLAYER_ENTERING_WORLD', function()
-	if not ns.dest then PinChanged(false) end
+-- A pin already on the map is taken up at login and after a reload only. After any other loading
+-- screen it would be one you had reached or stopped, routed to all over again.
+ns.On('PLAYER_ENTERING_WORLD', function(isInitialLogin, isReloadingUi)
+	if (isInitialLogin or isReloadingUi) and not ns.dest then PinChanged(false) end
 end)
 -- Whether a place on another map can be gone to at all: boats and zeppelins are on, and the map is one
 -- there is data for. (Whether a boat your side can take leads there is only known once it is tried.)

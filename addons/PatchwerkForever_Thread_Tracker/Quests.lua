@@ -9,7 +9,8 @@
 --     { quests = { quest, ... }, held = how many quests you have, room = how many you may have }
 -- and a quest is
 --     { id, title, level, zone, done (ready to hand in), failed, tag ("Elite", "Daily" ...),
---       left = seconds left on a timed quest, yards = how far, followed = it is the one being followed,
+--       left = seconds left on a timed quest, yards = how far, rank = the distance it is sorted by
+--       (Places.lua), followed = it is the one being followed,
 --       lines = { { text, done, have, need } ... }  its objectives, or one line saying it is ready }
 --
 -- How they are listed is a setting:
@@ -105,6 +106,7 @@ function ns.ReadQuests()
 				tag = Tag(id, info),
 				left = (tonumber(total) and total > 0) and math.max(0, total - (tonumber(gone) or 0)) or nil,
 				yards = ns.QuestYards(id),
+				rank = ns.QuestRank(id),
 				followed = followed == id,
 				lines = Lines(id, done),
 			}
@@ -180,11 +182,12 @@ local function BlockOf(quest, brief)
 		click = function(button, block) ns.QuestClick(quest, button, block) end }
 end
 
+-- (by the distance held for sorting, not the one shown: rows do not swap each time two distances cross)
 local function Nearer(a, b)
-	if a.yards and b.yards then
-		if a.yards ~= b.yards then return a.yards < b.yards end
-	elseif a.yards or b.yards then
-		return a.yards ~= nil
+	if a.rank and b.rank then
+		if a.rank ~= b.rank then return a.rank < b.rank end
+	elseif a.rank or b.rank then
+		return a.rank ~= nil
 	end
 	return a.watch < b.watch
 end

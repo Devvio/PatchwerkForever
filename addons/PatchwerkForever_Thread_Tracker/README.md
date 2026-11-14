@@ -24,7 +24,7 @@ Version 1.0. One piece is marked experimental and starts switched off: dungeon o
 
 - **A second list beside your guide**, with Patchwerk Forever: Stitch (Dungeon Journal): the quests of the dungeons you track in DungeonJournal, in a section of their own. Click it to route along it; click again to go back to your guide.
 - **Your guide's steps**, when a guide addon runs (RestedXP): the step you are on with its lines, the next few steps dimmed under it, and in the heading the guide's name, "step 34 of 120" and a thin bar.
-- **The quests you track**, under the zone each belongs to. The zone you are in comes first, and within a zone the nearest quest. Other orders are a setting: one list nearest first, ready ones first, or as the game has them.
+- **The quests you track**, under the zone each belongs to. The zone you are in comes first, and within a zone the nearest quest. Two quests about as near as each other keep their rows until one is clearly nearer (about 15 yards or 15 percent), so the distances shown can be a little out of order for a moment; the quest item buttons hold their order the same way. Other orders are a setting: one list nearest first, ready ones first, or as the game has them.
 - **For each quest**: its level in the game's colour for its difficulty, its kind (elite, dungeon, daily, group), how many yards away it is, and its objectives. A count goes from red to green as it fills. A timed quest shows the time left.
 - **Quests ready to hand in** leave the list for a short group at its foot, each saying where to take it. The game's own watch list is not changed.
 - **Who in your party has a quest**, under it. For party members who run this tracker too, how far along they are.
@@ -47,23 +47,24 @@ Version 1.0. One piece is marked experimental and starts switched off: dungeon o
 
 A bar beside a block shows what is being followed: your guide's step, the quest you chose, or the gathering run.
 
-Skipping a guide step is done by the guide addon itself, as a click in its own window does. `/tracker back` takes the last one back.
+Skipping a guide step is done by the guide addon itself, as a click in its own window does. A chat line says which step was skipped and how to undo it. `/tracker back`, or the "Undo Skipped Guide Step" key binding, takes the last one back; if the guide has moved on since, the line says from which step. Once another guide is loaded there is nothing to undo. On a list whose step number does not move when you skip (the Dungeon Journal's counts the quests turned in), the line says only that the step was skipped.
 
 ## Item buttons
 
 A quest that gives you an item to use gets a button in a strip beside the tracker, the nearest quest's item first. The items your guide's step wants used (a hearthstone) follow them.
 
-- **Without a mouse**: bind "Route To Next Quest" and "Route To Previous Quest" (Key Bindings, under AddOns) to step through the list; one step past either end returns to your main route.
+- **Without a mouse**: bind "Route To Next Quest" and "Route To Previous Quest" (Key Bindings, under AddOns) to step through the list; one step past either end returns to your main route. In a list longer than its height, the quest you step to is scrolled into view, and back on the main route the list returns to its top.
+- **Also in Key Bindings, under AddOns**: "Scroll Tracker Up" and "Scroll Tracker Down" for a list longer than its height, and "Undo Skipped Guide Step", which does what `/tracker back` does.
 - **A key or gamepad button** can be bound to "Use Nearest Quest Item" (Key Bindings, under AddOns). It only ever uses a quest's item, never the guide's.
 - **In a fight the strip does not change.** The game does not let an addon show, hide or move such buttons then. What changed meanwhile is applied when the fight is over, so the binding uses the item that was nearest when the fight began.
 
 ## Stepping back
 
-Three switches, all off to begin with: dim in a fight, dim unless the mouse is over it (it wakes for a few seconds when something changes), and hide in dungeons and raids.
+Three switches, all off to begin with: dim in a fight, dim unless the mouse is over it (it wakes for a few seconds when something changes), and hide in dungeons and raids even when the game's tracker is not kept there.
 
 ## What it does by itself, and what it leaves alone
 
-- **Nothing is moved for you** unless you tick it. "Auto-Track Nearest Quest" puts the game's arrow on the nearest tracked quest when no guide runs and you have chosen none; it starts unticked.
+- **Nothing is moved for you** unless you tick it. "Auto-Track Nearest Quest" puts the game's arrow on the nearest tracked quest when no guide runs and you have chosen neither a quest nor a list to route along; it starts unticked.
 - **RestedXP's own window** stays as it is unless you tick "Hide RestedXP Window". Then it is made invisible while the tracker lists the guide. RestedXP's settings are not changed, and its arrow and item buttons stay.
 - **Party progress** is told between trackers only: the quest's number and a percentage, to your party, when it changes. Untick "Share Progress With Party" and nothing is sent.
 - **A guide's words** are shown from the guide addon's own tables as the game runs. None are kept.
@@ -72,14 +73,14 @@ Three switches, all off to begin with: dim in a fight, dim unless the mouse is o
 
 While this one is shown, the game's tracker is made invisible and lets clicks through, so you do not see every quest twice. It is not removed or hidden, which is what makes other things go wrong. Unticking **Hide Default Quest Tracker**, or `/tracker off`, brings it back as it was.
 
-- **In dungeons, raids and battlegrounds** the game's tracker is let back, because it shows things there that this one may not. A setting changes that.
+- **In dungeons, raids and battlegrounds** the game's tracker is let back, because it shows things there that this one may not, and this one steps aside so there is one list. Untick **Keep Default Tracker In Instances** to have this one there instead. With **Hide Default Quest Tracker** unticked, both are shown there as everywhere.
 - **EllesmereUI's quest tracker**, if you run it, is a third. You are told once; untick one of the two in the addon list.
 
 ## Using it
 
 - **Fold it** by clicking a heading, with `/tracker fold`, or with a key or gamepad button you bind.
-- **Move it** with `/tracker move` (or the button in the settings): drag it by the bar along its top, then `/tracker lock`.
-- **Past a height you set**, the list scrolls with the mouse wheel. While everything fits, the wheel is left to the camera.
+- **Move it** with `/tracker move` (or the button in the settings): drag it by the bar along its top, then `/tracker lock`. Its top corner stays where you leave it: the list grows downward from there, and changing Scale does not move it.
+- **Past a height you set**, the list scrolls with the mouse wheel or the "Scroll Tracker Up" and "Scroll Tracker Down" key bindings, and its top or bottom edge darkens while there is more of the list past it. While everything fits, the wheel is left to the camera.
 - Clicks between the lines pass through to the world.
 
 ## Settings

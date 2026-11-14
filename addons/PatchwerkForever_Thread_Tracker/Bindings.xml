@@ -2,6 +2,12 @@
 	<Binding name="PATCHWERKFOREVER_TRACKER_FOLD" header="PATCHWERKFOREVER_TRACKER" category="ADDONS">
 		PatchwerkForever_Thread_Tracker_Fold()
 	</Binding>
+	<Binding name="PATCHWERKFOREVER_TRACKER_SCROLL_UP" category="ADDONS">
+		PatchwerkForever_Thread_Tracker_ScrollUp()
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_TRACKER_SCROLL_DOWN" category="ADDONS">
+		PatchwerkForever_Thread_Tracker_ScrollDown()
+	</Binding>
 	<Binding name="PATCHWERKFOREVER_TRACKER_NEXT" category="ADDONS">
 		PatchwerkForever_Thread_Tracker_Next()
 	</Binding>
@@ -9,4 +15,7 @@
 		PatchwerkForever_Thread_Tracker_Previous()
 	</Binding>
 	<Binding name="CLICK PatchwerkForeverTrackerNearestItem:LeftButton" category="ADDONS"/>
+	<Binding name="PATCHWERKFOREVER_TRACKER_BACK" category="ADDONS">
+		PatchwerkForever_Thread_Tracker_Back()
+	</Binding>
 </Bindings>

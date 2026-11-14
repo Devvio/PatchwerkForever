@@ -32,7 +32,7 @@ ns.settings = {
 	{ key = 'flights', default = true, name = 'Use Flight Paths',
 		desc = 'Use flight paths when they are faster than walking.' },
 	{ key = 'knownOnly', default = true, name = 'Known Flight Points Only', parent = 'flights',
-		desc = 'Ignore flight points this character has not discovered.' },
+		desc = 'Only fly between flight points this character has discovered. They are read from the flight map when you open it at a flight master, and remembered. Until one has been opened on a continent, routes there go on foot.' },
 	{ key = 'rides', default = true, name = 'Use Boats And Zeppelins',
 		desc = 'Use boats and zeppelins when they are faster, and to reach other continents. Only those available to your faction. Waiting time is unknown, so the estimate allows half a round trip.' },
 	{ header = true, name = 'Chat' },
@@ -103,12 +103,13 @@ local function Help()
 	ns.Print('Route planner commands:')
 	ns.Print('  /thread go: route to your map pin, or to your guide step or tracked quest')
 	ns.Print('  /thread to 45.2 61.8: route to those coordinates on your current map')
-	ns.Print('  /thread stop: stop routing (resumes when the guide step or quest objective changes)')
+	ns.Print('  /thread stop: stop routing (a route to a guide step or quest resumes when the step or objective changes)')
 	ns.Print('  /thread quest: list tracked quest locations and which one is being followed')
 	ns.Print('  /thread step: show the step text again')
 	ns.Print('  /thread gather: route to the nearest recorded herb or ore node, then the next (gather round, gather <name>, gather list, gather stop)')
 	ns.Print('  /thread config: open the options')
 	ns.Print('  /thread where: show your position as the planner sees it')
+	ns.Print('  /thread flights: list the flight points you know on this continent, and how that is known')
 	ns.Print('  /thread nodes: count recorded herb and ore nodes')
 	ns.Print('  /thread nodes forget: delete recorded nodes within 15 yards')
 end
@@ -144,6 +145,8 @@ SlashCmdList.PATCHWERKFOREVER_THREAD = function(text)
 		ns.Try('quest', ns.QuestSay)
 	elseif word == 'step' then
 		ns.Try('step', ns.FloatAgain)
+	elseif word == 'flights' then
+		ns.Try('flights', ns.FlightsSay)
 	elseif word == 'gather' then
 		ns.Try('gather', ns.GatherSay, rest)
 	else

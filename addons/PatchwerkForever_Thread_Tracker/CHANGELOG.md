@@ -1,5 +1,30 @@
 # Patchwerk Forever: Thread (Tracker)
 
+## 1.2.0
+
+Polish: the things you meet every session.
+
+### Position and long lists
+- **A moved tracker keeps its top corner** where you put it and grows downward from there, and the Scale slider no longer moves it. A position saved by an earlier version is converted the first time the tracker is shown.
+- **New key bindings: Scroll Tracker Up and Scroll Tracker Down**, for a list longer than Max Height.
+- In a list longer than Max Height, Route To Next Quest and Route To Previous Quest scroll the quest they select into view, and going back to your main route scrolls the list to the top.
+- The top or bottom edge of the tracker darkens while there is more of the list past it.
+- Route To Next Quest, Route To Previous Quest and the two scroll bindings show a tracker faded by Fade When Not Hovered for a few seconds.
+- Quests and quest item buttons no longer swap places each time two distances cross. The order changes only when one is clearly nearer (about 15 yards or 15 percent); the distance shown stays live.
+
+### Guide steps
+- **A click that skips a guide step now says so in chat**, with how to undo it. Jumping to a later step and going back a step are said too.
+- **New key binding: Undo Skipped Guide Step**, which does what `/tracker back` does.
+- `/tracker back` no longer goes back to a step skipped in a guide that has since been replaced, and when the guide has moved on it says which step it went back from.
+- On the Dungeon Journal list, a click that skips a stop, goes back or brings a later stop forward is said in chat without a step number, since that list's number does not move.
+
+### In instances
+- **One quest list in dungeons, raids and battlegrounds.** While the default tracker is kept there (Keep Default Tracker In Instances, enabled by default), this tracker now hides, so quests are not listed twice. Disable that setting to have this tracker there instead. Use Nearest Quest Item keeps working.
+
+### The Dungeon Journal list
+- With Patchwerk Forever 2.5.0, a Dungeon Journal list shown without a guide is a side list: a click selects it instead of skipping a stop.
+- Auto-Track Nearest Quest no longer moves the quest arrow while a list is the selected route, and it now works while the Dungeon Journal list is shown but not selected. Its tooltip says so.
+
 ## 1.1.0
 
 - **A section for each guide.** With a second guide running beside your levelling guide (the Dungeon Journal's quests, through its Stitch), each has its own section. Click the second one's step to route along its list; click again to go back to your main guide. Its right-click menu skips a step or goes back one.

@@ -11,6 +11,7 @@ if not ns.linked then return end
 local KEPT = 5                -- seconds a quest's place is kept
 
 local places = {}             -- [quest] = { at = when asked, map =, x =, y = }
+local rank = {}               -- [quest] = the distance it is sorted by (ns.QuestRank)
 
 local function Ask(fn, ...)
 	if type(fn) ~= 'function' then return nil end
@@ -53,6 +54,25 @@ function ns.QuestYards(id)
 	return math.sqrt((x - px) ^ 2 + (y - py) ^ 2)
 end
 
+-- The distance a quest is sorted by: the one measured, held until the measured one has moved
+-- clearly away from it (15 yards, or 15 percent when that is more). Two quests about as near as
+-- each other would otherwise swap rows, and item buttons, each time you crossed the line between
+-- them. Kept here, not by the list, so the item strip sorts the same way while quests are not
+-- listed. What is shown beside a quest is still the distance measured (ns.QuestYards).
+function ns.QuestRank(id)
+	local yards = ns.QuestYards(id)
+	if not yards then
+		rank[id] = nil
+		return nil
+	end
+	local kept = rank[id]
+	if not kept or math.abs(yards - kept) > math.max(15, kept * 0.15) then
+		kept = yards
+		rank[id] = kept
+	end
+	return kept
+end
+
 -- A distance in a few letters.
 function ns.YardsText(yards)
 	if not yards then return nil end
@@ -65,3 +85,8 @@ local function Forget() places = {} end
 for _, event in ipairs({ 'QUEST_LOG_UPDATE', 'QUEST_ACCEPTED', 'QUEST_REMOVED', 'QUEST_TURNED_IN', 'QUEST_POI_UPDATE', 'ZONE_CHANGED_NEW_AREA' }) do
 	ns.Try('listening for ' .. event, ns.On, event, Forget)
 end
+-- (the distance a quest is sorted by is dropped only when the quest leaves the log: the events
+-- above come too often to drop it there)
+ns.Try('listening for QUEST_REMOVED', ns.On, 'QUEST_REMOVED', function(id)
+	if id ~= nil then rank[id] = nil end
+end)

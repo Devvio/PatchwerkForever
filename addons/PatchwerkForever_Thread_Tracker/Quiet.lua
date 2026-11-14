@@ -10,7 +10,7 @@
 --     not, in a fight, and should not out of one. They stay where they were, unseen.
 --   * Nothing of it is touched in a fight. What was wanted then is done when the fight is over.
 --   * In a dungeon, a raid or a battleground it is let back (a setting): it shows things there that
---     ours may not.
+--     ours may not. Ours steps aside while it is (Frame.lua), so there is one list there too.
 --   * Switching ours off, or unticking the setting, puts back what was changed: its alpha as it was,
 --     and the mouse on the pieces it was taken from.
 --
@@ -39,7 +39,7 @@ local targets = {
 	end },
 	{ name = 'RXPFrame', wanted = function()
 		if not (ns.Get('on') and ns.Get('guide') and ns.Get('guideHide')) then return false end
-		if ns.Get('hideInstance') and InInstance() then return false end
+		if ns.AsideInInstance() then return false end             -- (ours is not shown there: Frame.lua)
 		local info = ns.Base.Guides:Read(0, 'rxp')         -- (its own window: only while its own guide is listed)
 		return type(info) == 'table' and info.index ~= nil
 	end },

@@ -258,6 +258,8 @@ Guides:Register(SOURCE, {
 	Read = Read,
 	Go = Go,
 	Leads = function() return ns:GetSetting('djLeads') and true or false end,
+	-- (a side list unless set to lead: with no guide running it is not followed until selected)
+	Side = function() return not ns:GetSetting('djLeads') end,
 });
 
 ---------------------------------------------------------------

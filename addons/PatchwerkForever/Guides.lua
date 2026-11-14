@@ -20,12 +20,18 @@ local P = ns.P;
 -- More than one may be running: a levelling guide, and a list of
 -- dungeon quests beside it. The first with something to say is the
 -- main one, in the order they joined; a reader that has a Leads
--- function is asked first while that returns true.
+-- function is asked first while that returns true. A reader that
+-- has a Side function is a side list while that returns true: it
+-- is never the main one, not even when it is the only one with
+-- something to say. It is followed once the player selects it
+-- (Choice.lua). Read without an id passes it over; Read with its
+-- id and ReadAll give it as any other, marked side = true.
 --
 -- Read gives what the main reader with a guide running says, or
 -- nil. `count` is how many of the steps after the one you are on
 -- are wanted. What is given:
 --     source, reader   the reader's id and the guide addon's name
+--     side             true when the reader says it is a side list
 --     guide            the guide's own name, when it has one
 --     index, total     the step you are on, and how many there are
 --     kind             what the step asks for: 'fly', 'hearth', 'death', 'travel', 'home', 'fp',
@@ -38,6 +44,7 @@ local P = ns.P;
 --                      { index, kind, lines, map, x, y }
 --     after            the steps after it, whether they have a place or not, each { index, kind, lines }
 --     items           the ids of the items the step wants used (a hearthstone, a quest's item)
+--     flyTo           for a step that has you fly: the name of the flight point flown to, as the guide has it
 --
 -- One thing here acts on the guide addon instead of reading it, and only when the player asks:
 --     PatchwerkForever.Guides:Go(info, index)
@@ -77,6 +84,11 @@ local function Ask(id, count)
 	end
 	if ( type(info) ~= 'table' ) then return nil end;
 	info.source, info.reader = id, reader.name or id;
+	-- (a reader may say it is a side list; one that fails to say is not one, as with Leads)
+	if ( type(reader.Side) == 'function' ) then
+		local asked, side = pcall(reader.Side);
+		info.side = ( asked and side ) and true or nil;
+	end
 	return info;
 end
 
@@ -97,7 +109,8 @@ function Guides:Read(count, source)
 	if ( source ~= nil ) then return Ask(source, count) end;
 	for _, id in ipairs(Order()) do
 		local info = Ask(id, count);
-		if info then return info end;
+		-- (a side list is not the main guide: it is read by its id, once selected)
+		if ( info and not info.side ) then return info end;
 	end
 	return nil;
 end

@@ -8,8 +8,8 @@
 --   right-click        a short menu: follow, read, share with the party, stop tracking, abandon
 --
 -- Everything here is done only because you clicked, with one exception that is a setting and starts
--- off: with no guide running and no quest chosen by you, the game's arrow is put on the nearest
--- quest you track ("Follow The Nearest Quest By Itself").
+-- off: with no guide running and no quest or side list chosen by you, the game's arrow is put on the
+-- nearest quest you track ("Follow The Nearest Quest By Itself").
 --
 -- Abandoning asks first, with the game's own question. Stopping tracking changes the game's watch
 -- list, as the same entry in the game's own menu does.
@@ -76,16 +76,19 @@ function ns.Cycle(step)
 	end
 	local to = at and (at + step) or (step > 0 and 1 or #order)
 	auto = nil
+	-- (the quest chosen may be past the edge of a long list: it is scrolled into view, and with no
+	-- quest the list goes back to its top. The list is drawn again either way.)
 	if to < 1 or to > #order then
 		Choice:Clear()
 		PutArrow(0)
 		ns.Print('Back to your main route.')
+		ns.Reveal(true)
 	else
 		Choice:Set('quest', order[to])
 		PutArrow(order[to])
 		ns.Print('Routing to: ' .. tostring(Ask(C_QuestLog.GetTitleForQuestID, order[to]) or order[to]))
+		ns.Reveal()
 	end
-	ns.Refresh()
 end
 
 -- (for the gathering list: a run takes the place of a quest you chose, and the arrow put on it goes too)
@@ -213,6 +216,7 @@ local function Look()
 	if now and now ~= auto then return end              -- a quest you chose: left alone
 	if not now then auto = nil end
 	if ns.Base.Guides:Read(0) then return end           -- a guide is leading
+	if ns.Base.Choice:Get() then return end             -- so is a side list you chose (never read as the main guide)
 	local best, yards, yardsOf = Nearest()
 	if not best or best == now then return end
 	-- (the arrow stays on the quest it is on until another is clearly nearer)

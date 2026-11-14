@@ -60,8 +60,11 @@ end
 -- (each { map, x, y }).
 local function Describe(step)
 	local found, lines, places, seen = {}, {}, {}, {};
+	local flyTo;
 	for _, e in ipairs(Elements(step)) do
 		if ( type(e) == 'table' ) then
+			-- (a fly line carries the name of the flight point flown to)
+			if ( e.tag == 'fly' and type(e.location) == 'string' and e.location ~= '' and not e.completed ) then flyTo = e.location end;
 			local done = e.completed and true or false;
 			local kind = KIND_OF[e.tag];
 			if ( kind and not done ) then found[kind] = true end;
@@ -83,7 +86,7 @@ local function Describe(step)
 	for _, name in ipairs(ORDER) do
 		if found[name] then kind = name; break end;
 	end
-	return kind or ( #places > 0 and 'place' or 'text' ), lines, places;
+	return kind or ( #places > 0 and 'place' or 'text' ), lines, places, flyTo;
 end
 
 local function Key(index, map, x, y)
@@ -120,7 +123,7 @@ local function Read(count)
 	if ( spot and type(spot.step) == 'table' and spot.step ~= step and spot.step.active ) then
 		step = spot.step;
 	end
-	local kind, lines, places = Describe(step);
+	local kind, lines, places, flyTo = Describe(step);
 	local map, x, y = PlaceOf(spot);
 	if ( not map and places[1] ) then
 		-- RestedXP's arrow is hidden or has nothing: the nearest of the step's own places
@@ -136,7 +139,7 @@ local function Read(count)
 	local info = {
 		guide = type(name) == 'string' and name or nil, index = index, total = #steps,
 		kind = kind, lines = lines, map = map, x = x, y = y, key = Key(index, map, x, y), ahead = {},
-		after = {}, items = {},
+		after = {}, items = {}, flyTo = flyTo,
 	};
 	-- the items RestedXP shows a button for on this step
 	if ( type(step.activeItems) == 'table' ) then

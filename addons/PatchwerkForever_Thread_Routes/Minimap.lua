@@ -149,9 +149,11 @@ local function Trail()
 		d:SetPoint('CENTER', parent, 'CENTER', x, y)
 		d:Show()
 	end
-	local points, at
+	local points, at, loose
 	local function spot(i)
-		if i == at then return 0, 0 end                       -- the trail starts at the character
+		-- the trail starts at the character (but not one found while you were on a flight path, with
+		-- no flight on it: Route.lua)
+		if i == at and not loose then return 0, 0 end
 		local p = points[i]
 		local east, north = (py - p[2]) * perYard, (p[1] - px) * perYard
 		return east * cos + north * sin, north * cos - east * sin
@@ -159,7 +161,7 @@ local function Trail()
 	-- one trail: the part of it on the map you are on
 	local drew = false
 	local function Run(trail, follow)
-		points, at = trail.points, follow and trail.at or nil
+		points, at, loose = trail.points, follow and trail.at or nil, follow and trail.loose
 		if map ~= trail.map then
 			points, at = trail.parts and trail.parts[map], nil
 		end

@@ -2,7 +2,7 @@
 ## Title: Patchwerk Forever
 ## Notes: The base of the Patchwerk Forever addons: their shared settings pages, saved data and /patchwerk. It does nothing by itself; add Stitch (fixes for Console Port and MelloUI) and Thread (our own tools: Routes, Sparkle).
 ## Author: Tyrone
-## Version: 2.4.0
+## Version: 2.5.0
 ## Group: PatchwerkForever
 ## IconTexture: Interface\AddOns\PatchwerkForever\Media\icon
 ## X-Category: Miscellaneous

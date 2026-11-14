@@ -1,3 +1,25 @@
+## 0.17.0 (beta)
+
+Polish: the things you meet every session.
+
+### Step text
+- **The step text is shown once per step**: not again when RestedXP's arrow moves to another spot of the same step, and not again when you are led back to a place you had already reached.
+- A new guide step at the spot you are standing on now shows its step text.
+- **When no route can be found, the step text says "No route found"** under the step, even with Show Route Summary disabled. `/thread step` repeats it until a route is found.
+
+### When no route can be found
+- The search is made again after 20 seconds and then less often (every two minutes at most), and at once when you change continent or move 300 yards, instead of every 10 seconds.
+- A gathering run moves on to the next node when no route to a node can be found, without a chat line for each. Those nodes are tried again when you start a new run.
+- A route search that fails with an error is reported once instead of on every retry.
+- `/thread go` and the Route To Pin, Guide Step Or Quest key binding now always say why when there is no map data for the area.
+
+### Stopping, flights and pins
+- **Stopping says what was stopped**: a gathering run, the route to your map pin, the route to your coordinates, or the route to a guide step or quest (which resumes when the step or objective changes, or with `/thread go`).
+- Stop Routing also clears the fainter trail of upcoming steps on the world map and the minimap.
+- On a flight path the trail runs from you to where you land instead of back to the flight master you left.
+- A map pin that is already on the map is picked up only when you log in or reload, not after every loading screen.
+- With Patchwerk Forever 2.5.0, the Dungeon Journal list is routed along only once you select it.
+
 ## 0.14.0 (beta)
 
 ### The main track, and a path you choose
@@ -14,6 +36,16 @@
 - Only spots your character can gather are gone to. While a run is on, your guide and quests are not followed; a pin of your own still comes first.
 - The spots show where things grow, not whether one is there now.
 - With Thread (Tracker) installed, the runs are listed and started from its Gathering section.
+
+## 0.16.0 (beta)
+
+### Flight points you know
+- **Your flight points are read from the flight map** whenever you open it at a flight master, and remembered for that character. This is now the main source; the game's world map is used only until you have opened a flight map on that continent, and is no longer trusted once it is caught saying you have a point you do not.
+- **A flight point is also learned the moment you discover it** (the game's "new flight path discovered" message).
+- **With nothing known yet on a continent, routes there go on foot** instead of using every flight point of your faction. You are told once, with what to do: open the flight map at a flight master.
+- **A guide step that says "fly" to a point you do not have** no longer leads you to the flight master. The route goes by another way to where the guide sends you after the flight, and says so on screen.
+- `/thread flights` lists the flight points you know and do not know on your continent, and where that knowledge comes from.
+- Needs **Patchwerk Forever 2.4.1** or later for the guide part.
 
 ## 0.15.0 (beta)
 

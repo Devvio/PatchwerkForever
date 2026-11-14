@@ -20,12 +20,19 @@
 --
 -- A block whose words change since it was last drawn glows for a moment. The frame can dim in a
 -- fight, dim while the mouse is elsewhere, and hide in dungeons: three settings, all off to begin with.
+-- (In a dungeon it also steps aside while the game's own tracker is let back there: ns.AsideInInstance.)
 --
 -- The frame is as tall as what is in it, up to a height you set; past that the list scrolls with the
--- mouse wheel. Clicking a heading folds its section.
+-- mouse wheel or two key bindings (ns.Scroll), and the edge with more of the list past it darkens.
+-- The list never scrolls by itself, with one exception that a key asks for: the quest chosen by the
+-- next and previous quest bindings is brought into view (ns.Reveal). Clicking a heading folds its
+-- section.
 --
--- Kept in PatchwerkForever_Thread_TrackerDB: place = { point, relative point, x, y } once you have
--- moved it, and folded = { [section] = true }.
+-- Kept in PatchwerkForever_Thread_TrackerDB: place = { point, relative point, x, y, 1 } once you have
+-- moved it, and folded = { [section] = true }. The place is always a top corner of the tracker
+-- against the same corner of the screen, in the screen's units, so the list grows downward from it
+-- and the Scale setting does not move it. (Without the fifth field it was saved by an earlier
+-- version, as the game gave it: it is made a top corner the first time the frame can be measured.)
 local ADDON, ns = ...
 if not ns.linked then return end
 
@@ -35,15 +42,18 @@ local INDENT = 10             -- of a block's lines under its title
 local EVERY = 0.1             -- seconds between two drawings, at least
 local TICK = 1                -- seconds between two drawings while something in it changes by itself (a distance, a timer)
 local WHEEL = 40              -- pixels a notch of the mouse wheel scrolls
+local SHADE = 14              -- pixels of an edge that darken while more of the list is past it
 local STITCH, STITCH_GAP = 7, 5
 local GLOW = 0.9              -- seconds a changed block glows
 local AWAKE = 4               -- seconds it stays bright after a change, when it dims while the mouse is elsewhere
 
 local sections = {}
 local drawn = {}              -- functions called after each drawing (the item strip)
-local frame, back, body, content, handle
+local frame, back, body, content, handle, shade
 local heads, blocks = {}, {}
 local scroll, dirty, last, unlocked = 0, true, 0, false
+local scaled                  -- the scale the frame was last placed at
+local reveal                  -- 'mark' or 'top': what a key asked the next drawing to scroll into view
 local seen = {}               -- [section .. block key] = its words when last drawn
 local changed = 0             -- when something in it last changed
 local alpha = 1
@@ -102,14 +112,62 @@ end
 ---------------------------------------------------------------------------
 -- Its place
 ---------------------------------------------------------------------------
+-- The frame's own scale (the Scale setting). The game counts the offsets of a frame's place in that
+-- frame's scale, so a place kept in the screen's units is divided by it.
+local function Scale()
+	local s = frame:GetScale()
+	return (type(s) == 'number' and s > 0) and s or 1
+end
+
 local function Place()
 	local place = Saved().place
+	local s = Scale()
 	frame:ClearAllPoints()
-	if type(place) == 'table' and place[1] then
+	if type(place) == 'table' and place[1] and place[5] then
+		frame:SetPoint(place[1], UIParent, place[2] or place[1], (place[3] or 0) / s, (place[4] or 0) / s)
+	elseif type(place) == 'table' and place[1] then
+		-- (saved by an earlier version, in the frame's own scale: put back as it was; Render has Pin convert it)
 		frame:SetPoint(place[1], UIParent, place[2] or place[1], place[3] or 0, place[4] or 0)
 	else
-		frame:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', -40, -260)       -- under the minimap, where the game's is
+		frame:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', -40 / s, -260 / s)       -- under the minimap, where the game's is
 	end
+end
+
+-- Saves where the tracker is now as a top corner, the left one in the left half of the screen and
+-- the right one in the right half, and places it by that. After a drag the game anchors a frame to
+-- whichever of nine points of the screen is nearest, and a list anchored by its middle or its foot
+-- would move its first heading each time a line came or went.
+-- Returns false while the game cannot say where the frame is.
+local function Pin()
+	local s = Scale()
+	local left, right, top = frame:GetLeft(), frame:GetRight(), frame:GetTop()
+	local wide, high = UIParent:GetWidth(), UIParent:GetHeight()
+	if not (left and right and top and wide and high) then return false end
+	local y = top * s - high
+	if (left + right) / 2 * s > wide / 2 then
+		Saved().place = { 'TOPRIGHT', 'TOPRIGHT', right * s - wide, y, 1 }
+	else
+		Saved().place = { 'TOPLEFT', 'TOPLEFT', left * s, y, 1 }
+	end
+	Place()
+	return true
+end
+
+-- One edge of the list ('TOP' or 'BOTTOM') darkened, clearing toward the middle. Nothing on a
+-- client that cannot draw a gradient: a plain black bar would only hide a line.
+local function Edge(side)
+	local tex = shade:CreateTexture(nil, 'OVERLAY')
+	tex:SetPoint(side .. 'LEFT', shade, side .. 'LEFT', 0, 0)
+	tex:SetPoint(side .. 'RIGHT', shade, side .. 'RIGHT', 0, 0)
+	tex:SetHeight(SHADE)
+	tex:SetColorTexture(0, 0, 0, 1)
+	tex:Hide()
+	local color = rawget(_G, 'CreateColor')
+	if not (type(color) == 'function' and type(tex.SetGradient) == 'function') then return nil end
+	-- (a vertical gradient runs from its first color at the bottom to its second at the top)
+	local dark, clear = color(0, 0, 0, 0.75), color(0, 0, 0, 0)
+	local ok = pcall(tex.SetGradient, tex, 'VERTICAL', side == 'TOP' and clear or dark, side == 'TOP' and dark or clear)
+	return ok and tex or nil
 end
 
 local function Make()
@@ -129,6 +187,12 @@ local function Make()
 		ns.Refresh()
 	end)
 	content = CreateFrame('Frame', nil, body)
+	-- over the list, its two edges: each is darkened while more of the list is past it (it takes no mouse)
+	shade = CreateFrame('Frame', nil, frame)
+	shade:SetAllPoints(frame)
+	shade:SetFrameLevel(content:GetFrameLevel() + 10)
+	shade:EnableMouse(false)
+	shade.top, shade.bottom = Edge('TOP'), Edge('BOTTOM')
 
 	-- a bar to drag it by, there only while it is unlocked
 	handle = CreateFrame('Button', nil, frame)
@@ -146,8 +210,11 @@ local function Make()
 	handle:SetScript('OnDragStart', function() frame:StartMoving() end)
 	handle:SetScript('OnDragStop', function()
 		frame:StopMovingOrSizing()
-		local point, _, relative, x, y = frame:GetPoint(1)
-		if point then Saved().place = { point, relative, x, y } end
+		if not Pin() then
+			-- (it cannot be measured just now: kept as the game gave it, and made a top corner at the next drawing)
+			local point, _, relative, x, y = frame:GetPoint(1)
+			if point then Saved().place = { point, relative, x, y } end
+		end
 		ns.Refresh()
 	end)
 	handle:Hide()
@@ -298,8 +365,20 @@ local function After(shown)
 	end
 end
 
+-- Whether the tracker steps aside because you are in a dungeon, a raid or a battleground: you asked
+-- for that (Hide In Instances), or the game's own tracker is let back there (Quiet.lua), and two
+-- lists of the same quests are not shown side by side. With the game's tracker left alone
+-- everywhere (Hide Default Quest Tracker off) both are yours to have, there as anywhere.
+function ns.AsideInInstance()
+	if not (IsInInstance and IsInInstance()) then return false end
+	return (ns.Get('hideInstance') or (ns.Get('quiet') and ns.Get('quietInstance'))) and true or false
+end
+
 local function Render()
-	if not ns.Get('on') or (ns.Get('hideInstance') and IsInInstance and IsInInstance()) then
+	-- (what a key asked to see is for this drawing only: a list that is not drawn does not scroll later)
+	local show = reveal
+	reveal = nil
+	if not ns.Get('on') or ns.AsideInInstance() then
 		if frame then frame:Hide() end
 		return After(false)
 	end
@@ -309,6 +388,7 @@ local function Render()
 	local folded = Saved().folded
 	local hr, hg, hb = ns.RGB(ns.Get('lookHeader'))
 	local y, usedHeads, usedBlocks = PAD, 0, 0
+	local markTop, markBottom             -- where in the list the block being followed is
 	local now, live = GetTime(), {}
 	wantsTick = false
 	for _, section in ipairs(sections) do
@@ -355,6 +435,7 @@ local function Render()
 					block:SetPoint('TOPLEFT', content, 'TOPLEFT', PAD, -y)
 					block:SetSize(inner, h)
 					block:Show()
+					if each.mark and not markTop then markTop, markBottom = y, y + h end
 					y = y + h + (each.small and 2 or GAP)
 					-- a block whose words have changed since it was last drawn glows for a moment
 					local key = section.id .. '\n' .. tostring(each.key or each.title)
@@ -381,17 +462,39 @@ local function Render()
 	end
 	local total = y + PAD - 2
 	local tall = math.min(total, ns.Get('height') or 450)
+	-- a key asked for the top of the list, or for the block being followed, to be in view
+	if show == 'top' then
+		scroll = 0
+	elseif show and markTop then
+		scroll = math.min(markTop - PAD, math.max(scroll, markBottom + PAD - tall))
+	end
 	scroll = math.max(0, math.min(scroll, total - tall))
-	frame:SetScale((ns.Get('scale') or 100) / 100)
+	-- (the scale before the size and the place: both are counted in it, so a new scale means placing again)
+	local scale = (ns.Get('scale') or 100) / 100
+	frame:SetScale(scale)
+	if scale ~= scaled then
+		scaled = scale
+		Place()
+	end
 	frame:SetSize(width, tall)
 	content:SetSize(width, total)
 	content:ClearAllPoints()
 	content:SetPoint('TOPLEFT', body, 'TOPLEFT', 0, scroll)
 	-- (the wheel is taken only while there is more than fits: else it is left to the camera)
 	body:EnableMouseWheel(total > tall)
+	-- an edge is darkened while more of the list than its empty rim is past it
+	if shade.top then
+		if scroll > PAD then shade.top:Show() else shade.top:Hide() end
+	end
+	if shade.bottom then
+		if total - tall - scroll > PAD + GAP then shade.bottom:Show() else shade.bottom:Hide() end
+	end
 	back:SetColorTexture(0, 0, 0, (ns.Get('back') or 25) / 100)
 	if unlocked then handle:Show() else handle:Hide() end
 	frame:Show()
+	-- (a place saved by an earlier version: made a top corner now that the frame has a size to measure)
+	local place = Saved().place
+	if type(place) == 'table' and place[1] and not place[5] then Pin() end
 	After(true)
 end
 
@@ -420,6 +523,39 @@ function ns.BlockOf(words)
 	for _, block in ipairs(blocks) do
 		if block:IsShown() and (block.title:GetText() or ''):find(words, 1, true) then return block end
 	end
+end
+
+-- (for the checks) how far the list is scrolled, and whether its top and its bottom edge are darkened
+function ns.Scrolled()
+	if not (frame and frame:IsShown()) then return nil end
+	return scroll, shade.top ~= nil and shade.top:IsShown(), shade.bottom ~= nil and shade.bottom:IsShown()
+end
+
+---------------------------------------------------------------------------
+-- Scrolling without a mouse
+---------------------------------------------------------------------------
+-- A tracker dimmed while the mouse is elsewhere is bright again for a few seconds.
+function ns.Wake()
+	changed = GetTime()
+end
+
+-- Asks the next drawing to scroll the block being followed (the one with the bar beside it) into
+-- view; top: to scroll to the top of the list instead. For the next and previous quest bindings,
+-- which can choose a quest past the edge. Nothing else calls it, so the list never moves under the
+-- mouse by itself.
+function ns.Reveal(top)
+	reveal = top and 'top' or 'mark'
+	ns.Wake()
+	ns.Refresh()
+end
+
+-- Scrolls a list longer than its frame, for a key or a gamepad button: dir 1 down, -1 up, two
+-- notches of the mouse wheel at a time.
+function ns.Scroll(dir)
+	if not (frame and frame:IsShown()) then return end
+	scroll = scroll + dir * 2 * WHEEL                  -- (Render keeps it within the list)
+	ns.Wake()
+	ns.Refresh()
 end
 
 ---------------------------------------------------------------------------

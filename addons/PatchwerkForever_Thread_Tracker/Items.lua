@@ -110,15 +110,16 @@ local function Wanted()
 			local id = type(link) == 'string' and tonumber(link:match('item:(%d+)'))
 			if id and not has[id] and (whenDone or not Ask(C_QuestLog.IsComplete, quest)) then
 				has[id] = true
-				list[#list + 1] = { id = id, link = link, icon = texture or Icon(id), quest = quest, watch = i, yards = ns.QuestYards(quest) }
+				list[#list + 1] = { id = id, link = link, icon = texture or Icon(id), quest = quest, watch = i, rank = ns.QuestRank(quest) }
 			end
 		end
 	end
+	-- (by the distance held for sorting, as the list of quests is: Places.lua)
 	table.sort(list, function(a, b)
-		if a.yards and b.yards then
-			if a.yards ~= b.yards then return a.yards < b.yards end
-		elseif a.yards or b.yards then
-			return a.yards ~= nil
+		if a.rank and b.rank then
+			if a.rank ~= b.rank then return a.rank < b.rank end
+		elseif a.rank or b.rank then
+			return a.rank ~= nil
 		end
 		return a.watch < b.watch
 	end)

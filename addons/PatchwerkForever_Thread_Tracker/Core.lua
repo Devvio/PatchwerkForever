@@ -23,12 +23,12 @@ ns.settings = {
 	{ key = 'quiet', default = true, name = 'Hide Default Quest Tracker', parent = 'on',
 		desc = 'Hide the default quest tracker while this one is shown, so quests are not listed twice. Disabling this option brings it back.' },
 	{ key = 'quietInstance', default = true, name = 'Keep Default Tracker In Instances', parent = 'quiet',
-		desc = 'Show the default tracker in dungeons, raids and battlegrounds, where it displays stage objectives, timers and scores.' },
+		desc = 'In dungeons, raids and battlegrounds, show the default tracker in place of this one. It displays stage objectives, timers and scores there.' },
 	{ header = true, name = 'Size' },
 	{ key = 'width', default = 260, min = 180, max = 500, step = 10, name = 'Width',
 		desc = 'Width of the tracker.' },
 	{ key = 'height', default = 450, min = 150, max = 1000, step = 25, name = 'Max Height',
-		desc = 'Maximum height of the tracker. A longer list scrolls with the mouse wheel.' },
+		desc = 'Maximum height of the tracker. A longer list scrolls with the mouse wheel or the Scroll Tracker Up and Scroll Tracker Down key bindings.' },
 	{ header = true, name = 'Position' },
 	{ button = 'Unlock', name = 'Unlock Position', click = function() ns.Unlock() end,
 		desc = 'Show a drag bar above the tracker so you can move it. Click again, or type /tracker lock, to lock it in place.' },
@@ -42,7 +42,7 @@ ns.settings = {
 	{ key = 'fadeTo', default = 35, min = 10, max = 90, step = 5, name = 'Faded Opacity',
 		desc = 'Opacity of the tracker while it is faded, in percent.' },
 	{ key = 'hideInstance', default = false, name = 'Hide In Instances',
-		desc = 'Hide the tracker in dungeons, raids and battlegrounds.' },
+		desc = 'Hide the tracker in dungeons, raids and battlegrounds, even when the default tracker is not kept there.' },
 
 	-- the quests
 	{ page = QUESTS, voice = 'So many jobs. Patchwerk does the near one first.' },
@@ -75,7 +75,7 @@ ns.settings = {
 		desc = 'Send your quest progress (quest and percent complete) to party members who also use this addon, and show theirs. The game does not provide party progress, so this only works between players running the addon.' },
 	{ page = QUESTS, header = true, name = 'Automation' },
 	{ page = QUESTS, key = 'followNearest', default = false, name = 'Auto-Track Nearest Quest',
-		desc = 'When no guide is active and you have not selected a quest, automatically put the quest arrow on your nearest tracked quest.' },
+		desc = 'When no guide is active and you have not selected a quest or a list, automatically put the quest arrow on your nearest tracked quest.' },
 
 	-- the guide
 	{ page = GUIDE, voice = 'The clever book says where to go. Patchwerk reads the pictures.' },
@@ -86,7 +86,7 @@ ns.settings = {
 	{ page = GUIDE, key = 'guideDone', default = false, name = 'Show Completed Lines',
 		desc = 'Keep completed lines of the current step in the list, dimmed.' },
 	{ page = GUIDE, key = 'guideSkip', default = true, name = 'Click To Skip Steps',
-		desc = 'Click the current step to skip it, or an upcoming step to jump to it. /tracker back undoes the last skip.' },
+		desc = 'Click the current step to skip it, or an upcoming step to jump to it. /tracker back, or the Undo Skipped Guide Step key binding, undoes the last skip.' },
 	{ page = GUIDE, key = 'guideItems', default = true, name = 'Show Guide Item Buttons',
 		desc = 'Add buttons for items the current step uses (such as your hearthstone) to the quest item bar.' },
 	{ page = GUIDE, key = 'guideHide', default = false, name = 'Hide RestedXP Window',
@@ -111,7 +111,7 @@ ns.settings = {
 		desc = 'Number of node types listed, nearest first.' },
 	{ page = MORE, header = true, name = 'Dungeons' },
 	{ page = MORE, key = 'dungeon', default = false, name = 'Show Dungeon Objectives (Experimental)',
-		desc = 'Show the current stage and objectives of a dungeon or scenario. Not yet tested in a dungeon; the default tracker is still shown in instances unless you disable that option.' },
+		desc = 'Show the current stage and objectives of a dungeon or scenario. Not yet tested in a dungeon. This tracker is shown in instances only while Keep Default Tracker In Instances is disabled.' },
 
 	-- how it looks
 	{ page = LOOK, voice = 'Patchwerk picked the colours himself. You can pick again.' },
@@ -188,6 +188,12 @@ BINDING_NAME_PATCHWERKFOREVER_TRACKER_FOLD = 'Collapse / Expand Tracker'
 _G['BINDING_NAME_CLICK PatchwerkForeverTrackerNearestItem:LeftButton'] = 'Use Nearest Quest Item'
 BINDING_NAME_PATCHWERKFOREVER_TRACKER_NEXT = 'Route To Next Quest'
 BINDING_NAME_PATCHWERKFOREVER_TRACKER_PREV = 'Route To Previous Quest'
+BINDING_NAME_PATCHWERKFOREVER_TRACKER_SCROLL_UP = 'Scroll Tracker Up'
+BINDING_NAME_PATCHWERKFOREVER_TRACKER_SCROLL_DOWN = 'Scroll Tracker Down'
+BINDING_NAME_PATCHWERKFOREVER_TRACKER_BACK = 'Undo Skipped Guide Step'
 function PatchwerkForever_Thread_Tracker_Fold() ns.Try('fold', ns.Fold) end
 function PatchwerkForever_Thread_Tracker_Next() ns.Try('the next quest', ns.Cycle, 1) end
 function PatchwerkForever_Thread_Tracker_Previous() ns.Try('the previous quest', ns.Cycle, -1) end
+function PatchwerkForever_Thread_Tracker_ScrollUp() ns.Try('scrolling', ns.Scroll, -1) end
+function PatchwerkForever_Thread_Tracker_ScrollDown() ns.Try('scrolling', ns.Scroll, 1) end
+function PatchwerkForever_Thread_Tracker_Back() ns.Try('back', ns.GuideBack) end

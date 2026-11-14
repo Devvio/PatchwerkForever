@@ -401,7 +401,7 @@ def main():
     s, now, text = mello("{ settings = { melloRouteOnly = true } }", "Main", ALL, old=True)
     assert now == ["QuestTracker", "Route"] and s.g.PatchwerkForeverDB.MelloUI.seen.Map and s.g.PatchwerkForeverDB.MelloUI.seenIn is None
 
-    step("the guides service: readers asked in turn, a failing one skipped, RestedXP read as it runs")
+    step("the guides service: readers asked in turn, a failing one skipped, a side list passed over, RestedXP read as it runs")
     s = Session()
     s.addon(BASE)
     G = s.g.PatchwerkForever.Guides
@@ -442,13 +442,45 @@ def main():
     s.stub.secondOff = True
     assert Ch.Get(Ch) is None, "a guide with nothing left to say is still the choice"
     s.chat_raw()
+    # a reader may say it is a side list (Side): listed with the rest and read by its name, but never
+    # the main guide, not even when it is the only one with something to say
+    s = Session()
+    s.addon(BASE)
+    G, Ch = s.g.PatchwerkForever.Guides, s.g.PatchwerkForever.Choice
+    s.lua.execute("""
+        local G = PatchwerkForever.Guides
+        G:Register('main', { name = 'A Guide',
+            Read = function() if STUB.mainOff then return nil end return { index = 4, total = 9, kind = 'turnin', key = 'm4', lines = {}, ahead = {} } end })
+        G:Register('list', { name = 'A List',
+            Side = function() if STUB.listBreaks then error('its setting moved') end return STUB.listSide end,
+            Read = function(count) return { index = 1, total = 2, kind = 'accept', key = 'l1', lines = {}, ahead = {}, asked = count } end })
+    """)
+    s.stub.mainOff = True
+    info = G.Read(G, 0)
+    assert info.source == "list" and info.side is None, "a reader whose Side says no is not a side list"
+    s.stub.listSide = True
+    assert G.Read(G, 0) is None, "a side list became the main guide when it was the only one with a guide"
+    assert [(i.source, i.side) for i in G.ReadAll(G, 0).values()] == [("list", True)]
+    info = G.Read(G, 5, "list")
+    assert info.side is True and info.asked == 5 and info.reader == "A List", "a side list is not read by its name"
+    # selected, it stands as the choice, and is still not what Read gives without a name
+    assert Ch.Set(Ch, "guide", "list") and Ch.Is(Ch, "guide", "list") and G.Read(G, 0) is None
+    Ch.Clear(Ch)
+    # beside a main guide: the guide is read, both are listed
+    s.stub.mainOff = False
+    assert G.Read(G, 0).source == "main" and G.Read(G, 0).side is None
+    assert [(i.source, i.side) for i in G.ReadAll(G, 0).values()] == [("main", None), ("list", True)]
+    # a Side that fails says nothing, as a Leads that fails: not a side list, and no error
+    s.stub.mainOff, s.stub.listBreaks = True, True
+    assert G.Read(G, 0).source == "list" and G.Read(G, 0).side is None
+    assert s.chat() == []
     # RestedXP, with a stand-in for what it keeps as it runs
     s = Session()
     s.lua.execute("""
         local function at(x, y) return { tag = 'goto', wx = y, wy = x, instance = 1 } end
         local steps = {
             { { tag = 'accept', text = 'Accept Plainstrider Menace', completed = true }, { tag = 'complete', text = ' Kill 7 plainstriders ' }, at(-600, -2800) },
-            { { tag = 'fly', text = 'Fly to Orgrimmar' }, at(-437, -2596) },
+            { { tag = 'fly', text = 'Fly to Orgrimmar', location = 'ORGRIMMAR' }, at(-437, -2596) },
             { { tag = 'train', text = 'Train your skills' } },
             { { tag = 'hs', text = 'Hearth to the Crossroads' } },
             { { tag = 'turnin', text = 'Turn in your report' }, at(1600, -4400) },
@@ -485,7 +517,9 @@ def main():
     # the guide moved to another step, as a click in its own window does; never past its ends
     assert G.Go(G, info, 3) is True and s.stub.setStep == 3 and G.Read(G, 0).index == 3
     assert G.Go(G, info, 6) is False and G.Go(G, info, 0) is False and s.stub.setStep == 3
-    assert G.Go(G, info, 1) is True
+    # a step that has you fly says where to; other steps do not
+    assert G.Go(G, info, 2) is True and G.Read(G, 0).flyTo == "ORGRIMMAR" and G.Read(G, 0).kind == "fly"
+    assert G.Go(G, info, 1) is True and G.Read(G, 0).flyTo is None
     # the arrow hidden: its last spot is not gone to; the step's own place is
     s.lua.execute("RXPG_ARROW.shown = false; RXPG_ARROW.element = RXP.currentGuide.steps[5].elements[2]")
     info = G.Read(G, 0)
@@ -544,7 +578,7 @@ def main():
     Ch.Clear(Ch)
     assert Ch.Get(Ch) is None
 
-    step("the Dungeon Journal's quests as a list: stops in a short order, read from the journal as it runs")
+    step("the Dungeon Journal's quests as a list: stops in a short order, read from the journal as it runs; a side list unless set to lead")
     JOURNAL = """
         local function spot(wx, wy, label)        -- a place on Kalimdor's map, as the journal keeps one
             return { mapID = 1414, x = (17066.6 - wy) / (17066.6 + 19733.21), y = (12799.9 - wx) / (12799.9 + 11733.3), label = label }
@@ -591,7 +625,12 @@ def main():
     assert s.chat() == []
     P = s.g.PatchwerkForever
     G, Ch = P.Guides, P.Choice
-    info = G.Read(G, 2)
+    # with no RestedXP guide it is listed, but it is not the main route by itself: it is a side list, read
+    # by its name (which is how a list you selected is followed). The reads below are by its name.
+    assert G.Read(G, 2) is None, "with no guide loaded the Dungeon Journal list became the main route by itself"
+    assert [(i.source, i.side) for i in G.ReadAll(G, 2).values()] == [("fdj", True)]
+    info = G.Read(G, 2, "fdj")
+    assert info.side is True
     assert info.source == "fdj" and info.reader == "Dungeon Journal" and info.guide == "Dungeon Journal: The Deadmines", (info.source, info.guide)
     # (the finished quest's turn-in is nearest; the other side's quest, the repeatable one and the one
     # with no place are left out; five quests in all, none handed in)
@@ -602,27 +641,34 @@ def main():
     assert after == [(2, "Accept: Horde Job"), (3, "Accept: Second Job")], after
     assert [(a.index, round(a.x)) for a in info.ahead.values()] == [(2, -100), (3, -300)]
     # all of it: the quest that needs another first sends you to that one
-    info = G.Read(G, 9)
+    info = G.Read(G, 9, "fdj")
     assert [a.lines[1].text for a in info.after.values()][-1] == "Accept: First Things (needed for Chained Job)"
     assert len(info.after) == 3
     # skipping a stop, taking the skip back, bringing a later stop to the front
     assert G.Go(G, info, info.index + 1) is True
-    assert G.Read(G, 0).lines[1].text == "Accept: Horde Job"
-    info = G.Read(G, 0)
-    assert G.Go(G, info, info.index - 1) is True and G.Read(G, 0).lines[1].text == "Turn in: Deep Job"
-    info = G.Read(G, 9)
+    assert G.Read(G, 0, "fdj").lines[1].text == "Accept: Horde Job"
+    info = G.Read(G, 0, "fdj")
+    # (its step number counts the quests turned in: it stays through a skip, and the list cannot be sent
+    # to that number itself. Thread (Tracker) tells such a list by this to word its chat lines, and the
+    # stand-in for it in lua_tracker.py, STAYS, moves the same way: change them together.)
+    assert info.index == 1, "the step number moved on a skip"
+    assert G.Go(G, info, info.index) is False and G.Read(G, 0, "fdj").lines[1].text == "Accept: Horde Job"
+    assert G.Go(G, info, info.index - 1) is True and G.Read(G, 0, "fdj").lines[1].text == "Turn in: Deep Job"
+    info = G.Read(G, 9, "fdj")
+    assert info.index == 1, "the step number moved when a skip was taken back"
     assert G.Go(G, info, info.index + 2) is True
-    info = G.Read(G, 9)
+    info = G.Read(G, 9, "fdj")
     assert info.lines[1].text == "Accept: Second Job", "a later stop was not brought to the front"
+    assert info.index == 1, "the step number moved when a later stop was brought to the front"
     # as you play: a quest accepted has no stop until it is done; one handed in counts as done
     s.lua.execute("STUB.QuestAt(5003, 'Second Job', 1, -300, -300)")
-    assert G.Read(G, 0).lines[1].text == "Turn in: Deep Job"
+    assert G.Read(G, 0, "fdj").lines[1].text == "Turn in: Deep Job"
     s.lua.execute("STUB.QuestGone(5002); STUB.flagged[5002] = true")
-    info = G.Read(G, 9)
+    info = G.Read(G, 9, "fdj")
     assert (info.index, info.total) == (2, 5) and info.lines[1].text == "Accept: Horde Job", (info.index, info.lines[1].text)
     # the journal's own map arrow comes first, and cannot be skipped from here
     s.lua.execute("STUB.arrow = STUB.spot(-2000, -2000); STUB.arrow.questTitle = 'The Unsent Letter'; STUB.arrow.turnIn = true")
-    info = G.Read(G, 1)
+    info = G.Read(G, 1, "fdj")
     assert info.kind == "place" and info.lines[1].text == "Turn in: The Unsent Letter" and round(info.x) == -2000
     assert info.after[1].lines[1].text == "Accept: Horde Job"
     assert G.Go(G, info, info.index + 1) is False
@@ -632,33 +678,50 @@ def main():
     intro = list(s.stub.intros.values())[0]
     assert intro.voice.startswith("The big book knows who has the jobs."), intro.voice
     assert sorted(x.name for x in s.stub.settings.values()) == ["Dungeon Journal Before RestedXP", "Route Dungeon Journal Quests"]
-    assert G.readers.fdj.Leads() is False
+    assert G.readers.fdj.Leads() is False and G.readers.fdj.Side() is True
+    # Dungeon Journal Before RestedXP enabled: no side list any more, it is the main route as before
     P.SetSetting(P, "djLeads", True)
-    assert G.readers.fdj.Leads() is True
+    assert G.readers.fdj.Leads() is True and G.readers.fdj.Side() is False
+    info = G.Read(G, 2)
+    assert info is not None and info.source == "fdj" and info.side is None, "set to lead, the list is not the main route"
+    assert info.lines[1].text == "Accept: Horde Job" and len(info.after) == 1, info.lines[1].text
+    assert [(i.source, i.side) for i in G.ReadAll(G, 0).values()] == [("fdj", None)]
+    # ... and ahead of a RestedXP guide; disabled again, the guide is the main route and the list is beside it
+    s.lua.execute("""
+        RXPCData = { currentStep = 1 }
+        RXP = { currentGuide = { name = 'A Guide', steps = { { index = 1, elements = { { tag = 'train', text = 'Train your skills' } } } } } }
+    """)
+    assert G.Read(G, 0).source == "fdj" and [i.source for i in G.ReadAll(G, 0).values()] == ["fdj", "rxp"]
     P.SetSetting(P, "djLeads", False)
+    assert G.Read(G, 0).source == "rxp"
+    assert [(i.source, i.side) for i in G.ReadAll(G, 0).values()] == [("rxp", None), ("fdj", True)]
+    s.lua.execute("RXP, RXPCData = nil, nil")
+    assert G.Read(G, 0) is None and G.Read(G, 0, "fdj") is not None
     s.g.PatchwerkForever_Stitch_DungeonJournal_Route()
     assert Ch.Is(Ch, "guide", "fdj")
+    # selected: still not what is read as the main route, and read by its name as long as it is the choice
+    assert G.Read(G, 0) is None and G.Read(G, 3, "fdj").lines[1].text == "Accept: Horde Job" and Ch.Get(Ch).id == "fdj"
     s.g.PatchwerkForever_Stitch_DungeonJournal_Route()
     assert Ch.Get(Ch) is None
     text = s.slash("dj")
     assert Ch.Is(Ch, "guide", "fdj") and any("routing through the quests" in t for t in text), text
     # every quest handed in: no list, and the choice lets go by itself
     s.lua.execute("for _, id in ipairs({ 5001, 5003, 5004, 5006 }) do STUB.flagged[id] = true end")
-    assert G.Read(G, 0) is None and Ch.Get(Ch) is None
+    assert G.Read(G, 0, "fdj") is None and len(G.ReadAll(G, 0)) == 0 and Ch.Get(Ch) is None
     s.g.PatchwerkForever_Stitch_DungeonJournal_Route()
     assert any("nothing to route to" in t for t in s.chat())
     # switched off; a journal changed beyond recognition; no journal at all: no list, no error
     s.lua.execute("STUB.flagged = {}")
-    assert G.Read(G, 0) is not None
+    assert G.Read(G, 0, "fdj") is not None
     P.SetSetting(P, "djList", False)
-    assert G.Read(G, 0) is None
+    assert G.Read(G, 0, "fdj") is None
     P.SetSetting(P, "djList", True)
     s.lua.execute("ForeverDungeonJournal_NS.DB['The Deadmines'].quests = 'moved'; ForeverDungeonJournal_NS.QUEST_START_MAPS = 7")
-    assert G.Read(G, 0) is None
+    assert G.Read(G, 0, "fdj") is None
     s.lua.execute("ForeverDungeonJournal_NS.DB = 'gone'")
-    assert G.Read(G, 0) is None
+    assert G.Read(G, 0, "fdj") is None
     s.lua.execute("ForeverDungeonJournal_NS = nil")
-    assert G.Read(G, 0) is None
+    assert G.Read(G, 0, "fdj") is None
     s.g.PatchwerkForever_Stitch_DungeonJournal_Route()
     assert any("Dungeon Journal is not running" in t for t in s.chat())
     # the journal running without this part: the base says which addon to get, once

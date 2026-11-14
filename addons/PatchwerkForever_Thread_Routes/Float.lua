@@ -4,10 +4,12 @@
 -- you are going to do (the guide's own words for its step, the quest's name, "to your map pin") and,
 -- smaller under them, the route (how long, how far on foot, what it flies or rides). They come in
 -- softly, rising a little, stay a few seconds and go out again. A step with nowhere to go (use your
--- hearthstone, train your skills) is said the same way, with no route under it.
+-- hearthstone, train your skills) is said the same way, with no route under it. Where no route could
+-- be found, the smaller line says so, in a colour of its own.
 --
--- Nothing is said when the way is only found anew after a wrong turn. Where it stands, how large it
--- is and how long it stays are settings; /thread step says the last one again.
+-- Nothing is said when the way is only found anew after a wrong turn, nor when a step that has been
+-- said gets a new place (Sources.lua). Where it stands, how large it is and how long it stays are
+-- settings; /thread step says the last one again.
 local ADDON, ns = ...
 if not ns.linked then return end
 
@@ -17,7 +19,8 @@ local WIDTH = 0.6                 -- of the screen's width, at most
 
 local frame, big, small
 local shown = { at = 0, hold = 0 }        -- when the words on screen began, and how long they stay
-local last                                -- { lines, route }: what was said last
+local last                                -- { lines, route, failed }: what was said last
+local ROUTE, FAILED = { 0.62, 0.85, 1 }, { 1, 0.5, 0.45 }     -- the smaller line's colour: a route, and none found
 
 local function Font(fs, size, flags)
 	local path = GameFontNormal and GameFontNormal.GetFont and GameFontNormal:GetFont()
@@ -36,7 +39,7 @@ local function Make()
 	big:SetPoint('TOP', frame, 'TOP', 0, 0)
 	small:SetPoint('TOP', big, 'BOTTOM', 0, -6)
 	big:SetTextColor(1, 0.93, 0.76)
-	small:SetTextColor(0.62, 0.85, 1)
+	small:SetTextColor(ROUTE[1], ROUTE[2], ROUTE[3])
 	for _, fs in ipairs({ big, small }) do
 		if fs.SetJustifyH then fs:SetJustifyH('CENTER') end
 		if fs.SetWordWrap then fs:SetWordWrap(true) end
@@ -65,7 +68,8 @@ local function Make()
 end
 
 -- lines: what to say, a list of strings (three at most are shown). route: the smaller line under them, or nil.
-local function Show(lines, route)
+-- failed: that line says no route was found, not what the route is.
+local function Show(lines, route, failed)
 	if not frame then Make() end
 	local size = ns.Get('floatSize') or 20
 	Font(big, size, 'OUTLINE')
@@ -80,30 +84,42 @@ local function Show(lines, route)
 	for i = 1, math.min(3, #lines) do text[i] = lines[i] end
 	big:SetText(table.concat(text, '\n'))
 	small:SetText(route or '')
+	local colour = failed and FAILED or ROUTE
+	small:SetTextColor(colour[1], colour[2], colour[3])
 	shown.at, shown.hold = GetTime(), ns.Get('floatHold') or 5
 	frame:SetAlpha(0)
 	frame:Show()
 end
 
+-- The smaller line as it is shown: the route's only where that is wanted (a setting); that no route was
+-- found, always.
+local function Under(route, failed)
+	return (failed or ns.Get('floatRoute')) and route or nil
+end
+
 -- Says a step: its words, and under them the route's (nil for none). Kept, to be said again.
-function ns.FloatStep(lines, route)
+-- failed: the line under them says no route was found. quiet: kept only, not shown (its words have
+-- been on screen already: Sources.lua).
+function ns.FloatStep(lines, route, failed, quiet)
 	if type(lines) ~= 'table' or #lines == 0 then return end
-	last = { lines = lines, route = route }
-	if not ns.Get('float') then return end
-	Show(lines, ns.Get('floatRoute') and route or nil)
+	last = { lines = lines, route = route, failed = failed }
+	if quiet or not ns.Get('float') then return end
+	Show(lines, Under(route, failed), failed)
 end
 
 local OWN = { pin = { 'To your map pin' }, spot = { 'To the spot you gave' } }
 
--- Says a destination that has just been given, once its route is known (Route.lua). route: nil when no
--- way was found.
-function ns.FloatRoute(dest, route)
+-- Says a destination that has just been given, once its route is known (Route.lua). route: nil when
+-- none could be made; note: what to say in its place, where no way was found at all.
+function ns.FloatRoute(dest, route, note)
 	local lines = dest.lines
 	if type(lines) ~= 'table' or #lines == 0 then
 		if dest.source then return end                    -- (a guide's step with no words of its own: nothing to say)
 		lines = dest.pin and OWN.pin or OWN.spot
 	end
-	ns.FloatStep(lines, route and ns.Summary(route) or nil)
+	if route then note = nil end
+	-- (words that have been on screen already are only kept, unless there is news under them: no way was found)
+	ns.FloatStep(lines, route and ns.Summary(route) or note, note and true or nil, dest.quiet and not note)
 end
 
 -- /thread step: the last one, again.
@@ -112,7 +128,7 @@ function ns.FloatAgain()
 		ns.Print('No step text to show yet. It appears when the route gets a new destination.')
 		return
 	end
-	Show(last.lines, ns.Get('floatRoute') and last.route or nil)
+	Show(last.lines, Under(last.route, last.failed), last.failed)
 end
 
 -- The button on the options page.
@@ -120,8 +136,8 @@ function ns.FloatTest()
 	Show({ 'Turn in The Forgotten Pools', 'Accept The Stagnant Oasis' }, '3 min: walk 640 yd')
 end
 
--- (for the checks: what is on screen now)
+-- (for the checks: what is on screen now, and the smaller line itself, for its colour)
 function ns.FloatShown()
 	if not (frame and frame:IsShown()) then return nil end
-	return big:GetText(), small:GetText()
+	return big:GetText(), small:GetText(), small
 end

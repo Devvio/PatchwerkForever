@@ -279,14 +279,33 @@ C_QuestLog = {
 }
 C_SuperTrack = { GetSuperTrackedQuestID = function() return STUB.focus end }
 
+-- STUB.undiscovered[id] = true: the world map says you have not found that flight point.
+-- STUB.noTaxi = true: the world map says nothing at all. STUB.flightMap = { [id] = 0 here, 1 can be
+-- flown to, 2 out of reach }: what the flight map lists when opened at a flight master; a point not
+-- in it is listed as out of reach, or not listed at all when STUB.flightMapShort is set.
+ERR_NEWTAXIPATH = 'New flight path discovered!'
+function GetTaxiMapID() return STUB.player.map == 1 and 1414 or 1415 end
 C_TaxiMap = { GetTaxiNodesForMap = function(id)
 	local out = {}
+	if STUB.noTaxi then return out end
 	local D = PatchwerkForever_Thread_RoutesData[MAPS[id][1]]
 	for _, p in ipairs(D.points) do
 		out[#out + 1] = { nodeID = p[1], name = p[2], isUndiscovered = STUB.undiscovered[p[1]] or false }
 	end
 	return out
+end,
+GetAllTaxiNodes = function(id)
+	local out = {}
+	if not STUB.flightMap then return out end
+	for _, p in ipairs(PatchwerkForever_Thread_RoutesData[MAPS[id][1]].points) do
+		local state = STUB.flightMap[p[1]]
+		if state or not STUB.flightMapShort then
+			out[#out + 1] = { nodeID = p[1], name = p[2], state = state or 2, slotIndex = #out + 1 }
+		end
+	end
+	return out
 end }
+Enum.FlightPathState = { Current = 0, Reachable = 1, Unreachable = 2 }
 C_Minimap = { GetViewRadius = function() return 233.3 end }
 UIParent = CreateFrame('Frame')
 Minimap = CreateFrame('Frame')

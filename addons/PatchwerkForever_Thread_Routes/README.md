@@ -26,7 +26,7 @@ One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwer
 
 With nothing else to do, you only have to pick a destination:
 
-- **Your map pin.** Put a pin on the world map and the route appears. A pin always comes first.
+- **Your map pin.** Put a pin on the world map and the route appears. A pin always comes first. A pin that is already on the map is picked up when you log in or reload, not after other loading screens.
 - **A quest you track.** With no pin, it routes to the quest the game's own arrow is on, or failing that the nearest quest in your tracker. It moves on to the next objective, and to whoever takes the quest in once it is done.
 - **Your RestedXP guide.** With no pin, it routes to the guide's current step and moves on with it (more below). Nothing of RestedXP's is changed.
 - **A spot you type.** `/thread to 45.2 61.8` routes to that place on the map you are on.
@@ -43,6 +43,16 @@ What the route follows by itself is the main track: your guide when one is runni
 - **A second guide's list** can be chosen the same way: the Dungeon Journal's quests (with its Stitch), clicked in the tracker, are followed stop after stop until the list is done or you go back.
 - **A gathering run** is a side path of the same kind. There is one at a time: choosing a quest ends a run, and starting a run lets the quest go.
 - A map pin of your own still comes before everything.
+
+## Flight points you know
+
+A route only flies between flight points your character has discovered (the setting **Known Flight Points Only**, on by default).
+
+- **Open the flight map at any flight master** and what it shows is remembered: which points you can fly to, and which you cannot. Do this once on each continent.
+- **A point you discover later** is added as you find it.
+- **Until then, routes on that continent go on foot.** You are told once.
+- **When your guide says "fly" to a point you do not have**, the route does not lead you to the flight master. It goes by another way to where the guide sends you next, and says so.
+- `/thread flights` shows what is known and where that comes from.
 
 ## Following a RestedXP guide
 
@@ -61,6 +71,8 @@ This reads RestedXP's own lists of steps while the game runs. If a RestedXP upda
 
 When the route gets a new destination, a few words appear in the upper middle of the screen: what you are going to do (the guide's own words for its step, a quest's name, "to your map pin"), and under them, smaller, the route: how long it takes, how far it is on foot, what it flies or rides. They fade in, stay a few seconds and fade out. Nothing is said when the way is only found again after a wrong turn.
 
+A step is said once. It is not said again when RestedXP's arrow only moves to another spot of the same step, or when you are led back to a place you had already reached. Where no route can be found, the smaller line says **No route found**.
+
 Where the words stand, how large they are and how long they stay are on the page **Routes: Step Text**, with a button to try it. `/thread step` says the last one again.
 
 ## What a route knows
@@ -70,6 +82,8 @@ Where the words stand, how large they are and how long they stay are on the page
 - **Flight paths.** It flies when that is quicker than walking, using only your faction's flight points and, unless you say otherwise, only the ones your character has found.
 - **Boats and zeppelins.** It takes one where that is quicker, and to reach another continent: the trail leads to the dock or the tower, shows the course across, and carries on from where you land. Only the ones your side can use. How long you wait for one is not known, so the time given allows for half its round trip.
 - **A wrong turn.** Stray from the trail and a new route is found from where you are.
+- **On a flight path** the trail runs from you to where you land, and on from there.
+- **No route.** When no way can be found, the step text says so. The search is made again after 20 seconds, then less and less often (every two minutes at most), and at once when you have moved 300 yards or changed continent. A gathering run goes on to the next spot instead.
 
 The chat says how long the route takes and which flights it uses.
 
@@ -99,11 +113,12 @@ The only spots known are the ones you have gathered from yourself: the game's fi
 | `/thread` | lists the commands (`/pft` is the same) |
 | `/thread go` | routes to your map pin, or with none to your guide step or tracked quest |
 | `/thread to 45.2 61.8` | routes to that spot on the map you are on |
-| `/thread stop` | stops routing |
+| `/thread stop` | stops routing, and says what was stopped; a route to a guide step or a quest resumes when the step or objective changes, or with `/thread go` |
 | `/thread config` | opens the settings |
 | `/thread where` | says where the planner thinks you are |
 | `/thread quest` | says where the game puts your tracked quests, and which one is followed |
 | `/thread step` | says the current step on screen again |
+| `/thread flights` | lists the flight points you know on this continent, and how that is known |
 | `/thread nodes` / `nodes forget` | counts the herb and ore spots; forgets the ones within 15 yards |
 | `/thread gather` / `gather round` / `gather <name>` / `gather list` / `gather stop` | a gathering run to the nearest spot and on; a round near here; one kind only; what is near; end it |
 

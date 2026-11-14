@@ -58,9 +58,30 @@ local World = Guides.WorldOf
 local guide
 
 -- The place the guide sends you: map, world x, world y; nothing when there is none.
+-- A step that has you fly to a flight point you do not have cannot be done as the guide means it.
+-- The route then goes, by whatever way there is, to where the guide sends you after the flight, and
+-- says so. (Only with a place to go after it; else the step is left as the guide has it.)
+local function OnFootInstead(info)
+	if not (info and info.kind == 'fly' and ns.Get('rxpTravel') and ns.FlightMissing) then return end
+	local missing, name = ns.FlightMissing(info.flyTo)
+	local after = info.ahead and info.ahead[1]
+	if not (missing and after and after.map) then return end
+	table.remove(info.ahead, 1)
+	info.map, info.x, info.y = after.map, after.x, after.y
+	info.kind, info.onFoot = 'place', true
+	info.key = tostring(info.key) .. ':onfoot'
+	-- (what is said: that the flight cannot be taken, then what the step gone to asks for)
+	local words = { ('No flight path to %s: going by another way'):format(tostring(name or info.flyTo)) }
+	for _, text in ipairs(Guides.Words({ lines = after.lines }, 2)) do words[#words + 1] = text end
+	info.words = words
+end
+
 local function GuideTarget()
 	guide = Guides:Read(ns.Get('rxpAhead') or 0)
-	if guide then guide.words = Guides.Words(guide) end
+	if guide then
+		guide.words = Guides.Words(guide)
+		OnFootInstead(guide)
+	end
 	if not (guide and guide.map) then return nil end
 	return guide.map, guide.x, guide.y
 end
@@ -232,6 +253,7 @@ local function Target()
 		guide = Guides:Read(ns.Get('rxpAhead') or 0, choice.id)
 		if guide then
 			guide.words = Guides.Words(guide)
+			OnFootInstead(guide)
 			if guide.map and (here == nil or guide.map == here or ns.CanCross(guide.map)) then
 				return 'rxp', guide.map, guide.x, guide.y, 'guide'
 			end
@@ -294,15 +316,64 @@ local function LookBack(from)
 	ns.Ahead.Set(chain)
 end
 
-local said       -- the guide's step last said on screen with no new destination to go with it
+-- A step is said on screen once. `said` is what was last said of where the route goes by itself:
+--   a guide's step   { source = which reader, guide = which guide of its, index = which step,
+--                      onFoot = gone to by another way (OnFootInstead), had = { [line] = true } its lines then }
+--   a quest          { quest = its id, map =, x =, y = where its mark was }
+-- and with either, with = the destination it is said with, which is once that one's route is known.
+-- A guide's step is not said again when only its place moves (RestedXP's arrow going round the spots
+-- of one step), and neither is said again when you are led back to a place you had reached. Your own
+-- pin or a gathering run in between forgets it, so what leads again after them is said.
+local said
+
+-- A line of a step without its numbers: a count that has gone up ("3/10") makes no new line.
+local function Plain(text)
+	return (tostring(text):gsub('%d+', '#'))
+end
+
+-- Whether the guide's step is the one last said: the same reader, guide and number, and nothing in
+-- its words that it did not have then. Lines done drop out of the words and counts go up without that
+-- making it new; the stops of a list that share one number (the Dungeon Journal's) are told apart by
+-- their words. dest: the destination that is being kept, where one is.
+local function Told(dest)
+	if not said or said.source ~= guide.source or said.guide ~= guide.guide or said.index ~= guide.index
+		or said.onFoot ~= guide.onFoot then return false end
+	-- (said with a destination whose route is not known yet: not on screen yet, and never if that one is replaced first)
+	if said.with and said.with.fresh and said.with ~= dest then return false end
+	for _, text in ipairs(guide.words) do
+		if not said.had[Plain(text)] then return false end
+	end
+	return true
+end
+
+-- Notes the guide's step as said. with: the destination it is said with, once that one's route is known.
+local function Note(with)
+	local had = {}
+	for _, line in ipairs(guide.lines or {}) do had[Plain(line.text)] = true end
+	for _, text in ipairs(guide.words) do had[Plain(text)] = true end
+	said = { source = guide.source, guide = guide.guide, index = guide.index, onFoot = guide.onFoot, had = had, with = with }
+end
+
+-- The same for the quest followed. It is the one last said while it is the same quest with its mark
+-- where it was: a mark that has moved is its next objective, and is said.
+local function ToldQuest(map, x, y)
+	return said ~= nil and said.quest == quest.id and said.map == map and Apart(said.x, said.y, x, y) <= SAME
+		and not (said.with and said.with.fresh)
+end
+
+local function NoteQuest(with)
+	said = { quest = quest.id, map = with.map, x = with.x, y = with.y, with = with }
+end
 
 local function Look()
 	if ns.GatherActive and ns.GatherActive() then            -- a gathering run is on: it has the say (Gather.lua)
+		said = nil
 		ns.Ahead.Set({})
 		return
 	end
 	local dest = ns.dest
 	if dest and not dest.source then                         -- your own pin or spot comes first
+		said = nil
 		ns.Ahead.Set({})
 		return
 	end
@@ -329,8 +400,8 @@ local function Look()
 			ns.Stop(false)
 			ns.stopped = nil
 		end
-		if said ~= guide.key then
-			said = guide.key
+		if not Told() then
+			Note()
 			ns.FloatStep(guide.words)
 		end
 		-- (nothing is drawn on ahead: there is no telling from here where the next walk begins)
@@ -340,18 +411,34 @@ local function Look()
 	if source ~= 'rxp' then guide = nil end
 	if skip then
 		if skip.source == source and skip.map == map and Apart(skip.x, skip.y, x, y) <= SAME then
-			if not skip.reached then return end
+			if not skip.reached then
+				-- (you stopped it: the way on from it is not drawn either)
+				ns.Ahead.Set({})
+				return
+			end
 			local px, py, pmap = ns.Place()
-			if not px or pmap ~= map or Apart(px, py, x, y) < BACK[source] then return end
+			if not px or pmap ~= map or Apart(px, py, x, y) < BACK[source] then
+				-- you are still there. A guide that has moved on to another step at this very spot has
+				-- nowhere new to send you: its words alone.
+				if guide and not Told() then
+					Note()
+					ns.FloatStep(guide.words)
+				end
+				return
+			end
+			-- (you have come away from it with it still standing: led back, below, and not said again)
 		end
 		skip = nil
 	end
 	if dest and dest.source == source and dest.map == map and Apart(dest.x, dest.y, x, y) <= SAME then
 		-- the same place still. A guide that has moved on to another step there (take the quest, then
-		-- hand one in to the same person) gets its new words said, with the route as it stands.
-		if guide and dest.step ~= guide.index then
+		-- hand one in to the same person) gets its new words said, with the route as it stands; or,
+		-- where the last whole search found no way there (dest.wait: Route.lua), with that under them.
+		if guide and not Told(dest) then
 			dest.step, dest.lines, dest.kind = guide.index, guide.words, guide.kind
-			ns.FloatStep(guide.words, ns.route and ns.Summary(ns.route) or nil)
+			Note()
+			local none = not ns.route and dest.wait and ns.NO_WAY or nil
+			ns.FloatStep(guide.words, ns.route and ns.Summary(ns.route) or none, none and true or nil)
 		end
 		-- (the quest being followed anyway, now chosen, or no longer: the same way, in the other colour)
 		if (dest.chosen and true or false) ~= (picked and true or false) then
@@ -365,17 +452,28 @@ local function Look()
 	local more = guide and GuideMore()
 		or (source == 'quest' and quest.id and { lines = { 'Quest: ' .. Title(quest.id) } }) or nil
 	if more and picked then more.chosen = true end
+	-- Its words come on screen once its route is known, unless they have been there already: a step
+	-- of the guide's whose place has only moved, or a place you had reached and are led back to. (They
+	-- are kept for /thread step all the same.)
+	local told
+	if guide then told = Told() elseif more then told = ToldQuest(map, x, y) end
+	if told and more then more.quiet = true end
 	ns.SetDestination(map, x, y, false, false, source, more)
+	if not told then
+		if guide then Note(ns.dest) elseif more then NoteQuest(ns.dest) end
+	end
 	if picked == true then LookBack(ns.dest) else LookAhead(ns.dest) end
 end
 
 -- Routes to what the guide or a quest gives now (for /thread go with no pin). Returns true if there is one.
+-- You asked: its words are said whether or not they have been before.
 function ns.GoToSource()
 	quest.dirty = true
 	local source, map, x, y = Target()
 	if not source then return false end
 	skip = nil
 	if not map then                                    -- the guide's step has no place: its words, again
+		Note()
 		ns.FloatStep(guide.words)
 		ns.Print('The current guide step has no location: ' .. (guide.words[1] or 'no text') .. '.')
 		return true
@@ -385,6 +483,7 @@ function ns.GoToSource()
 	end
 	local more = (source == 'rxp' and GuideMore()) or (source == 'quest' and quest.id and { lines = { 'Quest: ' .. Title(quest.id) } }) or nil
 	ns.SetDestination(map, x, y, false, true, source, more)
+	if source == 'rxp' then Note(ns.dest) elseif more then NoteQuest(ns.dest) end
 	return true
 end
 

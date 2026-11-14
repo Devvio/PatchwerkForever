@@ -12,8 +12,15 @@
 -- after step, in place of the main guide, until you click it again or it has no more. A click on one
 -- of its later steps goes to that one and chooses the list. Skipping is in its right-click menu.
 --
+-- A reader may say its guide is a side list (the Dungeon Journal's quests, unless set to lead). Then it
+-- is one even when it is the first, or the only one listed: the route does not follow it by itself, so
+-- a click must choose it and not skip a stop.
+--
 -- Moving a guide to another step is done by its own reader, through the base (Guides:Go), and only
--- because you clicked. /tracker back goes to the step you were on before the last such click.
+-- because you clicked. Each such click is said in chat. /tracker back, or the key bound to it, goes
+-- to the step you were on before the last such click, unless another guide has been loaded since.
+-- (A list whose step number does not move when it is moved has no step to go back to by number:
+-- see Go below.)
 --
 -- A guide's words are shown from the guide addon's own tables as the game runs. None are kept.
 local ADDON, ns = ...
@@ -21,31 +28,55 @@ if not ns.linked then return end
 
 local MOST_GUIDES = 3
 
-local before                  -- { source =, index = } the step you were on before the last click on a step
+local before                  -- the step you were on before the last click on a step:
+                              -- { source =, index =, guide = the guide's name then, to = the step the click went to }
 local lastKey
 local read = { at = -1, infos = {} }
 
+-- A click moved the guide: said in chat, since one stray click does it, with how to take it back.
+-- Not every list numbers its steps as a guide does: the Dungeon Journal's number counts the quests
+-- turned in, so it stays where it was when a stop is skipped or brought forward, and going back to a
+-- number does nothing there. The list is read again to tell: with its number unmoved (or the list
+-- gone) no number is said and no undo is promised.
 local function Go(info, index, from)
 	if not ns.Get('guideSkip') then return end
 	if ns.Base.Guides:Go(info, index) then
-		before = { source = info.source, index = from }
+		before = { source = info.source, index = from, guide = info.guide, to = index }
+		local now = ns.Base.Guides:Read(0, info.source)
+		local moved = now and now.index and now.index ~= from
+		if index == from + 1 then
+			ns.Print(moved and ('Skipped step %d. Use the Undo Skipped Guide Step key binding or type /tracker back to undo.'):format(from)
+				or 'Step skipped.')
+		elseif index < from then
+			ns.Print(moved and ('Back to step %d.'):format(index) or 'Went back one step.')
+		else
+			ns.Print(moved and ('Jumped to step %d. Type /tracker back to return to step %d.'):format(index, from)
+				or 'Jumped to that step.')
+		end
 	else
 		ns.Print(('%s could not jump to that step.'):format(info.reader or 'The guide'))
 	end
 	ns.Refresh()
 end
 
--- Back to the step you were on before the last click on a step.
+-- Back to the step you were on before the last click on a step (/tracker back, and a key binding).
 function ns.GuideBack()
 	local info = before and ns.Base.Guides:Read(0, before.source)
+	-- (another guide has been loaded since: the step's number means nothing in it)
+	if info and info.guide ~= before.guide then info, before = nil, nil end
 	if not info then
 		ns.Print('No skipped step to undo.')
 		return
 	end
-	local index = before.index
+	local index, to = before.index, before.to
 	before = nil
 	if ns.Base.Guides:Go(info, index) then
-		ns.Print(('Back to step %d.'):format(index))
+		-- (the guide has moved on since the click: said, so that going back many steps is no surprise)
+		if info.index and info.index ~= to and info.index ~= index then
+			ns.Print(('Back to step %d (from step %d).'):format(index, info.index))
+		else
+			ns.Print(('Back to step %d.'):format(index))
+		end
 	else
 		ns.Print(('%s could not go back.'):format(info.reader or 'The guide'))
 	end
@@ -88,7 +119,7 @@ local function Section(n)
 		if n == 1 then ns.guideInfo = nil end
 		-- (a reader that found only where the guide's arrow points has no step to list)
 		if not (type(info) == 'table' and info.index) then return nil end
-		local main = n == 1
+		local main = n == 1 and not info.side           -- (a side list is one even when it is listed first)
 		if main then
 			ns.guideInfo = info
 			if info.key ~= lastKey then

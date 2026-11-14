@@ -86,3 +86,14 @@ Everything here is a proposal for him to pick from and reorder. Sizes are rough:
   and Tracker 1.1.0. Passes the checks against a stand-in journal; not yet tried in the game with the
   real one. What was settled: the journal's list is a second guide beside RestedXP and is followed
   only while selected (a setting makes it the main route); nothing was sent to its author yet.
+- **2026-11-13: Routes 0.16.0, flight points you know.** Asked for as "detecting if i have a flight path or
+  not, if not, route by foot". Known points are read from the flight map at a flight master and
+  remembered (`Flights.lua`); with nothing known, routes go on foot; a guide's "fly" step to a point
+  you lack routes on to its next step by another way. Not yet tried in the game: what Forever's
+  flight map reports for points you do not have is what it stands on.
+- **2026-11-14: polish pass A** (`POLISH.md`, A1 to A12): base 2.5.0, Routes 0.17.0, Tracker 1.2.0,
+  Stitch (Dungeon Journal) 1.0.1. The step text once per step, "No route found" and a slower retry,
+  what Stop says, the trail on a flight, the tracker keeping its top corner, scrolling a long list
+  without a mouse, the skip said in chat with an undo binding, rows that hold their order, and the
+  Dungeon Journal list as a side list, and one quest list in instances (ours hides while the default
+  tracker is kept there). Passes the checks; not yet tried in the game.

@@ -111,10 +111,24 @@ def main():
     def step(label):
         print("  " + label)
 
+    def heard():                       # what was said in chat since it was last read, a reported problem included
+        new = list(stub.messages.values())[said[0]:]
+        said[0] += len(new)
+        return new
+
+    def on_screen():                   # the step text on screen now: its words, and the smaller line under them
+        got = ns.FloatShown()
+        return (got[0], got[1]) if isinstance(got, tuple) else (got, None)
+
+    def quiet():                       # the words on screen have had their time
+        stub.time += 60
+        stub.Frame()
+        assert ns.FloatShown() is None, "the words did not go out"
+
     step("log in at Crossroads, a Horde character")
     stub.player.x, stub.player.y, stub.player.map = -442.0, -2598.0, 1
     stub.Fire("PLAYER_LOGIN")
-    stub.Fire("PLAYER_ENTERING_WORLD")
+    stub.Fire("PLAYER_ENTERING_WORLD", True, False)               # (as the game gives it: a login, not a reload)
     chat("login")
     assert len(stub.settings) == 80 and stub.category and stub.front, "the settings pages were not built"
     assert stub.provider, "the world map layer was not attached"
@@ -196,6 +210,95 @@ def main():
     text = chat("unknown point")
     assert not any("Freewind Post" in t for t in text), text
 
+    step("the flight points you know: read at a flight master and remembered; with nothing known, on foot")
+    here = (stub.player.x, stub.player.y)
+    taxi = lambda: list(lua.globals().PatchwerkForever_Thread_RoutesDB.taxi.values())[0] if lua.globals().PatchwerkForever_Thread_RoutesDB.taxi else None
+
+    def set_option(name, value):
+        [x for x in stub.settings.values() if x.variable == ADDON + "_" + name][0].set(value)
+
+    def go_again(label):
+        slash("go")
+        frames()
+        return chat(label)
+
+    slash("flights")
+    text = chat("flights")
+    assert any("Source: the game's world map" in t for t in text), text
+    assert any("Not known: Freewind Post, Thousand Needles" in t for t in text), text
+    # the world map says nothing and no flight map was ever opened here: nothing counts as known
+    stub.noTaxi = True
+    text = go_again("nothing known")
+    assert ns.route and not any("fly" in t for t in text), text
+    assert sum(1 for t in text if "Open the flight map at a flight master" in t) == 1, text
+    text = go_again("nothing known, again")
+    assert not any("Open the flight map" in t for t in text), "said more than once"
+    slash("flights")
+    assert any("Source: none yet" in t for t in chat("flights"))
+    # a flight map opened: Crossroads (here) and Gadgetzan can be flown to, the rest are out of reach
+    stub.flightMap = lua.table_from({25: 0, 40: 1})
+    stub.Fire("TAXIMAP_OPENED")
+    frames()
+    mine = taxi()
+    assert mine.seen[1] and mine.known[25] is True and mine.known[40] is True and mine.known[30] is False and mine.known[23] is False
+    chat("flight map")
+    text = go_again("flight map")
+    assert ns.route and any("fly Crossroads > Gadgetzan" in t for t in text), text
+    slash("flights")
+    text = chat("flights")
+    assert any("2 known" in t for t in text) and any("Source: the flight map you last opened here" in t for t in text), text
+    # only Crossroads: nowhere to fly to, so on foot
+    stub.flightMap = lua.table_from({25: 0})
+    stub.Fire("TAXIMAP_OPENED")
+    frames()
+    text = go_again("one point")
+    assert ns.route and not any("fly" in t for t in text), text
+    # a flight map that lists only what you have (as the old game did): the unlisted are not yours
+    stub.flightMap, stub.flightMapShort = lua.table_from({25: 0, 30: 1, 40: 1}), True
+    stub.Fire("TAXIMAP_OPENED")
+    frames()
+    mine = taxi()
+    assert mine.known[30] is True and mine.known[23] is False and mine.known[77] is False
+    assert any("fly Crossroads > Freewind Post > Gadgetzan" in t for t in go_again("short list")), "the listed points were not flown between"
+    stub.flightMapShort = None
+    # a flight point found as you walk up to it (the game's own message): known from then on
+    stub.flightMap = lua.table_from({40: 1})
+    stub.Fire("TAXIMAP_OPENED")
+    frames()
+    assert taxi().known[25] is False
+    chat("crossroads lost")
+    stub.player.x, stub.player.y = -442.0, -2598.0
+    stub.Fire("UI_INFO_MESSAGE", 372, "Some other message")
+    assert taxi().known[25] is False
+    stub.Fire("UI_INFO_MESSAGE", 372, lua.globals().ERR_NEWTAXIPATH)
+    frames()
+    text = chat("found")
+    assert taxi().known[25] is True and any("Flight point learned: Crossroads, The Barrens" in t for t in text), text
+    stub.player.x, stub.player.y = here
+    # the world map said you had Freewind Post, the flight map showed you did not: its word is not taken again
+    stub.noTaxi = None
+    stub.undiscovered[30] = None
+    stub.flightMap = lua.table_from({25: 0, 40: 1})
+    stub.Fire("TAXIMAP_OPENED")
+    frames()
+    assert taxi().gameWrong is True, "the world map is still believed"
+    assert not ns.FlightsKnown(1)[0][30] and ns.FlightsKnown(1)[0][40]
+    # by name, as a guide names a flight: which of them you lack
+    assert ns.FlightMissing("ORGRIMMAR")[0] is True and ns.FlightMissing("Gadgetzan")[0] is False and ns.FlightMissing("Nowhere") is False
+    assert ns.FlightMissing("orgrimmar")[1] == "Orgrimmar, Durotar"
+    # the setting off: every flight point of your side, known or not
+    set_option("knownOnly", False)
+    frames()
+    assert ns.FlightMissing("ORGRIMMAR") is False
+    assert any("Freewind Post" in t for t in go_again("all points")), "with the setting off an unknown point is still left out"
+    set_option("knownOnly", True)
+    frames()
+    # (as it was for what follows: nothing remembered, the world map's word, Freewind Post not found)
+    lua.globals().PatchwerkForever_Thread_RoutesDB.taxi = None
+    stub.flightMap = None
+    stub.undiscovered[30] = True
+    go_again("as before")
+
     step("arrive")
     stub.player.x, stub.player.y = -7141.0, -3791.0
     stub.Tick()
@@ -204,13 +307,37 @@ def main():
     stub.Tick()
     assert stub.shown == 0 or True
 
+    step("a pin already on the map is taken up at login and at a reload, not after any other loading screen")
+    assert stub.pin and not ns.dest
+    stub.Fire("PLAYER_ENTERING_WORLD", False, False)              # a loading screen, the pin you reached still on the map
+    frames()
+    assert not ns.dest, "a pin you had reached was routed to again after a loading screen"
+    stub.Fire("PLAYER_ENTERING_WORLD", False, True)               # a reload
+    frames()
+    assert ns.dest and ns.dest.pin, "a pin on the map was not taken up at a reload"
+    slash("stop")
+    text = chat("pin stopped")
+    assert any(t.endswith("Routing to your map pin stopped.") for t in text), text
+    stub.Fire("PLAYER_ENTERING_WORLD", False, False)
+    frames()
+    assert not ns.dest, "a pin you had stopped was routed to again after a loading screen"
+    stub.Fire("PLAYER_ENTERING_WORLD", True, False)               # a login
+    frames()
+    assert ns.dest and ns.dest.pin, "a pin on the map was not taken up at login"
+    slash("stop")
+    chat("pin stopped")
+
     step("the slash commands")
     stub.player.x, stub.player.y = -442.0, -2598.0
     for words in ("", "where", "to 52.5 30.1", "stop", "stop", "config", "nonsense"):
         slash(words)
         frames()
-    chat("slash")
+    text = chat("slash")
     assert stub.opened == 8, "the tool's own settings page did not open"
+    # Stop says what was stopped, and the help says when routing resumes by itself
+    stops = [t for t in text if "stopped." in t or "No active route." in t]
+    assert len(stops) == 2 and stops[0].endswith("Routing to your coordinates stopped.") and stops[1].endswith("No active route."), stops
+    assert any("/thread stop: stop routing (a route to a guide step or quest resumes" in t for t in text), text
 
     step("no pin: the route follows the RestedXP guide's arrow, step by step")
     assert len(stub.settings) == 80, "the guide setting is missing from the settings page"
@@ -239,8 +366,10 @@ def main():
     stub.Fire("USER_WAYPOINT_UPDATED")
     stub.Tick(); frames()
     assert ns.dest and ns.dest.source == "rxp", "did not go back to the guide when the pin went"
-    # stopping it yourself: left alone until the guide moves on
+    # stopping it yourself: left alone until the guide moves on, and the chat says so
     slash("stop")
+    text = chat("guide stopped")
+    assert any(t.endswith("Routing stopped. It resumes when the guide step or quest objective changes, or with /thread go.") for t in text), text
     for _ in range(4):
         stub.Tick(); frames()
     assert not ns.dest, "routed again to a step you had stopped"
@@ -289,10 +418,13 @@ def main():
     stub.watched = lua.table_from([870])
     look("QUEST_WATCH_LIST_CHANGED")
     assert ns.dest and ns.dest.source == "quest" and near(*RATCHET) and ns.route, "the tracked quest was not routed to"
-    # its mark moves on to the next objective: the route goes with it
+    assert on_screen()[0] == "Quest: The Forgotten Pools", on_screen()
+    quiet()
+    # its mark moves on to the next objective: the route goes with it, and it is said on screen
     stub.QuestAt(870, "The Forgotten Pools", 1, *CAMP)
     look()
     assert near(*CAMP), "the route did not follow the quest's mark"
+    assert on_screen()[0] == "Quest: The Forgotten Pools", "a quest's next objective was not said on screen"
     # a second quest in the tracker, nearer: the one being followed is kept
     stub.QuestAt(871, "Plainstrider Menace", 1, *FIELD)
     stub.watched = lua.table_from([870, 871])
@@ -320,10 +452,16 @@ def main():
     for _ in range(12):
         stub.Tick(); frames()
     assert not ns.dest, "routed back to a quest's place from 60 yards off"
+    quiet()
     stub.player.x, stub.player.y = -442.0, -2598.0
     for _ in range(3):
         stub.Tick(); frames()
     assert near(*FIELD), "not routed back to the quest after walking well away"
+    # led back to a place you had reached: its words are not put on screen again, but are there to ask for
+    assert ns.FloatShown() is None, "a quest's place you had reached was said again when you were led back to it"
+    slash("step")
+    assert on_screen() == ("Quest: Plainstrider Menace", ns.Summary(ns.route)), on_screen()
+    quiet()
     # stopping it yourself: left alone until the quest moves on
     slash("stop")
     for _ in range(12):
@@ -561,8 +699,10 @@ def main():
     assert at(-520.0, -2650.0) and G.State(G).going == "Copper Vein", "the run did not go on to the next spot"
     go(-520.0, -2650.0)
     assert at(-700.0, -2900.0), "the run went back to a spot just visited"
-    # stopped by you: the run is over
+    # stopped by you: the run is over, and that is what the chat says
     slash("stop")
+    text = chat("run stopped")
+    assert any(t.endswith("Gathering stopped.") for t in text) and not any("Routing" in t for t in text), text
     go()
     assert not ns.dest and G.State(G) is None, "a run you stopped went on"
     # one kind: its spot here was just visited, so there is none; later there is
@@ -1116,14 +1256,7 @@ def main():
         end
     """)
 
-    def words():
-        got = ns.FloatShown()
-        return (got[0], got[1]) if isinstance(got, tuple) else (got, None)
-
-    def quiet():                       # the words on screen have had their time
-        stub.time += 60
-        stub.Frame()
-        assert ns.FloatShown() is None, "the words did not go out"
+    words = on_screen                  # (`words` was a loop's name further up: from here it is the step text on screen)
 
     stub.pin = None
     stub.Fire("USER_WAYPOINT_UPDATED")
@@ -1202,6 +1335,9 @@ def main():
     stub.GuideStep(6)
     stub.Tick(); frames()
     assert not ns.dest and words()[0] == "Train your skills"
+    quiet()
+    stub.Tick(); frames()
+    assert ns.FloatShown() is None, "a step with no place was said more than once"
 
     # two steps at one place: no new route, the new step's words
     stub.player.x, stub.player.y = -442.0, -2598.0
@@ -1216,6 +1352,8 @@ def main():
 
     # the words go out by themselves, and come back when asked; switched off, none
     quiet()
+    stub.Tick(); frames()
+    assert ns.FloatShown() is None, "a new step at the place you are routed to was said more than once"
     slash("step")
     assert words()[0] == "Turn in Raptor Thieves"
     quiet()
@@ -1243,6 +1381,710 @@ def main():
     lua.globals().PatchwerkForever_Thread_Routes_Go()
     lua.globals().PatchwerkForever_Thread_Routes_Stop()
     chat("bindings")
+
+    step("the guide says fly, and you do not have that flight point: by another way to where it goes next")
+    lua.execute("""
+        local function at(x, y) return { tag = 'goto', wx = y, wy = x, instance = 1 } end
+        local steps = {
+            { { tag = 'fly', text = 'Fly to Orgrimmar', location = 'ORGRIMMAR' }, at(-437, -2596) },
+            { { tag = 'turnin', text = 'Turn in your report' }, at(-600, -2800) },
+        }
+        for i, lines in ipairs(steps) do
+            local s = { index = i, elements = lines }
+            for _, e in ipairs(lines) do e.step = s end
+            steps[i] = s
+        end
+        RXPCData = { currentStep = 1, stepSkip = {} }
+        RXP = { currentGuide = { steps = steps }, activeWaypoints = {} }
+        RXPG_ARROW = { shown = true, element = steps[1].elements[2], IsShown = function(self) return self.shown end }
+    """)
+    stub.player.x, stub.player.y = -1994.0, -156.0
+    # you have Orgrimmar's flight point: on foot to the flight master, as the guide means it
+    stub.flightMap = lua.table_from({23: 1, 25: 0})
+    stub.Fire("TAXIMAP_OPENED")
+    stub.Tick(); frames()
+    assert ns.dest and ns.dest.source == "rxp" and ns.dest.walkOnly and near(-437.0, -2596.0), "the guide's flight master was not gone to"
+    assert words()[0] == "Fly to Orgrimmar"
+    # you do not: the route goes on to the step after the flight, by whatever way there is, and says so
+    stub.flightMap = lua.table_from({25: 0})
+    stub.Fire("TAXIMAP_OPENED")
+    stub.Tick(); frames()
+    assert ns.dest and not ns.dest.walkOnly and near(-600.0, -2800.0), "the route still leads to a flight you cannot take"
+    assert words()[0] == "No flight path to Orgrimmar, Durotar: going by another way\nTurn in your report", words()
+    assert ns.ahead is None, "the step flown to is still drawn on as a step ahead"
+    # found it after all: as the guide means it again, and said so (the same step, but no longer gone to another way)
+    quiet()
+    stub.flightMap = lua.table_from({23: 1, 25: 0})
+    stub.Fire("TAXIMAP_OPENED")
+    stub.Tick(); frames()
+    assert ns.dest.walkOnly and near(-437.0, -2596.0)
+    assert words()[0] == "Fly to Orgrimmar", "the step was not said when it went back to being done as the guide means it: %s" % (words(),)
+    lua.execute("RXP, RXPCData, RXPG_ARROW = nil, nil, nil")
+    lua.globals().PatchwerkForever_Thread_RoutesDB.taxi = None
+    stub.flightMap = None
+    stub.Tick(); frames()
+    chat("fly without the point")
+
+    step("a step is said on screen once: not again when its place moves, nor when you are led back to it")
+    # RestedXP on a step that has two places (a kill area its arrow goes round), then a step at one of them
+    lua.execute("""
+        local function at(x, y) return { tag = 'goto', wx = y, wy = x, instance = 1 } end
+        local count, nest = { tag = 'complete', text = 'Raptors slain: 0/10' }, { tag = 'complete', text = 'Find the raptor nest' }
+        -- the step's count goes up, as RestedXP writes it into the line; its second line is done
+        function STUB.GuideCount(n) count.text = ('Raptors slain: %d/10'):format(n) end
+        function STUB.GuideNestFound() nest.completed = true end
+        local steps = {
+            { count, nest, at(-600, -2800), at(-700, -2900) },
+            { { tag = 'turnin', text = 'Turn in Raptor Thieves' }, at(-600, -2800) },
+            { { tag = 'accept', text = 'Accept Raptor Horns' }, at(-956, -3754) },
+            { { tag = 'turnin', text = 'Turn in Raptor Horns' }, at(-1994, -156) },
+        }
+        for i, lines in ipairs(steps) do
+            local s = { index = i, elements = lines }
+            for _, e in ipairs(lines) do e.step = s end
+            steps[i] = s
+        end
+        RXPCData = { currentStep = 1, stepSkip = {} }
+        RXP = { currentGuide = { steps = steps }, activeWaypoints = {} }
+        RXPG_ARROW = { shown = true, IsShown = function(self) return self.shown end }
+        -- RestedXP on step n, its arrow on the k-th of the step's places
+        function STUB.GuideSpot(n, k)
+            RXPCData.currentStep = n
+            for i, s in ipairs(steps) do
+                s.active = (i == n) or nil
+                if i < n then s.completed = true end
+            end
+            local places = {}
+            for _, e in ipairs(steps[n].elements) do
+                if e.wx then places[#places + 1] = e end
+            end
+            RXPG_ARROW.element = places[k]
+        end
+    """)
+    HERE, SPOT, OTHER = (-442.0, -2598.0), (-600.0, -2800.0), (-700.0, -2900.0)
+
+    def stand(place, off=0.0):
+        stub.player.x, stub.player.y = place[0] + off, place[1]
+
+    quiet()
+    stand(HERE)
+    # the arrow moves before the way to its first place is found: the step has not been on screen yet,
+    # so it is said with the place it has now
+    stub.GuideSpot(1, 2)
+    stub.Tick()
+    assert near(*OTHER) and not ns.route and ns.FloatShown() is None
+    stub.Tick()                                                   # (the next look comes while that way is still being found)
+    assert near(*OTHER) and not ns.route and ns.FloatShown() is None, "a step was said before its route was known"
+    stub.GuideSpot(1, 1)
+    stub.Tick(); frames()
+    assert near(*SPOT) and ns.route and on_screen()[0] == "Raptors slain: 0/10\nFind the raptor nest", on_screen()
+    quiet()
+    # the arrow moves to the step's other place, its count gone up meanwhile: a new destination, the same step
+    stub.GuideCount(3)
+    stub.GuideSpot(1, 2)
+    stub.Tick(); frames()
+    assert near(*OTHER) and ns.route, "the route did not follow the arrow to the step's other place"
+    assert ns.FloatShown() is None, "a step was said again when only its place moved"
+    slash("step")                                                 # asked for: the step as it is now, with the route there is now
+    assert on_screen() == ("Raptors slain: 3/10\nFind the raptor nest", ns.Summary(ns.route)), on_screen()
+    quiet()
+    # you reach that place, one of the step's lines is done there, and the arrow goes back to the first:
+    # led there, still without the words
+    stand(OTHER, 2)
+    stub.Tick()
+    assert not ns.dest
+    stub.GuideNestFound()
+    stub.GuideSpot(1, 1)
+    stub.Tick(); frames()
+    assert near(*SPOT) and ns.route and ns.FloatShown() is None, "a step was said again when its place moved after you reached the last"
+    slash("step")
+    assert on_screen()[0] == "Raptors slain: 3/10", on_screen()
+    quiet()
+    # reached, then 60 yards away with the step still open: led back, and not said again
+    stand(SPOT, 2)
+    stub.Tick()
+    assert not ns.dest
+    stand(SPOT, 60)
+    for _ in range(2):
+        stub.Tick(); frames()
+    assert near(*SPOT) and ns.route, "not routed back to an open step after walking away"
+    assert ns.FloatShown() is None, "a step you had reached was said again when you were led back to it"
+    # back at the spot, the guide moves on to a step at that very spot: nowhere to go, but its words are said, once
+    stand(SPOT, 2)
+    stub.Tick()
+    assert not ns.dest
+    stub.GuideSpot(2, 1)
+    stub.Tick(); frames()
+    assert not ns.dest and on_screen() == ("Turn in Raptor Thieves", ""), "a new step at the spot you stand on was not said: %s" % (on_screen(),)
+    quiet()
+    for _ in range(3):
+        stub.Tick(); frames()
+    assert not ns.dest and ns.FloatShown() is None, "a step at the spot you stand on was said more than once"
+    # away from it with that step open: led back, not said again
+    stand(SPOT, 60)
+    for _ in range(2):
+        stub.Tick(); frames()
+    assert near(*SPOT) and ns.FloatShown() is None, "a step said where you stood was said again when you were led back"
+    # asked for, by the command and by the binding: said each time
+    slash("go"); frames()
+    assert on_screen()[0] == "Turn in Raptor Thieves", "/thread go did not say the step"
+    quiet()
+    lua.globals().PatchwerkForever_Thread_Routes_Go(); frames()
+    assert on_screen()[0] == "Turn in Raptor Thieves", "the Go binding did not say the step"
+    quiet()
+    stub.Tick(); frames()
+    assert ns.FloatShown() is None, "a step you asked for was said once more by itself"
+    # the same for a step that had not been said: the guide went on to it, at the same spot, while you
+    # had stopped routing. Asked for, it is said, and with that it counts as said
+    stub.GuideSpot(1, 1)
+    stub.Tick(); frames()
+    assert on_screen()[0] == "Raptors slain: 3/10", on_screen()
+    quiet()
+    slash("stop")
+    stub.GuideSpot(2, 1)
+    stub.Tick(); frames()
+    assert not ns.dest and ns.FloatShown() is None, "a step was said at a place you had stopped routing to"
+    slash("go"); frames()
+    assert near(*SPOT) and on_screen()[0] == "Turn in Raptor Thieves", "/thread go did not say a step that had not been said yet"
+    quiet()
+    stub.Tick(); frames()
+    assert ns.FloatShown() is None, "a step said because you asked for it was said again by itself"
+    # the next step, somewhere else: said
+    stub.GuideSpot(3, 1)
+    stub.Tick(); frames()
+    assert near(*RATCHET) and on_screen()[0] == "Accept Raptor Horns", on_screen()
+    quiet()
+    # something else followed in between (a pin of your own): the step is said when the guide leads again
+    stub.PinAt(1, *OTHER)
+    stub.Fire("USER_WAYPOINT_UPDATED"); frames()
+    stub.Tick()
+    assert ns.dest.pin and on_screen()[0] == "To your map pin"
+    quiet()
+    stub.pin = None
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    stub.Tick(); frames()
+    assert ns.dest.source == "rxp" and near(*RATCHET) and on_screen()[0] == "Accept Raptor Horns", "the step was not said when the guide led again after a pin"
+    quiet()
+    # the same after a gathering run
+    assert G.Start(G, "any") is True
+    go()
+    assert ns.dest.source == "gather" and on_screen()[0].startswith("Gather: "), on_screen()
+    quiet()
+    assert G.Stop(G) is True
+    go()
+    assert ns.dest.source == "rxp" and near(*RATCHET) and on_screen()[0] == "Accept Raptor Horns", "the step was not said when the guide led again after a gathering run"
+    quiet()
+    # a list whose stops share one number (as the Dungeon Journal's do): its next stop is told apart by its words
+    lua.execute("""
+        STUB.side = { { -600, -2800, 'Accept: A Job' }, { -1994, -156, 'Accept: Another Job' } }
+        PatchwerkForever.Guides:Register('side', { name = 'Side List', Read = function(count)
+            local now = STUB.side[1]
+            if not now then return nil end
+            return { index = 1, total = 2, kind = 'accept', key = 'side' .. #STUB.side, map = 1, x = now[1], y = now[2],
+                lines = { { text = now[3], done = false } }, ahead = {}, after = {} }
+        end })
+    """)
+    Choice.Set(Choice, "guide", "side")
+    stub.Tick(); frames()
+    assert near(*FIELD) and on_screen()[0] == "Accept: A Job", on_screen()
+    quiet()
+    lua.execute("table.remove(STUB.side, 1)")
+    stub.Tick(); frames()
+    assert near(*CAMP) and on_screen()[0] == "Accept: Another Job", "the next stop of a list whose stops share a number was not said"
+    quiet()
+    lua.execute("STUB.side = {}")
+    stub.Tick(); frames()
+    assert Choice.Get(Choice) is None and near(*RATCHET) and on_screen()[0] == "Accept Raptor Horns", "the step was not said when the main guide led again"
+    quiet()
+    chat("said once")
+
+    step("Stop Routing takes the fainter trail of the next steps away too")
+    assert ns.ahead and len(ns.ahead.legs) == 1, "no step was drawn on ahead to begin with"
+    slash("stop")
+    assert any("Routing stopped. It resumes" in t for t in chat("stop"))
+    for _ in range(3):
+        stub.Tick(); frames()
+        assert not ns.dest and ns.ahead is None, "the trail through the next steps stayed after Stop Routing"
+    stub.GuideSpot(4, 1)                                          # the guide moves on: followed again
+    stub.Tick(); frames()
+    assert near(*CAMP) and on_screen()[0] == "Turn in Raptor Horns"
+    # a step is new by its number, not only by its words: the next one has the same words at another place, and is said
+    quiet()
+    lua.execute("""
+        local s = { index = 5, elements = { { tag = 'turnin', text = 'Turn in Raptor Horns' },
+            { tag = 'goto', wx = -3754, wy = -956, instance = 1 } } }
+        for _, e in ipairs(s.elements) do e.step = s end
+        RXP.currentGuide.steps[5] = s
+    """)
+    stub.GuideSpot(5, 1)
+    stub.Tick(); frames()
+    assert near(*RATCHET) and on_screen()[0] == "Turn in Raptor Horns", "a step with the words of the one before it was not said: %s" % (on_screen(),)
+    lua.execute("RXP, RXPCData, RXPG_ARROW = nil, nil, nil")
+    stub.Tick(); frames()
+    assert not ns.dest
+    quiet()
+    chat("stop")
+
+    step("a quest is said once too: not when you are led back to it, but after a pin of your own, and another quest at its place is")
+    stand(HERE)
+    stub.QuestAt(893, "First Things", 1, *FIELD)
+    stub.watched = lua.table_from([893])
+    look("QUEST_WATCH_LIST_CHANGED")
+    assert near(*FIELD) and on_screen()[0] == "Quest: First Things", on_screen()
+    quiet()
+    stand(FIELD, 2)                                               # reached, well away, led back
+    stub.Tick()
+    assert not ns.dest
+    stand(FIELD, 130)
+    for _ in range(2):
+        stub.Tick(); frames()
+    assert near(*FIELD) and ns.route and ns.FloatShown() is None, "a quest you had reached was said again when you were led back to it"
+    # a pin of your own in between: what was last on screen is the pin, so the quest is said when it leads again
+    stub.PinAt(1, *CAMP)
+    stub.Fire("USER_WAYPOINT_UPDATED"); frames()
+    stub.Tick()
+    assert ns.dest.pin and on_screen()[0] == "To your map pin"
+    quiet()
+    stub.pin = None
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    stub.Tick(); frames()
+    assert near(*FIELD) and on_screen()[0] == "Quest: First Things", "the quest was not said when it led again after a pin"
+    quiet()
+    # reached again and handed in, and the next quest's mark is at that very place: nothing while you
+    # stand there, but it is another quest, and is said when you are led to it
+    stand(FIELD, 2)
+    stub.Tick()
+    assert not ns.dest
+    stub.QuestGone(893)
+    stub.QuestAt(894, "Second Things", 1, *FIELD)
+    stub.watched = lua.table_from([894])
+    look("QUEST_WATCH_LIST_CHANGED")
+    assert not ns.dest and ns.FloatShown() is None
+    stand(FIELD, 130)
+    stub.time += 6                                                # (what the game says of the quests is asked again)
+    for _ in range(2):
+        stub.Tick(); frames()
+    assert near(*FIELD) and on_screen()[0] == "Quest: Second Things", "another quest at a place you had reached was not said: %s" % (on_screen(),)
+    stub.QuestGone(894)
+    stub.watched = lua.table()
+    look("QUEST_REMOVED")
+    assert not ns.dest
+    quiet()
+    chat("a quest said once")
+
+    step("a place there is no way to: said under the step, and searched for again less and less often")
+    # every search made is counted. STUB.noWay = n: the next n find no way (as one that looked everywhere
+    # would). STUB.throw: they throw an error.
+    lua.eval("""function(P)
+        local journey, forget = P.Journey, P.Forget
+        STUB.searches, STUB.noWay, STUB.throw, STUB.forgets = 0, 0, false, 0
+        P.Journey = function(...)
+            STUB.searches = STUB.searches + 1
+            if STUB.throw then error('the planner fell over') end
+            if STUB.noWay > 0 then
+                STUB.noWay = STUB.noWay - 1
+                return nil
+            end
+            return journey(...)
+        end
+        P.Forget = function(...)
+            STUB.forgets = STUB.forgets + 1
+            return forget(...)
+        end
+    end""")(ns.Planner)
+
+    def wait(seconds):                 # that long on, one look: how many searches have been made by then
+        stub.time += seconds
+        stub.Tick(); frames()
+        return stub.searches
+
+    setting("rxpAhead", 0)                                        # (no searches ahead of time, so every search counted is the route's)
+    stand(HERE)
+    stub.QuestAt(890, "Out Of Reach", 1, *RATCHET)
+    stub.noWay = 99
+    stub.watched = lua.table_from([890])
+    look("QUEST_WATCH_LIST_CHANGED")
+    assert ns.dest and ns.dest.source == "quest" and not ns.route and ns.dest.failed, "a search that found no way was not noted"
+    big, small, line = ns.FloatShown()
+    assert (big, small) == ("Quest: Out Of Reach", "No route found"), (big, small)
+    assert [round(c, 2) for c in line.colour.values()] == [1, 0.5, 0.45], "the note is not in its own colour"
+    text = chat("no way")
+    assert sum(1 for t in text if "No route found" in t) == 1, text
+    # not again after 10 seconds, as it used to be: after 20, then 40 more; and nothing more in chat
+    made = stub.searches
+    assert made == 1, made
+    assert wait(11) == made, "a place with no way to it was searched for again after 10 seconds"
+    assert wait(10) == made + 1, "it was not searched for again after 20 seconds"
+    assert wait(25) == made + 1, "the wait did not double"
+    assert wait(20) == made + 2, "it was not searched for again after 40 seconds more"
+    assert ns.dest.wait == 80 and not ns.route, ns.dest.wait
+    assert ns.FloatShown() is None, "the note was put on screen again by a later search"
+    assert not any("No route found" in t for t in chat("no way, again")), "said in chat more than once"
+    # 300 yards on, or on another map: at once
+    stand(HERE, -310)
+    assert wait(1) == made + 3, "it was not searched for again at once 300 yards on"
+    assert wait(1) == made + 3
+    stub.player.map = 0                                           # (the same numbers on the other continent: the map alone is new)
+    assert wait(1) == made + 4, "it was not searched for again at once on another map"
+    assert wait(1) == made + 4
+    assert ns.dest.wait == 120, "the wait went past two minutes (%s)" % ns.dest.wait
+    assert not any("No route found" in t for t in chat("no way, elsewhere"))
+    # /thread step says the note again; with the route's line switched off it is shown all the same
+    setting("floatRoute", False)
+    slash("step")
+    big, small, line = ns.FloatShown()
+    assert (big, small) == ("Quest: Out Of Reach", "No route found"), (big, small)
+    assert [round(c, 2) for c in line.colour.values()] == [1, 0.5, 0.45]
+    setting("floatRoute", True)
+    # and when there is a way after all: the trail, and nothing left of the wait
+    stub.noWay = 0
+    stub.player.x, stub.player.y, stub.player.map = HERE[0], HERE[1], 1
+    assert wait(1) == made + 5 and ns.route and not ns.dest.failed and not ns.dest.wait, "the way was not taken up once there was one"
+    quiet()
+    # /thread step now says the route that was found, in the route's colour: the note is no longer true
+    slash("step")
+    big, small, line = ns.FloatShown()
+    assert (big, small) == ("Quest: Out Of Reach", ns.Summary(ns.route)), "the note was still said after a way had been found: %s" % ((big, small),)
+    assert [round(c, 2) for c in line.colour.values()] == [0.62, 0.85, 1], "the route found late is in the colour of the note"
+    quiet()
+    # words that needed no saying again (a place you had reached and are led back to) are shown all the
+    # same where the note is new under them. With Print Route In Chat off, chat has nothing of it
+    stand(RATCHET, 2)
+    stub.Tick()
+    assert not ns.dest
+    chat("a way after all")
+    setting("notify", False)
+    stub.noWay = 1
+    stand(RATCHET, 130)
+    for _ in range(2):
+        stub.Tick(); frames()
+    assert near(*RATCHET) and ns.dest.failed and on_screen() == ("Quest: Out Of Reach", "No route found"), on_screen()
+    assert not any("No route found" in t for t in chat("no way, chat off")), "that no route was found was said in chat with Print Route In Chat off"
+    setting("notify", True)
+    made = stub.searches
+    assert wait(21) == made + 1 and ns.route, "the way was not found by the next search"
+    assert ns.FloatShown() is None, "words were put on screen for a way that was only found late"
+    stub.QuestGone(890)
+    stub.Fire("QUEST_REMOVED")
+    # A search given up before it began is not one that found no way: here there is no ground the planner
+    # knows near the place (out at sea), as there is none under you in any building. That mends itself as
+    # you move, so it gets no note, no longer wait and nothing in chat.
+    chat("a way after all")
+    made = stub.searches
+    stub.QuestAt(896, "Out At Sea", 1, 0.0, 9000.0)
+    stub.watched = lua.table_from([896])
+    look("QUEST_WATCH_LIST_CHANGED")
+    assert ns.dest and ns.dest.source == "quest" and not ns.route and stub.searches == made, "the place out at sea was not given up on before a whole search"
+    assert not ns.dest.failed and not ns.dest.wait, "a search given up before it began was noted as one that found no way"
+    assert on_screen() == ("Quest: Out At Sea", ""), on_screen()
+    assert not any("No " in t for t in chat("no ground")), "a search given up before it began was said in chat"
+    stub.QuestGone(896)
+    stub.Fire("QUEST_REMOVED")
+    stub.Tick(); frames()
+    assert not ns.dest
+    quiet()
+    # a guide's step at a place there is no way to, then its next step at that same place: the new words
+    # have the note under them too, on screen and when asked for again
+    lua.execute("""
+        local function at(x, y) return { tag = 'goto', wx = y, wy = x, instance = 1 } end
+        local steps = {
+            { { tag = 'turnin', text = 'Turn in Far Away' }, at(-600, -2800) },
+            { { tag = 'accept', text = 'Accept Further Away' }, at(-600, -2800) },
+        }
+        for i, lines in ipairs(steps) do
+            local s = { index = i, elements = lines }
+            for _, e in ipairs(lines) do e.step = s end
+            steps[i] = s
+        end
+        RXPCData = { currentStep = 1, stepSkip = {} }
+        RXP = { currentGuide = { steps = steps }, activeWaypoints = {} }
+        RXPG_ARROW = { shown = true, element = steps[1].elements[2], IsShown = function(self) return self.shown end }
+        function STUB.GuideOn()                       -- RestedXP moves on to the second step
+            steps[1].completed = true
+            RXPCData.currentStep = 2
+            RXPG_ARROW.element = steps[2].elements[2]
+        end
+    """)
+    stub.noWay = 99
+    stub.Tick(); frames()
+    assert near(*FIELD) and ns.dest.source == "rxp" and ns.dest.wait and not ns.route
+    assert on_screen() == ("Turn in Far Away", "No route found"), on_screen()
+    quiet()
+    held = ns.dest
+    stub.GuideOn()
+    stub.Tick(); frames()
+    big, small, line = ns.FloatShown()
+    assert same(ns.dest, held) and not ns.route and (big, small) == ("Accept Further Away", "No route found"), "a new step at a place with no way to it was said without the note: %s" % ((big, small),)
+    assert [round(c, 2) for c in line.colour.values()] == [1, 0.5, 0.45], "the note under a new step at the same place is not in its own colour"
+    quiet()
+    slash("step")
+    assert on_screen() == ("Accept Further Away", "No route found"), on_screen()
+    quiet()
+    # and once a way there is found, it is that step which has the route under it
+    stub.noWay = 0
+    stub.Tick(); frames()
+    assert same(ns.dest, held) and ns.route and ns.FloatShown() is None
+    slash("step")
+    assert on_screen() == ("Accept Further Away", ns.Summary(ns.route)), on_screen()
+    quiet()
+    lua.execute("RXP, RXPCData, RXPG_ARROW = nil, nil, nil")
+    stub.Tick(); frames()
+    assert not ns.dest
+    chat("a guide's steps with no way")
+    # the route's line is back in its usual colour with the next thing said
+    stub.QuestAt(891, "Within Reach", 1, *FIELD)
+    stub.watched = lua.table_from([891])
+    look("QUEST_WATCH_LIST_CHANGED")
+    big, small, line = ns.FloatShown()
+    assert big == "Quest: Within Reach" and "walk" in small and [round(c, 2) for c in line.colour.values()] == [0.62, 0.85, 1], (big, small)
+    quiet()
+    chat("a way after all")
+
+    step("on a flight path a search that finds no way says nothing, and is made again as usual once you land")
+    stub.QuestGone(891)
+    stub.Fire("QUEST_REMOVED")
+    stub.Tick(); frames()
+    assert not ns.dest
+    stub.player.taxi = True
+    stub.noWay = 1
+    stub.QuestAt(892, "Seen From The Air", 1, *RATCHET)
+    stub.watched = lua.table_from([892])
+    look("QUEST_WATCH_LIST_CHANGED")
+    assert ns.dest and not ns.route and not ns.dest.failed, "a search made in the air was taken as final"
+    assert on_screen() == ("Quest: Seen From The Air", ""), on_screen()
+    assert not any("No route found" in t for t in chat("in the air"))
+    made = stub.searches
+    assert wait(30) == made, "a way was looked for in the air"
+    stub.player.taxi = False
+    assert wait(1) == made + 1 and ns.route, "the way was not looked for again on landing"
+    stub.QuestGone(892)
+    stub.Fire("QUEST_REMOVED")
+    stub.Tick(); frames()
+    assert not ns.dest
+    quiet()
+    # Where the first whole search to find no way comes only later (here: once you have landed), the note
+    # goes under the words then, though they went out before with nothing under them: once on screen,
+    # once in chat, and /thread step has it
+    chat("landed")
+    stub.player.taxi = True
+    stub.noWay = 99
+    stub.QuestAt(893, "Still Out Of Reach", 1, *RATCHET)
+    stub.watched = lua.table_from([893])
+    look("QUEST_WATCH_LIST_CHANGED")
+    assert ns.dest and not ns.dest.failed and on_screen() == ("Quest: Still Out Of Reach", ""), on_screen()
+    quiet()
+    made = stub.searches
+    stub.player.taxi = False
+    assert wait(11) == made + 1 and not ns.route and ns.dest.failed, "no whole search was made after landing"
+    big, small, line = ns.FloatShown()
+    assert (big, small) == ("Quest: Still Out Of Reach", "No route found"), "a way not found only later was not said under the step: %s" % ((big, small),)
+    assert [round(c, 2) for c in line.colour.values()] == [1, 0.5, 0.45]
+    quiet()
+    assert wait(21) == made + 2 and ns.FloatShown() is None, "the note was put on screen by every search that found no way"
+    assert sum(1 for t in chat("no way, late") if "No route found" in t) == 1
+    slash("step")
+    assert on_screen() == ("Quest: Still Out Of Reach", "No route found"), on_screen()
+    quiet()
+    stub.noWay = 0
+    stub.QuestGone(893)
+    stub.Fire("QUEST_REMOVED")
+    stub.watched = lua.table()
+    stub.Tick(); frames()
+    assert not ns.dest
+    quiet()
+    chat("landed")
+
+    step("a gathering run does not wait at a node there is no way to")
+    leaf = {"link": "item:2447", "class": 7, "sub": 9, "icon": 133939, "guid": "GameObject-0-1-1-1-1617-0"}
+    gather("Peacebloom", -460.0, -2640.0, [leaf])
+    gather("Peacebloom", -700.0, -2900.0, [leaf])
+    stub.time += 400                                              # (long enough since the runs further up)
+    stand(HERE)
+    stub.noWay = 1                                                # no way to the nearest; the next is fine
+    assert G.Start(G, "any") is True
+    frames()
+    assert at(-460.0, -2640.0) and ns.dest.failed and not ns.route
+    assert on_screen() == ("Gather: Peacebloom", "No route found"), on_screen()
+    go()
+    assert at(-520.0, -2650.0) and ns.route and G.State(G).going == "Copper Vein", "the run waited at a node with no way to it"
+    # (not in chat for a node: every node is a destination of its own, and the run has gone on by itself)
+    assert not any("No route found" in t for t in chat("gather, a node with no way")), "a gathering node with no way to it was said in chat"
+    # a pin of your own with no way to it is not the run's to move on from: it stays, and the run waits for it
+    stub.noWay = 1
+    stub.PinAt(1, *RATCHET)
+    stub.Fire("USER_WAYPOINT_UPDATED"); frames()
+    go()
+    assert ns.dest.pin and ns.dest.failed and G.State(G).going == "Copper Vein", "a pin of your own with no way to it was given up for the run's next node"
+    assert any("No route found" in t for t in chat("a pin with no way")), "a pin with no way to it was not said in chat"
+    stub.pin = None
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    go()
+    assert at(-520.0, -2650.0) and ns.route and ns.dest.source == "gather", "the run did not go on once the pin was gone"
+    # no way to the last one either: the run ends, and nothing is left routed to
+    stub.noWay = 99
+    go(-520.0, -2650.0)
+    assert at(-700.0, -2900.0) and ns.dest.failed
+    stub.Tick()
+    text = chat("gather, no way")
+    assert G.State(G) is None and not ns.dest, "a run with no way to any node left did not end"
+    assert any("Gathering stopped" in t for t in text), text
+    assert not any("No route found" in t for t in text), text
+    # the next run does not hold that against those nodes: it may start where there is a way to them
+    stub.noWay = 0
+    stub.time += 60
+    assert G.Start(G, "any") is True, "the nodes no way was found to were left out of the next run too"
+    go()
+    assert at(-460.0, -2640.0) and ns.route and G.State(G).going == "Peacebloom", (ns.dest and (ns.dest.x, ns.dest.y), G.State(G))
+    assert G.Stop(G) is True
+    go()
+    assert not ns.dest
+    chat("gather, the next run")
+    stub.noWay = 0
+    for x, y in ((-460.0, -2640.0), (-700.0, -2900.0)):
+        stub.player.x, stub.player.y = x, y
+        slash("nodes forget")
+    assert spots() == 1
+    quiet()
+    chat("gather, no way")
+
+    step("a search that throws an error is said once, and not made again every 10 seconds")
+    stand(HERE)
+    stub.throw = True
+    made, forgot = stub.searches, stub.forgets
+    stub.PinAt(1, *RATCHET)
+    stub.Fire("USER_WAYPOINT_UPDATED"); frames()
+    text = heard()
+    assert sum(1 for t in text if "a problem in a route search" in t and "the planner fell over" in t) == 1, text
+    assert not any("Route search failed" in t for t in text), text
+    assert stub.searches == made + 1 and stub.forgets > forgot, "what the search had decoded was not let go of"
+    assert ns.dest and ns.dest.pin and ns.dest.failed and not ns.route
+    assert on_screen() == ("To your map pin", "No route found"), on_screen()
+    assert wait(11) == made + 1, "a search that threw was made again after 10 seconds"
+    assert wait(10) == made + 2, "a search that threw was not tried again after 20 seconds"
+    assert not heard(), "a search that threw again was said again"
+    stub.throw = False
+    assert wait(41) == made + 3 and ns.route, "the way was not found once the search ran again"
+    # the same when it throws as the way is looked for anew after a wrong turn: the trail you have left
+    # goes, and the search is not made again every few seconds
+    stub.throw = True
+    made = stub.searches
+    stand(HERE, 150)
+    assert wait(5) == made + 1 and not ns.route and ns.dest.failed, "a search that threw after a wrong turn left the old trail up"
+    assert wait(5) == made + 1 and wait(5) == made + 1, "a search that threw after a wrong turn was made again within seconds"
+    assert not heard()
+    # on a flight path it puts no note on screen either
+    quiet()
+    stub.player.taxi = True
+    stub.PinAt(1, *CAMP)
+    stub.Fire("USER_WAYPOINT_UPDATED"); frames()
+    assert near(*CAMP) and not ns.route and on_screen() == ("To your map pin", ""), on_screen()
+    stub.player.taxi = False
+    stub.throw = False
+    stub.pin = None
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    stub.Tick(); frames()
+    assert not ns.dest
+    quiet()
+    chat("a search that throws")
+
+    step("where there is no map data, the Go command and its binding say why each time")
+    stub.player.map = 530
+    stub.PinAt(1, *RATCHET)
+    stub.Fire("USER_WAYPOINT_UPDATED"); frames()
+    assert any("No map data for this area (map 530)." in t for t in chat("no map data")), "a pin placed where there is no map data said nothing"
+    wait(11)
+    assert not any("No map data" in t for t in chat("no map data, by itself")), "why there is no route was said again without being asked"
+    slash("go"); frames()
+    assert any("No map data for this area (map 530)." in t for t in chat("go")), "/thread go said nothing where there is no map data"
+    lua.globals().PatchwerkForever_Thread_Routes_Go(); frames()
+    assert any("No map data for this area (map 530)." in t for t in chat("go")), "the Go binding said nothing where there is no map data"
+    stub.player.map = 1
+    stub.pin = None
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    stub.Tick(); frames()
+    assert not ns.dest
+    quiet()
+
+    step("on a flight path the trail runs from you to where you land, not back to the flight master")
+    def canvas(x, y):                  # a world position on the world map's canvas (Kalimdor's map, 1002 by 668)
+        return (17066.6 - y) / (17066.6 + 19733.21) * 1002, -(12799.9 - x) / (12799.9 + 11733.3) * 668
+
+    def starts(piece, place):
+        return abs(piece.ax - place[0]) < 0.01 and abs(piece.ay - place[1]) < 0.01
+
+    def ends(piece, place):
+        return abs(piece.bx - place[0]) < 0.01 and abs(piece.by - place[1]) < 0.01
+
+    setv("minimap", False)
+    stub.Tick()
+    stub.undiscovered[30] = None                                  # (Freewind Post found: a flight of two hops)
+    stand((-900.0, -2500.0))                                      # (a walk with bends away from the flight master: the flight lies several points on)
+    stub.PinAt(1, -7140.0, -3790.0)                               # Gadgetzan again
+    stub.Fire("USER_WAYPOINT_UPDATED"); frames()
+    text = chat("a flight")
+    route = ns.route
+    hows = [p[3] for p in route.points.values()]
+    assert any("fly Crossroads > Freewind Post > Gadgetzan" in t for t in text) and hows.count("fly") == 2, (text, hows)
+    land = len(hows) - hows[::-1].index("fly")                    # the flight's last point (counted from 1): where you land
+    assert route.at == 1 and hows[land - 2] == "fly" and hows.index("fly") > 3 and hows[land] != "fly", hows
+    AIR = (-3800.0, -3200.0)
+    stub.player.taxi = True
+    stand(AIR)
+    stub.Tick()
+    assert route.at == land - 1, "on a flight path the trail still starts back at the flight master (at %d, lands at %d)" % (route.at, land)
+    # (the open world map draws only when it is told the trail has changed: it is not asked to here)
+    piece = drawn()[0]
+    assert starts(piece, canvas(*AIR)) and ends(piece, canvas(route.points[land][1], route.points[land][2])), "the first piece does not run from you to where you land"
+    assert list(piece.colour.values()) == list(ns.TrailColour("fly")) != list(ns.TrailColour("walk")), "the piece to where you land is not in the flight colour"
+    assert len(drawn()) > 1, "the walk on from where you land is not drawn"
+    stub.Tick()
+    assert route.at == land - 1 and same(ns.route, route), "the trail did not hold still for the rest of the flight"
+    # a trail found while you are in the air, with no flight on it: drawn as it lies, not joined to you
+    setv("flights", False)
+    frames()
+    walk = ns.route
+    assert not same(walk, route) and "fly" not in [p[3] for p in walk.points.values()]
+    ON = (-3900.0, -3300.0)                                       # the flight carries you on
+    stand(ON)
+    stub.Tick()
+    assert walk.loose and walk.at == 1, "a trail with no flight on it was not let loose in the air"
+    stub.provider.RefreshAllData()
+    assert starts(drawn()[0], canvas(*AIR)), "in the air the world map joins you to a trail with no flight on it"
+    stub.provider.RemoveAllData()
+    world_map.shown = False
+    setv("minimap", True)
+    for _ in range(3):
+        stub.Tick()
+    assert drawn() and not starts(drawn()[0], (0, 0)), "in the air the minimap joins you to a trail with no flight on it"
+    # landed: joined to you again
+    stub.player.taxi = False
+    stub.Tick()
+    assert same(ns.route, walk) and not walk.loose, "the trail stayed loose after landing"
+    stub.Tick()
+    assert drawn() and starts(drawn()[0], (0, 0)), "after landing the minimap trail does not start at you"
+    world_map.shown = True
+    # the open world map is told at both ends of a flight (it is not asked to draw here): let loose as
+    # you take off, joined to you again as you land
+    setv("minimap", False)
+    stub.Tick()
+    assert not drawn()
+    stub.player.taxi = True
+    stub.Tick()
+    lies = walk.points[walk.at]                                   # (the point of it you had reached on the ground: it is drawn from there, as it lies)
+    assert walk.loose and drawn() and starts(drawn()[0], canvas(lies[1], lies[2])), "the world map was not redrawn with the trail let loose at take-off"
+    assert not starts(drawn()[0], canvas(*ON)), "in the air the world map joins you to a trail with no flight on it"
+    stub.player.taxi = False
+    stub.Tick()
+    assert same(ns.route, walk) and not walk.loose
+    assert drawn() and starts(drawn()[0], canvas(*ON)), "after landing the world map trail does not start at you"
+    setv("minimap", True)
+    setv("flights", True)
+    frames()
+    stub.pin = None
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    stub.Tick(); frames()
+    assert not ns.dest
+    chat("a flight")
     print("all steps ran; memory at the end %.1f MB" % (lua.eval("collectgarbage('count')") / 1024))
 
 

@@ -2,7 +2,7 @@
 ## Title: Thread (Routes) map: Zephras Isle
 ## Notes: Map data for Patchwerk Forever: Thread (Routes). Loaded by it when needed.
 ## Author: Tyrone
-## Version: 0.15.0
+## Version: 0.17.0
 ## Group: PatchwerkForever
 ## IconTexture: Interface\AddOns\PatchwerkForever_Thread_Routes\Media\icon
 ## X-License: MIT (code); map data made from the game's own files

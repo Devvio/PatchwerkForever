@@ -1,5 +1,14 @@
 # Patchwerk Forever
 
+## 2.5.0
+
+- **Side lists.** A list that a part marks as a side list, such as the Dungeon Journal quests, is still listed but is no longer followed as the main route by itself. It is followed once you select it.
+- For addon authors: a reader's `Side` function. `Guides:Read(count)` passes a side list over; `Guides:Read(count, id)` and `Guides:ReadAll(count)` give it, marked `side = true`. An older part ignores it, so the API number stays 4.
+
+## 2.4.1
+
+- The RestedXP reader also gives where a "fly" step flies to, so Thread (Routes) can tell whether you have that flight point.
+
 ## 2.4.0
 
 - **More than one guide at a time.** The guides service can hold a levelling guide and a second list beside it (the Dungeon Journal's quests, through its new Stitch). The first is the main route; another is followed while you select it.
