@@ -6,6 +6,7 @@
     python upload.py --tag thread-routes-0.11.0   the project that tag is for (this is what CI runs)
     python upload.py --dry-run routes          everything but the sending: says what would be sent
     python upload.py --test patchwerk          the same upload, sent to your test project instead
+    python upload.py --as alpha all            every project as an alpha file, to be promoted by hand
     python upload.py versions [text]           the game versions CurseForge knows, to find Forever's
 
 What it needs:
@@ -25,6 +26,9 @@ What it needs:
 What it sends for a project: the zip release.py builds; the changelog entry for that version; a
 display name ("Patchwerk Forever: Thread (Routes) 0.11.0"); beta for a version beginning 0., else
 release; the game version; and Patchwerk Forever as a required dependency where the addon needs it.
+--as alpha (or beta, or release) sets the release type for everything in that run, whatever the
+version: a file held back as alpha is not offered to people on the release channel, and its type is
+changed on its CurseForge page when it is to go out.
 
 It will not upload a zip built from files that are not committed, a project with no id, or to an
 address that is not https. Nothing here is run by itself: an upload happens only when this is asked for.
@@ -153,7 +157,7 @@ def multipart(fields, file_name, file_bytes):
     return b"".join(parts), "multipart/form-data; boundary=" + boundary
 
 
-def upload(key, cfg, send, test=False):
+def upload(key, cfg, send, test=False, kind=None):
     project = PROJECTS[key]
     main = project["main"]
     entry = cfg.get("projects", {}).get(key, {})
@@ -189,7 +193,7 @@ def upload(key, cfg, send, test=False):
         "changelog": changelog(main, version),
         "changelogType": "markdown",
         "displayName": "%s %s" % (fields.get("Title", main), version),
-        "releaseType": "beta" if version.startswith("0.") else "release",
+        "releaseType": kind or ("beta" if version.startswith("0.") else "release"),
     }
     if relations:
         metadata["relations"] = {"projects": relations}
@@ -213,6 +217,7 @@ def main():
     args = sys.argv[1:]
     send = True
     test = False
+    kind = None
     keys = []
     if not args:
         sys.exit(__doc__)
@@ -229,6 +234,10 @@ def main():
             send = False
         elif a == "--test":
             test = True
+        elif a == "--as":
+            if not args or args[0] not in ("alpha", "beta", "release"):
+                sys.exit("--as needs a release type: alpha, beta or release")
+            kind = args.pop(0)
         elif a == "--tag":
             if not args:
                 sys.exit("--tag needs a tag")
@@ -246,11 +255,11 @@ def main():
         elif a in PROJECTS:
             keys.append(a)
         else:
-            sys.exit("not understood: %s (projects: %s; also all, versions, --tag <tag>, --dry-run, --test)" % (a, ", ".join(sorted(PROJECTS))))
+            sys.exit("not understood: %s (projects: %s; also all, versions, --tag <tag>, --dry-run, --test, --as <type>)" % (a, ", ".join(sorted(PROJECTS))))
     if send:
         token()                                           # (say so before any building, when it is missing)
     for key in keys:
-        upload(key, cfg, send, test)
+        upload(key, cfg, send, test, kind)
 
 
 if __name__ == "__main__":

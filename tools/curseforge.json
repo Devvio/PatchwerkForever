@@ -6,22 +6,37 @@
   "projects": {
     "patchwerk": {
       "id": 1797119,
-      "slug": ""
+      "slug": "patchwerk-forever"
     },
     "consoleport": {
-      "id": 0,
-      "slug": "",
-      "relations": []
+      "id": 1800626,
+      "slug": "patchwerk-forever-stitch-console-port",
+      "relations": [
+        {
+          "slug": "console-port",
+          "type": "requiredDependency"
+        }
+      ]
     },
     "melloui": {
-      "id": 0,
-      "slug": "",
-      "relations": []
+      "id": 1800632,
+      "slug": "patchwerk-forever-stitch-melloui",
+      "relations": [
+        {
+          "slug": "melloui",
+          "type": "requiredDependency"
+        }
+      ]
     },
     "melloroute": {
-      "id": 0,
-      "slug": "",
-      "relations": []
+      "id": 1800638,
+      "slug": "patchwerk-forever-stitch-melloui-route",
+      "relations": [
+        {
+          "slug": "melloui",
+          "type": "requiredDependency"
+        }
+      ]
     },
     "dungeonjournal": {
       "id": 0,
@@ -29,12 +44,12 @@
       "relations": []
     },
     "routes": {
-      "id": 0,
-      "slug": ""
+      "id": 1800654,
+      "slug": "patchwerk-forever-thread-routes"
     },
     "sparkle": {
-      "id": 0,
-      "slug": ""
+      "id": 1800656,
+      "slug": "patchwerk-forever-thread-sparkle"
     },
     "tracker": {
       "id": 0,

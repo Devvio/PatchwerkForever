@@ -173,6 +173,15 @@ def main():
     out = run(["--test", "--dry-run", "sparkle"], env)
     assert "the TEST project 2001" in out and "NOT SENT" in out and SEEN[-1] is post
 
+    print("--as: the release type asked for, whatever the version; one CurseForge does not have is refused")
+    run(["--as", "alpha", "consoleport"], env)
+    assert SEEN[-1][1] == "/api/projects/1002/upload-file" and SEEN[-1][3]["releaseType"] == "alpha", SEEN[-1][3]
+    run(["--as", "release", "routes"], env)
+    assert SEEN[-1][3]["releaseType"] == "release"
+    before = len(SEEN)
+    assert "alpha, beta or release" in run(["--as", "gamma", "routes"], env, expect=1)
+    assert "alpha, beta or release" in run(["routes", "--as"], env, expect=1) and len(SEEN) == before
+
     before = len(SEEN)
     print("a tag that does not match the version, and a project with no id: refused")
     assert "does not match" in run(["--tag", "thread-routes-9.9.9"], env, expect=1)

@@ -118,6 +118,7 @@ Then, for a release: commit, and
 ```
 python upload.py --dry-run routes     what would be sent; needs no token
 python upload.py --test patchwerk     the same upload, sent to your test project
+python upload.py --as alpha all       every project as an alpha file, to promote by hand
 python upload.py routes               build it and send it
 python upload.py all                  every project, the Stitches and tools before the base
 python upload.py versions 1.60        the game versions CurseForge knows
@@ -126,6 +127,8 @@ python upload.py versions 1.60        the game versions CurseForge knows
 The game version is worked out from the TOC's interface number (16001 is 1.60.1) and looked up by that name. If CurseForge calls Forever's version something else, the tool stops and lists the ones like it; put the right id in `curseforge.json` as `"game_version_ids": [id]`.
 
 It will not send a zip built from files that are not committed, and it only talks to an https address.
+
+**Uploading ahead.** `--as alpha` (or `beta`, or `release`) sets the release type for everything in that run, whatever the version. A file held back as alpha waits for CurseForge's approval like any other but is not offered to people on the release channel; when all the projects are approved, change each file's type on its CurseForge page.
 
 **Trying it first.** `"test_project"` in `curseforge.json` is the Project ID of a project of yours kept for trying uploads. With `--test` a project's file goes there and not to its own page; everything else is as in a real upload, so what CurseForge makes of the token, the game version, the changelog and the dependency shows without anything reaching the real project. A project with no id of its own yet can be tried this way too.
 
