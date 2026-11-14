@@ -111,12 +111,13 @@ Once, for each project:
 
 Once, for you:
 
-3. **Make an API token** in your CurseForge author settings (API Tokens) and set it as the environment variable `CF_API_TOKEN`. It is a password: it is never written into this repository, and the tool never prints it or keeps it.
+3. **Make an API token** in your CurseForge author settings (API Tokens) and put it in the file `.env` at the top of this repository, after `CF_API_TOKEN=`. Git ignores `.env`; where there is none yet, copy `.env.example`. The environment variable `CF_API_TOKEN` does as well, and wins when both are there. It is a password: it is never committed, and the tool never prints it.
 
 Then, for a release: commit, and
 
 ```
 python upload.py --dry-run routes     what would be sent; needs no token
+python upload.py --test patchwerk     the same upload, sent to your test project
 python upload.py routes               build it and send it
 python upload.py all                  every project, the Stitches and tools before the base
 python upload.py versions 1.60        the game versions CurseForge knows
@@ -125,6 +126,8 @@ python upload.py versions 1.60        the game versions CurseForge knows
 The game version is worked out from the TOC's interface number (16001 is 1.60.1) and looked up by that name. If CurseForge calls Forever's version something else, the tool stops and lists the ones like it; put the right id in `curseforge.json` as `"game_version_ids": [id]`.
 
 It will not send a zip built from files that are not committed, and it only talks to an https address.
+
+**Trying it first.** `"test_project"` in `curseforge.json` is the Project ID of a project of yours kept for trying uploads. With `--test` a project's file goes there and not to its own page; everything else is as in a real upload, so what CurseForge makes of the token, the game version, the changelog and the dependency shows without anything reaching the real project. A project with no id of its own yet can be tried this way too.
 
 ### Uploading from CI
 

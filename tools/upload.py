@@ -5,16 +5,22 @@
     python upload.py all                       every project, in the order of release/UPLOAD.md
     python upload.py --tag thread-routes-0.11.0   the project that tag is for (this is what CI runs)
     python upload.py --dry-run routes          everything but the sending: says what would be sent
+    python upload.py --test patchwerk          the same upload, sent to your test project instead
     python upload.py versions [text]           the game versions CurseForge knows, to find Forever's
 
 What it needs:
 
-    the token   Your CurseForge API token, in the environment variable CF_API_TOKEN. You make one in your
-                CurseForge author settings (API Tokens). It is never written to a file, never printed, and
-                must not be put in this repository. In CI it is a secret of the same name.
+    the token   Your CurseForge API token. You make one in your CurseForge author settings (API Tokens)
+                and put it in the file .env at the top of this repository, as CF_API_TOKEN=... (copy
+                .env.example; git ignores .env), or in the environment variable CF_API_TOKEN, which wins
+                when both are there. It is never printed and never committed. In CI it is a secret of
+                the same name.
     the ids     tools/curseforge.json: each project's number (shown on its CurseForge page as Project ID)
                 and its slug (the last part of its page's address). A project has to be made by hand on
-                CurseForge first: the API only adds files to a project that is there.
+                CurseForge first: the API only adds files to a project that is there. "test_project"
+                there is the number of a project of yours kept for trying uploads: with --test a
+                project's file goes to it and not to the project's own page, and nothing else differs
+                (the zip is the one that would go to the real project, its own number in its TOC).
 
 What it sends for a project: the zip release.py builds; the changelog entry for that version; a
 display name ("Patchwerk Forever: Thread (Routes) 0.11.0"); beta for a version beginning 0., else
@@ -35,6 +41,7 @@ from release import ADDONS, ORDER, OUT, PROJECTS, TAGS, build, commit, toc
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONFIG = os.environ.get("CF_CONFIG") or os.path.join(HERE, "curseforge.json")
+ENV_FILE = os.environ.get("CF_ENV_FILE") or os.path.join(HERE, "..", ".env")
 DEFAULT_API = "https://wow.curseforge.com"
 
 
@@ -51,11 +58,32 @@ def api_base(cfg):
     return base
 
 
+def filed_token():
+    """The token as the .env file gives it, or "". Only the CF_API_TOKEN line is read: nothing else in
+    the file is used, and nothing from it is put into the environment of what this runs."""
+    try:
+        with open(ENV_FILE, encoding="utf-8-sig") as f:      # (-sig: Notepad may put a mark before the first line)
+            lines = f.read().splitlines()
+    except OSError:
+        return ""
+    for line in lines:
+        line = line.strip()
+        if line.startswith("export "):
+            line = line[7:].lstrip()
+        name, sep, value = line.partition("=")
+        if sep and name.strip() == "CF_API_TOKEN":
+            value = value.strip()
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+                value = value[1:-1].strip()
+            return value
+    return ""
+
+
 def token():
-    value = os.environ.get("CF_API_TOKEN", "").strip()
+    value = os.environ.get("CF_API_TOKEN", "").strip() or filed_token()
     if not value:
-        sys.exit("no token: set the environment variable CF_API_TOKEN to your CurseForge API token "
-                 "(author settings, API Tokens). It is not kept anywhere by this tool.")
+        sys.exit("no token: put your CurseForge API token (author settings, API Tokens) in %s as "
+                 "CF_API_TOKEN=..., or in the environment variable CF_API_TOKEN." % os.path.normpath(ENV_FILE))
     return value
 
 
@@ -125,11 +153,16 @@ def multipart(fields, file_name, file_bytes):
     return b"".join(parts), "multipart/form-data; boundary=" + boundary
 
 
-def upload(key, cfg, send):
+def upload(key, cfg, send, test=False):
     project = PROJECTS[key]
     main = project["main"]
     entry = cfg.get("projects", {}).get(key, {})
-    if not entry.get("id"):
+    target = entry.get("id")
+    if test:
+        target = cfg.get("test_project")
+        if not target:
+            sys.exit("--test needs a test project: put its Project ID in %s as \"test_project\"" % CONFIG)
+    elif not target:
         sys.exit("%s has no id in %s: make the project on CurseForge, then put its Project ID and slug there" % (key, CONFIG))
     relations = []
     for need in project["requires"]:
@@ -160,7 +193,7 @@ def upload(key, cfg, send):
     }
     if relations:
         metadata["relations"] = {"projects": relations}
-    print("%s -> project %s at %s" % (os.path.basename(path), entry["id"], base))
+    print("%s -> %s %s at %s" % (os.path.basename(path), "the TEST project" if test else "project", target, base))
     print("  %s, %s, %d bytes, built from %s" % (metadata["displayName"], metadata["releaseType"], len(data), mark))
     print("  needs: %s" % (", ".join("%s (%s)" % (r["slug"], r["type"]) for r in relations) or "nothing"))
     print("  changelog: %d lines, beginning \"%s\"" % (metadata["changelog"].count("\n"), metadata["changelog"].splitlines()[0][:70]))
@@ -172,13 +205,14 @@ def upload(key, cfg, send):
     metadata["gameVersions"] = game_versions(base, cfg, fields["Interface"])
     print("  game version id(s): %s" % metadata["gameVersions"])
     body, content_type = multipart({"metadata": json.dumps(metadata)}, os.path.basename(path), data)
-    answer = call(base, "/api/projects/%s/upload-file" % entry["id"], body, content_type)
+    answer = call(base, "/api/projects/%s/upload-file" % target, body, content_type)
     print("  uploaded: CurseForge's file id is %s. It shows on the project once CurseForge has approved it." % answer.get("id"))
 
 
 def main():
     args = sys.argv[1:]
     send = True
+    test = False
     keys = []
     if not args:
         sys.exit(__doc__)
@@ -193,6 +227,8 @@ def main():
         a = args.pop(0)
         if a == "--dry-run":
             send = False
+        elif a == "--test":
+            test = True
         elif a == "--tag":
             if not args:
                 sys.exit("--tag needs a tag")
@@ -210,11 +246,11 @@ def main():
         elif a in PROJECTS:
             keys.append(a)
         else:
-            sys.exit("not understood: %s (projects: %s; also all, versions, --tag <tag>, --dry-run)" % (a, ", ".join(sorted(PROJECTS))))
+            sys.exit("not understood: %s (projects: %s; also all, versions, --tag <tag>, --dry-run, --test)" % (a, ", ".join(sorted(PROJECTS))))
     if send:
         token()                                           # (say so before any building, when it is missing)
     for key in keys:
-        upload(key, cfg, send)
+        upload(key, cfg, send, test)
 
 
 if __name__ == "__main__":

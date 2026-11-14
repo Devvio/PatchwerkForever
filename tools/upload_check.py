@@ -4,8 +4,9 @@
 
 Starts a small web server on 127.0.0.1 that answers as CurseForge's upload API does, points upload.py
 at it with made-up project ids and a made-up token, and looks at what arrives: the token's header, the
-description of the file, the zip itself. Also: no token, no id, a game version CurseForge does not
-list, a tag that does not match, an address that is not https, and a dry run that must send nothing.
+description of the file, the zip itself. Also: the token from a .env file, no token, no id, a game
+version CurseForge does not list, a tag that does not match, an address that is not https, and a dry
+run that must send nothing. Your own .env is never read here: a made-up one stands in for it.
 
 It needs the addons to be committed (upload.py will not send a zip built from uncommitted files).
 """
@@ -85,7 +86,7 @@ def main():
     cfg_path = os.path.join(scratch, "curseforge.json")
 
     def write_config(**change):
-        cfg = {"api": base, "game_version": "", "game_version_ids": [],
+        cfg = {"api": base, "game_version": "", "game_version_ids": [], "test_project": 2001,
                "projects": {"patchwerk": {"id": 1001, "slug": "patchwerk-forever"},
                             "consoleport": {"id": 1002, "slug": "pf-stitch-console-port",
                                             "relations": [{"slug": "console-port", "type": "requiredDependency"}]},
@@ -95,8 +96,33 @@ def main():
         json.dump(cfg, open(cfg_path, "w"))
 
     write_config()
-    env = dict(os.environ, CF_CONFIG=cfg_path, CF_API_TOKEN=TOKEN)
+    # (CF_ENV_FILE: a file that is not there, so the real .env and the token in it are left alone)
+    env = dict(os.environ, CF_CONFIG=cfg_path, CF_API_TOKEN=TOKEN, CF_ENV_FILE=os.path.join(scratch, "none.env"))
     env.pop("CF_API_BASE", None)
+
+    print("the token from a .env file: used when the environment has none, and the environment's wins")
+    env_path = os.path.join(scratch, "check.env")
+    with open(env_path, "w", encoding="utf-8") as f:
+        f.write("\ufeff# a comment\n#CF_API_TOKEN=one-commented-out\nCF_API_TOKEN_OLD=an-old-one\n"
+                "OTHER = 1\nCF_API_TOKEN = \"%s\"\n" % TOKEN)
+    filed = dict(env, CF_ENV_FILE=env_path)
+    del filed["CF_API_TOKEN"]
+    out = run(["versions", "1.60"], filed)
+    assert "1.60.1" in out and SEEN[-1][:3] == ("GET", "/api/game/versions", TOKEN), SEEN[-1][:3]
+    out = run(["versions", "1.60"], dict(filed, CF_API_TOKEN="another-made-up-one"), expect=1)
+    assert "403" in out and SEEN[-1][2] == "another-made-up-one"
+    with open(env_path, "w", encoding="utf-8") as f:
+        f.write("CF_API_TOKEN=\n")
+    before = len(SEEN)
+    out = run(["versions"], filed, expect=1)
+    assert "no token" in out and "check.env" in out and len(SEEN) == before
+    os.remove(env_path)
+    del SEEN[:]
+
+    print("--test with no test project in the settings: refused before anything is built")
+    write_config(test_project=0)
+    assert "needs a test project" in run(["--test", "routes"], env, expect=1) and not SEEN
+    write_config()
 
     print("a dry run: says what would go, sends nothing")
     out = run(["--dry-run", "routes"], dict(env, CF_API_TOKEN=""))
@@ -136,6 +162,16 @@ def main():
     meta = SEEN[-1][3]
     assert SEEN[-1][1] == "/api/projects/1002/upload-file" and meta["releaseType"] == "release"
     assert [r["slug"] for r in meta["relations"]["projects"]] == ["patchwerk-forever", "console-port"], meta["relations"]
+
+    print("--test: the same file, sent to the test project; so is a project that has no id of its own yet")
+    run(["--test", "routes"], env)
+    post = SEEN[-1]
+    assert post[1] == "/api/projects/2001/upload-file" and post[3]["displayName"] == "Patchwerk Forever: Thread (Routes) " + version, post[1]
+    assert post[3]["relations"] == {"projects": [{"slug": "patchwerk-forever", "type": "requiredDependency"}]}
+    with zipfile.ZipFile(io.BytesIO(post[4][1])) as z:
+        assert "## X-Curse-Project-ID: 1005" in z.read("PatchwerkForever_Thread_Routes/PatchwerkForever_Thread_Routes.toc").decode()
+    out = run(["--test", "--dry-run", "sparkle"], env)
+    assert "the TEST project 2001" in out and "NOT SENT" in out and SEEN[-1] is post
 
     before = len(SEEN)
     print("a tag that does not match the version, and a project with no id: refused")

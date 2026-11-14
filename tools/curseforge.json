@@ -2,9 +2,10 @@
   "api": "https://wow.curseforge.com",
   "game_version": "",
   "game_version_ids": [],
+  "test_project": 1804673,
   "projects": {
     "patchwerk": {
-      "id": 0,
+      "id": 1797119,
       "slug": ""
     },
     "consoleport": {
