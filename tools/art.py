@@ -164,6 +164,22 @@ def checklist(x, y):
     return d, cut
 
 
+def _side(x, y, ax, ay, bx, by):
+    """How far a point is outside the line from a to b (on its right, going from a to b)."""
+    dx, dy = bx - ax, by - ay
+    n = math.hypot(dx, dy)
+    return ((x - ax) * dy - (y - ay) * dx) / n
+
+
+def flag(x, y):
+    """Thread (Races): a pennant on a pole, for a checkpoint."""
+    pole = box(x, y, -0.30, -0.01, 0.045, 0.47, 0.02)
+    # the pennant: a triangle from the top of the pole, pointing right (corners taken anticlockwise)
+    a, b, c = (-0.27, 0.46), (-0.27, 0.02), (0.42, 0.24)
+    tri = max(_side(x, y, *a, *b), _side(x, y, *b, *c), _side(x, y, *c, *a))
+    return min(pole, tri), 1.0
+
+
 # folder: (the cloth's colour at the top, at the bottom, the emblem)
 ICONS = {
     "PatchwerkForever":              ((92, 66, 50), (52, 36, 28), seam),
@@ -174,6 +190,7 @@ ICONS = {
     "PatchwerkForever_Thread_Routes":     ((42, 100, 118), (20, 54, 68), compass),
     "PatchwerkForever_Thread_Sparkle":    ((122, 58, 96), (66, 28, 54), glints),
     "PatchwerkForever_Thread_Tracker":    ((150, 108, 62), (92, 60, 32), checklist),
+    "PatchwerkForever_Thread_Races":      ((40, 112, 72), (20, 60, 38), flag),
 }
 
 

@@ -7,6 +7,7 @@
     python release.py routes        Patchwerk Forever: Thread (Routes) (four folders: the tool and its map data)
     python release.py sparkle       Patchwerk Forever: Thread (Sparkle)
     python release.py tracker       Patchwerk Forever: Thread (Tracker)
+    python release.py races         Patchwerk Forever: Thread (Races)
     python release.py dungeonjournal   Patchwerk Forever: Stitch (Dungeon Journal)
     python release.py               all of them
 
@@ -15,6 +16,7 @@ Checks the addon's folders, then writes into its release folder in the repositor
 
     <main folder>-<version>.zip    the folders, as they go into Interface/AddOns
     CurseForge-description.md      the addon's README.md
+    CurseForge-description.html    the same as HTML, which CurseForge shows as written (cf_html.py)
     CurseForge-changelog.md        the addon's CHANGELOG.md
     CurseForge-summary.txt         the one-line summary
     CurseForge-notes.txt           what to set on the project: what it requires, its logo
@@ -34,6 +36,8 @@ import shutil
 import subprocess
 import sys
 import zipfile
+
+import cf_html
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 # the repository's addons/ folder; the game's Interface/AddOns holds junctions to the folders in it
@@ -122,6 +126,16 @@ PROJECTS = {
         "needs": ("README.md", "CHANGELOG.md", "LICENSE", "Bindings.xml", "Media/icon.tga", "Link.lua"),
         "summary": "A quest tracker for WoW Forever: your quests by zone with distances, your guide's steps, "
                    "quest item buttons, recipes and a gathering list. Needs Patchwerk Forever.",
+    },
+    "races": {
+        "main": "PatchwerkForever_Thread_Races",
+        "more": [],
+        "requires": ["PatchwerkForever"],
+        "stale": PRIVATE + ("wayfinder", "pathfinder", "wayfarer"),
+        "needs": ("README.md", "CHANGELOG.md", "LICENSE", "Bindings.xml", "Media/icon.tga", "Link.lua"),
+        "summary": "Race courses of your own on WoW Forever: place checkpoints as you ride, then race them against "
+                   "the clock with a marker on each checkpoint, split times and your best run. Share them with "
+                   "your party. Needs Patchwerk Forever.",
     },
     "sparkle": {
         "main": "PatchwerkForever_Thread_Sparkle",
@@ -312,13 +326,18 @@ def build(key):
             for name in files:
                 z.writestr(folder + "/" + name, data[name])
     shutil.copyfile(os.path.join(ADDONS, main, "README.md"), os.path.join(out, "CurseForge-description.md"))
+    with open(os.path.join(ADDONS, main, "README.md"), encoding="utf-8") as f:
+        page = cf_html.to_html(f.read())
+    with open(os.path.join(out, "CurseForge-description.html"), "w", encoding="utf-8", newline="\n") as f:
+        f.write(page)
     shutil.copyfile(os.path.join(ADDONS, main, "CHANGELOG.md"), os.path.join(out, "CurseForge-changelog.md"))
     with open(os.path.join(out, "CurseForge-summary.txt"), "w", encoding="utf-8", newline="\n") as f:
         f.write(project["summary"] + "\n")
     title = toc(main)[0].get("Title", main)
     notes = ["%s %s" % (title, version), "",
              "File to upload:  %s-%s.zip" % (main, version),
-             "Description:     CurseForge-description.md",
+             "Description:     CurseForge-description.html (as HTML: put in as Markdown, CurseForge runs",
+             "                 the paragraphs together; CurseForge-description.md is the same text)",
              "Changelog:       CurseForge-changelog.md (the entry for %s)" % version,
              "Summary:         CurseForge-summary.txt",
              "Project picture: logo.png" + ("" if os.path.exists(os.path.join(out, "logo.png"))
@@ -367,9 +386,9 @@ def listing(main, out):
 # the tag a project's release commit gets, and whether its CurseForge project is there already
 TAGS = {"patchwerk": "patchwerk-forever", "consoleport": "stitch-consoleport", "melloui": "stitch-melloui",
         "melloroute": "stitch-melloroute", "routes": "thread-routes", "sparkle": "thread-sparkle",
-        "tracker": "thread-tracker", "dungeonjournal": "stitch-dungeonjournal"}
+        "tracker": "thread-tracker", "dungeonjournal": "stitch-dungeonjournal", "races": "thread-races"}
 EXISTS = {"patchwerk"}
-ORDER = ["consoleport", "melloui", "melloroute", "dungeonjournal", "routes", "sparkle", "tracker", "patchwerk"]
+ORDER = ["consoleport", "melloui", "melloroute", "dungeonjournal", "routes", "sparkle", "tracker", "races", "patchwerk"]
 
 
 def checklist():
@@ -401,7 +420,7 @@ def checklist():
                   "- **Release type:** %s" % ("Beta" if version.startswith("0.") else "Release"),
                   "- **Game version:** World of Warcraft: Forever (interface %s)" % fields.get("Interface"),
                   "- **Summary:** %s" % project["summary"],
-                  "- **Description:** `CurseForge-description.md`.  **Changelog:** the entry for %s in `CurseForge-changelog.md`" % version,
+                  "- **Description:** `CurseForge-description.html`.  **Changelog:** the entry for %s in `CurseForge-changelog.md`" % version,
                   "- **Category:** %s.  **Licence:** MIT" % fields.get("X-Category", "Miscellaneous"),
                   "- **Logo:** `logo.png`" + ("" if os.path.exists(os.path.join(out, "logo.png")) else "  (NOT THERE: run python art.py)"),
                   "- **Pictures:** %s" % (", ".join("`listing/%s`" % p for p in pictures) if pictures else "none yet"),

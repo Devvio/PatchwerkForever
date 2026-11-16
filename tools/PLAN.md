@@ -58,6 +58,37 @@ base), the sparkle split from the route planner, and MelloUI Route's additions u
   (Tyrone does not run MelloUI). RestedXP still sets `RXPG_ARROW.element` with zone, x, y, wx, wy, instance.
   Also in the repository now: the CurseForge uploader (`upload.py`, `upload_check.py`, `curseforge.json`, the
   CI workflow), and Patchwerk's flavour text at the top of each README.
+- Checked against the addons updated by 2026-11-14 (Tyrone: "check addon updates"): MelloUI 2.1.48 to 2.1.51,
+  EllesmereUI 9.8.4 to 9.8.5, DungeonJournal 2.0.4 to 2.0.5; Console Port (3.3.13) and RestedXP Guides
+  (v4.11.36) had not changed. Nothing of ours needed a change. MelloUI: every one of the 68 names the two
+  Stitches lean on is still defined, and no line defining one was taken away or changed (tag to tag in a
+  blobless clone, data files never fetched); Route.lua gained `M.Taxis` and `Beacon.Area` only, no module was
+  added (its new gamepad support, 2.1.49, is core code, not a module the trim would meet), and the game menu
+  entry is still `MelloUIGameMenuEntry`. DungeonJournal: all eight names the reader reads are there with the
+  same shapes; its 2.0.5 fix (profession quests only for characters with the profession) sits inside
+  `QuestMatchesFaction`, which the reader already asks, so the list follows it. EllesmereUI has no old copy
+  to compare with: only the names we use were looked for (`EllesmereUI_GameMenuButton`,
+  `EllesmereUI_UnlockMenuButton`, the folder `EllesmereUIQuestTracker`), and they are there. None of this was
+  tried in the game.
+  Asked the same day whether the addons have since done what the Stitches do: no. Console Port has no release
+  after 3.3.13 (30 Oct), and the two changes on its main branch since are a ring skin lookup and the MoP
+  spellbook flyout. MelloUI's Route.lua gained only `M.Taxis`, `M:DistanceLineText` and `Beacon.Area` between
+  2.1.40 and 2.1.51, so none of the Route additions is native; its game menu entry is still placed under
+  Options or the Shop with no regard for EllesmereUI's two buttons, and EllesmereUI's code does not name
+  MelloUI. Nearest to an overlap: MelloUI's Nearest Quest First and Nearest Turn In (2.1.50) beside our quest
+  run.
+- Checked against the addons updated by 2026-11-15: MelloUI 2.1.51 to 2.1.52, EllesmereUI 9.8.5 to 9.8.6,
+  DungeonJournal 2.0.5 to 2.0.7; Console Port 3.3.13 and RestedXP v4.11.36 unchanged. Nothing of ours needed a
+  change. MelloUI 2.1.52 takes its quests from the player's Questie and ships no quest data of its own: Route.lua
+  lost `Needed.*`, `Beacon.GameElsewhere` and `M:ItemFirst` (none of them ours to use); `M:ObjectivePlaces` and
+  `MelloUI:QuestTurnIn` keep their shapes but answer nil without Questie, and the quest run then falls back to
+  `C_QuestLog.GetNextWaypoint` as before. (`MelloUI:QuestTurnIn` lives in MelloUI_QuestList, which the trim
+  unticks, so with the trim on the quest run always uses the game's waypoints for turn-ins; that was so before.)
+  New modules QuestMoments and MaxDps: the trim switches them off once, as any module an update adds. The game
+  menu entry now makes room for Polestar's button only, still not EllesmereUI's, so our fix stays. Changelog has
+  no Route entry beyond dropping the First: loot line. All 68 MelloUI names still defined. DungeonJournal: the
+  eight names are there (`FDJ.QuestMatchesFaction` still exported). EllesmereUI: both menu button names and
+  `EllesmereUIQuestTracker` there. None of this was tried in the game.
 - Thread (Routes) 0.12.0: RestedXP read ahead, and the step said on screen (Tyrone, 2026-11-12: "deep dive
   routing for restedxp, read the upcoming step and direct accordingly", "with a route change, a graceful
   floating text describing the step"; of the interview he took all four read-ahead parts, the step then the

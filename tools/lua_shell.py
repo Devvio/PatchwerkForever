@@ -130,7 +130,7 @@ def main():
     stub.Fire("PLAYER_LOGIN")
     stub.Fire("PLAYER_ENTERING_WORLD", True, False)               # (as the game gives it: a login, not a reload)
     chat("login")
-    assert len(stub.settings) == 80 and stub.category and stub.front, "the settings pages were not built"
+    assert len(stub.settings) == 88 and stub.category and stub.front, "the settings pages were not built"
     assert stub.provider, "the world map layer was not attached"
 
     step("put a pin on Gadgetzan")
@@ -340,7 +340,7 @@ def main():
     assert any("/thread stop: stop routing (a route to a guide step or quest resumes" in t for t in text), text
 
     step("no pin: the route follows the RestedXP guide's arrow, step by step")
-    assert len(stub.settings) == 80, "the guide setting is missing from the settings page"
+    assert len(stub.settings) == 88, "the guide setting is missing from the settings page"
     stub.pin = None
     stub.Fire("USER_WAYPOINT_UPDATED")
     assert not ns.dest
@@ -776,11 +776,11 @@ def main():
                 assert s.variable[len(addon) + 1:] not in by_name, s.variable
                 by_name[s.variable[len(addon) + 1:]] = s
                 break
-    assert len(by_name) == 80, "expected 80 settings on the options pages, found %d" % len(by_name)
+    assert len(by_name) == 88, "expected 88 settings on the options pages, found %d" % len(by_name)
     assert "baseTellMissing" not in by_name, "the base's switch is on its front page, not a row of the game's"
     pages = sorted(stub.pages.keys())
     WANT = {"Thread: Routes": 14, "Routes: Trail": 12, "Routes: Step Text": 6, "Thread: Sparkle": 4, "Sparkle: Names": 8,
-            "Sparkle: Behind My Character": 6, "Sparkle: Looks": 30}
+            "Sparkle: Behind My Character": 6, "Sparkle: Looks": 30, "Sparkle: Loot Wisps": 8}
     assert pages == sorted(WANT), pages
     for page in pages:
         on_it = [n for n, s in by_name.items() if s.page == page]
@@ -811,8 +811,8 @@ def main():
     sdb = lua.globals().PatchwerkForever_Thread_SparkleDB
     assert sdb and not lua.globals().PatchwerkForever_Thread_RoutesDB.sparkleWas, "the sparkle keeps its things in the routes' saved data"
     buttons = list(stub.buttons.values())
-    assert sorted(b.text for b in buttons) == ["Apply", "Clear", "Defaults", "Defaults", "Show", "Show"] + ["Test"] * 5, [b.text for b in buttons]
-    assert sum(1 for s in by_name.values() if s.colour) == 11 and sum(1 for s in by_name.values() if s.choices) == 12
+    assert sorted(b.text for b in buttons) == ["Apply", "Clear", "Defaults", "Defaults", "Show", "Show"] + ["Test"] * 6, [b.text for b in buttons]
+    assert sum(1 for s in by_name.values() if s.colour) == 12 and sum(1 for s in by_name.values() if s.choices) == 14
 
     def setv(name, value):
         by_name[name].set(value)
