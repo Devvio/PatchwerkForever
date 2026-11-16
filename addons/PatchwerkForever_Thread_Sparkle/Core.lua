@@ -107,6 +107,33 @@ do
 		desc = 'Show the fade area as an oval for ten seconds. It should surround your character, and it follows the camera as you zoom.' })
 end
 
+-- the wisp that carries what you pick up into your bag (Wisp.lua)
+do
+	local page = 'Sparkle: Loot Wisps'
+	local add = function(def) def.page = page; ns.settings[#ns.settings + 1] = def end
+	add({ voice = 'Patchwerk picks a thing up. A little light takes it home to the bag.' })
+	add({ key = 'wisp', default = true, name = 'Show Loot Wisps',
+		desc = 'When an item goes into your bags, a small wisp of light flies from where it came from to that bag\'s button, and the bag glows as it lands.' })
+	add({ key = 'wispWhen', default = 'loot', name = 'Show For', parent = 'wisp',
+		choices = { { 'loot', 'Looting and gathering' }, { 'all', 'Every item' } },
+		desc = 'Looting and gathering: only items you loot, gather or pick up from an object. Every item: also items you buy, take from the mail or the bank, trade for or get as a quest reward.' })
+	add({ key = 'wispIcon', default = true, name = 'Carry Item Icon', parent = 'wisp',
+		desc = 'Show the item\'s icon riding along with the wisp.' })
+	add({ key = 'wispCombat', default = false, name = 'Hide In Combat', parent = 'wisp',
+		desc = 'Show no wisps while you are in combat.' })
+	add({ key = 'wispSize', default = 70, min = 30, max = 160, step = 5, name = 'Size', parent = 'wisp',
+		desc = 'Size of the wisp.' })
+	add({ key = 'wispSpeed', default = 100, min = 50, max = 250, step = 10, name = 'Speed', parent = 'wisp',
+		desc = 'How fast the wisp flies, in percent. At 100 it takes a little under a second.' })
+	add({ key = 'wispColour', default = 'kind', name = 'Color Mode', parent = 'wisp',
+		choices = { { 'kind', 'By object type' }, { 'fixed', 'Single color' } },
+		desc = 'Color the wisp like the sparkle of the thing it came from (green from a herb, orange from ore, and so on), or use one color for all. Items from a corpse or with no object use the single color.' })
+	add({ key = 'wispFixed', colour = true, default = 'ffffe680', name = 'Wisp Color', parent = 'wisp',
+		desc = 'Color of the wisp when Color Mode is Single color, or when the item did not come from an object.' })
+	add({ button = 'Test', name = 'Preview Wisp', click = function() ns.WispTest() end,
+		desc = 'Send a wisp from the middle of the screen to your backpack.' })
+end
+
 ---------------------------------------------------------------------------
 -- /sparkle
 ---------------------------------------------------------------------------
@@ -115,6 +142,7 @@ local function Help()
 	ns.Print('  /sparkle: show the object currently targeted for interaction, and why it does or does not sparkle')
 	ns.Print('  /sparkle ignore: add the targeted object to the ignore list')
 	ns.Print('  /sparkle undo: undo the last ignore;  /sparkle list: show the ignore list;  /sparkle clear: clear it')
+	ns.Print('  /sparkle wisp: preview a loot wisp, and say whether they are shown')
 	ns.Print('  /sparkle config: open the options')
 end
 
@@ -135,6 +163,8 @@ SlashCmdList.PATCHWERKFOREVER_SPARKLE = function(text)
 		ns.Try('ignore', ns.IgnoreSay)
 	elseif word == 'clear' then
 		ns.Try('ignore', ns.IgnoreClear)
+	elseif word == 'wisp' or word == 'wisps' then
+		ns.Try('the loot wisp', ns.WispSay)
 	elseif word == 'config' or word == 'settings' or word == 'options' then
 		if not ns.OpenSettings() then
 			ns.Print('Options are under Options > AddOns > Patchwerk Forever > Thread: Sparkle.')

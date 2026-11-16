@@ -1,0 +1,19 @@
+## Interface: 16001
+## Title: Patchwerk Forever: Thread (Races)
+## Notes: Race courses of your own: place checkpoints as you ride, then race them against the clock, with a marker on each checkpoint in the world, split times and your best run. Share a course with your party. Needs Patchwerk Forever. Type /race.
+## Author: Tyrone
+## Version: 0.1.0
+## Group: PatchwerkForever
+## X-Category: Miscellaneous
+## X-License: MIT
+## IconTexture: Interface\AddOns\PatchwerkForever_Thread_Races\Media\icon
+## X-Patchwerk-Voice: Patchwerk is not fast. Patchwerk is thorough. Patchwerk would like a head start.
+## Dependencies: PatchwerkForever
+## OptionalDeps: PatchwerkForever_Thread_Routes
+## SavedVariables: PatchwerkForever_Thread_RacesDB
+
+Link.lua
+Core.lua
+Courses.lua
+Marker.lua
+Race.lua

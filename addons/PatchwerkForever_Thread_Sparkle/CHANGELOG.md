@@ -1,5 +1,11 @@
 # Patchwerk Forever: Thread (Sparkle)
 
+## 1.1.0
+
+- **Loot wisps.** When an item goes into your bags, a small wisp of light flies from where it came from to that bag's button, with the item's icon riding along, and the bag glows as it lands. It leaves from the loot window, or from the herb, vein, chest or quest object the sparkle was on, and it takes the colour of that thing's sparkle.
+- Only what you loot, gather or pick up is carried; items bought, taken from the mail or the bank, traded or given as a quest reward are not, unless **Show For** is set to Every item. Without a bag bar (Console Port and other interfaces that hide it) the wisp flies to your open bags, or to the lower right corner.
+- A new page, **Sparkle: Loot Wisps**: Show Loot Wisps, Show For, Carry Item Icon, Hide In Combat, Size, Speed, Color Mode and Wisp Color, with a **Preview Wisp** button. `/sparkle wisp` sends one to your backpack and says whether they are shown.
+
 ## 1.0.0
 
 The first full release. Everything in 0.12.0 has been played and works.

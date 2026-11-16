@@ -97,3 +97,12 @@ Everything here is a proposal for him to pick from and reorder. Sizes are rough:
   without a mouse, the skip said in chat with an undo binding, rows that hold their order, and the
   Dungeon Journal list as a side list, and one quest list in instances (ours hides while the default
   tracker is kept there). Passes the checks; not yet tried in the game.
+- **2026-11-16: Sparkle 1.1.0, loot wisps, and Thread (Races) 0.1.0 (beta), a new tool.** Asked for as
+  "a wisp to float into the bag" and "custom race courses with markers" rendered on the ground. A wisp
+  flies from the loot window or the sparkled object to the bag the item went into (`Wisp.lua`). Races:
+  courses made by placing checkpoints as you ride, raced against the clock with splits and a best run,
+  shared with the party. An addon cannot draw in the world, so the ring is drawn on the game's waypoint
+  marker for the tracked pin (`C_Navigation.GetFrame()`, seen to exist on Forever by `/dump`), one
+  checkpoint at a time. Both pass `tools/lua_races.py`; neither has been tried in the game. To look at
+  first: where the ring sits against the game's marker (Vertical Offset), how near the game lets you get
+  before its marker goes, and whether `ITEM_PUSH` fires for gathering on Forever.

@@ -1,0 +1,11 @@
+<Bindings>
+	<Binding name="PATCHWERKFOREVER_RACES_MARK" header="PATCHWERKFOREVER_RACES" category="ADDONS">
+		PatchwerkForever_Thread_Races_Mark()
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_RACES_START" category="ADDONS">
+		PatchwerkForever_Thread_Races_Start()
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_RACES_STOP" category="ADDONS">
+		PatchwerkForever_Thread_Races_Stop()
+	</Binding>
+</Bindings>

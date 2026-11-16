@@ -332,6 +332,17 @@ local function Tuck(m)
 	m:SetAlpha(Fade(1 - covered * (1 - left)))
 end
 
+-- Keeps where on screen the thing pointed at is (in pixels), and what kind it is, for the wisp that
+-- carries what you take from it (Wisp.lua). A place the game keeps to itself is not kept.
+local function Spotted(m)
+	local x, y = m:GetCenter()
+	if not (Plain(x) and Plain(y) and type(x) == 'number' and type(y) == 'number') then return end
+	local scale = m:GetEffectiveScale()
+	local spot = ns.spot or {}
+	spot.x, spot.y, spot.kind, spot.time = x * scale, y * scale, m.kind, GetTime()
+	ns.spot = spot
+end
+
 local function NewMark()
 	local m = CreateFrame('Frame', nil, UIParent)
 	m:SetSize(100, 100)
@@ -351,6 +362,7 @@ local function NewMark()
 			self.arriving = arrived < 1
 		end
 		if self.behind then Tuck(self) end
+		if self.spotted then pcall(Spotted, self) end
 	end)
 	return m
 end
@@ -506,7 +518,7 @@ local function Update()
 	if not wanted or not plate then return Hide() end
 	if not live then live = NewMark() end
 	if not live:IsShown() or live.thing ~= name then Arrive(live) end
-	live.thing = name
+	live.thing, live.kind, live.spotted = name, kind, true
 	local look = Look(kind)
 	Dress(live, look)
 	live:SetParent(plate)
