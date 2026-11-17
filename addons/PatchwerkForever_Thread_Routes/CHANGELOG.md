@@ -1,3 +1,7 @@
+## 1.0.0
+
+The first full release. Everything in 0.17.0 has been played and works; nothing else has changed. The three map data addons are 1.0.0 too.
+
 ## 0.17.0 (beta)
 
 Polish: the things you meet every session.

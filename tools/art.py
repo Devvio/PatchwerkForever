@@ -180,6 +180,16 @@ def flag(x, y):
     return min(pole, tri), 1.0
 
 
+def speed(x, y):
+    """Thread (Plainsrunning): speed lines streaming behind a double chevron, pointing ahead."""
+    d = min(stroke(x, y, -0.50, 0.26, -0.12, 0.26, 0.045),
+            stroke(x, y, -0.58, 0.0, -0.18, 0.0, 0.045),
+            stroke(x, y, -0.50, -0.26, -0.12, -0.26, 0.045))
+    for at in (0.0, 0.26):
+        d = min(d, stroke(x, y, at, 0.32, at + 0.22, 0.0, 0.06), stroke(x, y, at + 0.22, 0.0, at, -0.32, 0.06))
+    return d, 1.0
+
+
 # folder: (the cloth's colour at the top, at the bottom, the emblem)
 ICONS = {
     "PatchwerkForever":              ((92, 66, 50), (52, 36, 28), seam),
@@ -191,6 +201,7 @@ ICONS = {
     "PatchwerkForever_Thread_Sparkle":    ((122, 58, 96), (66, 28, 54), glints),
     "PatchwerkForever_Thread_Tracker":    ((150, 108, 62), (92, 60, 32), checklist),
     "PatchwerkForever_Thread_Races":      ((40, 112, 72), (20, 60, 38), flag),
+    "PatchwerkForever_Thread_Plainsrunning": ((140, 112, 46), (80, 60, 22), speed),
 }
 
 

@@ -2,7 +2,7 @@
 ## Title: Patchwerk Forever: Thread (Races)
 ## Notes: Race courses of your own: place checkpoints as you ride, then race them against the clock, with a marker on each checkpoint in the world, split times and your best run. Share a course with your party. Needs Patchwerk Forever. Type /race.
 ## Author: Tyrone
-## Version: 0.1.0
+## Version: 1.0.0
 ## Group: PatchwerkForever
 ## X-Category: Miscellaneous
 ## X-License: MIT

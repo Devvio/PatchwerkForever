@@ -21,6 +21,7 @@ One parent and two tracks. Each addon is its own download (a CurseForge project 
 | `addons/PatchwerkForever_Thread_Routes_Kalimdor`, `_EasternKingdoms`, `_ZephrasIsle` | Routes' map data, one folder a continent, loaded on demand. Written by `tools/pack.py`; not edited by hand. They ship in Routes' zip. | Thread (Routes) |
 | `addons/PatchwerkForever_Thread_Sparkle` | **Thread (Sparkle)**: a sparkle and a name on things you can use, and a wisp that carries what you loot into your bag. | the base |
 | `addons/PatchwerkForever_Thread_Races` | **Thread (Races)**: race courses of your own: checkpoints placed as you ride, a marker on the next one in the world, split times and best runs, courses shared with your party. | the base |
+| `addons/PatchwerkForever_Thread_Plainsrunning` | **Thread (Plainsrunning)**: for Tauren: the interface fades away as Plainsrunning stacks up, then speed streaks rush across the screen; it all comes back when the run ends, a fight starts or a window opens. | the base |
 | `addons/PatchwerkForever_Thread_Tracker` | **Thread (Tracker)**: a quest tracker of our own: quests by zone, the guide's steps, item buttons, recipes, gathering. 1.0. Its history is in `tools/PLAN-tracker.md`. | the base |
 
 Each addon has its own README, changelog and licence in its folder.
@@ -81,12 +82,13 @@ The tools need Python 3 and the package `lupa` (a Lua 5.1 interpreter). Run them
 | `python lua_shell.py` | runs the base with both Thread tools through a pretend play session against a stand-in for the game |
 | `python lua_tracker.py` | runs the base with Thread (Tracker) through pretend logins against a stand-in quest log, guide, party and secure buttons (which it fails on any touch of during a fight) |
 | `python lua_races.py` | runs the base with Thread (Races) and Sparkle's loot wisp through a pretend session: a course made, raced three times and sent to a party member; items looted, gathered and bought |
+| `python lua_plainsrunning.py` | runs the base with Thread (Plainsrunning) through a pretend run: the buff stacking to 30, the interface fading and coming back for a fight, a window, typing, standing still, the buff ending, the preview, each effect, the parts kept, the camera, the run records, a problem mid-run |
 | `python lua_trips.py 1 horde` | checks Routes' planner against the prototype, trip by trip (`0 alliance` for the Eastern Kingdoms) |
 | `python lua_journeys.py` | checks Routes' journeys by boat and zeppelin against a brute-force reckoning |
 | `python build_check.py` | tries the build tool on a scratch copy: junctions, changed and removed files, broken Lua, retired folders, your own art, watching |
 | `python crossings.py` | reads the boats and zeppelins out of the game's files |
 | `python pack.py` | writes Routes' map data folders, and its boats and zeppelins, from what the tools read out of the game |
-| `python media.py` | draws the pictures Sparkle's effects and Routes' dotted trail are made of |
+| `python media.py` | draws the pictures Sparkle's effects, Routes' dotted trail and Plainsrunning's streaks are made of |
 | `python art.py` | draws the icons and logos, and takes in your own from `art/` |
 | `python build.py` | builds the addons into the game (see above) |
 | `python release.py [project]` | checks a project and builds its upload: zip, description, changelog, summary, notes on what to set on CurseForge |
@@ -100,7 +102,7 @@ Passing these says the code runs; only playing says it works. `tools/PLAN.md` re
 1. Add an entry to the addon's `CHANGELOG.md` and raise the version in its TOC (for Routes: in all four TOCs and in `tools/pack.py`). Every addon has a version of its own; raise only what changed. A change to the base's API that an addon needs means raising `api` in that addon's `Link.lua` and `P.API` in the base.
 2. Commit, then `python release.py`. Each project's upload is written to `release/<its folder>` here. The zip holds the same bytes a build puts in the game, build line included; it warns when built from files that are not committed.
 3. Upload: by hand on CurseForge, or with `python upload.py <project>` (below). `release/UPLOAD.md` and `CurseForge-notes.txt` in each release folder say what to set; every project but the base must name **Patchwerk Forever** as a required dependency.
-4. Tag the commit: `patchwerk-forever-2.0.0`, `stitch-consoleport-2.0.0`, `stitch-melloui-2.0.0`, `stitch-melloroute-2.0.0`, `thread-routes-0.11.0`, `thread-sparkle-0.11.0`, `thread-races-0.1.0`.
+4. Tag the commit: `patchwerk-forever-2.0.0`, `stitch-consoleport-2.0.0`, `stitch-melloui-2.0.0`, `stitch-melloroute-2.0.0`, `thread-routes-0.11.0`, `thread-sparkle-0.11.0`, `thread-races-1.0.0`, `thread-plainsrunning-1.0.0`.
 
 ### Uploading with the tool
 

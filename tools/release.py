@@ -8,6 +8,7 @@
     python release.py sparkle       Patchwerk Forever: Thread (Sparkle)
     python release.py tracker       Patchwerk Forever: Thread (Tracker)
     python release.py races         Patchwerk Forever: Thread (Races)
+    python release.py plains        Patchwerk Forever: Thread (Plainsrunning)
     python release.py dungeonjournal   Patchwerk Forever: Stitch (Dungeon Journal)
     python release.py               all of them
 
@@ -136,6 +137,18 @@ PROJECTS = {
         "summary": "Race courses of your own on WoW Forever: place checkpoints as you ride, then race them against "
                    "the clock with a marker on each checkpoint, split times and your best run. Share them with "
                    "your party. Needs Patchwerk Forever.",
+    },
+    "plains": {
+        "main": "PatchwerkForever_Thread_Plainsrunning",
+        "more": [],
+        "requires": ["PatchwerkForever"],
+        "stale": PRIVATE + ("wayfinder", "pathfinder", "wayfarer"),
+        "needs": ("README.md", "CHANGELOG.md", "LICENSE", "Bindings.xml", "Media/icon.tga", "Media/streak.tga",
+                  "Media/vignette.tga", "Media/wisp.tga", "Media/speck.tga", "Media/seed.tga", "Media/warp.tga",
+                  "Media/edgeglow.tga", "Link.lua"),
+        "summary": "For Tauren on WoW Forever: as Plainsrunning stacks up, the interface fades away and speed "
+                   "streaks rush past the screen. It all comes back when the run ends, a fight starts or you "
+                   "open a window. Needs Patchwerk Forever.",
     },
     "sparkle": {
         "main": "PatchwerkForever_Thread_Sparkle",
@@ -386,9 +399,10 @@ def listing(main, out):
 # the tag a project's release commit gets, and whether its CurseForge project is there already
 TAGS = {"patchwerk": "patchwerk-forever", "consoleport": "stitch-consoleport", "melloui": "stitch-melloui",
         "melloroute": "stitch-melloroute", "routes": "thread-routes", "sparkle": "thread-sparkle",
-        "tracker": "thread-tracker", "dungeonjournal": "stitch-dungeonjournal", "races": "thread-races"}
+        "tracker": "thread-tracker", "dungeonjournal": "stitch-dungeonjournal", "races": "thread-races",
+        "plains": "thread-plainsrunning"}
 EXISTS = {"patchwerk"}
-ORDER = ["consoleport", "melloui", "melloroute", "dungeonjournal", "routes", "sparkle", "tracker", "races", "patchwerk"]
+ORDER = ["consoleport", "melloui", "melloroute", "dungeonjournal", "routes", "sparkle", "tracker", "races", "plains", "patchwerk"]
 
 
 def checklist():

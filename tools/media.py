@@ -15,6 +15,13 @@ out from a formula in this file: none is copied from anywhere.
     dot       a small soft dot, for the dotted trail
     glint     a fine twinkle with hair-thin rays
     mote      a soft speck of light
+    streak    a speed line, faint at its inner end and bright toward its outer (Plainsrunning)
+    vignette  a frame darkening toward the edges, clear in the middle (Plainsrunning)
+    wisp      a soft thread of air, even along its length, for the wind gusts (Plainsrunning)
+    speck     a soft speck of dust (Plainsrunning)
+    seed      a grass seed: a soft head trailing a fine tail (Plainsrunning)
+    warp      a thin ring, for the warp rings (Plainsrunning)
+    edgeglow  a glow hugging the edges of the screen, clear in the middle (Plainsrunning)
 """
 import math
 import os
@@ -25,9 +32,14 @@ from terrain import write_png
 ADDONS = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "addons"))
 
 
+PLAINS = ("streak", "vignette", "wisp", "speck", "seed", "warp", "edgeglow")
+
+
 def out(name):
     """Where a picture goes: the Media folder of the addon that uses it."""
-    addon = "PatchwerkForever_Thread_Routes" if name == "dot" else "PatchwerkForever_Thread_Sparkle"
+    addon = ("PatchwerkForever_Thread_Routes" if name == "dot"
+             else "PatchwerkForever_Thread_Plainsrunning" if name in PLAINS
+             else "PatchwerkForever_Thread_Sparkle")
     return os.path.join(ADDONS, addon, "Media")
 
 
@@ -102,9 +114,54 @@ def mote(x, y):
     return math.exp(-(r / 0.5) ** 2) * clamp((1.0 - r) * 4)
 
 
+def streak(x, y):
+    """x along the line (-1 its inner end, 1 its outer), y across. Drawn on a Line, stretched along it."""
+    along = (x + 1) / 2.0
+    across = math.exp(-(y / 0.32) ** 2) * clamp((1 - abs(y)) * 4)
+    return across * along ** 1.6 * clamp((1.0 - x) * 10)
+
+
+def vignette(x, y):
+    """Clear in the middle, darker toward the edges and darkest in the corners (stretched over the screen)."""
+    r = math.hypot(x, y)
+    return clamp((r - 0.45) / 0.95) ** 1.5
+
+
+def wisp(x, y):
+    """x along (-1..1), y across: even along its length, soft across and at both ends (a Line, stretched)."""
+    across = math.exp(-(y / 0.36) ** 2) * clamp((1 - abs(y)) * 4)
+    return across * clamp((1 - abs(x)) * 8)
+
+
+def speck(x, y):
+    r = math.hypot(x, y)
+    return math.exp(-(r / 0.4) ** 2) * clamp((1.0 - r) * 4)
+
+
+def seed(x, y):
+    """Pointing right (+x): a soft head, and a fine tail behind it fading to nothing."""
+    head = math.exp(-(((x - 0.5) / 0.32) ** 2 + (y / 0.55) ** 2))
+    tail = math.exp(-(y / 0.13) ** 2) * clamp((x + 0.95) / 1.2) ** 1.5 * clamp((0.6 - x) * 6)
+    return clamp(head + 0.8 * tail) * clamp((1 - abs(x)) * 10) * clamp((1 - abs(y)) * 6)
+
+
+def warp(x, y):
+    r = math.hypot(x, y)
+    return math.exp(-((r - 0.9) / 0.035) ** 2) + 0.15 * math.exp(-((r - 0.84) / 0.06) ** 2) * clamp((1 - r) * 20)
+
+
+def edgeglow(x, y):
+    """Hugs the edges: a rounded square's distance (so the sides glow too, not only the corners)."""
+    d = (abs(x) ** 4 + abs(y) ** 4) ** 0.25
+    return clamp((d - 0.55) / 0.5) ** 1.7
+
+
 SHAPES = {"star": (star, 128, 128), "glow": (glow, 128, 128), "ring": (ring, 128, 128), "beam": (beam, 64, 256),
           "arcs": (arcs, 128, 128), "bracket": (bracket, 64, 64), "dot": (dot, 32, 32),
-          "glint": (glint, 64, 64), "mote": (mote, 32, 32)}
+          "glint": (glint, 64, 64), "mote": (mote, 32, 32),
+          "streak": (streak, 256, 32), "vignette": (vignette, 128, 128),
+          "wisp": (wisp, 128, 16), "speck": (speck, 32, 32), "seed": (seed, 64, 32), "warp": (warp, 256, 256),
+          "edgeglow": (edgeglow, 128, 128)}
 
 
 def draw(shape, width, height):

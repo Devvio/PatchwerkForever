@@ -1,0 +1,8 @@
+<Bindings>
+	<Binding name="PATCHWERKFOREVER_PLAINS_PEEK" header="PATCHWERKFOREVER_PLAINS" category="ADDONS" runOnUp="true">
+		PatchwerkForever_Thread_Plainsrunning_Peek(keystate)
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_PLAINS_TOGGLE" category="ADDONS">
+		PatchwerkForever_Thread_Plainsrunning_Toggle()
+	</Binding>
+</Bindings>

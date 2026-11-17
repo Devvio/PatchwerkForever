@@ -20,8 +20,6 @@ A route planner for **World of Warcraft: Forever**. It finds the way to where yo
 
 One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the settings pages, and nothing else: its map data was worked out from the game's own files, and nothing is taken from another addon.
 
-**This is a beta.** It has been played on a Horde character in Kalimdor. Routes in the Eastern Kingdoms and for Alliance characters pass the same checks outside the game but have had little play. Please report what goes wrong.
-
 ## Where it takes you
 
 With nothing else to do, you only have to pick a destination:

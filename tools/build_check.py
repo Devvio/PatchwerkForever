@@ -83,7 +83,7 @@ def main():
     os.makedirs(GAME)
     shutil.copytree(os.path.join(REAL, "addons"), os.path.join(REPO, "addons"))
     os.makedirs(TOOLS)
-    for name in ("build.py", "release.py", "art.py"):
+    for name in ("build.py", "release.py", "art.py", "cf_html.py"):
         shutil.copy(os.path.join(HERE, name), os.path.join(TOOLS, name))
     git("init", "-q")
     git("add", "-A")

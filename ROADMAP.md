@@ -106,3 +106,25 @@ Everything here is a proposal for him to pick from and reorder. Sizes are rough:
   checkpoint at a time. Both pass `tools/lua_races.py`; neither has been tried in the game. To look at
   first: where the ring sits against the game's marker (Vertical Offset), how near the game lets you get
   before its marker goes, and whether `ITEM_PUSH` fires for gathering on Forever.
+- **2026-11-16: Thread (Plainsrunning) 0.1.0 (beta), a new tool.** Asked for as "slowly fade all of the
+  UI as Plainsrunning reaches 30 charges, then overlay speed streaks across the screen". The buff is spell
+  1299038 (seen in the game, and in Forever's hotfix cache as an aura of increased speed, "Movement speed
+  increased by $w1%"); the racial passive is 1259918 and shares the name, so it is never matched. The
+  interface is faded through UIParent's alpha (allowed in a fight; nothing hidden or moved) and comes
+  back for a fight, a window, typing, standing still, death or a flight. Streaks are Lines on WorldFrame.
+  Passes `tools/lua_plainsrunning.py`; not yet tried in the game. To look at first: that every window
+  of Forever brings the interface back (the list is `WINDOWS` in `Run.lua`), how fast 30 stacks is
+  (the streaks take 1.6 times running speed as their pace), and where the streaks' centre sits.
+- **2026-11-16: Thread (Plainsrunning) 0.2.0 (beta).** Asked for as "add additional effects to choose
+  from", then chosen in an interview: four more effects (Wind Gusts, Dust And Seeds, Warp Rings, Edge
+  Glow), each its own tick box, additive, all off by default ("off only defaults. effects should be
+  additive"); Keep While Faded for the minimap, unit frames and chat, each optional and off ("these should
+  all be optional"); the camera easing back 3 yards at full speed, on by default; run records per
+  character, told only when beaten. Not picked: a speed readout, a wind sound. The kept parts use
+  SetIgnoreParentAlpha (in Forever's API docs), never on a protected frame in a fight; the camera uses
+  CameraZoomOut/In and reads GetCameraZoom a second later to take back only what it moved. Passes
+  `tools/lua_plainsrunning.py`; not yet tried in the game. To look at first: whether the game lets
+  PlayerFrame and TargetFrame ignore the parent alpha (and whether MelloUI's or Console Port's own unit
+  frames need adding to the lists in `Run.lua`), whether CameraZoomIn works in a fight without a blocked
+  action, how the new effects look over bright grass (they add light), and the hoofbeat pace of Edge
+  Glow.

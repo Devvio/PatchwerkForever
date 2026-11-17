@@ -89,6 +89,25 @@ base), the sparkle split from the route planner, and MelloUI Route's additions u
   no Route entry beyond dropping the First: loot line. All 68 MelloUI names still defined. DungeonJournal: the
   eight names are there (`FDJ.QuestMatchesFaction` still exported). EllesmereUI: both menu button names and
   `EllesmereUIQuestTracker` there. None of this was tried in the game.
+- Checked against the addons updated by 2026-11-17 (Tyrone: "check for addon updates"): Console Port 3.3.13 to
+  3.3.14 (its first release since 30 Oct), MelloUI 2.1.52 to 2.1.58, EllesmereUI 9.8.6 to 9.8.8, DungeonJournal
+  2.0.7 to 2.0.9; RestedXP v4.11.36 unchanged. Nothing of ours needed a change. Console Port: of the 31 files
+  changed none holds the bindings, `db.Radial` or the CPAPI calls the Stitch makes (`GetBindingAction`,
+  `SetBinding`, `GetInventorySlotInfo`, `LinkEnv`, `Log`). New on Forever: it watches
+  INPUT_DEVICE_INTERFACE_TRANSITION (`CPAPI.IsNativeNavigationActive`, `OnNativeNavigationChanged`), and its game
+  menu ring and mouse handling now default on but stand aside while the game's own gamepad interface is up.
+  Only the mouse and the menu ring listen to that event, so ConsolePort_World's loot window and aura rows are
+  still set up once, and InputStyle.lua stays. Its game menu default does not touch the Open Game Menu
+  Directly fix (that one is about the escape chain and GamePadCursorAutoEnable). Group loot rolls in the quick
+  menu now show on Forever too (`IsRetailVersion` in place of `IsModernVersion`). MelloUI: every name the two
+  Stitches lean on is still defined (`M.Ground.SEG`, `OPENB`, `grids`, `SWIM_REAL`, `M.ClipToCircle` among
+  them), and no line defining one was taken away in Route.lua, Core.lua or Config.lua (blobless clone, data
+  files never fetched). Its game menu entry still makes room for Polestar's button only, so our EllesmereUI
+  fix stays. New modules RolePicker, QuestTrackerPad and the Oldschool kit: the trim switches them off once.
+  MelloUI 2.1.55 added its own "Controller Forever" support with a Bindings.xml of its own. DungeonJournal:
+  the eight names the reader reads are there with the same shapes (`FDJ.TurnInSpotFor`,
+  `FDJ.QuestMatchesFaction`, `trackedDungeons` on the character's saved table). EllesmereUI: both menu button
+  names and `EllesmereUIQuestTracker` there. None of this was tried in the game.
 - Thread (Routes) 0.12.0: RestedXP read ahead, and the step said on screen (Tyrone, 2026-11-12: "deep dive
   routing for restedxp, read the upcoming step and direct accordingly", "with a route change, a graceful
   floating text describing the step"; of the interview he took all four read-ahead parts, the step then the
