@@ -39,8 +39,8 @@
       ]
     },
     "dungeonjournal": {
-      "id": 0,
-      "slug": "",
+      "id": 1812771,
+      "slug": "patchwerk-forever-stitch-dungeon-journal",
       "relations": []
     },
     "routes": {
@@ -52,16 +52,16 @@
       "slug": "patchwerk-forever-thread-sparkle"
     },
     "tracker": {
-      "id": 0,
-      "slug": ""
+      "id": 1812760,
+      "slug": "patchwerk-forever-thread-tracker"
     },
     "races": {
       "id": 0,
       "slug": ""
     },
     "plains": {
-      "id": 0,
-      "slug": ""
+      "id": 1812782,
+      "slug": "patchwerk-forever-thread-immersive-plainsrunning"
     }
   }
 }

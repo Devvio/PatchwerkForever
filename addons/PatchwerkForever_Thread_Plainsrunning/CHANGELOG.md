@@ -1,11 +1,13 @@
 # Patchwerk Forever: Thread (Immersive Plainsrunning)
 
-## 1.0.0
-
-The first release: speed mode as in 0.1.0, with everything 0.2.0 added (both listed below; neither was uploaded before). Also:
+## 1.1.0
 
 - **Tauren only.** On any other race speed mode reads nothing and does nothing; the preview still plays.
 - **No more "a problem in speed mode" in a fight.** The game now keeps some numbers secret while it restricts them, your speed among them; speed mode stopped on them. It never counts with a secret number now: a secret speed counts as the last one known, a secret aura changes nothing, and a stretch of a run whose speed is secret is not added to its yards.
+
+## 1.0.0
+
+The first release: speed mode as in 0.1.0, with everything 0.2.0 added (both listed below; neither was uploaded before).
 
 ## 0.2.0 (beta)
 
