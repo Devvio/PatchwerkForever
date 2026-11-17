@@ -132,7 +132,7 @@ def main():
     out = run(["routes"], dict(env, CF_API_TOKEN=""), expect=1)
     assert "no token" in out and not SEEN
 
-    print("the route planner: its zip, its changelog entry, beta, Forever's version, the base as a dependency")
+    print("the route planner: its zip, its changelog entry, beta or release by its version, Forever's version, the base as a dependency")
     out = run(["routes"], env)
     assert "uploaded: CurseForge's file id is 424242" in out, out
     get, post = SEEN[-2], SEEN[-1]
@@ -141,7 +141,8 @@ def main():
     meta, (name, data) = post[3], post[4]
     version = toc("PatchwerkForever_Thread_Routes")[0]["Version"]
     assert meta["displayName"] == "Patchwerk Forever: Thread (Routes) " + version, meta["displayName"]
-    assert meta["releaseType"] == "beta" and meta["changelogType"] == "markdown" and meta["gameVersions"] == [502], meta
+    kind = "beta" if version.startswith("0.") else "release"
+    assert meta["releaseType"] == kind and meta["changelogType"] == "markdown" and meta["gameVersions"] == [502], meta
     assert meta["relations"] == {"projects": [{"slug": "patchwerk-forever", "type": "requiredDependency"}]}, meta
     # (one entry: no heading of another version in it; its own sub-headings, "### ...", are part of it)
     assert meta["changelog"].strip() and not any(line.startswith("## ") for line in meta["changelog"].splitlines()),         "the changelog is not one entry"
@@ -176,8 +177,8 @@ def main():
     print("--as: the release type asked for, whatever the version; one CurseForge does not have is refused")
     run(["--as", "alpha", "consoleport"], env)
     assert SEEN[-1][1] == "/api/projects/1002/upload-file" and SEEN[-1][3]["releaseType"] == "alpha", SEEN[-1][3]
-    run(["--as", "release", "routes"], env)
-    assert SEEN[-1][3]["releaseType"] == "release"
+    run(["--as", "beta", "routes"], env)
+    assert SEEN[-1][3]["releaseType"] == "beta"
     before = len(SEEN)
     assert "alpha, beta or release" in run(["--as", "gamma", "routes"], env, expect=1)
     assert "alpha, beta or release" in run(["routes", "--as"], env, expect=1) and len(SEEN) == before

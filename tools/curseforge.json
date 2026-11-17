@@ -54,6 +54,14 @@
     "tracker": {
       "id": 0,
       "slug": ""
+    },
+    "races": {
+      "id": 0,
+      "slug": ""
+    },
+    "plains": {
+      "id": 0,
+      "slug": ""
     }
   }
 }
