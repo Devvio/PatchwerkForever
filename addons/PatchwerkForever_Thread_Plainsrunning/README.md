@@ -1,4 +1,4 @@
-# Patchwerk Forever: Thread (Plainsrunning)
+# Patchwerk Forever: Thread (Immersive Plainsrunning)
 
 **Patchwerk runs. Patchwerk runs faster. Patchwerk cannot see the buttons any more.**
 
@@ -38,7 +38,7 @@ Even while the buff lasts, the interface comes back:
 - **When you stand still** for two seconds (the seconds can be changed).
 - **When you die or take a flight.**
 
-Each can be turned off on **Thread: Plainsrunning**. Hold the **Show Interface While Held** key to see the interface for a moment; `/plains show` brings it back for the rest of the run.
+Each can be turned off on **Thread: Immersive Plainsrunning**. Hold the **Show Interface While Held** key to see the interface for a moment; `/plains show` brings it back for the rest of the run.
 
 ## Is it safe?
 

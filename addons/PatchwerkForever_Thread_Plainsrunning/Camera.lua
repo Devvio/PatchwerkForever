@@ -1,4 +1,4 @@
--- Thread (Plainsrunning): the camera eases back a little at full speed, and returns after.
+-- Thread (Immersive Plainsrunning): the camera eases back a little at full speed, and returns after.
 --
 -- It moves with the game's own CameraZoomOut and CameraZoomIn, as the mouse wheel does, so the game eases
 -- it there at its own zoom speed. It goes back by no more than it went: the game stops the camera at its

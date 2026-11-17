@@ -72,10 +72,22 @@ Hand-painted stylised fantasy game icon. A ragged square patch of warm tan parch
 Hand-painted stylised fantasy game icon. A ragged square patch of warm tan parchment-leather, its edges torn and slightly curled, pinned at each of its four corners by a big cross-stitch of glowing teal-cyan thread. Set into the middle of the patch, a large glowing teal-cyan checklist: three thick horizontal bars stacked one above the other, each with a small mark at its left end, the top two marks bold ticks and the bottom one an empty ring, like inlaid gems with a soft inner glow. Chunky faceted shapes, thick visible square brushstrokes, bold dark outline, hard edge highlights, teal rim light on the patch. Deep violet-purple painterly background, darker at the corners. Square 1:1, one centred object filling most of the frame, bold and simple enough to read at tiny size. No text, no letters, no border, no watermark.
 ```
 
+### Stitch (Dungeon Journal): `art/PatchwerkForever_Stitch_DungeonJournal/icon.png`
+
+```text
+Hand-painted stylised fantasy game icon. A ragged square patch made of two thick hides sewn together down the middle, olive-green on the left and plum-purple on the right, joined by a vertical seam of chunky copper stitches; edges torn and slightly curled; pinned at each of its four corners by a big cross-stitch of rust-orange leather cord. Set into the middle, across the seam, a large glowing teal-cyan open book seen from the front, its two pages fanned, and rising out of the pages a short dotted trail that bends once and ends in a bold exclamation mark, like inlaid gems with a soft inner glow. Chunky faceted shapes, thick visible square brushstrokes, bold dark outline, hard edge highlights, teal rim light on the patch. Deep violet-purple painterly background, darker at the corners. Square 1:1, one centred object filling most of the frame, bold and simple enough to read at tiny size. No text, no letters, no border, no watermark.
+```
+
+### Thread (Immersive Plainsrunning): `art/PatchwerkForever_Thread_Plainsrunning/icon.png`
+
+```text
+Hand-painted stylised fantasy game icon. A ragged square patch of warm tan parchment-leather, its edges torn and slightly curled, pinned at each of its four corners by a big cross-stitch of glowing teal-cyan thread. Set into the middle of the patch, a large glowing teal-cyan cloven hoofprint, two bold rounded halves, leaning forward as if mid-stride, with three long speed streaks trailing behind it to the left and two short gusts of wind curling past it, like inlaid gems with a soft inner glow. Chunky faceted shapes, thick visible square brushstrokes, bold dark outline, hard edge highlights, teal rim light on the patch. Deep violet-purple painterly background, darker at the corners. Square 1:1, one centred object filling most of the frame, bold and simple enough to read at tiny size. No text, no letters, no border, no watermark.
+```
+
 ## If a result drifts
 
 - **Too detailed to read small:** add "flat, bold emblem, no small details inside the emblem".
 - **Wrong colours:** name them again at the start: "olive-green, plum-purple, rust-orange, glowing teal-cyan, violet background".
 - **It wrote letters:** add "absolutely no writing or runes".
 - **The patch became a shield or a badge:** add "a soft, floppy, torn piece of hide, not metal, not a shield".
-- **The whole family should match:** make all six in one sitting with the same reference picture, and keep the first good one as the reference for the rest.
+- **The whole family should match:** make them all in one sitting with the same reference picture, and keep the first good one as the reference for the rest.

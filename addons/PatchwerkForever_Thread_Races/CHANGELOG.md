@@ -1,6 +1,6 @@
 # Patchwerk Forever: Thread (Races)
 
-## 1.0.0
+## 0.1.0 (beta)
 
 The first release.
 

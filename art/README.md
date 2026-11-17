@@ -9,7 +9,7 @@ The addons' icons are drawn by `tools/art.py`. A PNG put here is used in place o
 | `art/<addon folder>/<name>.png` | any other picture for that addon: `addons/<addon folder>/Media/<name>.tga` |
 | `art/<addon folder>/listing/*` | pictures for the CurseForge listing (screenshots, a banner): copied as they are to `release/<addon folder>/listing/` by `python release.py`. They do not go into the addon. |
 
-The addon folders are `PatchwerkForever`, `PatchwerkForever_Stitch_ConsolePort`, `PatchwerkForever_Stitch_MelloUI`, `PatchwerkForever_Stitch_MelloUIRoute`, `PatchwerkForever_Thread_Routes` and `PatchwerkForever_Thread_Sparkle`.
+The addon folders are `PatchwerkForever`, `PatchwerkForever_Stitch_ConsolePort`, `PatchwerkForever_Stitch_MelloUI`, `PatchwerkForever_Stitch_MelloUIRoute`, `PatchwerkForever_Stitch_DungeonJournal`, `PatchwerkForever_Thread_Routes`, `PatchwerkForever_Thread_Sparkle`, `PatchwerkForever_Thread_Tracker`, `PatchwerkForever_Thread_Races` and `PatchwerkForever_Thread_Plainsrunning`.
 
 ## What to save
 

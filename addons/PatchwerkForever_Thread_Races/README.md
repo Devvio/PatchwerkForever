@@ -16,6 +16,8 @@ Race courses of your own for **World of Warcraft: Forever**. Place checkpoints a
 
 One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the settings pages, and nothing else.
 
+**This is a beta.** It passes its checks outside the game but has not been raced in the game yet. Please report what goes wrong.
+
 ## Making a course
 
 1. Stand at the start and type `/race new <name>`. The start is placed where you stand.

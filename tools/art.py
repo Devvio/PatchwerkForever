@@ -181,7 +181,7 @@ def flag(x, y):
 
 
 def speed(x, y):
-    """Thread (Plainsrunning): speed lines streaming behind a double chevron, pointing ahead."""
+    """Thread (Immersive Plainsrunning): speed lines streaming behind a double chevron, pointing ahead."""
     d = min(stroke(x, y, -0.50, 0.26, -0.12, 0.26, 0.045),
             stroke(x, y, -0.58, 0.0, -0.18, 0.0, 0.045),
             stroke(x, y, -0.50, -0.26, -0.12, -0.26, 0.045))

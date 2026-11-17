@@ -1,4 +1,4 @@
--- Thread (Plainsrunning): its settings, the slash command and the key bindings.
+-- Thread (Immersive Plainsrunning): its settings, the slash command and the key bindings.
 --
 -- Asked for on 2026-11-16: "as Plainsrunning stacks toward 30, slowly fade all of the UI until it is
 -- completely hidden, then overlay speed streaks across the screen". Tauren in Forever have the passive
@@ -17,7 +17,7 @@
 local ADDON, ns = ...
 if not ns.linked then return end
 
-ns.TITLE = 'Patchwerk Forever: Thread (Plainsrunning)'
+ns.TITLE = 'Patchwerk Forever: Thread (Immersive Plainsrunning)'
 
 ns.BUFF = 1299038             -- the stacking speed buff
 ns.PASSIVE = 1259918          -- the racial itself, a passive with no stacks: never taken for the buff
@@ -181,7 +181,7 @@ SlashCmdList.PATCHWERKFOREVER_PLAINS = function(text)
 		ns.Try('speed mode', ns.ShowForThisRun)
 	elseif word == 'config' or word == 'settings' or word == 'options' then
 		if not ns.OpenSettings() then
-			ns.Print('Options are under Options > AddOns > Patchwerk Forever > Thread: Plainsrunning.')
+			ns.Print('Options are under Options > AddOns > Patchwerk Forever > Thread: Immersive Plainsrunning.')
 		end
 	else
 		Help()

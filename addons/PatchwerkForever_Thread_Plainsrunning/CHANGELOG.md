@@ -1,4 +1,4 @@
-# Patchwerk Forever: Thread (Plainsrunning)
+# Patchwerk Forever: Thread (Immersive Plainsrunning)
 
 ## 1.0.0
 

@@ -8,7 +8,7 @@
     python release.py sparkle       Patchwerk Forever: Thread (Sparkle)
     python release.py tracker       Patchwerk Forever: Thread (Tracker)
     python release.py races         Patchwerk Forever: Thread (Races)
-    python release.py plains        Patchwerk Forever: Thread (Plainsrunning)
+    python release.py plains        Patchwerk Forever: Thread (Immersive Plainsrunning)
     python release.py dungeonjournal   Patchwerk Forever: Stitch (Dungeon Journal)
     python release.py               all of them
 

@@ -1,4 +1,4 @@
--- Thread (Plainsrunning): the effects at full speed besides the streaks (Streaks.lua draws those, and
+-- Thread (Immersive Plainsrunning): the effects at full speed besides the streaks (Streaks.lua draws those, and
 -- calls each of these every moment one is turned on).
 --
 --   Wind Gusts      long thin ribbons of wind rippling sideways across the lower half of the screen,

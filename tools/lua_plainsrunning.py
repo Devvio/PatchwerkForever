@@ -1,4 +1,4 @@
-"""Run Thread (Plainsrunning) outside the game, on the base, against the stand-in for the game
+"""Run Thread (Immersive Plainsrunning) outside the game, on the base, against the stand-in for the game
 (wowstub.lua) with what it needs added.
 
     python lua_plainsrunning.py
@@ -184,7 +184,7 @@ def main():
     stub.Fire("PLAYER_ENTERING_WORLD", True, False)
     chat()
     pages = sorted(stub.pages.keys())
-    assert "Thread: Plainsrunning" in pages and "Plainsrunning: Effects" in pages, pages
+    assert "Thread: Immersive Plainsrunning" in pages and "Plainsrunning: Effects" in pages, pages
 
     step("the passive alone (same name, no stacks): nothing runs")
     buff(0)
@@ -526,7 +526,7 @@ def main():
     run(0.5)
     assert alpha() == 1 and not state()[2]
 
-    print("Thread (Plainsrunning): all passed.")
+    print("Thread (Immersive Plainsrunning): all passed.")
 
 
 if __name__ == "__main__":

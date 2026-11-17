@@ -1,5 +1,5 @@
 ## Interface: 16001
-## Title: Patchwerk Forever: Thread (Plainsrunning)
+## Title: Patchwerk Forever: Thread (Immersive Plainsrunning)
 ## Notes: For Tauren: as Plainsrunning stacks up, the interface fades away until only the world is left, then speed streaks (and wind, dust, rings or a glow, as you choose) rush past the screen. It all comes back the moment the run ends, a fight starts or you open a window. Needs Patchwerk Forever. Type /plains.
 ## Author: Tyrone
 ## Version: 1.0.0

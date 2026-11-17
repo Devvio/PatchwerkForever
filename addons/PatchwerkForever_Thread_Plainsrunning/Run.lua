@@ -1,4 +1,4 @@
--- Thread (Plainsrunning): the buff, and the interface fading away as it stacks up.
+-- Thread (Immersive Plainsrunning): the buff, and the interface fading away as it stacks up.
 --
 -- The stacks of the buff are read when the game says the player's auras changed (UNIT_AURA). While
 -- there is anything to do (stacks enough to fade, the interface not yet back as it was, streaks still
