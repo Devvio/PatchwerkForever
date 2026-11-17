@@ -59,8 +59,9 @@ end
 local function Count(elapsed)
 	if not run then return end
 	if OnFoot() then
-		local speed = tonumber(rawget(_G, 'GetUnitSpeed') and GetUnitSpeed('player')) or 0
-		run.yards = run.yards + speed * elapsed
+		local speed = rawget(_G, 'GetUnitSpeed') and GetUnitSpeed('player')
+		speed = ns.Plain(speed)                     -- (kept secret just now: this stretch is not counted)
+		run.yards = run.yards + ( tonumber(speed) or 0 ) * elapsed
 	end
 	if run.stacks >= ns.MAX then run.full = run.full + elapsed end
 end

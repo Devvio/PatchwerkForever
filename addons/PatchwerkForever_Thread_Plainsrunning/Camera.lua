@@ -15,7 +15,7 @@ local gained                -- yards it really went (known a moment after going)
 local start                 -- the camera's distance before it went
 local settleAt              -- when to read how far it really went
 
-local function Zoom() return rawget(_G, 'GetCameraZoom') and tonumber(GetCameraZoom()) end
+local function Zoom() return rawget(_G, 'GetCameraZoom') and tonumber(ns.Plain(GetCameraZoom())) end
 
 local function Back(yards)
 	if yards > 0 then CameraZoomIn(yards) end

@@ -14,6 +14,10 @@
 -- fight still works, a /reload always brings it back, and should anything here go wrong the alpha found
 -- is put back and speed mode stops until the next /reload.
 --
+-- Only for Tauren: on any other race nothing is read and nothing runs (the preview still plays).
+-- Numbers the game keeps secret (your speed, an aura's stacks, while it restricts them, as in a fight)
+-- are never counted with: a secret speed counts as the last one known, a secret aura changes nothing.
+--
 -- The parts you keep (Keep While Faded: the minimap and what other addons lay over it, the unit frames,
 -- the chat) are told to ignore UIParent's alpha while the interface is faded, and told what they had
 -- before once it is back. A frame the game protects is never changed in a fight: should the interface
@@ -35,16 +39,42 @@ local broken                   -- set when something went wrong: speed mode stop
 local driver
 
 ---------------------------------------------------------------------------
+-- what may be read
+---------------------------------------------------------------------------
+-- a value the game hands over as a secret is nil here: it cannot be counted with or compared
+local IsSecret = rawget(_G, 'issecretvalue')
+local function Plain(value)
+	if IsSecret and IsSecret(value) then return nil end
+	return value
+end
+ns.Plain = Plain
+
+local TAUREN = 6                            -- the race's number (UnitRace's third answer)
+
+-- @return whether this character is a Tauren, the only race with Plainsrunning
+function ns.IsTauren()
+	if not rawget(_G, 'UnitRace') then return false end
+	local _, file, id = UnitRace('player')
+	file, id = Plain(file), Plain(id)
+	return file == 'Tauren' or id == TAUREN
+end
+
+---------------------------------------------------------------------------
 -- the buff
 ---------------------------------------------------------------------------
 local function Count(n) return math.max(1, tonumber(n) or 0) end
 
--- @return the stacks of Plainsrunning's speed buff on you; 0 without it
+-- @return the stacks of Plainsrunning's speed buff on you; 0 without it; nil when the game keeps the
+-- auras secret just now (nothing is known, so nothing should change)
 local function ReadStacks()
 	local auras = rawget(_G, 'C_UnitAuras')
 	if auras and auras.GetPlayerAuraBySpellID then
 		local aura = auras.GetPlayerAuraBySpellID(ns.BUFF)
-		if aura then return Count(aura.applications) end
+		if aura then
+			local count = aura.applications
+			if IsSecret and IsSecret(count) then return nil end
+			return Count(count)
+		end
 	end
 	-- each buff in turn: the buff by its number, or by its name should its number have changed (never
 	-- the racial passive, which has the same name and no stacks)
@@ -61,6 +91,7 @@ local function ReadStacks()
 		else
 			break
 		end
+		if IsSecret and ( IsSecret(name) or IsSecret(count) or IsSecret(id) ) then return nil end
 		if id == ns.BUFF or ( name == ns.NAME and id ~= ns.PASSIVE and ( tonumber(count) or 0 ) > 0 ) then
 			return Count(count)
 		end
@@ -84,11 +115,14 @@ local function Stacks(now)
 	return stacks
 end
 
--- yards a second
+-- yards a second (while the game keeps it secret, the last speed known)
+local lastSpeed = 0
 local function Speed()
 	if test then return RUN_SPEED * ( 1 + 0.02 * Stacks(GetTime()) ) end
 	local speed = rawget(_G, 'GetUnitSpeed') and GetUnitSpeed('player')
-	return tonumber(speed) or 0
+	if IsSecret and IsSecret(speed) then return lastSpeed end
+	lastSpeed = tonumber(speed) or 0
+	return lastSpeed
 end
 ns.Speed = Speed
 
@@ -310,6 +344,7 @@ end
 
 local function Wake()
 	if broken then return end
+	if not ( ns.IsTauren() or test or fade > 0 or Keeping() ) then return end    -- (not a Tauren: nothing to do)
 	driver:Show()
 end
 ns.Wake = Wake
@@ -330,8 +365,14 @@ end)
 -- events
 ---------------------------------------------------------------------------
 local function Read()
+	if not ns.IsTauren() then
+		stacks = 0
+		return
+	end
+	local now = ReadStacks()
+	if now == nil then return end                    -- (secret just now: as it was)
 	local before = stacks
-	stacks = ReadStacks()
+	stacks = now
 	if stacks <= 0 and before > 0 then
 		held = false                                     -- (/plains show lasts one run)
 	end
@@ -386,6 +427,10 @@ end
 function ns.Say()
 	local now = GetTime()
 	local n = Stacks(now)
+	if not ns.IsTauren() then
+		ns.Print('Speed mode is for Tauren, and this character is not one, so it does nothing here. The preview still plays: /plains test.')
+		return
+	end
 	local _, _, why = Wanted(now)
 	ns.Print(( 'Speed mode is %s. Plainsrunning: %s. Interface faded %d%%.' ):format(
 		broken and 'stopped after a problem (/reload)' or ( ns.Get('enabled') and 'enabled' or 'disabled' ),

@@ -16,7 +16,7 @@ One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwer
 
 ## How it goes
 
-Plainsrunning, the Tauren racial, gives a stack of extra speed for as long as you keep moving, up to 30.
+Plainsrunning, the Tauren racial, gives a stack of extra speed for as long as you keep moving, up to 30. Speed mode runs only on Tauren: on any other race it does nothing (the preview still plays).
 
 - **Below 10 stacks** nothing changes.
 - **From 10 stacks** the interface fades a little with every stack.

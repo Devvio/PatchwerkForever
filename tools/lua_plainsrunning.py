@@ -42,6 +42,21 @@ C_UnitAuras = {
     end,
 }
 function GetUnitSpeed(unit) assert(unit == 'player') return STUB.speed end
+-- the race, and a secret number as the game hands one over while it restricts a value: any sum,
+-- comparison or joining with it fails, as in the game
+STUB.race = 'Tauren'
+function UnitRace(unit)
+    assert(unit == 'player')
+    if STUB.race == 'Tauren' then return 'Tauren', 'Tauren', 6 end
+    return 'Human', 'Human', 1
+end
+local function NoSecrets() error('attempt to perform arithmetic on a secret number value') end
+SECRET = setmetatable({}, { __add = NoSecrets, __sub = NoSecrets, __mul = NoSecrets, __div = NoSecrets,
+    __unm = NoSecrets, __mod = NoSecrets, __pow = NoSecrets, __lt = NoSecrets, __le = NoSecrets,
+    __eq = NoSecrets, __concat = NoSecrets, __len = NoSecrets })
+function issecretvalue(v) return rawequal(v, SECRET) end
+local realToNumber = tonumber
+function tonumber(v, ...) if rawequal(v, SECRET) then return v end return realToNumber(v, ...) end
 function UnitAffectingCombat(unit) return STUB.combat == true end
 function UnitIsDeadOrGhost(unit) return STUB.dead end
 function GetCurrentKeyBoardFocus() return STUB.focus end
@@ -168,10 +183,10 @@ def main():
         fade, stacks, base, running, testing = ns.State()
         return fade, stacks, running
 
-    def buff(n, spell=1299038, name="Plainsrunning"):
+    def buff(n, spell=1299038, name="Plainsrunning", secret=False):
         auras = [{"spellId": 1259918, "name": "Plainsrunning", "applications": 0}]       # the passive, always there
         if n:
-            auras.append({"spellId": spell, "name": name, "applications": n})
+            auras.append({"spellId": spell, "name": name, "applications": G.SECRET if secret else n})
         stub.auras = lua.table_from([lua.table_from(a) for a in auras])
         stub.Fire("UNIT_AURA", "player")
 
@@ -511,6 +526,53 @@ def main():
     ns.Set("recordsTell", True)
     run(0.1)
     assert not state()[2], (list(ns.State()), list(ns.CameraState()), list(streaks()))
+
+    step("a fight with the speed and the stacks kept secret: nothing counted with them, nothing breaks")
+    stub.speed = 11.0
+    buff(30)
+    run(1.5)
+    assert alpha() == 0
+    stub.combat = True
+    stub.Fire("PLAYER_REGEN_DISABLED")
+    stub.speed = G.SECRET
+    buff(30, secret=True)
+    run(1.0)
+    assert alpha() == 1 and state()[1] == 30, (alpha(), state())
+    _, db = ns.RecordsState()
+    stub.combat = False
+    stub.Fire("PLAYER_REGEN_ENABLED")
+    run(0.5)
+    stub.speed = 11.0
+    buff(30)
+    run(1.5)
+    assert alpha() == 0, alpha()
+    buff(0)
+    run(0.5)
+    chat()
+
+    step("not a Tauren: the buff is never read, nothing fades, nothing runs, not even in a fight")
+    stub.race = "Human"
+    buff(30)
+    run(2)
+    assert alpha() == 1 and state()[1] == 0 and not state()[2], state()
+    stub.combat = True
+    stub.speed = G.SECRET
+    stub.Fire("PLAYER_REGEN_DISABLED")
+    run(0.5)
+    assert not state()[2], "running on a race that is not Tauren"
+    stub.combat = False
+    stub.speed = 11.0
+    stub.Fire("PLAYER_REGEN_ENABLED")
+    slash("")
+    assert "for Tauren" in chat()
+    slash("test")
+    run(8)
+    assert alpha() == 0, "the preview did not play"
+    run(9)
+    assert alpha() == 1 and not state()[2]
+    chat()
+    buff(0)
+    stub.race = "Tauren"
 
     step("a problem in the middle of a run: the interface back, speed mode stopped, said once")
     buff(30)
