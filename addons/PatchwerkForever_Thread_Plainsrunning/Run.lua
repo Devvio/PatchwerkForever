@@ -33,6 +33,8 @@ local fade = 0                 -- how far the interface is faded now: 0 not at a
 local base                     -- UIParent's alpha before this addon touched it (nil: not touching it)
 local stacks = 0               -- of the buff, as last read
 local stillSince               -- when you last stopped moving
+local movingSince              -- when you last set off again
+local resting = false          -- the interface came back for standing still, and you have not moved for long enough since
 local peek, held = false, false
 local test                     -- when the preview began
 local broken                   -- set when something went wrong: speed mode stops
@@ -158,8 +160,27 @@ local function InFight()
 	return InCombatLockdown() or ( rawget(_G, 'UnitAffectingCombat') and UnitAffectingCombat('player') ) and true or false
 end
 
+-- standing still and moving again, followed every moment whatever else keeps the interface
+local function Moving(now)
+	if Speed() > 0.1 then
+		stillSince = nil
+		movingSince = movingSince or now
+	else
+		movingSince = nil
+		stillSince = stillSince or now
+	end
+	if not ns.Get('stillShow') then
+		resting = false
+	elseif not resting and stillSince and now - stillSince >= ns.Get('stillTime') then
+		resting = true                                   -- (stood still long enough: back)
+	elseif resting and movingSince and now - movingSince >= ns.Get('moveTime') then
+		resting = false                                  -- (moved again long enough: away again)
+	end
+end
+
 -- @return why the interface is being kept, or nil
 local function Kept(now)
+	Moving(now)
 	if not ( ns.Get('enabled') or test ) then return 'speed mode is disabled' end
 	if peek then return 'the Show Interface key is held' end
 	if held then return '/plains show' end
@@ -172,11 +193,8 @@ local function Kept(now)
 		local window = WindowOpen()
 		if window then return window == 'typing' and 'you are typing' or 'a window is open (' .. window .. ')' end
 	end
-	if Speed() > 0.1 then
-		stillSince = nil
-	else
-		stillSince = stillSince or now
-		if ns.Get('stillShow') and now - stillSince >= ns.Get('stillTime') then return 'you are standing still' end
+	if resting then
+		return movingSince and 'you have only just set off again' or 'you are standing still'
 	end
 	return nil
 end
@@ -375,6 +393,7 @@ local function Read()
 	stacks = now
 	if stacks <= 0 and before > 0 then
 		held = false                                     -- (/plains show lasts one run)
+		resting = false
 	end
 	if ns.RecordsAura and stacks ~= before then ns.RecordsAura(stacks, before) end
 	if stacks > 0 or fade > 0 or Keeping() then Wake() end

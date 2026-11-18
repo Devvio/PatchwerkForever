@@ -35,7 +35,7 @@ Even while the buff lasts, the interface comes back:
 
 - **In combat**, at once, and stays for the whole fight.
 - **When a window opens**: the map, your bags, the game menu, the options, a vendor, a quest, and so on, or while you type in chat.
-- **When you stand still** for two seconds (the seconds can be changed).
+- **When you stand still** for five seconds. It fades away again once you have been moving for five seconds, if the buff is still on you. Both can be changed (**Seconds Standing Still**, **Seconds Moving Again**).
 - **When you die or take a flight.**
 
 Each can be turned off on **Thread: Immersive Plainsrunning**. Hold the **Show Interface While Held** key to see the interface for a moment; `/plains show` brings it back for the rest of the run.

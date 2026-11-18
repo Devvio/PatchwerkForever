@@ -43,8 +43,10 @@ ns.settings = {
 		desc = 'Bring the interface back while the map, your bags, a menu or any other window is open, or while you type in chat.' },
 	{ key = 'stillShow', default = true, name = 'When Standing Still',
 		desc = 'Bring the interface back when you stop moving, even while the buff lasts.' },
-	{ key = 'stillTime', default = 2, min = 0, max = 10, step = 1, name = 'Seconds Standing Still', parent = 'stillShow',
+	{ key = 'stillTime', default = 5, min = 0, max = 10, step = 1, name = 'Seconds Standing Still', parent = 'stillShow',
 		desc = 'How long you must stand still before the interface comes back.' },
+	{ key = 'moveTime', default = 5, min = 0, max = 10, step = 1, name = 'Seconds Moving Again', parent = 'stillShow',
+		desc = 'Once the interface has come back for standing still, how long you must move again before it fades away again (while the buff lasts).' },
 	{ key = 'deadShow', default = true, name = 'When You Die Or Take A Flight',
 		desc = 'Bring the interface back when you die or take a flight.' },
 

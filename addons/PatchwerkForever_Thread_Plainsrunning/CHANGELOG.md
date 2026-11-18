@@ -1,5 +1,9 @@
 # Patchwerk Forever: Thread (Immersive Plainsrunning)
 
+## 1.2.0
+
+- **Standing still for five seconds** brings the interface back (it was two). **Once you move again for five seconds**, it fades away again, if Plainsrunning is still on you; before, it faded away the moment you moved. The new setting **Seconds Moving Again** changes that wait, from 0 to 10 seconds.
+
 ## 1.1.0
 
 - **Tauren only.** On any other race speed mode reads nothing and does nothing; the preview still plays.

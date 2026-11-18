@@ -236,16 +236,32 @@ def main():
     assert dict(ns.EffectsShown()) == {"wind": 0, "dust": 0, "rings": 0, "glow": 0}, "an effect on by default"
     run(5)                                                   # (streaks fly out and start again)
 
-    step("standing still: the interface comes back after two seconds, the streaks go, the camera comes in")
+    step("standing still: the interface comes back after five seconds, the streaks go, the camera comes in")
     stub.speed = 0
-    run(1.0)
+    run(4.5)
     assert alpha() == 0
-    run(1.5)
+    run(1.0)
     assert alpha() == 1, alpha()
     assert streaks()[1] == 0
     assert G.STUB.zoom == 15, G.STUB.zoom
+
+    step("moving again: the interface stays for five seconds, then fades away again; a stop in between starts it over")
     stub.speed = 11.0
+    run(3.0)
+    assert alpha() == 1, "faded before five seconds of moving"
+    stub.speed = 0
+    run(1.0)                                                 # (a short stop: still back, and the five seconds start over)
+    stub.speed = 11.0
+    run(4.5)
+    assert alpha() == 1, "the stop did not start the five seconds over"
     run(1.5)
+    assert alpha() == 0, alpha()
+
+    step("a short stop (under five seconds): the interface stays away")
+    stub.speed = 0
+    run(3.0)
+    stub.speed = 11.0
+    run(0.5)
     assert alpha() == 0
 
     step("the map open: back; closed: gone again")
