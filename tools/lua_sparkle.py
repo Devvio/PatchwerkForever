@@ -167,7 +167,7 @@ def main():
     assert "Mailbox (Other Object): not sparkling: Include All Interactable Objects is disabled." in chat()
     slash("debug")
     text = chat()
-    assert "Game interact settings: SoftTargetInteract 1" in text and "Cursor_Crosshair_Interact_64" in text, text
+    assert "Game interact settings: SoftTargetInteract 3" in text and "Cursor_Crosshair_Interact_64" in text, text
 
     step("the name Above Icon hangs over the game's icon when it shows, else over the nameplate")
     herb()
@@ -322,6 +322,26 @@ def main():
     point_at(None, None, None)
     stub.Fire("PLAYER_LOGOUT")
     assert cvars.SoftTargetNameplateInteract == "0", "the original was lost"
+
+    step("Sparkle With Keyboard And Mouse: the game's Enable Interact Key on while sparkles are, put back after")
+    assert cvars.SoftTargetInteract == "1", "the interact setting not put back at logout"
+    stub.Fire("PLAYER_LOGIN")
+    assert cvars.SoftTargetInteract == "3"
+    sp.Set("sparkleKeyboard", False)
+    assert cvars.SoftTargetInteract == "1", "disabling the option did not put the game's setting back"
+    slash("status")
+    assert "or when Sparkle With Keyboard And Mouse is enabled" in chat()
+    sp.Set("sparkleKeyboard", True)
+    assert cvars.SoftTargetInteract == "3"
+    sp.Set("sparkle", False)
+    assert cvars.SoftTargetInteract == "1", "disabling sparkles did not put it back"
+    sp.Set("sparkle", True)
+    stub.Fire("PLAYER_LOGOUT")
+    cvars.SoftTargetInteract = "2"                                 # keyboard and mouse only: already enough
+    stub.Fire("PLAYER_LOGIN")
+    assert cvars.SoftTargetInteract == "2", "a setting that already includes the keyboard was changed"
+    stub.Fire("PLAYER_LOGOUT")
+    assert cvars.SoftTargetInteract == "2"
 
     step("the subtle preset names the page")
     [b for b in stub.buttons.values() if b.name == "Apply Subtle Preset"][0].click()

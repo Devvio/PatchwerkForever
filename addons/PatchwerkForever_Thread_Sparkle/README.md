@@ -18,7 +18,7 @@ A sparkle on things you can use, for **World of Warcraft: Forever**. As you come
 
 One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the options pages, and nothing else.
 
-It follows the object the game's own interact key would use, so it works best with that key or a gamepad. Nothing is read off the minimap and nothing is searched for: the game says what the object is.
+It follows the object the game's own interact key would use: one at a time, the one in front of you. With keyboard and mouse the game only picks one while its **Enable Interact Key** option is on, so Sparkle turns that on for you (**Sparkle With Keyboard And Mouse**, below). Nothing is read off the minimap and nothing is searched for: the game says what the object is.
 
 ## What you can change
 
@@ -39,6 +39,8 @@ Only what you loot, gather or pick up is carried, not what you buy, take from th
 ## The game's own settings
 
 While **Enable Sparkles** is on, two of the game's own settings are turned on (`SoftTargetNameplateInteract` and `SoftTargetIconGameObject`), because without them there is nothing to hang the sparkle on. Disabling it puts them back as they were, and so does every logout or reload, so disabling or removing the addon leaves the game as it was; the next login turns them on again. If the game turns one off by itself, Sparkle turns it back on once and says so in chat.
+
+**Sparkle With Keyboard And Mouse** (on to begin with) keeps a third the same way: the game's **Enable Interact Key** (Options → Controls, `SoftTargetInteract`). Without it the game picks an object only for a gamepad, so with keyboard and mouse nothing would sparkle. You do not need to bind the interact key. Gamepad play is not changed, and disabling the option puts the game's setting back.
 
 With **Patchwerk Forever: Thread (Routes)** installed too, an herb or a vein is known by name from the nodes you have gathered, as well as by the game's cursor.
 

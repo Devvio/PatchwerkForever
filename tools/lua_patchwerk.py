@@ -989,6 +989,22 @@ def main():
     assert R.Lead(R, 2) is True and G.Read(G, 0, "route").lines[1].text.endswith(names[1]), (names, G.Read(G, 0, "route").lines[1].text)
     assert R.Remove(R, 1) is True and R.Clear(R) is True and len(R.Entries(R)) == 0
     assert G.Read(G, 0, "route") is None
+    # a hand-in waits (2.7.1): finished Wolf Pelts first in the list at 100 yards; another quest's objective
+    # at 30 yards goes first, the hand-in next; one only a little nearer does not; a hand-in clicked is not put off
+    s.lua.execute("STUB.QuestAt(7003, 'Boar Ribs', 1, -30, 0); STUB.complete[7001] = true")
+    R.Add(R, s.lua.eval("{ kind = 'quest', id = 7001 }"))
+    R.Add(R, s.lua.eval("{ kind = 'quest', id = 7003 }"))
+    info = G.Read(G, 9, "route")
+    assert info.lines[1].text == "Do: Boar Ribs", info.lines[1].text
+    assert [a.lines[1].text for a in info.after.values()] == ["Turn in: Wolf Pelts"], [a.lines[1].text for a in info.after.values()]
+    # clicking the hand-in (the stop after) goes there and skips nothing
+    assert G.Go(G, info, 1) is True and G.Read(G, 0, "route").lines[1].text == "Turn in: Wolf Pelts"
+    assert R.Clear(R) is True
+    s.lua.execute("STUB.QuestAt(7003, 'Boar Ribs', 1, -90, 0)")
+    R.Add(R, s.lua.eval("{ kind = 'quest', id = 7001 }"))
+    R.Add(R, s.lua.eval("{ kind = 'quest', id = 7003 }"))
+    assert G.Read(G, 0, "route").lines[1].text == "Turn in: Wolf Pelts", "a hand-in put off for a stop only a little nearer"
+    assert R.Clear(R) is True
     assert s.chat() == [], s.chat()
 
     step("2.7.0: what is followed (Following), percent sliders, a tool's errors said once each and three to a label")

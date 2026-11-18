@@ -63,6 +63,8 @@ Skipping a guide step is done by the guide addon itself, as a click in its own w
 
 A list of stops you build yourself, followed in your order: quests in your log, Dungeon Journal quests you have not picked up yet, and your map pin. A quest handed in or abandoned leaves it by itself. It is kept for each character.
 
+A hand-in can wait: when the stop you are on is a quest to turn in and another quest's objective, or a quest to pick up, further down the list is clearly nearer, that goes first. The hand-in follows when that is done or once it is the nearer of the two. A hand-in you click yourself is not put off.
+
 - **Adding**: Add To My Route in a quest's right-click menu, or on a stop of the Dungeon Journal list; Add All Tracked Quests and Add Map Pin on the My Route heading's right-click menu; or the Add Quest To My Route key binding, for the quest under the quest arrow.
 - **At the top**, the stop it goes to next and its zone, and while My Route is followed, the way there as Thread (Routes) finds it ("Fly from Crossroads to Thunder Bluff (3 min in all)").
 - **Each stop** shows its number, its name, what to do there (Accept, In progress, Turn in, Go to, No place known) and how far it is. Click it to go there first; right-click it for Go Here First, Move Up, Move Down, Move To Top, Quest Details and Remove.

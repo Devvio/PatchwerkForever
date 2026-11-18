@@ -18,7 +18,9 @@ local P = ns.P;
 --                                     take the quest it becomes a 'quest' stop
 --     { kind = 'spot', map =, x =, y =, label = }   a place (your map pin, added)
 -- A quest handed in or abandoned leaves the list by itself, and so
--- does a map spot once you reach it.
+-- does a map spot once you reach it. A hand-in can wait: while a
+-- quest's objective or pickup further on is clearly nearer, it goes
+-- first (2.7.1).
 --
 --     PatchwerkForever.MyRoute:Entries()          the stops, each a copy with name, state and place filled in
 --     PatchwerkForever.MyRoute:Add(stop, at)      at the end, or at position `at`; false when already in it
@@ -47,6 +49,8 @@ local startKey, startAt;
 local last = { index = 0, order = {} };
 local cache = { at = -1 };                -- the stops as last worked out (Entries), for a moment
 local reaching = {};                      -- map spots reached, to be taken off the list
+local detour;                             -- the key of the stop gone to before a hand-in (Sooner)
+local NEARER_YARDS, NEARER_SHARE = 15, 0.15;
 
 local function Ask(fn, ...)
 	if ( type(fn) ~= 'function' ) then return nil end;
@@ -348,36 +352,81 @@ local function Followed(all)
 	return out;
 end
 
+-- Yards from where you stand, on your continent; nil elsewhere (or where the game gives no place).
+local function Yards(one, px, py, here)
+	if not ( px and one.map and one.map == here ) then return nil end;
+	return math.sqrt(( one.x - px ) ^ 2 + ( one.y - py ) ^ 2);
+end
+
+-- a nearer than b by enough to change course: 15 yards, or 15 percent when that is more (as the
+-- tracker's quest order), so two places about as near do not take turns
+local function ClearlyNearer(a, b)
+	if not a then return false end;
+	if not b then return true end;
+	return a < b - math.max(NEARER_YARDS, b * NEARER_SHARE);
+end
+
+-- A quest to turn in can wait. While the stop you are on is a hand-in, a quest's objective or a quest to
+-- pick up further on in the list that is clearly nearer goes first; then the hand-in, or the next such
+-- stop on the way. Once one is gone to it keeps the lead until the hand-in is clearly nearer than it.
+-- A hand-in you chose yourself (a click, Go Here First) is not put off.
+local function Sooner(all, head, px, py, here)
+	if ( head.state ~= 'done' or head.key == startKey ) then detour = nil; return head end;
+	if not px then return head end;
+	local far = Yards(head, px, py, here);
+	local best, near, kept, keptAt;
+	for _, one in ipairs(all) do
+		if ( one ~= head and ( one.state == 'todo' or one.state == 'pickup' ) and one.map
+		and not skipped[one.key] and not reaching[one.key] ) then
+			local d = Yards(one, px, py, here);
+			if d then
+				if ( not near or d < near ) then best, near = one, d end;
+				if ( one.key == detour ) then kept, keptAt = one, d end;
+			end
+		end
+	end
+	-- the one gone to stays ahead of a stop only a little nearer, and of the hand-in unless it is clearly nearer
+	if ( kept and not ClearlyNearer(near, keptAt) ) then best, near = kept, keptAt end;
+	if ( best and ( best == kept and not ClearlyNearer(far, near) or best ~= kept and ClearlyNearer(near, far) ) ) then
+		detour = best.key;
+		return best;
+	end
+	detour = nil;
+	return head;
+end
+
 local function Read(count)
 	local all = Followed(MyRoute:Entries());
 	local px, py, here = P.Guides.Here();
 	-- the stop to go to: the first with a place that is not skipped (a map spot you stand on is done)
-	local now;
+	local head;
 	for _, one in ipairs(all) do
 		if ( one.map and not skipped[one.key] and not reaching[one.key] ) then
 			if ( one.kind == 'spot' and px and one.map == here
 			and ( one.x - px ) ^ 2 + ( one.y - py ) ^ 2 <= REACHED ^ 2 ) then
 				Reach(one.key);
 			else
-				now = one;
+				head = one;
 				break;
 			end
 		end
 	end
-	if not now then
+	if not head then
 		last = { index = 0, order = {} };
+		detour = nil;
 		return nil;
 	end
+	local now = Sooner(all, head, px, py, here);
 	local info = Step(now, now.index);
 	info.guide = 'My Route';
 	info.total = #all;
 	info.key = ('route:%s:%d:%d'):format(now.key, math.floor(now.x + 0.5), math.floor(now.y + 0.5));
 	info.ahead, info.after, info.items = {}, {}, {};
+	-- the stops after: on from the one you are on (the hand-in put off comes next), the one gone to left out
 	local order, seen = { now.key }, false;
 	for _, one in ipairs(all) do
-		if ( one == now ) then
-			seen = true;
-		elseif ( seen and not skipped[one.key] and not reaching[one.key] ) then
+		if ( one == head ) then seen = true end;
+		if ( seen and one ~= now and not skipped[one.key] and not reaching[one.key] ) then
 			order[#order + 1] = one.key;
 			if ( #info.after < count ) then
 				local step = Step(one, one.index);
@@ -386,7 +435,7 @@ local function Read(count)
 			end
 		end
 	end
-	last = { index = now.index, order = order };
+	last = { index = now.index, order = order, sooner = now ~= head };
 	return info;
 end
 
@@ -407,7 +456,8 @@ local function Go(index)
 	local target = MyRoute:Entries()[tonumber(index) or 0];
 	if not ( target and last.order[1] ) then return false end;
 	if ( target.key == last.order[1] ) then return false end;
-	if ( target.key == last.order[2] ) then
+	-- (while a hand-in is put off, the stop after is that hand-in: a click on it goes there, skipping nothing)
+	if ( target.key == last.order[2] and not last.sooner ) then
 		local key = last.order[1];
 		skipped[key] = true;
 		if ( startKey == key ) then startKey = nil end;

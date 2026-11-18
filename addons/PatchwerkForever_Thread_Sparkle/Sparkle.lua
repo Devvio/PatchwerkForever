@@ -20,12 +20,17 @@
 -- SoftTargetIconGameObject. What they were is kept (PatchwerkForever_Thread_SparkleDB.sparkleWas) and
 -- put back when the setting is disabled, and at every logout or reload, so that disabling or removing
 -- the addon leaves the game as it was; the login after turns them on again.
+--
+-- With Sparkle With Keyboard And Mouse (on to begin with) a third is kept the same way: SoftTargetInteract,
+-- which the game's Enable Interact Key option sets. At 1 (its default) the game only picks an object for
+-- a gamepad; at 3 for keyboard and mouse as well (2, keyboard and mouse only, is left as it is).
 local ADDON, ns = ...
 if not ns.linked then return end
 
 local UNIT = 'softinteract'
 local MEDIA = 'Interface\\AddOns\\' .. ADDON .. '\\Media\\'
 local NEEDS = { SoftTargetNameplateInteract = '1', SoftTargetIconGameObject = '1' }
+local INTERACT, INTERACT_ON = 'SoftTargetInteract', '3'   -- (Enum.SoftTargetEnableFlags.Any)
 local FONTS = { friz = 'Fonts\\FRIZQT__.TTF', arial = 'Fonts\\ARIALN.TTF', morpheus = 'Fonts\\MORPHEUS.TTF',
 	skurri = 'Fonts\\SKURRI.TTF' }
 local OUTLINES = { none = '', thin = 'OUTLINE', thick = 'THICKOUTLINE' }
@@ -539,14 +544,24 @@ end
 ---------------------------------------------------------------------------
 -- The game's own settings it needs
 ---------------------------------------------------------------------------
+-- Does the interact setting already include keyboard and mouse (2 or 3)?
+local function Keyboard(value)
+	local mode = tonumber(value)
+	return mode == 2 or mode == 3
+end
+
 local function Needs(on)
 	local db = PatchwerkForever_Thread_SparkleDB
 	if not (db and GetCVar and SetCVar) then return end
 	db.sparkleWas = db.sparkleWas or {}
-	for name, value in pairs(NEEDS) do
+	local wanted = {}
+	for name, value in pairs(NEEDS) do wanted[name] = value end
+	wanted[INTERACT] = INTERACT_ON
+	for name, value in pairs(wanted) do
 		local now = GetCVar(name)
-		if on then
-			if now ~= nil and now ~= value then
+		local want = on and (name ~= INTERACT or ns.Get('sparkleKeyboard'))
+		if want then
+			if now ~= nil and now ~= value and not (name == INTERACT and Keyboard(now)) then
 				if db.sparkleWas[name] == nil then db.sparkleWas[name] = now end
 				pcall(SetCVar, name, value)
 			end
@@ -941,9 +956,8 @@ function ns.SparkleSay()
 		local barred = Barred()
 		if barred then ns.Print('Sparkles are hidden now: ' .. barred .. '.') end
 		-- (0 and 1: the game targets objects for a gamepad only; 2 and 3 include the keyboard)
-		local mode = tonumber(GetCVar and GetCVar('SoftTargetInteract'))
-		if mode == 0 or mode == 1 then
-			ns.Print(('With keyboard and mouse the game only targets objects when "%s" is on in its Controls options.')
+		if not Keyboard(GetCVar and GetCVar(INTERACT)) then
+			ns.Print(('With keyboard and mouse the game only targets objects when "%s" is on in its Controls options, or when Sparkle With Keyboard And Mouse is enabled.')
 				:format(rawget(_G, 'ENABLE_INTERACT_TEXT') or 'Enable Interact Key'))
 		end
 	end
@@ -1006,6 +1020,7 @@ end)
 ns.On('PLAYER_LOGOUT', function() Needs(false) end)
 ns.OnSetting(function(key, value)
 	if key == 'sparkle' then Needs(value) end
+	if key == 'sparkleKeyboard' then Needs(ns.Get('sparkle')) end
 	if key:find('^sparkle') or key:find('^look%.') or key:find('^name') then Refresh() end
 	Follow(key)
 	if where and where:IsShown() and key:find('^sparkleBehind.') then Linger() end

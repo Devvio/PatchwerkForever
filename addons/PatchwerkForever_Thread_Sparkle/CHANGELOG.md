@@ -1,5 +1,9 @@
 # Patchwerk Forever: Thread (Sparkle)
 
+## 1.3.0
+
+- **Sparkles with keyboard and mouse.** The game picks an object to interact with only for a gamepad unless its **Enable Interact Key** option (Options → Controls) is on, so with keyboard and mouse nothing sparkled. The new **Sparkle With Keyboard And Mouse** option, on to begin with, turns it on while sparkles are enabled and puts it back when you disable either or log out, as with the other two game settings. Gamepad play is not changed. `/sparkle status` names the option when the game's setting is off.
+
 ## 1.2.0
 
 - A key bound while this addon is not running (its base too old) does nothing instead of giving an error.

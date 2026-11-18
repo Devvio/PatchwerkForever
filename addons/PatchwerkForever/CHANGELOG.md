@@ -1,5 +1,9 @@
 # Patchwerk Forever
 
+## 2.7.1
+
+- **My Route puts a hand-in off for nearer work.** When the stop you are on is a finished quest to turn in, and another quest's objective or a quest to pick up further down the list is clearly nearer (15 yards, or 15 percent when that is more), the route goes there first and comes back for the hand-in. A hand-in you click or choose with Go Here First is not put off.
+
 ## 2.7.0
 
 - For addon authors: `Following:SetTravel(words)` (the way there, in words, kept as `info.travel` until the destination changes), `Guides.ZoneName(uiMap)` and `Guides.QuestZone(id)`; My Route's stops carry their `zone`, and a part's `Kind` can give one as the fifth answer of `Place`.

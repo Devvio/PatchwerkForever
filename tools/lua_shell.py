@@ -183,7 +183,7 @@ def main():
     stub.Fire("PLAYER_LOGIN")
     stub.Fire("PLAYER_ENTERING_WORLD", True, False)               # (as the game gives it: a login, not a reload)
     chat("login")
-    assert len(stub.settings) == 90 and stub.category and stub.front, "the settings pages were not built"
+    assert len(stub.settings) == 91 and stub.category and stub.front, "the settings pages were not built"
     assert stub.provider, "the world map layer was not attached"
 
     step("put a pin on Gadgetzan")
@@ -396,7 +396,7 @@ def main():
     assert any("/thread stop: stop routing (a route to a guide step or quest resumes" in t for t in text), text
 
     step("no pin: the route follows the RestedXP guide's arrow, step by step")
-    assert len(stub.settings) == 90, "the guide setting is missing from the settings page"
+    assert len(stub.settings) == 91, "the guide setting is missing from the settings page"
     stub.pin = None
     stub.Fire("USER_WAYPOINT_UPDATED")
     assert not ns.dest
@@ -898,10 +898,10 @@ def main():
                 assert s.variable[len(addon) + 1:] not in by_name, s.variable
                 by_name[s.variable[len(addon) + 1:]] = s
                 break
-    assert len(by_name) == 90, "expected 90 settings on the options pages, found %d" % len(by_name)
+    assert len(by_name) == 91, "expected 91 settings on the options pages, found %d" % len(by_name)
     assert "baseTellMissing" not in by_name, "the base's switch is on its front page, not a row of the game's"
     pages = sorted(stub.pages.keys())
-    WANT = {"Thread: Routes": 16, "Routes: Trail": 12, "Routes: Step Text": 6, "Thread: Sparkle": 4, "Sparkle: Names": 8,
+    WANT = {"Thread: Routes": 16, "Routes: Trail": 12, "Routes: Step Text": 6, "Thread: Sparkle": 5, "Sparkle: Names": 8,
             "Sparkle: Behind My Character": 6, "Sparkle: Appearance": 30, "Sparkle: Loot Wisps": 8}
     assert pages == sorted(WANT), pages
     for page in pages:

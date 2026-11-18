@@ -64,7 +64,7 @@ Only what is running is offered. A gathering run, your map pin and a quest or li
 
 ## My Route on the world map
 
-My Route is a list of stops you put in your own order: quests in your log, Dungeon Journal quests not yet taken, and map spots. It is kept for each character, by Patchwerk Forever; Thread (Tracker) has its editor.
+My Route is a list of stops you put in your own order: quests in your log, Dungeon Journal quests not yet taken, and map spots. It is kept for each character, by Patchwerk Forever; Thread (Tracker) has its editor. A quest to turn in waits while another stop's objective or pickup is clearly nearer.
 
 - **Numbered marks.** While My Route is your focus or the list you selected, its stops are marked on the world map, 1, 2, 3, in the list's order (only those on the map shown).
 - **Right-click a mark** for **Go Here First**, **Move Earlier**, **Move Later** and **Remove**. A left-click goes there first.

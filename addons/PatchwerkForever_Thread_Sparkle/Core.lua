@@ -31,7 +31,9 @@ local COLOR_MODES = { { 'kind', 'By Object Type' }, { 'fixed', 'Single Color' } 
 
 ns.settings = {
 	{ key = 'sparkle', default = true, name = 'Enable Sparkles',
-		desc = 'Show a sparkle on the nearest herb, ore node, chest or quest object as you approach it. While enabled, two game settings are turned on to give objects a nameplate; they are put back when you disable this or log out.' },
+		desc = 'Show a sparkle on the nearest herb, ore node, chest or quest object as you approach it. While enabled, two game settings are turned on to give objects a nameplate (and a third with Sparkle With Keyboard And Mouse); they are put back when you disable this or log out.' },
+	{ key = 'sparkleKeyboard', default = true, name = 'Sparkle With Keyboard And Mouse', parent = 'sparkle',
+		desc = 'Turn on the game\'s Enable Interact Key (Options > Controls) while sparkles are enabled. Without it the game only picks an object for a gamepad, so nothing sparkles with keyboard and mouse. It is put back when you disable this or log out. Gamepad play is not changed.' },
 	{ key = 'sparkleAll', default = false, name = 'Include All Interactable Objects', parent = 'sparkle',
 		desc = 'Also show sparkles on mailboxes, doors, anvils and similar objects.' },
 	{ key = 'sparkleCombat', default = false, name = 'Hide In Combat', parent = 'sparkle',
