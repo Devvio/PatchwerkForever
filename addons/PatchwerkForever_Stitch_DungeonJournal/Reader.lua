@@ -241,7 +241,7 @@ local function Read(count)
 	local index = math.min(math.max(total, 1), done + 1);
 	local info = {
 		guide = 'Dungeon Journal' .. ( #names == 1 and ( ': ' .. names[1] ) or '' ),
-		index = index, total = math.max(total, index),
+		index = index, total = math.max(total, index), quest = now.quest,
 		kind = now.kind, lines = now.lines, map = now.map, x = now.x, y = now.y,
 		key = ('%s:%s:%d:%d'):format(tostring(now.quest or 'arrow'), now.kind, math.floor(now.x + 0.5), math.floor(now.y + 0.5)),
 		ahead = {}, after = {}, items = {},
@@ -251,7 +251,7 @@ local function Read(count)
 		local stop = stops[i];
 		order[i] = stop.quest or false;
 		if ( i - 1 <= count ) then
-			local step = { index = index + i - 1, kind = stop.kind, lines = stop.lines, map = stop.map, x = stop.x, y = stop.y };
+			local step = { index = index + i - 1, kind = stop.kind, lines = stop.lines, map = stop.map, x = stop.x, y = stop.y, quest = stop.quest };
 			info.ahead[#info.ahead + 1] = step;
 			info.after[#info.after + 1] = step;
 		end
@@ -286,10 +286,44 @@ local function Go(index)
 	return false;
 end
 
+-- The quest of a step, as My Route keeps it: where the journal sends you for it now (to pick it up,
+-- or to what must be done first), and its name. (Patchwerk Forever 2.6.0 and later.)
+local function QuestOf(id)
+	local journal = Journal();
+	if not journal then return nil end;
+	for _, dungeon in pairs(journal.DB) do
+		for _, quest in ipairs(type(dungeon) == 'table' and type(dungeon.quests) == 'table' and dungeon.quests or {}) do
+			if ( type(quest) == 'table' and quest.id == id ) then return journal, quest end;
+		end
+	end
+	return nil;
+end
+
+if P.MyRoute then
+	P.MyRoute:Kind(SOURCE, {
+		Name = function(stop)
+			local _, quest = QuestOf(stop.id);
+			return quest and tostring(quest.name) or nil;
+		end,
+		Place = function(stop)
+			local journal, quest = QuestOf(stop.id);
+			if not journal then return nil end;
+			-- (a quest of the other side is never routed to)
+			if not ForMySide(journal, quest, Ask(UnitFactionGroup, 'player')) then return nil end;
+			local found = StopFor(journal, quest);
+			if not found then return nil end;
+			local label = found.lines[1] and found.lines[1].text;
+			return found.map, found.x, found.y, label;
+		end,
+	});
+end
+
 Guides:Register(SOURCE, {
 	name = 'Dungeon Journal',
 	Read = Read,
 	Go = Go,
+	-- (a choice to focus on while the journal is running and the list is enabled, even with nothing to say)
+	Running = function() return Journal() ~= nil and ns:GetSetting('djList') and true or false end,
 	Leads = function() return ns:GetSetting('djLeads') and true or false end,
 	-- (a side list unless set to lead: with no guide running it is not followed until selected)
 	Side = function() return not ns:GetSetting('djLeads') end,

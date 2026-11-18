@@ -159,3 +159,62 @@ function Guides.Here()
 	if not x then return nil end;
 	return x, y, map;
 end
+
+-- For readers: where the game marks a quest in your log (its next objective, or whoever takes it in once
+-- it is done), as continent, world x, world y; nothing when the game shows no mark for it.
+function Guides.QuestPlace(id)
+	if not ( C_QuestLog and type(C_QuestLog.GetQuestsOnMap) == 'function' ) then return nil end;
+	local tried = {};
+	local function On(uiMap)
+		if ( type(uiMap) ~= 'number' or uiMap == 0 or tried[uiMap] ) then return nil end;
+		tried[uiMap] = true;
+		local ok, list = pcall(C_QuestLog.GetQuestsOnMap, uiMap);
+		for _, q in ipairs(ok and type(list) == 'table' and list or {}) do
+			if ( type(q) == 'table' and q.questID == id ) then return Guides.WorldOf(uiMap, q.x, q.y) end;
+		end
+		return nil;
+	end
+	local get = rawget(_G, 'GetQuestUiMapID');
+	local best = C_Map and C_Map.GetBestMapForUnit;
+	local function Try(fn, ...)
+		if ( type(fn) ~= 'function' ) then return nil end;
+		local ok, uiMap = pcall(fn, ...);
+		if ok then return On(uiMap) end;
+		return nil;
+	end
+	-- the map it is to be done on, the map the game would open for it, the map you are on
+	local map, x, y = Try(get, id, true);
+	if not map then map, x, y = Try(get, id) end;
+	if not map then map, x, y = Try(best, 'player') end;
+	return map, x, y;
+end
+
+-- A short order through places: the nearest to where you stand first, then always the nearest to the
+-- one before; those on another continent after, in the order given; those with no place last, in the
+-- order given. list: anything; Where(item) gives its continent, world x, world y, or nothing.
+-- Returns a new list.
+function Guides.ShortOrder(list, Where)
+	local px, py, here = Guides.Here();
+	local left, out, lost = {}, {}, {};
+	for _, item in ipairs(list) do
+		local map, x, y = Where(item);
+		if map then left[#left + 1] = { item = item, map = map, x = x, y = y } else lost[#lost + 1] = item end;
+	end
+	local at = { map = here, x = px, y = py };
+	while ( #left > 0 ) do
+		local best, far;
+		for i, one in ipairs(left) do
+			local d;
+			if ( at.x and one.map == at.map ) then
+				d = ( one.x - at.x ) ^ 2 + ( one.y - at.y ) ^ 2;
+			else
+				d = 1e15 + i;                   -- (another continent, or nowhere known yet: as given)
+			end
+			if ( not far or d < far ) then best, far = i, d end;
+		end
+		at = table.remove(left, best);
+		out[#out + 1] = at.item;
+	end
+	for _, item in ipairs(lost) do out[#out + 1] = item end
+	return out;
+end

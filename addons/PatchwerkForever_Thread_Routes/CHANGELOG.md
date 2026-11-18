@@ -1,3 +1,27 @@
+## 1.1.0
+
+Needs Patchwerk Forever with API 5 (the focus and My Route).
+
+### Focus: you choose what the route follows
+- **A focus** is your standing choice of what the route follows by itself: **Auto** (your guide or your tracked quests, by the Priority setting, as before), **RestedXP**, **Dungeon Journal**, **Quests** (tracked quests only) or **My Route**. Kept for each character.
+- What comes first, highest first: a gathering run, your map pin or `/thread to` spot, a quest or list you selected, the focus, then Auto.
+- A focus you chose is followed even with Follow RestedXP Guide or Follow Tracked Quests switched off.
+- When the focus has nowhere to send you, the route follows Auto and says so once in chat, until the focus changes or has somewhere to go again.
+- A change of focus is said on screen: "Following: Dungeon Journal".
+- New: `/thread focus` (which focus is in use, and which can be chosen) and `/thread focus auto | rxp | dj | quests | route`.
+- New key bindings: **Next Focus**, and **Focus: Auto**, **Focus: RestedXP**, **Focus: Dungeon Journal**, **Focus: Quests**, **Focus: My Route** (also in Console Port's binding list).
+- The route changes the moment the focus, your selection or My Route changes, instead of at the next half-second check.
+
+### On the world map
+- **A focus button** at the map's top right: the focuses to choose from (the one in use checked), **Edit My Route** (with Thread (Tracker)) and **Add Map Pin To My Route**. New setting: **Focus Button On The World Map**.
+- **My Route's stops are numbered on the map** while My Route is your focus or selected. Right-click a mark for Go Here First, Move Earlier, Move Later and Remove; a left-click goes there first. New setting: **Show My Route On The World Map**.
+
+### The quest log
+- **A + beside each quest** in the world map's quest log adds it to My Route (a check mark takes it out again), and the quest's right-click menu has **Add To My Route** / **Remove From My Route**.
+
+### Fixed
+- Starting a gathering run with `/thread gather` now ends a quest or list you had selected, as starting one from Thread (Tracker) does.
+
 ## 1.0.0
 
 The first full release. Everything in 0.17.0 has been played and works; nothing else has changed. The three map data addons are 1.0.0 too.

@@ -2,7 +2,7 @@
 ## Title: Patchwerk Forever: Stitch (Dungeon Journal)
 ## Notes: For DungeonJournal on WoW Forever: the quests of the dungeons you track in it become a list to route through, from one quest giver to the next. Needs Patchwerk Forever and DungeonJournal; Thread (Routes) leads the way and Thread (Tracker) lists it.
 ## Author: Tyrone
-## Version: 1.0.2
+## Version: 1.1.0
 ## Group: PatchwerkForever
 ## IconTexture: Interface\AddOns\PatchwerkForever_Stitch_DungeonJournal\Media\icon
 ## X-Patchwerk-Voice: The big book knows who has the jobs. Patchwerk reads over its shoulder.

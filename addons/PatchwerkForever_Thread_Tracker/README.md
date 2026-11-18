@@ -22,9 +22,11 @@ Version 1.0. One piece is marked experimental and starts switched off: dungeon o
 
 ## What it lists
 
+- **Focus buttons** along its top: one small button for each route you can follow (Auto, RestedXP, the Dungeon Journal list, Quests, My Route), only for what is installed and running. The one in use is lit and named beside them; click another to follow it, or right-click the row for a menu. Thread (Routes) follows the focus. It is kept for each character.
+- **My Route**: your own stops in your own order (see below), above your quests.
 - **A second list beside your guide**, with Patchwerk Forever: Stitch (Dungeon Journal): the quests of the dungeons you track in DungeonJournal, in a section of their own. Click it to route along it; click again to go back to your guide.
 - **Your guide's steps**, when a guide addon runs (RestedXP): the step you are on with its lines, the next few steps dimmed under it, and in the heading the guide's name, "step 34 of 120" and a thin bar.
-- **The quests you track**, under the zone each belongs to. The zone you are in comes first, and within a zone the nearest quest. Two quests about as near as each other keep their rows until one is clearly nearer (about 15 yards or 15 percent), so the distances shown can be a little out of order for a moment; the quest item buttons hold their order the same way. Other orders are a setting: one list nearest first, ready ones first, or as the game has them.
+- **The quests you track**, under the zone each belongs to. The zone you are in comes first, and within a zone the nearest quest. Two quests about as near as each other keep their rows until one is clearly nearer (about 15 yards or 15 percent), so the distances shown can be a little out of order for a moment; the quest item buttons hold their order the same way. Other orders are a setting: one list nearest first, ready ones first, **Shortest Trip** (a short path through them, the nearest first and then each next nearest the one before, worked out again when a quest comes, goes or is done), or as the game has them.
 - **For each quest**: its level in the game's colour for its difficulty, its kind (elite, dungeon, daily, group), how many yards away it is, and its objectives. A count goes from red to green as it fills. A timed quest shows the time left.
 - **Quests ready to hand in** leave the list for a short group at its foot, each saying where to take it. The game's own watch list is not changed.
 - **Who in your party has a quest**, under it. For party members who run this tracker too, how far along they are.
@@ -32,18 +34,34 @@ Version 1.0. One piece is marked experimental and starts switched off: dungeon o
 - **Gathering**, with Thread (Routes) installed: the nearest herb and ore spots you have gathered from before.
 - **A dungeon's stages**, where the game runs a place in stages. Untried; off until you tick it.
 
+## My Route
+
+A list of stops you build yourself, followed in your order: quests in your log, Dungeon Journal quests you have not picked up yet, and your map pin. A quest handed in or abandoned leaves it by itself. It is kept for each character.
+
+- **Adding**: Add To My Route in a quest's right-click menu, or on a stop of the Dungeon Journal list; Add All Tracked Quests and Add Map Pin on the My Route heading's right-click menu; or the Add Quest To My Route key binding, for the quest under the quest arrow.
+- **Each stop** shows its number, its name, what to do there (Accept, In progress, Turn in, Go to, No place known) and how far it is. Click it to go there first; right-click it for Go Here First, Move Up, Move Down, Move To Top, Quest Details and Remove.
+- **Drag and drop**: drag a stop to another place. A ghost of the row follows the pointer and a gold line shows where it will land. Let go away from the list, or press Escape, to cancel.
+- **Order For Me** puts the stops in a short order: nearest first, then each next stop nearest the one before.
+- **The My Route window** (Edit My Route on the heading's menu, `/tracker route`, or the Open My Route key binding): numbered rows with a grip, the name, the zone and the distance, a cross to remove a stop, and Order For Me, Add Tracked Quests, Clear and Close. Drag rows to reorder them; click one to select it. Escape closes it, and it opens where you last left it. Another addon can open it beside the world map.
+- **Following it**: click the My Route focus button, or click a stop. Route To Next Quest and Route To Previous Quest then walk its stops.
+- **Without a mouse**: the menus' Move entries, and the Move My Route Stop Up and Move My Route Stop Down key bindings, which move the stop you last clicked or selected.
+
 ## Clicks
 
 | On | Click | Does |
 |---|---|---|
 | a quest | left | chooses it: a side path off the main track (your guide, or your nearest quest). Thread (Routes) goes there first, even while a guide runs, and the game's arrow is put on it. A second click goes back to the main track |
 | a quest | shift-left | opens it to read |
-| a quest | right | a menu: follow, read, share with the party, stop tracking, abandon (the game asks first) |
+| a quest | right | a menu: follow, read, add to or remove from My Route, share with the party, stop tracking, abandon (the game asks first) |
+| a focus button | left | follows that route; right: the same choices as a menu |
+| a My Route stop | left | goes there first; right: Go Here First, Move Up, Move Down, Move To Top, Quest Details, Remove; drag: moves it |
+| the My Route heading | right | Edit My Route, Order For Me, Add All Tracked Quests, Add Map Pin, Clear |
 | the guide's step | left | skips it; right: skip, or back one step |
 | a later guide step | left | goes to that step |
 | a recipe | left | opens it; right: stop tracking |
 | a gathering spot | left | leads you to the nearest of that kind and on to the next at each; a second click stops |
 | a heading | left | folds its section |
+| a Dungeon Journal stop | right | adds its quest to My Route (with the list's own entries) |
 
 A bar beside a block shows what is being followed: your guide's step, the quest you chose, or the gathering run.
 
@@ -54,7 +72,7 @@ Skipping a guide step is done by the guide addon itself, as a click in its own w
 A quest that gives you an item to use gets a button in a strip beside the tracker, the nearest quest's item first. The items your guide's step wants used (a hearthstone) follow them.
 
 - **Without a mouse**: bind "Route To Next Quest" and "Route To Previous Quest" (Key Bindings, under AddOns) to step through the list; one step past either end returns to your main route. In a list longer than its height, the quest you step to is scrolled into view, and back on the main route the list returns to its top.
-- **Also in Key Bindings, under AddOns**: "Scroll Tracker Up" and "Scroll Tracker Down" for a list longer than its height, and "Undo Skipped Guide Step", which does what `/tracker back` does.
+- **Also in Key Bindings, under AddOns**: "Scroll Tracker Up" and "Scroll Tracker Down" for a list longer than its height, "Undo Skipped Guide Step", which does what `/tracker back` does, and for My Route "Add Quest To My Route", "Move My Route Stop Up", "Move My Route Stop Down" and "Open My Route". While My Route is the focus, "Route To Next Quest" and "Route To Previous Quest" walk its stops.
 - **A key or gamepad button** can be bound to "Use Nearest Quest Item" (Key Bindings, under AddOns). It only ever uses a quest's item, never the guide's.
 - **In a fight the strip does not change.** The game does not let an addon show, hide or move such buttons then. What changed meanwhile is applied when the fight is over, so the binding uses the item that was nearest when the fight began.
 
@@ -91,7 +109,7 @@ While this one is shown, the game's tracker is made invisible and lets clicks th
 |---|---|
 | Thread: Tracker | on or off, the game's tracker, width, the tallest it grows, its place, stepping back |
 | Tracker: Quests | the order, the ready group, levels, kinds, distance, progress colours, the flash, the party, following the nearest |
-| Tracker: Guide | the guide's steps, how many after, skipping by a click, the step's items, RestedXP's window |
+| Tracker: Guide | the guide's steps, how many after, skipping by a click, the step's items, RestedXP's window; the focus buttons; My Route |
 | Tracker: More | item buttons, recipes, the gathering list, a dungeon's stages |
 | Tracker: Appearance | size, the size of the writing, the background, the colours |
 
@@ -105,6 +123,7 @@ While this one is shown, the game's tracker is made invisible and lets clicks th
 | `/tracker fold` | folds it up, or opens it again |
 | `/tracker next` / `previous` | routes to the next or previous quest in the list |
 | `/tracker back` | takes back the last guide step skipped by a click |
+| `/tracker route` | opens or closes the My Route window |
 | `/tracker config` | opens the settings |
 
 ## Credits

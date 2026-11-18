@@ -51,8 +51,8 @@ ns.settings = {
 		desc = 'List your tracked quests and their objectives.' },
 	{ page = QUESTS, key = 'order', default = 'zone', name = 'Sort Order',
 		choices = { { 'zone', 'By zone (current zone first)' }, { 'near', 'By distance' },
-			{ 'ready', 'Completed first, then by zone' }, { 'game', 'Default order' } },
-		desc = 'How quests are sorted.' },
+			{ 'ready', 'Completed first, then by zone' }, { 'short', 'Shortest Trip' }, { 'game', 'Default order' } },
+		desc = 'How quests are sorted. Shortest Trip lists them in a short path: the nearest first, then each next quest nearest to the one before. It is worked out again when a quest is added, removed or completed. Route To Next Quest and Route To Previous Quest follow the order shown.' },
 	{ page = QUESTS, key = 'readyGroup', default = true, name = 'Group Completed Quests',
 		desc = 'Move quests that are ready to turn in to a separate group at the bottom of the list. Your tracked quests are not changed.' },
 	{ page = QUESTS, header = true, name = 'Quest Details' },
@@ -79,6 +79,7 @@ ns.settings = {
 
 	-- the guide
 	{ page = GUIDE, voice = 'The clever book says where to go. Patchwerk reads the pictures.' },
+	{ page = GUIDE, header = true, name = 'Guide Steps' },
 	{ page = GUIDE, key = 'guide', default = true, name = 'Show Guide Steps',
 		desc = 'Show the current step of your guide addon (RestedXP) above your quests, with the guide name and your progress.' },
 	{ page = GUIDE, key = 'guideAhead', default = 3, min = 0, max = 8, step = 1, name = 'Upcoming Steps',
@@ -91,6 +92,13 @@ ns.settings = {
 		desc = 'Add buttons for items the current step uses (such as your hearthstone) to the quest item bar.' },
 	{ page = GUIDE, key = 'guideHide', default = false, name = 'Hide RestedXP Window',
 		desc = 'Hide the RestedXP guide window while the tracker shows the guide. RestedXP settings are not changed, and its arrow and item buttons stay visible.' },
+
+	{ page = GUIDE, header = true, name = 'Focus' },
+	{ page = GUIDE, key = 'focusBar', default = true, name = 'Show Focus Buttons',
+		desc = 'Show a row of buttons at the top of the tracker, one for each route you can follow: Auto, your guide (RestedXP), the Dungeon Journal list, Quests and My Route. Click one to follow it; right-click the row for the same choices as a menu.' },
+	{ page = GUIDE, header = true, name = 'My Route' },
+	{ page = GUIDE, key = 'myRoute', default = true, name = 'Show My Route',
+		desc = 'List My Route, your own stops in your own order, above your quests. Right-click a quest and choose Add To My Route to add it; drag the stops to reorder them, or right-click the heading to open the My Route window.' },
 
 	-- item buttons, recipes, gathering, dungeons
 	{ page = MORE, voice = 'Pockets, pots and flowers. All the small jobs.' },
@@ -147,6 +155,7 @@ local function Help()
 	ns.Print('  /tracker fold: collapse or expand all sections')
 	ns.Print('  /tracker next, /tracker previous: route to the next or previous quest in the list')
 	ns.Print('  /tracker back: undo the last guide step you skipped by clicking')
+	ns.Print('  /tracker route: open or close the My Route window')
 	ns.Print('  /tracker config: open the options')
 	ns.Print('  In the list: click a quest to route to it, shift-click for details, right-click for more.')
 end
@@ -172,6 +181,8 @@ SlashCmdList.PATCHWERKFOREVER_TRACKER = function(text)
 		ns.Try('the previous quest', ns.Cycle, -1)
 	elseif word == 'back' then
 		ns.Try('back', ns.GuideBack)
+	elseif word == 'route' then
+		ns.Try('My Route', ns.OpenRoute)
 	elseif word == 'config' or word == 'settings' or word == 'options' then
 		if not ns.OpenSettings() then
 			ns.Print('Options are under Options > AddOns > Patchwerk Forever > Thread: Tracker.')
@@ -191,9 +202,17 @@ BINDING_NAME_PATCHWERKFOREVER_TRACKER_PREV = 'Route To Previous Quest'
 BINDING_NAME_PATCHWERKFOREVER_TRACKER_SCROLL_UP = 'Scroll Tracker Up'
 BINDING_NAME_PATCHWERKFOREVER_TRACKER_SCROLL_DOWN = 'Scroll Tracker Down'
 BINDING_NAME_PATCHWERKFOREVER_TRACKER_BACK = 'Undo Skipped Guide Step'
+BINDING_NAME_PATCHWERKFOREVER_TRACKER_ROUTE_ADD = 'Add Quest To My Route'
+BINDING_NAME_PATCHWERKFOREVER_TRACKER_ROUTE_UP = 'Move My Route Stop Up'
+BINDING_NAME_PATCHWERKFOREVER_TRACKER_ROUTE_DOWN = 'Move My Route Stop Down'
+BINDING_NAME_PATCHWERKFOREVER_TRACKER_ROUTE_OPEN = 'Open My Route'
 function PatchwerkForever_Thread_Tracker_Fold() ns.Try('fold', ns.Fold) end
 function PatchwerkForever_Thread_Tracker_Next() ns.Try('the next quest', ns.Cycle, 1) end
 function PatchwerkForever_Thread_Tracker_Previous() ns.Try('the previous quest', ns.Cycle, -1) end
 function PatchwerkForever_Thread_Tracker_ScrollUp() ns.Try('scrolling', ns.Scroll, -1) end
 function PatchwerkForever_Thread_Tracker_ScrollDown() ns.Try('scrolling', ns.Scroll, 1) end
 function PatchwerkForever_Thread_Tracker_Back() ns.Try('back', ns.GuideBack) end
+function PatchwerkForever_Thread_Tracker_RouteAdd() ns.Try('My Route', ns.RouteAddAtHand) end
+function PatchwerkForever_Thread_Tracker_RouteUp() ns.Try('My Route', ns.RouteNudge, -1) end
+function PatchwerkForever_Thread_Tracker_RouteDown() ns.Try('My Route', ns.RouteNudge, 1) end
+function PatchwerkForever_Thread_Tracker_RouteOpen() ns.Try('My Route', ns.OpenRoute) end

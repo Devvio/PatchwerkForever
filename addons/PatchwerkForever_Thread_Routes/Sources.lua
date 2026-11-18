@@ -24,12 +24,23 @@
 -- its own, and the way on from there back to the guide is drawn fainter. Choosing it again, or
 -- handing the quest in, gives the main track back. A second guide's list can be chosen the same
 -- way (the Dungeon Journal's quests): it is then followed step after step, as the main guide is.
+--
+-- Between the two stands the focus (the base's Focus.lua): your standing choice of what the main track
+-- is. 'auto' is the main track as above; 'quests' your tracked quests only; a guide reader's id
+-- ('rxp', 'fdj', 'route' for My Route) that reader's list only, followed as a chosen guide is. So,
+-- highest first: a gathering run, your pin or spot, a choice, the focus, then the main track by the
+-- Priority setting. You chose the focus yourself, so the settings that switch the guide or the quests
+-- off do not hold it back. With nowhere to send you, the focus gives way to the main track, and that
+-- is said in chat once (until the focus changes, or has somewhere to go again).
 local ADDON, ns = ...
 if not ns.linked then return end
 
 local EVERY = 0.5         -- seconds between looks
 local SAME = 5            -- yards within which two places are the same place
 local STALE = 5           -- seconds a quest's place is kept before the game is asked again
+-- seconds a focus must have had nowhere to send you before that is said (a guide addon that is still
+-- loading has nothing to say for a moment after login); a focus you have just chosen is said at once
+local SETTLE = 3
 -- yards you must leave a place you had reached before it is routed to again (a quest's mark is the
 -- middle of an area you wander about in; a guide's step is a spot)
 local BACK = { rxp = 40, quest = 120 }
@@ -233,8 +244,59 @@ end
 ---------------------------------------------------------------------------
 local FIND = { rxp = GuideTarget, quest = QuestTarget }
 
+-- The focus in use: 'auto', 'quests' or a guide reader's id.
+local function FocusNow()
+	local Focus = ns.Base.Focus
+	if not (Focus and Focus.Get) then return 'auto' end
+	local ok, id = pcall(Focus.Get, Focus)
+	return ok and type(id) == 'string' and id or 'auto'
+end
+
+local function FocusName(id)
+	local Focus = ns.Base.Focus
+	local ok, name = pcall(Focus.Name, Focus, id)
+	return ok and type(name) == 'string' and name or tostring(id)
+end
+
+-- Where the focus sends you: what gives it ('rxp' for any guide reader, 'quest'), map, world x, world y;
+-- 'rxp' alone for a guide's step with no place (said on screen); nothing when it has nowhere to send
+-- you from here. A reader is read as a chosen guide is, with its steps ahead.
+local function FocusTarget(id, here)
+	if id == 'quests' then
+		local map, x, y = QuestTarget()
+		if map and (here == nil or map == here or ns.CanCross(map)) then return 'quest', map, x, y end
+		return nil
+	end
+	guide = Guides:Read(ns.Get('rxpAhead') or 0, id)
+	if guide then
+		guide.words = Guides.Words(guide)
+		OnFootInstead(guide)
+		if guide.map and (here == nil or guide.map == here or ns.CanCross(guide.map)) then
+			return 'rxp', guide.map, guide.x, guide.y
+		end
+		if not guide.map and guide.kind ~= 'place' then return 'rxp' end
+	end
+	guide = nil
+	return nil
+end
+
+-- That the focus has nowhere to send you is said once: fell.id is the focus it was said of (or is
+-- waited on), fell.since when that began, fell.told once it is said; fell.now to say it at once (the
+-- focus was just chosen). Forgotten when the focus changes or has somewhere to go again.
+local fell = {}
+local function FellBack(id)
+	if fell.id ~= id then fell = { id = id, since = GetTime(), now = fell.now } end
+	if fell.told or (not fell.now and GetTime() - fell.since < SETTLE) then return end
+	fell.told = true
+	if id == 'quests' then
+		ns.Print('No tracked quest to follow for now; following your guide instead.')
+	else
+		ns.Print(('Nothing to follow in %s for now; following your guide and quests.'):format(FocusName(id)))
+	end
+end
+
 -- The place to go when you have not said: what gives it ('rxp' or 'quest'), map, world x, world y,
--- and true when it is a quest you chose yourself.
+-- and true when it is a quest you chose yourself ('guide' for a guide you chose).
 local function Target()
 	local _, _, here = ns.Place()
 	local order = ns.Get('sourceFirst') == 'quest' and QUEST_FIRST or GUIDE_FIRST
@@ -273,8 +335,19 @@ local function Target()
 			quest.dirty, quest.at = false, now
 			return 'quest', pick.map, pick.x, pick.y, true
 		end
-		-- (the game gives it no place you can go to: the main track keeps the say)
+		-- (the game gives it no place you can go to: the focus or the main track keeps the say)
 	end
+	-- the focus: your standing choice of the main track, whatever the settings for the guide and quests say
+	local focus = FocusNow()
+	if focus ~= 'auto' then
+		local source, map, x, y = FocusTarget(focus, here)
+		if source then
+			fell = {}
+			return source, map, x, y
+		end
+		FellBack(focus)
+	end
+	guide = nil
 	for _, name in ipairs(order) do
 		if ns.Get(SETTING[name]) then
 			local map, x, y = FIND[name]()
@@ -304,8 +377,16 @@ end
 
 -- On a side path: the main track drawn fainter on from where the side path ends, so you see the way
 -- back to your guide. (With that way found ahead of time, the trail changes at once when you go back.)
+-- With a guide reader as the focus, the way back is to that one's step.
 local function LookBack(from)
-	local main = ns.Get('rxp') and (ns.Get('rxpAhead') or 0) > 0 and Guides:Read(ns.Get('rxpAhead')) or nil
+	local focus, ahead = FocusNow(), ns.Get('rxpAhead') or 0
+	local main
+	if focus ~= 'auto' and focus ~= 'quests' then
+		main = ahead > 0 and Guides:Read(ahead, focus) or nil
+	end
+	if not (main and main.map) then
+		main = ns.Get('rxp') and ahead > 0 and Guides:Read(ahead) or nil
+	end
 	if not (main and main.map and from) then return ns.Ahead.Set({}) end
 	local travel = ns.Get('rxpTravel')
 	local chain = { { map = from.map, x = from.x, y = from.y, kind = 'place' },
@@ -325,6 +406,19 @@ end
 -- of one step), and neither is said again when you are led back to a place you had reached. Your own
 -- pin or a gathering run in between forgets it, so what leads again after them is said.
 local said
+
+-- "Following: <the focus>", to be said on screen once the focus has changed: above the words of what
+-- is gone to next where there are new ones, alone where there are none (Focus:OnChange, below).
+local following
+
+-- The words of a step with that line above them, where it is waiting (and then it is said).
+local function WithFollowing(lines)
+	if not following then return lines end
+	local out = { following }
+	for _, text in ipairs(lines or {}) do out[#out + 1] = text end
+	following = nil
+	return out
+end
 
 -- A line of a step without its numbers: a count that has gone up ("3/10") makes no new line.
 local function Plain(text)
@@ -402,7 +496,7 @@ local function Look()
 		end
 		if not Told() then
 			Note()
-			ns.FloatStep(guide.words)
+			ns.FloatStep(WithFollowing(guide.words))
 		end
 		-- (nothing is drawn on ahead: there is no telling from here where the next walk begins)
 		ns.Ahead.Set({})
@@ -458,6 +552,11 @@ local function Look()
 	local told
 	if guide then told = Told() elseif more then told = ToldQuest(map, x, y) end
 	if told and more then more.quiet = true end
+	-- (a focus just chosen: said above these words, which are then shown even if they have been before)
+	if following then
+		more = more or {}
+		more.following, more.quiet, following = following, nil, nil
+	end
 	ns.SetDestination(map, x, y, false, false, source, more)
 	if not told then
 		if guide then Note(ns.dest) elseif more then NoteQuest(ns.dest) end
@@ -520,6 +619,10 @@ function ns.QuestSay()
 	if source == 'quest' then
 		ns.Print(('Following: "%s"%s%s.'):format(Title(quest.id), quest.stop and ' (via the next waypoint)' or '',
 			Picked() == quest.id and ' (selected by you; click it again to return to your main route)' or ''))
+	elseif source == 'rxp' and guide and guide.source ~= 'rxp' then
+		ns.Print(('Following: %s.'):format(tostring(guide.reader or guide.source)))
+	elseif source == 'rxp' and FocusNow() == 'rxp' then
+		ns.Print('Following: your RestedXP guide (it is your focus).')
 	elseif source == 'rxp' then
 		ns.Print('Following: your RestedXP guide (it has priority; change this in the options).')
 	elseif ns.dest and not ns.dest.source then
@@ -537,12 +640,63 @@ for _, event in ipairs({ 'SUPER_TRACKING_CHANGED', 'QUEST_WATCH_LIST_CHANGED', '
 	ns.Try('listening for ' .. event, ns.On, event, Dirty)
 end
 
+-- A look now, besides the one twice a second: when the focus, the choice or My Route changes, so the
+-- route follows at once. A look that leads to another (a choice that lapses while it is read tells its
+-- listeners, us among them) is made after it, not inside it.
+local started, looking, again = false, false, false
+local function LookNow()
+	if not started then return end
+	if looking then
+		again = true
+		return
+	end
+	looking = true
+	for _ = 1, 3 do
+		again = false
+		ns.Try('following your guide and quests', Look)
+		if not again then break end
+	end
+	looking = false
+end
+ns.LookNow = LookNow
+
 ns.On('PLAYER_LOGIN', function()
-	C_Timer.NewTicker(EVERY, function() ns.Try('following your guide and quests', Look) end)
+	started = true
+	C_Timer.NewTicker(EVERY, LookNow)
 end)
 ns.OnSetting(function(key)
 	if key == 'rxp' or key == 'quests' or key == 'questPick' or key == 'sourceFirst' or key == 'rxpTravel' or key == 'rxpAhead' then
 		quest.dirty = true
-		Look()
+		LookNow()
 	end
 end)
+
+local Base = ns.Base
+if Base.Focus and Base.Focus.OnChange then
+	Base.Focus:OnChange(function(id)
+		fell = { now = true }
+		quest.dirty = true
+		following = 'Following: ' .. FocusName(id)
+		LookNow()
+		-- (nothing new to go to, so nothing new said: the line on its own)
+		if following then
+			local line = following
+			following = nil
+			if started then ns.FloatStep({ line }) end
+		end
+		if ns.RedrawWorldMap then ns.RedrawWorldMap() end
+	end)
+end
+if Base.Choice and Base.Choice.OnChange then
+	Base.Choice:OnChange(function()
+		quest.dirty = true
+		LookNow()
+		if ns.RedrawWorldMap then ns.RedrawWorldMap() end
+	end)
+end
+if Base.MyRoute and Base.MyRoute.OnChange then
+	Base.MyRoute:OnChange(function()
+		LookNow()
+		if ns.RedrawWorldMap then ns.RedrawWorldMap() end
+	end)
+end

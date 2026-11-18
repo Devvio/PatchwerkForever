@@ -15,8 +15,15 @@
 -- or nothing when the section has nothing to show. Of a block: `note` is written on the right of
 -- its title (a distance); `click` makes it take the mouse and is called with 'LeftButton' or
 -- 'RightButton'; `mark` draws a bar beside it (the quest being followed); `small` makes it a quiet
--- heading inside the section (a zone's name). Sections are drawn in the order of `order`.
--- ns.Refresh() asks for the list to be drawn again; it is done at most ten times a second.
+-- heading inside the section (a zone's name); `drag = fn(block)` lets it be dragged with the left
+-- button (fn is called as the drag starts; Drag.lua does the rest). Of a section: `menu = fn(head)`
+-- is called on a right-click of its heading (a left-click still folds it). Sections are drawn in the
+-- order of `order`. ns.Refresh() asks for the list to be drawn again; it is done at most ten times a
+-- second.
+--
+-- One more thing may stand above the sections, inside the list: ns.AddTop(fn), where
+-- fn(content, x, y, width, size) places itself at that spot and gives back how tall it is (0 when
+-- it shows nothing). The focus buttons are that (FocusBar.lua).
 --
 -- A block whose words change since it was last drawn glows for a moment. The frame can dim in a
 -- fight, dim while the mouse is elsewhere, and hide in dungeons: three settings, all off to begin with.
@@ -48,6 +55,7 @@ local GLOW = 0.9              -- seconds a changed block glows
 local AWAKE = 4               -- seconds it stays bright after a change, when it dims while the mouse is elsewhere
 
 local sections = {}
+local top                     -- what stands above the sections (ns.AddTop)
 local drawn = {}              -- functions called after each drawing (the item strip)
 local frame, back, body, content, handle, shade
 local heads, blocks = {}, {}
@@ -61,6 +69,10 @@ local alpha = 1
 function ns.AddSection(id, order, read)
 	sections[#sections + 1] = { id = id, order = order, read = read }
 	table.sort(sections, function(a, b) return a.order < b.order end)
+end
+
+function ns.AddTop(fn)
+	top = fn
 end
 
 function ns.Refresh()
@@ -234,7 +246,13 @@ local function Head(i)
 		head.note:SetPoint('RIGHT', head, 'RIGHT', 0, 1)
 		head.stitches = {}
 		head.bar = head:CreateTexture(nil, 'ARTWORK')
-		head:SetScript('OnClick', function(self)
+		head:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
+		head:SetScript('OnClick', function(self, button)
+			if button == 'RightButton' then
+				-- (a right-click opens the heading's menu where it has one; it never folds the section)
+				if self.menu then ns.Try('the menu of a heading', self.menu, self) end
+				return
+			end
 			local folded = Saved().folded
 			folded[self.id] = not folded[self.id] or nil
 			ns.Refresh()
@@ -282,8 +300,19 @@ local function Block(i)
 		block.glow:SetAllPoints(block)
 		block.glow:Hide()
 		block:SetScript('OnClick', function(self, button)
+			-- (the button let go at the end of a drag is not also a click, whichever the game sends first)
+			if ns.Dragging and (ns.Dragging() or ns.DragJustEnded()) then return end
 			local data = self.data
 			if data and data.click then ns.Try('a click on the tracker', data.click, button, self) end
+		end)
+		block:SetScript('OnDragStart', function(self)
+			local data = self.data
+			if data and data.drag then ns.Try('dragging in the tracker', data.drag, self) end
+		end)
+		-- (the drop: OnDragStop, or the button let go where the game sends no OnDragStop)
+		block:SetScript('OnDragStop', function() if ns.DragStop then ns.Try('dragging in the tracker', ns.DragStop) end end)
+		block:SetScript('OnMouseUp', function(_, button)
+			if button == 'LeftButton' and ns.Dragging and ns.Dragging() then ns.Try('dragging in the tracker', ns.DragStop) end
 		end)
 		block:SetScript('OnEnter', function(self)
 			if self.data and self.data.click then self.over:Show() end
@@ -340,8 +369,10 @@ local function Fill(block, data, width, size)
 	else
 		block.mark:Hide()
 	end
-	block:EnableMouse(data.click ~= nil)
+	block:EnableMouse(data.click ~= nil or data.drag ~= nil)
 	if not data.click then block.over:Hide() end
+	-- (only a block that can be dragged takes a drag: on the others a click that moves a little is still a click)
+	if data.drag then block:RegisterForDrag('LeftButton') else block:RegisterForDrag() end
 	return h
 end
 
@@ -388,6 +419,10 @@ local function Render()
 	local folded = Saved().folded
 	local hr, hg, hb = ns.RGB(ns.Get('lookHeader'))
 	local y, usedHeads, usedBlocks = PAD, 0, 0
+	if top then
+		local tall = ns.Try('the top of the tracker', top, content, PAD, y, inner, size)
+		y = y + (tonumber(tall) or 0)
+	end
 	local markTop, markBottom             -- where in the list the block being followed is
 	local now, live = GetTime(), {}
 	wantsTick = false
@@ -408,6 +443,7 @@ local function Render()
 			-- (a long name, a guide's, is cut short of the note beside it, not written over it)
 			head.title:SetWordWrap(false)
 			head.title:SetWidth(math.max(40, inner - (note ~= '' and (#note * (size - 1) * 0.6 + 8) or 0)))
+			head.menu = data.menu
 			head:ClearAllPoints()
 			head:SetPoint('TOPLEFT', content, 'TOPLEFT', PAD, -y)
 			head:SetSize(inner, size + 6)
@@ -522,6 +558,22 @@ end
 function ns.BlockOf(words)
 	for _, block in ipairs(blocks) do
 		if block:IsShown() and (block.title:GetText() or ''):find(words, 1, true) then return block end
+	end
+end
+
+-- The blocks shown, top to bottom (for dragging: where each row of a section is).
+function ns.ShownBlocks()
+	local out = {}
+	for _, block in ipairs(blocks) do
+		if block:IsShown() and block.data then out[#out + 1] = block end
+	end
+	return out
+end
+
+-- (for the checks) the heading shown that says these words
+function ns.HeadOf(words)
+	for _, head in ipairs(heads) do
+		if head:IsShown() and (head.title:GetText() or ''):find(words, 1, true) then return head end
 	end
 end
 

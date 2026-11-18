@@ -18,4 +18,16 @@
 	<Binding name="PATCHWERKFOREVER_TRACKER_BACK" category="ADDONS">
 		PatchwerkForever_Thread_Tracker_Back()
 	</Binding>
+	<Binding name="PATCHWERKFOREVER_TRACKER_ROUTE_ADD" category="ADDONS">
+		PatchwerkForever_Thread_Tracker_RouteAdd()
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_TRACKER_ROUTE_UP" category="ADDONS">
+		PatchwerkForever_Thread_Tracker_RouteUp()
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_TRACKER_ROUTE_DOWN" category="ADDONS">
+		PatchwerkForever_Thread_Tracker_RouteDown()
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_TRACKER_ROUTE_OPEN" category="ADDONS">
+		PatchwerkForever_Thread_Tracker_RouteOpen()
+	</Binding>
 </Bindings>

@@ -12,7 +12,10 @@ party; the gathering list; a dungeon's stages; the fades; the settings, folding,
 it; and the game's own tracker and RestedXP's window kept quiet. Then what was smoothed later: its
 place kept as a top corner whatever the scale; a list longer than its frame (the edges, the scroll
 bindings, the chosen quest brought into view); an order that holds while two quests are about as
-near as each other. A key binding is pressed by running its own entry of Bindings.xml. It fails
+near as each other. Then the focus and My Route: the focus buttons, the My Route section, its menus,
+adding from a quest, a Dungeon Journal stop and a key, dragging a stop (the drag handlers called with
+stand-in pointer positions), the My Route window, Next and Previous walking My Route, and the
+Shortest Trip order. A key binding is pressed by running its own entry of Bindings.xml. It fails
 loudly on any Lua error.
 
 What this proves: the tracker's own code runs and does sensible things with the stand-in's answers.
@@ -313,6 +316,12 @@ def main():
     its_place()
     long_list()
     steady_order()
+    focus_bar()
+    my_route()
+    route_drag()
+    route_window()
+    route_walk()
+    shortest_trip()
     print("all steps ran")
 
 
@@ -338,22 +347,24 @@ def first_login():
     assert pages == ["Thread: Tracker", "Tracker: Appearance", "Tracker: Guide", "Tracker: More", "Tracker: Quests"], pages
     mine = [x for x in s.stub.settings.values() if x.variable.startswith(TRACKER + "_")]
     count = {page: sum(1 for x in mine if x.page == page) for page in pages}
-    assert count == {"Thread: Tracker": 9, "Tracker: Quests": 12, "Tracker: Guide": 6, "Tracker: More": 7, "Tracker: Appearance": 9}, count
+    assert count == {"Thread: Tracker": 9, "Tracker: Quests": 12, "Tracker: Guide": 8, "Tracker: More": 7, "Tracker: Appearance": 9}, count
     assert sorted(b.text for b in s.stub.buttons.values()) == ["Defaults", "Reset", "Unlock"]
     # each page opens with its name and a line in Patchwerk's voice, and is grouped under stitched headings
     heads = list(s.stub.headers.values())
     assert heads == ["General", "Size", "Position", "Fading", "Quest List", "Quest Details", "Party",
-                     "Automation", "Quest Item Bar", "Recipes", "Gathering", "Dungeons", "Size", "Colors", "Defaults"], heads
+                     "Automation", "Guide Steps", "Focus", "My Route", "Quest Item Bar", "Recipes", "Gathering", "Dungeons", "Size", "Colors", "Defaults"], heads
     intros = {i.name: i.voice for i in s.stub.intros.values()}
     assert sorted(intros) == pages and intros["Tracker: Quests"] == "So many jobs. Patchwerk does the near one first.", intros
-    assert s.stub.Rows() == 20, "a row of our own could not be made"
+    assert s.stub.Rows() == 23, "a row of our own could not be made"
     names = [x.name for x in mine]
     assert "Hide Default Quest Tracker" in names and "Font Size" in names and "Hide RestedXP Window" in names, names
     # every entry of Bindings.xml has a name in the Key Bindings list, and what it runs is there to be run
     assert list(BINDINGS) == ["PATCHWERKFOREVER_TRACKER_FOLD", "PATCHWERKFOREVER_TRACKER_SCROLL_UP",
                               "PATCHWERKFOREVER_TRACKER_SCROLL_DOWN", "PATCHWERKFOREVER_TRACKER_NEXT",
                               "PATCHWERKFOREVER_TRACKER_PREV", "CLICK PatchwerkForeverTrackerNearestItem:LeftButton",
-                              "PATCHWERKFOREVER_TRACKER_BACK"], list(BINDINGS)
+                              "PATCHWERKFOREVER_TRACKER_BACK", "PATCHWERKFOREVER_TRACKER_ROUTE_ADD",
+                              "PATCHWERKFOREVER_TRACKER_ROUTE_UP", "PATCHWERKFOREVER_TRACKER_ROUTE_DOWN",
+                              "PATCHWERKFOREVER_TRACKER_ROUTE_OPEN"], list(BINDINGS)
     for name, code in BINDINGS.items():
         assert isinstance(s.g["BINDING_NAME_" + name], str), name + " has no name in the Key Bindings list"
         if name.startswith("CLICK "):
@@ -689,7 +700,8 @@ def clicks():
     s.click("Raptor Thieves", "RightButton")
     menu = s.stub.menu
     assert menu.title == "Raptor Thieves" and s.stub.focus == 0
-    assert [e.text for e in menu.entries.values()] == ["Route To Quest", "Quest Details", "Untrack Quest", "Abandon Quest"]
+    assert [e.text for e in menu.entries.values()] == ["Route To Quest", "Quest Details", "Add To My Route", "Untrack Quest",
+                                                       "Abandon Quest"]
     s.stub.Press("Route To Quest")
     assert s.stub.focus == 869 and Choice.Is(Choice, "quest", 869)
     s.stub.Press("Quest Details")
@@ -700,7 +712,7 @@ def clicks():
     s.lua.execute("STUB.party = { { name = 'Thrag', quests = {} } }; STUB.thieves.pushable = true")
     s.turn()
     s.click("Raptor Thieves", "RightButton")
-    assert [e.text for e in s.stub.menu.entries.values()] == ["Stop Routing To Quest", "Quest Details", "Share Quest",
+    assert [e.text for e in s.stub.menu.entries.values()] == ["Stop Routing To Quest", "Quest Details", "Add To My Route", "Share Quest",
                                                               "Untrack Quest", "Abandon Quest"]
     s.stub.Press("Share Quest")
     assert s.stub.shared == 869
@@ -1611,7 +1623,8 @@ def long_list():
         s.press(previous)
         assert Choice.Is(Choice, "quest", want) and s.marked().data.key == want
         assert in_view(), "quest %d was selected out of view, above the frame" % want
-    assert ns.Scrolled()[0] < 40, "at the first quest the list is still scrolled down: %r" % (ns.Scrolled(),)
+    # (the focus buttons stand above the first heading: 24 more)
+    assert ns.Scrolled()[0] < 40 + 24, "at the first quest the list is still scrolled down: %r" % (ns.Scrolled(),)
     for want in order[1:]:
         s.press(following)
     assert Choice.Is(Choice, "quest", 2020) and in_view() and ns.Scrolled()[0] == foot, ns.Scrolled()
@@ -1774,6 +1787,582 @@ def steady_order():
     s.stub.player.x = -150
     s.turn()
     assert rows() == ["[13] The Forgotten Pools | 300 yd", "[13] Raptor Thieves | 930 yd"], rows()
+    assert s.chat() == []
+
+
+# A stand-in for the Dungeon Journal's list (its Stitch's Reader.lua), after the login: a side list
+# whose steps name their quest, and the base told where its quests start (MyRoute:Kind). The first
+# starts near you; the second's start is not known.
+FDJ = """
+    PatchwerkForever.MyRoute:Kind('fdj', {
+        Name = function(stop) return ({ [5001] = 'Horde Job', [5002] = 'Lost Job' })[stop.id] end,
+        Place = function(stop) if stop.id == 5001 then return 1, -480, -2600, 'Accept: Horde Job' end end,
+    })
+    PatchwerkForever.Guides:Register('fdj', { name = 'Dungeon Journal', Side = function() return true end,
+        Read = function(count)
+            local info = { guide = 'Dungeon Journal: Ragefire Chasm', index = 1, total = 2, kind = 'accept', key = 'fdj1', quest = 5001,
+                lines = { { text = 'Accept: Horde Job', done = false } }, ahead = {}, after = {}, items = {}, map = 1, x = -480, y = -2600 }
+            if count > 0 then info.after[1] = { index = 2, kind = 'accept', quest = 5002, lines = { { text = 'Accept: Lost Job', done = false } } } end
+            return info
+        end,
+        Go = function(index) STUB.fdjGo = index; return false end })
+"""
+
+
+def entries_of(s):
+    R = s.g.PatchwerkForever.MyRoute
+    return [(e.kind, e.name, e.state) for e in R.Entries(R).values()]
+
+
+def route_rows(s):
+    """The My Route section as shown: from its heading to the next heading."""
+    got = s.shown() or []
+    heads = [t for t in got if t.startswith("# ")]
+    rows = [t for t in got if not t.startswith("# ")]
+    return heads, rows
+
+
+def menu_texts(s):
+    return [e.text for e in s.stub.menu.entries.values()]
+
+
+def focus_bar():
+    step("the focus buttons: one for each focus there is to choose now, the one in use lit; a click follows it")
+    s = Session(LOG + PLACES)
+    ns = s.load()
+    P = s.g.PatchwerkForever
+    Focus, Choice = P.Focus, P.Choice
+    buttons, bar = ns.FocusShown()
+    assert [(b.id, b.lit) for b in buttons.values()] == [("auto", True), ("quests", False), ("route", False)], \
+        [(b.id, b.lit) for b in buttons.values()]
+    assert s.shown()[0] == "# Quests | 4/25", "the focus buttons are listed as a section"
+    # a guide reader comes: its button too, in the base's order (Auto, the guides, Quests, My Route)
+    s.lua.execute(SIDE)
+    s.tick()
+    buttons, bar = ns.FocusShown()
+    assert [b.id for b in buttons.values()] == ["auto", "side", "quests", "route"], [b.id for b in buttons.values()]
+    # a click follows it, and it is lit; kept for the character
+    quests = [b.button for b in buttons.values() if b.id == "quests"][0]
+    quests.scripts.OnClick(quests, "LeftButton")
+    s.turn()
+    assert Focus.Get(Focus) == "quests"
+    assert [(b.id, b.lit) for b in ns.FocusShown()[0].values() if b.lit] == [("quests", True)]
+    assert s.g.PatchwerkForeverDB.characters["Player-1-0001"].focus == "quests", "the focus is not kept for the character"
+    # a right-click on the row (or a button): the same choices as a menu
+    bar.scripts.OnMouseUp(bar, "RightButton")
+    assert s.stub.menu.title == "Follow" and menu_texts(s) == ["Auto", "Side List", "Quests (Current)", "My Route"], menu_texts(s)
+    s.stub.Press("Side List")
+    s.turn()
+    assert Focus.Get(Focus) == "side" and "> Step 2" in s.shown(), "the guide focused is not marked as the one followed"
+    quests.scripts.OnClick(quests, "RightButton")
+    assert menu_texts(s) == ["Auto", "Side List (Current)", "Quests", "My Route"], menu_texts(s)
+    s.stub.Press("Auto")
+    s.turn()
+    assert Focus.Get(Focus) == "auto" and "> Step 2" not in s.shown()
+
+    step("a focus chosen lets go of a list selected in the tracker; My Route focused and empty shows how to add")
+    s.click("Step 2")
+    assert Choice.Is(Choice, "guide", "side")
+    route = [b.button for b in ns.FocusShown()[0].values() if b.id == "route"][0]
+    route.scripts.OnClick(route, "LeftButton")
+    s.turn()
+    assert Focus.Get(Focus) == "route" and Choice.Get(Choice) is None, "the list selected still stands over the focus"
+    got = s.shown()
+    # (the headings are listed first, then the blocks)
+    assert "# My Route | " in got and "No stops yet. Right-click a quest and choose Add To My Route." in got, got
+    # a quest you click still comes first (as over your guide), and the focus stays
+    s.click("Raptor Thieves")
+    assert Choice.Is(Choice, "quest", 869) and Focus.Get(Focus) == "route"
+    s.click("Raptor Thieves")
+    # another character has its own focus
+    s.lua.execute("STUB.guid = 'Player-1-0002'")
+    s.fire("QUEST_LOG_UPDATE")
+    assert Focus.Get(Focus) == "auto" and "# My Route | " not in s.shown()
+    s.lua.execute("STUB.guid = 'Player-1-0001'")
+    s.fire("QUEST_LOG_UPDATE")
+    assert Focus.Get(Focus) == "route"
+
+    step("Show Focus Buttons off: no row; on again: back")
+    s.setting("focusBar", False)
+    assert ns.FocusShown() is None
+    s.setting("focusBar", True)
+    assert len(ns.FocusShown()[0]) == 4
+    assert s.chat() == []
+
+
+def my_route():
+    step("My Route: not shown while empty; Add To My Route from a quest's menu; numbered rows with what to do and how far")
+    s = Session(LOG + PLACES)
+    ns = s.load()
+    P = s.g.PatchwerkForever
+    R, Choice, Focus, G = P.MyRoute, P.Choice, P.Focus, P.Guides
+    assert not any(t.startswith("# My Route") for t in s.shown())
+    s.click("Raptor Thieves", "RightButton")
+    assert "Add To My Route" in menu_texts(s)
+    s.stub.Press("Add To My Route")
+    s.turn()
+    assert s.chat() == ["Tracker: Added to My Route: Raptor Thieves."]
+    got = s.show()
+    assert got[0] == "# My Route | 1 stop" and got[2:4] == ["1. Raptor Thieves | 112 yd", "  - In progress"], got
+    s.click("[13] Raptor Thieves", "RightButton")
+    assert "Remove From My Route" in menu_texts(s) and "Add To My Route" not in menu_texts(s)
+    s.click("[13] The Zhevra", "RightButton")
+    s.stub.Press("Add To My Route")
+    s.turn()
+    s.chat()
+
+    step("the key binding adds the quest under the game's arrow, and says when it is in already")
+    s.lua.execute("STUB.focus = 845")
+    s.press("PATCHWERKFOREVER_TRACKER_ROUTE_ADD")
+    assert s.chat() == ["Tracker: Already in My Route."]
+    s.lua.execute("STUB.focus = 786")
+    s.press("PATCHWERKFOREVER_TRACKER_ROUTE_ADD")
+    assert s.chat() == ["Tracker: Added to My Route: Thwarting Kolkar Aggression."]
+    s.lua.execute("STUB.focus = 0")
+    s.press("PATCHWERKFOREVER_TRACKER_ROUTE_ADD")
+    text = s.chat()
+    assert len(text) == 1 and "No quest selected" in text[0], text
+
+    step("from the Dungeon Journal list: its stops' menus add their quest, to pick up, or with no place known")
+    s.lua.execute(FDJ)
+    s.tick()
+    s.click("Step 1", "RightButton")
+    assert menu_texts(s) == ["Route To This List", "Skip Step", "Previous Step", "Add To My Route"], menu_texts(s)
+    s.stub.Press("Add To My Route")
+    s.turn()
+    assert s.chat() == ["Tracker: Added to My Route: Horde Job."]
+    s.click("2. Accept: Lost Job", "RightButton")
+    assert menu_texts(s) == ["Go To This Step", "Add To My Route"], menu_texts(s)
+    s.stub.Press("Add To My Route")
+    s.turn()
+    assert s.chat() == ["Tracker: Added to My Route: Lost Job."]
+    # a left-click on a later step still goes to it, as before
+    s.click("2. Accept: Lost Job")
+    assert s.stub.fdjGo == 2
+    s.chat()
+    s.click("Step 1", "RightButton")
+    assert menu_texts(s)[-1] == "Remove From My Route"
+    assert entries_of(s) == [("quest", "Raptor Thieves", "todo"), ("quest", "The Zhevra", "done"),
+                             ("quest", "Thwarting Kolkar Aggression", "todo"), ("fdj", "Horde Job", "pickup"),
+                             ("fdj", "Lost Job", "nowhere")], entries_of(s)
+    got = s.show()
+    at = got.index("# My Route | 5 stops")
+    assert got[at:at + 1] == ["# My Route | 5 stops"]
+    rows = [t for t in got if t[:3] in ("1. ", "2. ", "3. ", "4. ", "5. ") and "Accept: Lost Job" not in t]
+    assert rows == ["1. Raptor Thieves | 112 yd", "2. The Zhevra | 5 yd", "3. Thwarting Kolkar Aggression | 1953 yd",
+                        "4. Horde Job | 30 yd", "5. Lost Job"], rows
+    i = got.index("2. The Zhevra | 5 yd")
+    assert got[i + 1] == "  - Turn in" and got[got.index("4. Horde Job | 30 yd") + 1] == "  - Accept"
+    assert got[got.index("5. Lost Job") + 1] == "  - No place known"
+
+    step("My Route is listed once: in its own section, not again as a guide, even when selected")
+    Choice.Set(Choice, "guide", "route")
+    s.turn()
+    heads = [t for t in s.shown() if t.startswith("# ")]
+    assert heads == ["# Dungeon Journal: Ragefire Chasm | Step 1 of 2", "# My Route | 5 stops", "# Quests | 4/25"], heads
+    assert G.Read(G, 0, "route") is not None
+    Choice.Clear(Choice)
+    s.turn()
+
+    step("a click on a stop goes there first: My Route is selected and followed from that stop")
+    s.click("2. The Zhevra")
+    assert Choice.Is(Choice, "guide", "route") and G.Read(G, 0, "route").route == 2
+    marked = [t for t in s.shown() if t.startswith(">")]
+    assert marked == ["> 2. The Zhevra | 5 yd"], marked
+    s.click("4. Horde Job")
+    assert G.Read(G, 0, "route").route == 4 and [t for t in s.shown() if t.startswith(">")] == ["> 4. Horde Job | 30 yd"]
+    # back to an earlier one
+    s.click("1. Raptor Thieves")
+    assert G.Read(G, 0, "route").route == 1, G.Read(G, 0, "route").route
+    # a stop with no place known: said, nothing moves
+    s.click("5. Lost Job")
+    text = s.chat()
+    assert text == ["Tracker: No place is known for Lost Job yet."] and G.Read(G, 0, "route").route == 1, text
+    # with My Route the focus, a click lets go of a quest clicked before
+    Focus.Set(Focus, "route")
+    s.click("[13] The Zhevra")
+    assert Choice.Is(Choice, "quest", 845)
+    s.click("3. Thwarting")
+    assert Choice.Get(Choice) is None and G.Read(G, 0, "route").route == 3
+    assert [t for t in s.shown() if t.startswith(">")] == ["> 3. Thwarting Kolkar Aggression | 1953 yd"], "the quest arrow's quest is marked too"
+    Focus.Set(Focus, "auto")
+    s.turn()
+
+    step("a stop's menu: Go Here First, Move Up, Move Down, Move To Top, Quest Details, Remove")
+    s.click("1. Raptor Thieves", "RightButton")
+    assert s.stub.menu.title == "Raptor Thieves" and menu_texts(s) == ["Go Here First", "Move Down", "Quest Details", "Remove"], menu_texts(s)
+    s.stub.Press("Move Down")
+    s.turn()
+    assert [e[1] for e in entries_of(s)][:2] == ["The Zhevra", "Raptor Thieves"]
+    s.click("2. Raptor Thieves", "RightButton")
+    assert menu_texts(s) == ["Go Here First", "Move Up", "Move Down", "Move To Top", "Quest Details", "Remove"], menu_texts(s)
+    s.stub.Press("Quest Details")
+    assert s.stub.read == 869
+    s.stub.Press("Move Up")
+    s.turn()
+    assert [e[1] for e in entries_of(s)][:2] == ["Raptor Thieves", "The Zhevra"]
+    s.click("5. Lost Job", "RightButton")
+    assert menu_texts(s) == ["Go Here First", "Move Up", "Move To Top", "Remove"], "a journal stop has no quest details: %r" % menu_texts(s)
+    s.stub.Press("Move To Top")
+    s.turn()
+    assert entries_of(s)[0][1] == "Lost Job"
+    s.click("1. Lost Job", "RightButton")
+    s.stub.Press("Remove")
+    s.turn()
+    assert s.chat() == ["Tracker: Removed from My Route: Lost Job."] and len(entries_of(s)) == 4
+    s.click("4. Horde Job", "RightButton")
+    s.stub.Press("Go Here First")
+    s.turn()
+    assert G.Read(G, 0, "route").route == 4
+
+    step("the heading's menu: Edit My Route, Order For Me, Add All Tracked Quests, Add Map Pin, Clear")
+    head = ns.HeadOf("My Route")
+    head.scripts.OnClick(head, "RightButton")
+    assert s.stub.menu.title == "My Route"
+    assert menu_texts(s) == ["Edit My Route", "Order For Me", "Add All Tracked Quests", "Add Map Pin", "Clear"], menu_texts(s)
+    assert s.g.PatchwerkForever_Thread_TrackerDB.folded.route is None, "a right-click folded the section"
+    s.stub.Press("Add All Tracked Quests")
+    s.turn()
+    assert s.chat() == ["Tracker: Added to My Route: 1 quest."] and entries_of(s)[-1][1] == "The Forgotten Pools"
+    s.stub.Press("Add All Tracked Quests")
+    assert s.chat() == ["Tracker: All tracked quests are already in My Route."]
+    s.stub.Press("Add Map Pin")
+    text = s.chat()
+    assert len(text) == 1 and "No map pin is set" in text[0], text
+    s.lua.execute("STUB.PinAt(1, -460, -2640)")
+    s.stub.Press("Add Map Pin")
+    s.turn()
+    assert s.chat() == ["Tracker: Added to My Route: Map Pin."] and entries_of(s)[-1] == ("spot", "Map Pin", "spot")
+    assert "6. Map Pin | 41 yd" in s.shown() and s.shown()[s.shown().index("6. Map Pin | 41 yd") + 1] == "  - Go to"
+    s.stub.Press("Add Map Pin")
+    assert s.chat() == ["Tracker: Already in My Route."]
+    # Order For Me: nearest first (you stand at the Crossroads), each next nearest the one before
+    s.stub.Press("Order For Me")
+    s.turn()
+    text = s.chat()
+    assert len(text) == 1 and "ordered" in text[0], text
+    order = [e[1] for e in entries_of(s)]
+    assert order[0] == "The Zhevra" and order[-1] == "Thwarting Kolkar Aggression", order
+    # the folding still works with a left-click
+    head.scripts.OnClick(head, "LeftButton")
+    s.turn()
+    assert "# My Route | 6 stops  +" in s.shown()
+    head.scripts.OnClick(head, "LeftButton")
+    s.turn()
+    # Clear asks first: No leaves it, Yes empties it
+    head.scripts.OnClick(head, "RightButton")
+    s.stub.Press("Clear")
+    assert s.stub.asked.which == "PATCHWERKFOREVER_TRACKER_CLEAR_ROUTE" and "Remove all stops" in s.stub.asked.text
+    s.stub.Answer(False)
+    assert len(entries_of(s)) == 6
+    s.stub.Press("Clear")
+    s.stub.Answer(True)
+    s.turn()
+    assert entries_of(s) == [] and not any(t.startswith("# My Route") for t in s.shown()), s.shown()
+    assert s.chat() == ["Tracker: My Route cleared."]
+
+    step("Show My Route off: no section, the list kept")
+    R.Add(R, s.lua.eval("{ kind = 'quest', id = 869 }"))
+    s.turn()
+    assert "# My Route | 1 stop" in s.shown()
+    s.setting("myRoute", False)
+    assert not any(t.startswith("# My Route") for t in s.shown()) and len(entries_of(s)) == 1
+    s.setting("myRoute", True)
+    assert "# My Route | 1 stop" in s.shown()
+    # a quest abandoned leaves it (the base), and the section goes with it
+    s.lua.execute("STUB.QuestGone(869); for i = #STUB.log, 1, -1 do if STUB.log[i].id == 869 then table.remove(STUB.log, i) end end")
+    s.fire("QUEST_REMOVED", 869)
+    assert entries_of(s) == [] and not any(t.startswith("# My Route") for t in s.shown())
+    assert s.chat() == []
+
+
+ROUTE3 = """
+    STUB.Heading('Mulgore')
+    STUB.Quest({ id = 901, title = 'First Stop', level = 5, objectives = { { 'do it', false } } })
+    STUB.Quest({ id = 902, title = 'Second Stop', level = 5, objectives = { { 'do it', false } } })
+    STUB.Quest({ id = 903, title = 'Third Stop', level = 5, objectives = { { 'do it', false } } })
+    STUB.QuestAt(901, 'First Stop', 1, -460, -2600)
+    STUB.QuestAt(902, 'Second Stop', 1, -470, -2600)
+    STUB.QuestAt(903, 'Third Stop', 1, -480, -2600)
+"""
+
+
+def add3(s):
+    R = s.g.PatchwerkForever.MyRoute
+    for q in (901, 902, 903):
+        assert R.Add(R, s.lua.eval("{ kind = 'quest', id = %d }" % q))
+    s.turn()
+
+
+def place_rows(rows, top=600, tall=28):
+    """The rows stood one under another on the screen, as the game would have them."""
+    for i, row in enumerate(rows):
+        row.top, row.height, row.left = top - i * tall, tall, 800
+
+
+def section_rows(s):
+    return [b for b in s.ns.ShownBlocks().values() if b.data.routeIndex is not None]
+
+
+def route_drag():
+    step("dragging a stop in the section: a ghost follows the pointer, a gold line shows where; let go, it moves")
+    s = Session(LOG + PLACES + ROUTE3)
+    ns = s.load()
+    add3(s)
+    rows = section_rows(s)
+    assert len(rows) == 3 and all(r.drags for r in rows), "the rows of My Route do not take a drag"
+    assert not s.block("[13] Raptor Thieves").drags, "a quest row takes a drag"
+    place_rows(rows)                                   # tops 600, 572, 544; middles 586, 558, 530
+    names = lambda: [e[1] for e in entries_of(s)]
+    first = rows[0]
+    first.scripts.OnDragStart(first)
+    s.stub.cursor.x, s.stub.cursor.y = 900, 520        # below the last row's middle: after it
+    s.turn()
+    ghost, line, to = ns.DragShown()
+    assert ghost and line and to == 3, (ghost, line, to)
+    # (a game that sends the click before the drop: the click is no click either)
+    first.scripts.OnClick(first, "LeftButton")
+    assert ns.Dragging() and s.g.PatchwerkForever.Choice.Get(s.g.PatchwerkForever.Choice) is None
+    first.scripts.OnDragStop(first)
+    # (the button let go at the end of a drag is no click)
+    first.scripts.OnClick(first, "LeftButton")
+    s.turn()
+    assert names() == ["Second Stop", "Third Stop", "First Stop"], names()
+    assert ns.DragShown()[:2] == (False, False), "the ghost or the line stayed"
+    assert s.g.PatchwerkForever.Choice.Get(s.g.PatchwerkForever.Choice) is None, "the drop was taken for a click too"
+    assert ns.RouteSelected() == s.g.PatchwerkForever.MyRoute.Entries(s.g.PatchwerkForever.MyRoute)[3].key
+
+    step("a drop between two rows; on its own row, off the rows, or after Escape: nothing moves")
+    rows = section_rows(s)
+    place_rows(rows)
+    last = rows[2]
+    last.scripts.OnDragStart(last)
+    s.stub.cursor.x, s.stub.cursor.y = 900, 575        # above the second row's middle: before it
+    s.turn()
+    assert ns.DragShown() == (True, True, 2)
+    last.scripts.OnDragStop(last)
+    s.turn()
+    assert names() == ["Second Stop", "First Stop", "Third Stop"], names()
+    rows = section_rows(s)
+    place_rows(rows)
+    rows[0].scripts.OnDragStart(rows[0])
+    s.stub.cursor.x, s.stub.cursor.y = 900, 590        # on its own row: no line
+    s.turn()
+    assert ns.DragShown()[:2] == (True, False)
+    s.stub.cursor.x, s.stub.cursor.y = 300, 100        # far off the rows
+    s.turn()
+    assert ns.DragShown() == (True, False, None)
+    rows[0].scripts.OnDragStop(rows[0])
+    s.turn()
+    assert names() == ["Second Stop", "First Stop", "Third Stop"], "a drop off the rows moved a stop"
+    rows = section_rows(s)
+    place_rows(rows)
+    rows[0].scripts.OnDragStart(rows[0])
+    ghost = [f for f in s.stub.frames.values() if f.strata == "TOOLTIP" and f.scripts.OnKeyDown][0]
+    assert ghost.keyboard is True and ghost.propagate is True, "Escape is not listened for, or other keys are kept"
+    s.stub.cursor.x, s.stub.cursor.y = 900, 520
+    s.turn()
+    ghost.scripts.OnKeyDown(ghost, "W")
+    assert ghost.propagate is True and ns.Dragging()
+    ghost.scripts.OnKeyDown(ghost, "ESCAPE")
+    assert not ns.Dragging() and ghost.keyboard is False
+    rows[0].scripts.OnDragStop(rows[0])
+    s.turn()
+    assert names() == ["Second Stop", "First Stop", "Third Stop"], "a drag called off with Escape moved a stop"
+
+    step("let go with no OnDragStop from the game: the button's release drops it; in a fight the keyboard is left alone")
+    s.stub.combat = True
+    rows = section_rows(s)
+    place_rows(rows)
+    rows[0].scripts.OnDragStart(rows[0])
+    assert ghost.keyboard is False, "the keyboard was taken in a fight"
+    s.stub.cursor.x, s.stub.cursor.y = 900, 520
+    s.turn()
+    rows[0].scripts.OnMouseUp(rows[0], "LeftButton")
+    s.turn()
+    assert names() == ["First Stop", "Third Stop", "Second Stop"], names()
+    s.stub.combat = False
+
+    step("a click without a drag is still a click; the move bindings move the stop last clicked")
+    s.turn()
+    s.click("2. Third Stop")
+    G = s.g.PatchwerkForever.Guides
+    assert G.Read(G, 0, "route").route == 2
+    s.chat()
+    s.press("PATCHWERKFOREVER_TRACKER_ROUTE_UP")
+    assert names() == ["Third Stop", "First Stop", "Second Stop"] and s.chat() == ["Tracker: Moved to stop 1: Third Stop."]
+    s.press("PATCHWERKFOREVER_TRACKER_ROUTE_UP")
+    assert s.chat() == ["Tracker: That stop is already first in My Route."]
+    s.press("PATCHWERKFOREVER_TRACKER_ROUTE_DOWN")
+    s.press("PATCHWERKFOREVER_TRACKER_ROUTE_DOWN")
+    assert names() == ["First Stop", "Second Stop", "Third Stop"], names()
+    s.chat()
+    R = s.g.PatchwerkForever.MyRoute
+    R.Remove(R, 3)
+    s.turn()
+    s.press("PATCHWERKFOREVER_TRACKER_ROUTE_DOWN")
+    text = s.chat()
+    assert len(text) == 1 and "Select a stop first" in text[0], text
+    assert s.chat() == []
+
+
+def route_window():
+    step("the My Route window: the global opens and closes it, beside a frame when given one; Escape closes it")
+    s = Session(LOG + PLACES + ROUTE3)
+    ns = s.load()
+    add3(s)
+    assert s.g.PatchwerkForever_Thread_Tracker_OpenMyRoute() is True
+    win, rows = ns.RouteWindow()
+    assert win.shown and "PatchwerkForeverTrackerRoute" in list(s.g.UISpecialFrames.values())
+    texts = [r.text for r in rows.values()]
+    assert [t.split("  ")[0] for t in texts] == ["1. First Stop", "2. Second Stop", "3. Third Stop"], texts
+    assert [r.far for r in rows.values()] == ["10 yd", "20 yd", "30 yd"]
+    assert s.g.PatchwerkForever_Thread_Tracker_OpenMyRoute() is False and not win.shown
+    s.g.PatchwerkForever_Thread_Tracker_OpenMyRoute(s.g.WorldMapFrame)
+    assert win.shown and same(s, win.points[1][2], s.g.WorldMapFrame), "not placed beside the frame given"
+    s.slash("route")
+    assert not win.shown
+    s.slash("route")
+    assert win.shown and same(s, win.points[1][2], s.g.UIParent), "opened beside the map again, not where it was left"
+    s.press("PATCHWERKFOREVER_TRACKER_ROUTE_OPEN")
+    assert not win.shown
+    head = ns.HeadOf("My Route")
+    head.scripts.OnClick(head, "RightButton")
+    s.stub.Press("Edit My Route")
+    assert win.shown
+
+    step("it follows the list as it changes; a cross removes a stop; a click selects one; dragged by its title, its place is kept")
+    R = s.g.PatchwerkForever.MyRoute
+    R.Move(R, 3, 1)
+    rows = ns.RouteWindow()[1]
+    assert [r.text.split("  ")[0] for r in rows.values()] == ["1. Third Stop", "2. First Stop", "3. Second Stop"]
+    row = rows[3].row
+    row.scripts.OnClick(row, "LeftButton")
+    assert ns.RouteSelected() == R.Entries(R)[3].key and row.picked.shown
+    cross = rows[1].row.cross
+    cross.scripts.OnClick(cross)
+    assert [e[1] for e in entries_of(s)] == ["First Stop", "Second Stop"] and len(ns.RouteWindow()[1]) == 2
+    s.chat()
+    rows[1].row.scripts.OnClick(rows[1].row, "RightButton")
+    assert s.stub.menu.title == "First Stop" and menu_texts(s)[0] == "Go Here First"
+    win.bar.scripts.OnDragStart(win.bar)
+    s.lua.execute("STUB.drop = { 'TOPLEFT', 'TOPLEFT', 120, -140 }")
+    win.bar.scripts.OnDragStop(win.bar)
+    assert list(s.g.PatchwerkForever_Thread_TrackerDB.routePlace.values()) == ["TOPLEFT", "TOPLEFT", 120, -140]
+    s.stub.drop = None
+
+    step("dragging in the window moves the stop; the footer's buttons work")
+    R.Add(R, s.lua.eval("{ kind = 'quest', id = 903 }"))
+    rows = [r.row for r in ns.RouteWindow()[1].values()]
+    place_rows(rows, 500, 22)                          # tops 500, 478, 456
+    rows[2].scripts.OnDragStart(rows[2])
+    s.stub.cursor.x, s.stub.cursor.y = 900, 495        # above the first row's middle
+    s.turn()
+    rows[2].scripts.OnDragStop(rows[2])
+    s.turn()
+    assert [e[1] for e in entries_of(s)] == ["Third Stop", "First Stop", "Second Stop"], entries_of(s)
+    order, tracked, clear, close = list(win.foot.values())
+    order.scripts.OnClick(order)
+    assert [e[1] for e in entries_of(s)] == ["First Stop", "Second Stop", "Third Stop"], entries_of(s)
+    tracked.scripts.OnClick(tracked)
+    assert len(entries_of(s)) == 7 and len(ns.RouteWindow()[1]) == 7
+    clear.scripts.OnClick(clear)
+    s.stub.Answer(True)
+    assert entries_of(s) == [] and len(ns.RouteWindow()[1]) == 0 and win.empty.shown
+    close.scripts.OnClick(close)
+    assert not win.shown
+    s.chat()
+    assert s.chat() == []
+
+
+def route_walk():
+    step("Route To Next Quest and Route To Previous Quest walk My Route while it is the focus")
+    s = Session(LOG + PLACES + ROUTE3)
+    ns = s.load()
+    P = s.g.PatchwerkForever
+    Focus, Choice, G = P.Focus, P.Choice, P.Guides
+    add3(s)
+    Focus.Set(Focus, "route")
+    s.turn()
+    assert G.Read(G, 0, "route").route == 1 and [t for t in s.shown() if t.startswith(">")] == ["> 1. First Stop | 10 yd"]
+    s.press("PATCHWERKFOREVER_TRACKER_NEXT")
+    assert G.Read(G, 0, "route").route == 2 and s.chat() == ["Tracker: Routing to: Second Stop (stop 2 of 3)."]
+    assert Choice.Get(Choice) is None, "a quest was chosen while walking My Route"
+    s.press("PATCHWERKFOREVER_TRACKER_NEXT")
+    assert G.Read(G, 0, "route").route == 3 and [t for t in s.shown() if t.startswith(">")] == ["> 3. Third Stop | 30 yd"]
+    s.press("PATCHWERKFOREVER_TRACKER_NEXT")
+    assert G.Read(G, 0, "route").route == 3 and s.chat()[-1] == "Tracker: This is the last stop in My Route."
+    s.press("PATCHWERKFOREVER_TRACKER_PREV")
+    assert G.Read(G, 0, "route").route == 2
+    s.press("PATCHWERKFOREVER_TRACKER_PREV")
+    assert G.Read(G, 0, "route").route == 1
+    s.press("PATCHWERKFOREVER_TRACKER_PREV")
+    assert G.Read(G, 0, "route").route == 1 and s.chat()[-1] == "Tracker: This is the first stop in My Route."
+    # a stop with no place is stepped over
+    s.lua.execute("STUB.mark = STUB.quests[902]; STUB.quests[902] = nil")
+    s.press("PATCHWERKFOREVER_TRACKER_NEXT")
+    assert G.Read(G, 0, "route").route == 3, G.Read(G, 0, "route").route
+    s.lua.execute("STUB.quests[902] = STUB.mark")
+    s.chat()
+
+    step("selected without the focus, it is walked too; on Auto, or with My Route empty, your quests are")
+    Focus.Set(Focus, "auto")
+    s.click("1. First Stop")
+    assert Choice.Is(Choice, "guide", "route")
+    s.press("PATCHWERKFOREVER_TRACKER_NEXT")
+    assert G.Read(G, 0, "route").route == 2 and Choice.Is(Choice, "guide", "route")
+    Choice.Clear(Choice)
+    s.turn()
+    s.press("PATCHWERKFOREVER_TRACKER_NEXT")
+    assert Choice.Get(Choice).kind == "quest", "on Auto the quests are not walked"
+    Choice.Clear(Choice)
+    R = P.MyRoute
+    R.Clear(R)
+    Focus.Set(Focus, "route")
+    s.turn()
+    s.press("PATCHWERKFOREVER_TRACKER_NEXT")
+    assert Choice.Get(Choice).kind == "quest", "with My Route empty the quests are not walked"
+    s.chat()
+    assert s.chat() == []
+
+
+def shortest_trip():
+    step("Shortest Trip: the tracked quests in a short trip, nearest first; Next and Previous walk it; it holds as you walk")
+    s = Session(LOG + PLACES + "PatchwerkForever_Thread_TrackerDB = { settings = { order = 'short' } }")
+    ns = s.load()
+    order = [x for x in s.stub.settings.values() if x.variable == TRACKER + "_order"][0]
+    assert ("short", "Shortest Trip") in [(c.value, c.label) for c in order.choices.values()]
+    quests = lambda: [t.split(" | ")[0].lstrip("> ") for t in s.shown() if t.lstrip("> ").startswith("[")]
+    # you stand at -450, -2600: the pools 50 yards, then the thieves nearest the pools, then Kolkar far away;
+    # the Zhevra is ready, in its own group
+    assert quests() == ["[13] The Forgotten Pools", "[13] Raptor Thieves", "[4] Thwarting Kolkar Aggression", "[13] The Zhevra"], quests()
+    assert "The Barrens" not in s.shown(), "zone headings in a trip"
+    assert list(ns.questOrder.values()) == [870, 869, 786, 845]
+    Choice = s.g.PatchwerkForever.Choice
+    s.press("PATCHWERKFOREVER_TRACKER_NEXT")
+    assert Choice.Is(Choice, "quest", 870)
+    s.press("PATCHWERKFOREVER_TRACKER_NEXT")
+    assert Choice.Is(Choice, "quest", 869)
+    s.press("PATCHWERKFOREVER_TRACKER_PREV")
+    assert Choice.Is(Choice, "quest", 870)
+    assert s.chat() == ["Tracker: Routing to: The Forgotten Pools", "Tracker: Routing to: Raptor Thieves",
+                        "Tracker: Routing to: The Forgotten Pools"]
+    Choice.Clear(Choice)
+    # you walk next to the thieves: the trip is kept, not worked out again at each step
+    s.stub.player.x, s.stub.player.y = -500, -2690
+    s.turn()
+    assert quests()[:3] == ["[13] The Forgotten Pools", "[13] Raptor Thieves", "[4] Thwarting Kolkar Aggression"], quests()
+    # a quest goes: worked out again from where you stand
+    s.lua.execute("STUB.watched = { 869, 845, 786 }")
+    s.fire("QUEST_WATCH_LIST_CHANGED")
+    s.lua.execute("STUB.watched = { 869, 845, 786, 870 }")
+    s.fire("QUEST_WATCH_LIST_CHANGED")
+    assert quests()[:3] == ["[13] Raptor Thieves", "[13] The Forgotten Pools", "[4] Thwarting Kolkar Aggression"], quests()
+    # a quest with no place known goes last
+    s.lua.execute("STUB.quests[869] = nil")
+    ns.ForgetTrip()
+    s.fire("QUEST_POI_UPDATE")
+    assert quests()[:3] == ["[13] The Forgotten Pools", "[4] Thwarting Kolkar Aggression", "[13] Raptor Thieves"], quests()
     assert s.chat() == []
 
 

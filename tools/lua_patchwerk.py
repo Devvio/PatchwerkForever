@@ -472,7 +472,7 @@ def main():
     s = Session()
     s.addon(BASE)
     G = s.g.PatchwerkForever.Guides
-    assert s.g.PatchwerkForever.API == 4
+    assert s.g.PatchwerkForever.API == 5
     assert G.Read(G, 2) is None, "a guide with no guide addon running"
     assert G.Go(G, None, 3) is False, "a guide moved with no guide running"
     # a made-up guide addon's reader, behind one that fails: the failure is said once and the next is asked
@@ -809,6 +809,96 @@ def main():
     s.login()
     text = s.chat()
     assert len(text) == 1 and "Patchwerk Forever: Stitch (Dungeon Journal)" in text[0], text
+
+    step("Focus and My Route (API 5): a focus kept for each character; stops added, moved, ordered, followed, tidied")
+    s = Session(running=["ForeverDungeonJournal"])
+    s.lua.execute(JOURNAL)
+    s.lua.execute("""
+        local before = UnitGUID
+        function UnitGUID(unit) if unit == 'player' then return STUB.guid end return before(unit) end
+        STUB.guid = 'Player-1-0001'
+        C_QuestLog.GetTitleForQuestID = function(id) return STUB.quests[id] and STUB.quests[id].title end
+    """)
+    s.addon(BASE)
+    s.addon("PatchwerkForever_Stitch_DungeonJournal")
+    s.login()
+    P = s.g.PatchwerkForever
+    F, R, G, Ch = P.Focus, P.MyRoute, P.Guides, P.Choice
+    wrap = s.lua.eval("function(f) return function(...) f(...) end end")      # (a Python function, as a Lua one)
+    seen = []
+    F.OnChange(F, wrap(lambda id: seen.append(id)))
+    changes = []
+    R.OnChange(R, wrap(lambda: changes.append(1)))
+    chosen = []
+    Ch.OnChange(Ch, wrap(lambda c=None: chosen.append(c.kind if c else None)))
+    assert F.Get(F) == "auto"
+    names = [a.id for a in F.Available(F).values()]
+    assert names == ["auto", "fdj", "quests", "route"], names
+    assert F.Set(F, "nothing") is False and F.Set(F, "fdj") is True and F.Get(F) == "fdj" and seen == ["fdj"]
+    assert F.Next(F) == "quests"
+    assert s.g.PatchwerkForeverDB.characters["Player-1-0001"].focus == "fdj", "the focus is not kept for the character"
+    s.lua.execute("STUB.guid = 'Player-1-0002'")
+    assert F.Get(F) == "auto", "another character got the first one's focus"
+    s.lua.execute("STUB.guid = 'Player-1-0001'")
+    # My Route: empty, it says nothing; a quest you hold (finished: its hand-in), a journal quest not taken,
+    # a map spot; no doubles
+    assert G.Read(G, 2, "route") is None and G.Read(G, 2) is None or G.Read(G, 2).source != "route"
+    s.lua.execute("STUB.QuestAt(7001, 'Wolf Pelts', 1, -100, 0); STUB.QuestAt(7002, 'Far Away', 1, -900, 0)")
+    s.lua.execute("STUB.complete[7001] = true")
+    assert R.Add(R, s.lua.eval("{ kind = 'quest', id = 7002 }")) is True
+    assert R.Add(R, s.lua.eval("{ kind = 'quest', id = 7001 }")) is True
+    assert R.Add(R, s.lua.eval("{ kind = 'quest', id = 7001 }")) is False, "a quest added twice"
+    assert R.Add(R, s.lua.eval("{ kind = 'fdj', id = 5001 }")) is True
+    assert R.Add(R, s.lua.eval("{ kind = 'spot', map = 1, x = -500, y = 0, label = 'Camp' }")) is True
+    assert R.Add(R, s.lua.eval("{ kind = 'spot', map = 1, x = -500, y = 0 }")) is False, "a spot added twice"
+    assert len(changes) == 4
+    entries = [(e.kind, e.name, e.state) for e in R.Entries(R).values()]
+    assert entries == [("quest", "Far Away", "todo"), ("quest", "Wolf Pelts", "done"), ("fdj", "Horde Job", "pickup"),
+                       ("spot", "Camp", "spot")], entries
+    # followed in your order, the stops after given too; a side list: not the main guide by itself
+    info = G.Read(G, 9, "route")
+    assert info.source == "route" and info.side is True and info.guide == "My Route"
+    assert [l.text for l in info.lines.values()] == ["Do: Far Away"] and info.quest == 7002 and info.index == 1, info.lines[1].text
+    assert [a.lines[1].text for a in info.after.values()] == ["Turn in: Wolf Pelts", "Accept: Horde Job", "Go to: Camp"]
+    # moved by hand; the short order (you stand at 0, 0: the pelts at 100 yards, the camp at 500, the far quest at 900)
+    assert R.Move(R, 4, 1) is True and G.Read(G, 0, "route").lines[1].text == "Go to: Camp"
+    assert R.Order(R) is True
+    order = [e.name for e in R.Entries(R).values()]
+    assert order[0] == "Wolf Pelts" and order.index("Camp") < order.index("Far Away"), order
+    # skipped from the tracker (the step after), brought back (the one before)
+    info = G.Read(G, 9, "route")
+    first = info.lines[1].text
+    assert G.Go(G, info, info.index + 1) is True and G.Read(G, 0, "route").lines[1].text != first
+    info = G.Read(G, 9, "route")
+    assert G.Go(G, info, info.index - 1) is True and G.Read(G, 0, "route").lines[1].text == first
+    # focus on it: Choice untouched; a choice still stands apart (and says when it changes)
+    assert Ch.Set(Ch, "guide", "route") is True and Ch.Is(Ch, "guide", "route") and chosen[-1] == "guide"
+    Ch.Clear(Ch)
+    assert chosen[-1] is None
+    # kept up to date: a journal quest taken becomes a quest; a quest abandoned or handed in leaves, by the
+    # event that names it; an empty quest log (at login, before it is filled) takes nothing away
+    s.lua.execute("STUB.QuestAt(5001, 'Horde Job', 1, -100, -100)")
+    s.stub.Fire("QUEST_ACCEPTED", 5001)
+    assert [e.kind for e in R.Entries(R).values() if e.id == 5001] == ["quest"], "a journal quest taken did not become a quest"
+    s.lua.execute("C_QuestLog.GetNumQuestLogEntries = function() return 0, 0 end")
+    before = len(R.Entries(R))
+    s.lua.execute("STUB.QuestGone(7002)")
+    s.stub.Fire("QUEST_LOG_UPDATE")
+    assert len(R.Entries(R)) == before, "the route was cut while the quest log was empty"
+    s.stub.Fire("QUEST_REMOVED", 7002)
+    assert all(e.id != 7002 for e in R.Entries(R).values()), "an abandoned quest stayed"
+    # a map spot leaves once you are there; Go Here First follows on from that stop
+    s.lua.execute("STUB.player.x, STUB.player.y = -500, 0")
+    s.lua.execute("PatchwerkForever.MyRoute:Lead(#PatchwerkForever.MyRoute:Entries())")
+    G.Read(G, 0, "route")
+    assert all(e.kind != "spot" for e in R.Entries(R).values()), "a map spot reached stayed in the route"
+    s.lua.execute("STUB.player.x, STUB.player.y = 0, 0")
+    R.Add(R, s.lua.eval("{ kind = 'quest', id = 7001 }"))
+    names = [e.name for e in R.Entries(R).values()]
+    assert R.Lead(R, 2) is True and G.Read(G, 0, "route").lines[1].text.endswith(names[1]), (names, G.Read(G, 0, "route").lines[1].text)
+    assert R.Remove(R, 1) is True and R.Clear(R) is True and len(R.Entries(R)) == 0
+    assert G.Read(G, 0, "route") is None
+    assert s.chat() == [], s.chat()
 
     step("every part carries the same joining file")
     for part in PARTS[1:]:

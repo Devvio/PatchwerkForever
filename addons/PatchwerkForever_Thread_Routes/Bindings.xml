@@ -5,4 +5,22 @@
 	<Binding name="PATCHWERKFOREVER_THREAD_STOP" category="ADDONS">
 		PatchwerkForever_Thread_Routes_Stop()
 	</Binding>
+	<Binding name="PATCHWERKFOREVER_THREAD_FOCUS_NEXT" category="ADDONS">
+		PatchwerkForever_Thread_Routes_FocusNext()
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_THREAD_FOCUS_AUTO" category="ADDONS">
+		PatchwerkForever_Thread_Routes_Focus('auto')
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_THREAD_FOCUS_RXP" category="ADDONS">
+		PatchwerkForever_Thread_Routes_Focus('rxp')
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_THREAD_FOCUS_FDJ" category="ADDONS">
+		PatchwerkForever_Thread_Routes_Focus('fdj')
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_THREAD_FOCUS_QUESTS" category="ADDONS">
+		PatchwerkForever_Thread_Routes_Focus('quests')
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_THREAD_FOCUS_ROUTE" category="ADDONS">
+		PatchwerkForever_Thread_Routes_Focus('route')
+	</Binding>
 </Bindings>

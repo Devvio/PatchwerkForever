@@ -1,5 +1,28 @@
 # Patchwerk Forever: Thread (Tracker)
 
+## 1.3.0
+
+Choose what the route follows, and build your own route. **Needs Patchwerk Forever 2.6.0 or later.**
+
+### Focus
+- **Focus buttons** at the top of the tracker: one small button for each route you can follow (Auto, RestedXP, the Dungeon Journal list, Quests, My Route), only for what is installed and running. The one in use is lit and named beside them. Click one to follow it; right-click the row for the same choices as a menu. The focus is kept for each character. Choosing one lets go of a list you selected in the tracker; a quest you clicked still comes first. New setting: Show Focus Buttons (on by default).
+- With a guide or your quests as the focus, the bar beside the list marks what is followed, and Auto-Track Nearest Quest leaves the quest arrow alone while a guide or My Route is the focus.
+
+### My Route
+- **A My Route section** above your quests: your own stops in your own order, each numbered, with what to do there (Accept, In progress, Turn in, Go to, No place known) and how far it is. Shown while it has stops, or while My Route is the focus. New setting: Show My Route (on by default).
+- **Adding:** Add To My Route (and Remove From My Route) in a quest's right-click menu and on the Dungeon Journal list's stops; Add All Tracked Quests and Add Map Pin on the My Route heading's right-click menu; and a new key binding, Add Quest To My Route, for the quest under the quest arrow.
+- **Click a stop** to go there first. **Right-click a stop** for Go Here First, Move Up, Move Down, Move To Top, Quest Details and Remove.
+- **Drag and drop:** drag a stop to another place. A ghost of the row follows the pointer and a gold line shows where it will land. Let go away from the list, or press Escape, to cancel.
+- **Without a mouse:** the menus' Move entries, and two new key bindings, Move My Route Stop Up and Move My Route Stop Down, which move the stop you last clicked.
+- **The My Route window:** numbered rows with a grip, name, zone and distance, a cross to remove a stop, and Order For Me, Add Tracked Quests, Clear and Close. Drag rows to reorder them. Open it from the heading's menu, with `/tracker route` or the new Open My Route key binding. Escape closes it, and it remembers where you put it.
+- **Order For Me** puts the stops in a short order: nearest first, then each next stop nearest the one before.
+- **Route To Next Quest and Route To Previous Quest walk My Route** while it is the focus or the list you selected. With My Route empty, they walk your quests as before.
+- Clear asks first.
+- My Route is listed once, in its own section, and not again among the guides.
+
+### Quests
+- **New sort order: Shortest Trip.** Your tracked quests in a short path, the nearest first, then each next quest nearest to the one before. It is worked out again when a quest is added, removed or completed, so rows do not swap as you walk. Route To Next Quest and Route To Previous Quest follow it.
+
 ## 1.2.0
 
 Polish: the things you meet every session.

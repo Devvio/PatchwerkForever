@@ -8,7 +8,7 @@ local ADDON, ns = ...
 
 local Base = rawget(_G, 'PatchwerkForever')
 if not (type(Base) == 'table' and type(Base.Tool) == 'function' and Base:Tool(ADDON, ns, {
-	api = 4,                                        -- the base's API this tool was written for (4: a choice, and a guide chosen as a side path)
+	api = 5,                                        -- the base's API this tool was written for (5: the focus, My Route, and word when a choice changes)
 	name = 'Thread',
 	colour = 'ff7fd4ff',
 	saved = 'PatchwerkForever_Thread_RoutesDB',

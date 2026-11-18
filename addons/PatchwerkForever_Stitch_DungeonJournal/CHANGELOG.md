@@ -1,5 +1,10 @@
 # Patchwerk Forever: Stitch (Dungeon Journal)
 
+## 1.1.0
+
+- **The journal's quests can go in My Route** (with Patchwerk Forever 2.6.0): a quest not yet picked up is routed to where the journal says it starts, or to the quest that must be done first; once you take it, it is a quest in your log.
+- **The Dungeon Journal can be your focus**, chosen in Thread (Tracker) or Thread (Routes), while the journal is running and Route Dungeon Journal Quests is enabled.
+
 ## 1.0.2
 
 - **No more trips to a hand-in before the quest is done.** The Dungeon Journal points its own map arrow at a quest's hand-in as soon as the quest is in your log, and the list followed that arrow first. An arrow to a hand-in is now followed only once that quest is finished (seen with the Wailing Caverns quests). Its other points, and the list's own stops, are as before.

@@ -5,7 +5,8 @@
 --                      Thread (Routes), when installed, goes there first. The game's arrow is put on
 --                      the quest as well. A second click gives the main track back.
 --   shift-left-click   the quest is opened to read, as the game's own tracker opens it
---   right-click        a short menu: follow, read, share with the party, stop tracking, abandon
+--   right-click        a short menu: follow, read, add to My Route (Route.lua), share with the
+--                      party, stop tracking, abandon
 --
 -- Everything here is done only because you clicked, with one exception that is a setting and starts
 -- off: with no guide running and no quest or side list chosen by you, the game's arrow is put on the
@@ -53,10 +54,22 @@ function ns.Follow(id)
 	ns.Refresh()
 end
 
+-- The focus in effect (the base's Focus.lua): 'auto', 'quests', or a guide reader's id. A guide
+-- focused that has nowhere to send you gives way to 'auto', as the route does.
+function ns.Focused()
+	local Focus = ns.Base.Focus
+	local id = Focus and Focus:Get() or 'auto'
+	if id == 'auto' or id == 'quests' then return id end
+	if ns.Base.Guides:Read(0, id) then return id end
+	return 'auto'
+end
+
 -- Chooses the quest after (step 1) or before (step -1) the one chosen now, in the order they are
 -- listed: for a key or a gamepad button, where there is no mouse to click a quest with. From no
 -- quest, the first (or the last); one step past either end is no quest again: your main route.
+-- While My Route is the focus or the list selected, its stops are walked instead (Route.lua).
 function ns.Cycle(step)
+	if ns.RouteWalk and ns.RouteWalk(step) then return end
 	local order = ns.questOrder
 	if not (order and #order > 0) then                       -- (the list is not drawn: the game's own order)
 		order = {}
@@ -95,11 +108,15 @@ end
 function ns.ArrowOff() PutArrow(0) end
 
 -- The quest to mark as the one being followed: the one you chose; with none chosen and no guide
--- leading, the one the game's arrow is on.
+-- leading, the one the game's arrow is on. With your quests as the focus, that one even while a guide
+-- runs; with a guide as the focus (My Route among them), none.
 function ns.Marked()
 	local pick = ns.Base.Choice:Get()
 	if pick then return pick.kind == 'quest' and pick.id or nil end
 	if ns.Base.Gather:Has() and ns.Base.Gather:State() then return nil end       -- (a gathering run is)
+	local focus = ns.Focused()
+	if focus == 'quests' then return Followed() end
+	if focus ~= 'auto' then return nil end
 	if ns.GuideNow and ns.GuideNow() then return nil end
 	return Followed()
 end
@@ -177,6 +194,13 @@ function ns.QuestClick(quest, button, block)
 			{ ns.Base.Choice:Is('quest', id) and 'Stop Routing To Quest' or 'Route To Quest', function() ns.Follow(id) end },
 			{ 'Quest Details', function() ns.OpenQuest(id) end },
 		}
+		if ns.RouteHasQuest then
+			if ns.RouteHasQuest(id) then
+				entries[#entries + 1] = { 'Remove From My Route', function() ns.RouteRemoveQuest(id) end }
+			else
+				entries[#entries + 1] = { 'Add To My Route', function() ns.RouteAddQuest(id) end }
+			end
+		end
 		local grouped = type(IsInGroup) == 'function' and IsInGroup()
 		if grouped and Ask(C_QuestLog.IsPushableQuest, id) then
 			entries[#entries + 1] = { 'Share Quest', function() Share(id) end }
@@ -215,7 +239,9 @@ local function Look()
 	local now = Followed()
 	if now and now ~= auto then return end              -- a quest you chose: left alone
 	if not now then auto = nil end
-	if ns.Base.Guides:Read(0) then return end           -- a guide is leading
+	local focus = ns.Focused()
+	if focus ~= 'auto' and focus ~= 'quests' then return end       -- a guide is the focus (My Route among them)
+	if focus == 'auto' and ns.Base.Guides:Read(0) then return end  -- a guide is leading
 	if ns.Base.Choice:Get() then return end             -- so is a side list you chose (never read as the main guide)
 	local best, yards, yardsOf = Nearest()
 	if not best or best == now then return end

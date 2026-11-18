@@ -15,6 +15,7 @@ local P = ns.P;
 --     PatchwerkForever.Choice:Get()        nil, or { kind = 'quest', id = }
 --     PatchwerkForever.Choice:Is(kind, id)
 --     PatchwerkForever.Choice:Clear()      back to the main track
+--     PatchwerkForever.Choice:OnChange(fn) fn(choice) whenever it is set, cleared or lapses (API 5)
 --
 -- A chosen quest stands until it is cleared or the quest leaves
 -- your log (handed in, abandoned). It is not kept between logins.
@@ -26,6 +27,18 @@ local Choice = {};
 P.Choice = Choice;
 
 local chosen;
+local listeners = {};
+
+local function Changed()
+	for _, fn in ipairs(listeners) do
+		local ok, problem = pcall(fn, chosen);
+		if not ok then geterrorhandler()(problem) end;
+	end
+end
+
+function Choice:OnChange(fn)
+	if ( type(fn) == 'function' ) then listeners[#listeners + 1] = fn end;
+end
 
 local function Stands(choice)
 	-- (a guide stands while its reader has something to say)
@@ -41,11 +54,16 @@ function Choice:Set(kind, id)
 	if ( type(kind) ~= 'string' or id == nil ) then return false end;
 	chosen = { kind = kind, id = id };
 	if ( P.Gather and P.Gather:State() ) then P.Gather:Stop() end;
+	Changed()
 	return true;
 end
 
 function Choice:Get()
-	if ( chosen and not Stands(chosen) ) then chosen = nil end;
+	if ( chosen and not Stands(chosen) ) then
+		chosen = nil;
+		-- (told a moment later: Get is asked while lists are being read and drawn)
+		if ( type(RunNextFrame) == 'function' ) then RunNextFrame(Changed) else Changed() end;
+	end
 	return chosen;
 end
 
@@ -55,5 +73,7 @@ function Choice:Is(kind, id)
 end
 
 function Choice:Clear()
+	local was = chosen;
 	chosen = nil;
+	if was then Changed() end;
 end

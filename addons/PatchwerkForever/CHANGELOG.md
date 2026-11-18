@@ -1,5 +1,11 @@
 # Patchwerk Forever
 
+## 2.6.0
+
+- **Focus**: what the route follows, chosen by you and kept for each character: Auto (your guide and quests, as before), RestedXP, the Dungeon Journal, Quests or My Route. Thread (Routes) follows it and Thread (Tracker) shows its buttons; a quest you click and your map pin still come first.
+- **My Route**: your own list of stops for each character, followed in your order: quests in your log, Dungeon Journal quests not yet picked up, and map spots. A quest handed in or abandoned leaves it by itself; a journal quest you pick up becomes a quest in your log.
+- For addon authors (API 5): `PatchwerkForever.Focus` (`Get`, `Set`, `Available`, `Name`, `Next`, `OnChange`); `PatchwerkForever.MyRoute` (`Entries`, `Add`, `Has`, `Remove`, `Move`, `Order`, `Clear`, `OnChange`, and `Kind` for a part that knows where quests are picked up), which is also the guide reader `route`; `Choice:OnChange`; `Guides.QuestPlace(id)` and `Guides.ShortOrder(list, where)`; a reader's optional `Running` function, for whether it can be chosen as a focus with nothing to say yet.
+
 ## 2.5.0
 
 - **Side lists.** A list that a part marks as a side list, such as the Dungeon Journal quests, is still listed but is no longer followed as the main route by itself. It is followed once you select it.

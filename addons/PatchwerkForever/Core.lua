@@ -28,7 +28,7 @@ local addonName, ns = ...;
 
 -- API: raised when something is added that a part may need (2: the guides service, Guides.lua;
 -- 3: the gathering service, Gather.lua, and a guide step's items and skipping)
-local P = { API = 4, Fixes = {}, Parts = {}, Settings = { list = {}, byKey = {} } };
+local P = { API = 5, Fixes = {}, Parts = {}, Settings = { list = {}, byKey = {} } };
 PatchwerkForever = P;
 ns.P = P;
 

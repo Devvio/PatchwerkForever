@@ -18,6 +18,9 @@
 --     near    one list, nearest first
 --     game    the order you tracked them in
 --     ready   the ones ready to hand in first, then by zone
+--     short   a short trip through them: the nearest first, each next the nearest to the one before
+--             (the base's Guides.ShortOrder, as My Route's Order For Me). Worked out again only when
+--             a quest comes, goes or is done, so the rows do not swap as you walk.
 -- A quest that is ready can leave the list for a short group of its own at the foot (a setting).
 local ADDON, ns = ...
 if not ns.linked then return end
@@ -192,6 +195,35 @@ local function Nearer(a, b)
 	return a.watch < b.watch
 end
 
+-- The short trip, kept until the quests in it change: { key = what it was worked out for, order = { id, ... } }
+local trip = { key = nil, order = {} }
+
+local function Trip(list)
+	local parts = {}
+	-- (worked out again when a quest comes, goes or is finished, or when one's place becomes known)
+	for _, quest in ipairs(list) do
+		parts[#parts + 1] = quest.id .. (quest.done and '*' or '') .. (ns.QuestPlace(quest.id) and '' or '?')
+	end
+	table.sort(parts)
+	local key = table.concat(parts, ',')
+	if key ~= trip.key then
+		local ordered = ns.Base.Guides.ShortOrder(list, function(quest) return ns.QuestPlace(quest.id) end)
+		trip = { key = key, order = {} }
+		for i, quest in ipairs(ordered) do trip.order[quest.id] = i end
+	end
+	local out = {}
+	for _, quest in ipairs(list) do out[#out + 1] = quest end
+	table.sort(out, function(a, b)
+		local x, y = trip.order[a.id] or 999, trip.order[b.id] or 999
+		if x ~= y then return x < y end
+		return a.watch < b.watch
+	end)
+	return out
+end
+
+-- (for the checks) the short trip is worked out afresh at the next drawing
+function ns.ForgetTrip() trip = { key = nil, order = {} } end
+
 local function ZoneHeading(name)
 	local r, g, b = ns.RGB(ns.Get('lookHeader'))
 	return { key = 'zone:' .. name, title = name, small = true, r = r * 0.85, g = g * 0.85, b = b * 0.85 }
@@ -215,6 +247,8 @@ ns.AddSection('quests', 50, function()
 		for _, quest in ipairs(open) do blocks[#blocks + 1] = BlockOf(quest) end
 	elseif order == 'game' then
 		for _, quest in ipairs(open) do blocks[#blocks + 1] = BlockOf(quest) end
+	elseif order == 'short' then
+		for _, quest in ipairs(Trip(open)) do blocks[#blocks + 1] = BlockOf(quest) end
 	else
 		-- by zone: the one you are in first, the others in the quest log's order
 		local here = Ask(GetRealZoneText) or Ask(GetZoneText)

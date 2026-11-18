@@ -94,7 +94,14 @@ function CreateFrame(kind, name, parent, template)
 	function frame:IsProtected() return self.protected == true end
 	function frame:IsForbidden() return false end
 	function frame:GetChildren() return unpack(self.children) end
-	function frame:RegisterForDrag(button) assert(button == 'LeftButton') end
+	-- (no button at all: the frame takes no drag)
+	function frame:RegisterForDrag(button) assert(button == nil or button == 'LeftButton') self.drags = button ~= nil end
+	-- the keyboard, for Escape during a drag: in a fight the game refuses to pass keys on
+	function frame:EnableKeyboard(on) assert(type(on) == 'boolean') self.keyboard = on end
+	function frame:SetPropagateKeyboardInput(on)
+		assert(not STUB.combat, 'keys passed on in a fight: the game refuses that')
+		self.propagate = on
+	end
 	function frame:RegisterForClicks(...) self.clicks = { ... } end
 	function frame:GetScale() return self.scale or 1 end
 	-- Where a frame hung from the screen is, in its own units as the game gives it: worked out from
@@ -127,6 +134,10 @@ function CreateFrame(kind, name, parent, template)
 	function frame:GetRight()
 		local left = self:GetLeft()
 		return left and left + (self.width or 0)
+	end
+	function frame:GetBottom()
+		local top = self:GetTop()
+		return top and top - (self.height or 0)
 	end
 	function frame:IsMouseOver() return self.over == true end
 	-- a button of the game's secure kind: made from its template. In a fight an addon may not show,
@@ -177,6 +188,19 @@ end
 -- wowstub.lua says a frame is that it knows no better of, and what the item buttons were checked
 -- against before a frame's place was worked out from its SetPoint.)
 UIParent.width, UIParent.height = 1100, 960
+
+-- The pointer, in the screen's pixels (UIParent's scale is 1 here, so its units too).
+STUB.cursor = { x = 0, y = 0 }
+function GetCursorPosition() return STUB.cursor.x, STUB.cursor.y end
+-- the frames Escape closes
+UISpecialFrames = {}
+-- who you are: each character keeps its own focus and My Route (the base's Focus.lua)
+STUB.guid = 'Player-1-0001'
+local unitGUID = UnitGUID
+function UnitGUID(unit)
+	if unit == 'player' then return STUB.guid end
+	return unitGUID(unit)
+end
 
 ---------------------------------------------------------------------------
 -- The game's own tracker: a frame with pieces, one of them protected

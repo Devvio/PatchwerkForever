@@ -42,6 +42,36 @@ What the route follows by itself is the main track: your guide when one is runni
 - **A gathering run** is a side path of the same kind. There is one at a time: choosing a quest ends a run, and starting a run lets the quest go.
 - A map pin of your own still comes before everything.
 
+## Focus: you choose what the route follows
+
+By itself the route follows the main track. A **focus** is your standing choice of something else, kept for each character until you change it:
+
+| Focus | The route follows |
+|---|---|
+| **Auto** | the main track: your guide or your tracked quests, by the Priority setting |
+| **RestedXP** | your RestedXP guide only |
+| **Dungeon Journal** | the Dungeon Journal's quests only (with its Stitch) |
+| **Quests** | your tracked quests only: the quest arrow's, or the nearest |
+| **My Route** | your own list of stops, in your order (below) |
+
+Only what is running is offered. A gathering run, your map pin and a quest or list you select still come first. You chose the focus yourself, so **Follow RestedXP Guide** and **Follow Tracked Quests** being off do not hold it back.
+
+- **When the focus has nowhere to send you** (the journal's list is done, nothing is tracked, My Route is empty), the route follows Auto instead and says so once in chat.
+- **A change of focus is said on screen**: "Following: Dungeon Journal", above the words of the step it leads to.
+- **Where to change it:** the button at the top right of the world map, `/thread focus`, the key bindings, and Thread (Tracker)'s focus bar.
+
+## My Route on the world map
+
+My Route is a list of stops you put in your own order: quests in your log, Dungeon Journal quests not yet taken, and map spots. It is kept for each character, by Patchwerk Forever; Thread (Tracker) has its editor.
+
+- **Numbered marks.** While My Route is your focus or the list you selected, its stops are marked on the world map, 1, 2, 3, in the list's order (only those on the map shown).
+- **Right-click a mark** for **Go Here First**, **Move Earlier**, **Move Later** and **Remove**. A left-click goes there first.
+- **The focus button's menu** has **Edit My Route** (opens Thread (Tracker)'s editor beside the map) and **Add Map Pin To My Route**.
+
+## The quest log
+
+On the world map's quest log, each quest has a small **+** beside its title: click it to add the quest to My Route. A quest already in My Route shows a check mark instead; click it to take the quest out. The quest's right-click menu has **Add To My Route** or **Remove From My Route** as well. Nothing of the quest log itself is changed.
+
 ## Flight points you know
 
 A route only flies between flight points your character has discovered (the setting **Known Flight Points Only**, on by default).
@@ -104,6 +134,8 @@ The only spots known are the ones you have gathered from yourself: the game's fi
 
 **Options → AddOns → Patchwerk Forever → Thread: Routes**, or `/thread config`. The trail's colours, thickness and style (solid, dashes, dots, flowing) are on **Routes: Trail**; the words on screen are on **Routes: Step Text**.
 
+Under **Focus And My Route**: **Focus Button On The World Map** and **Show My Route On The World Map** (both on to begin with).
+
 ## Commands
 
 | Command | Does |
@@ -115,12 +147,14 @@ The only spots known are the ones you have gathered from yourself: the game's fi
 | `/thread config` | opens the settings |
 | `/thread where` | says where the planner thinks you are |
 | `/thread quest` | says where the game puts your tracked quests, and which one is followed |
+| `/thread focus` | says which focus is in use, and which can be chosen |
+| `/thread focus auto` / `rxp` / `dj` / `quests` / `route` | follows Auto, RestedXP, the Dungeon Journal, your tracked quests only, or My Route |
 | `/thread step` | says the current step on screen again |
 | `/thread flights` | lists the flight points you know on this continent, and how that is known |
 | `/thread nodes` / `nodes forget` | counts the herb and ore spots; forgets the ones within 15 yards |
 | `/thread gather` / `gather round` / `gather <name>` / `gather list` / `gather stop` | a gathering run to the nearest spot and on; a round near here; one kind only; what is near; end it |
 
-Two actions can be bound to a key or a gamepad button (Options → Keybindings → AddOns, or Console Port's binding list): route now, and stop routing.
+These can be bound to a key or a gamepad button (Options → Keybindings → AddOns, or Console Port's binding list): **Route To Pin, Guide Step Or Quest**, **Stop Routing**, **Next Focus** (goes round the focuses that can be chosen), and one for each focus: **Focus: Auto**, **Focus: RestedXP**, **Focus: Dungeon Journal**, **Focus: Quests** and **Focus: My Route**.
 
 ## What it does not do yet
 

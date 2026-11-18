@@ -116,6 +116,10 @@ local function Start(mode, name)
 	if mode ~= 'kind' and mode ~= 'round' then mode = 'any' end
 	if mode == 'kind' and type(name) ~= 'string' then return false end
 	state = { mode = mode, name = name, map = map, x = px, y = py }
+	-- one side path at a time, as the base's Gather:Start has it: a run started here (/thread gather)
+	-- ends a choice too. (After the run is set, so the look this sets off already sees the run.)
+	local Choice = ns.Base.Choice
+	if Choice and Choice.Clear then Choice:Clear() end
 	noWay = {}
 	Go()
 	return state ~= nil

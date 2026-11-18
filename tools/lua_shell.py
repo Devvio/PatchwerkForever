@@ -37,6 +37,59 @@ def main():
     lua = LuaRuntime(unpack_returned_tuples=True)
     here = os.path.dirname(os.path.abspath(__file__))
     lua.execute(open(os.path.join(here, "wowstub.lua"), encoding="utf-8").read())
+    # More of the game than the shared stand-in has, for the focus and My Route on the world map and in the
+    # quest log (MapRoute.lua, QuestLog.lua): a button's methods, the map's border frame and the scroll
+    # frame its picture is in, the game's menus (each menu made is kept in STUB.menu, and every
+    # Menu.ModifyMenu callback in STUB.modifiers), and hooksecurefunc.
+    lua.execute("""
+        local made = CreateFrame
+        function CreateFrame(kind, name, parent, template)
+            local frame = made(kind, name, parent)
+            frame.kind = kind
+            function frame:SetShown(on) if on then self:Show() else self:Hide() end end
+            function frame:RegisterForClicks(...) self.clicks = { ... } end
+            function frame:SetScale(s) assert(s > 0) self.ownScale = s end
+            function frame:GetScale() return self.ownScale or 1 end
+            return frame
+        end
+        WorldMapFrame.BorderFrame = CreateFrame('Frame', nil, WorldMapFrame)
+        WorldMapFrame.ScrollContainer = CreateFrame('ScrollFrame', nil, WorldMapFrame)
+        function geterrorhandler()
+            return function(problem) STUB.messages[#STUB.messages + 1] = 'a problem in a listener: ' .. tostring(problem) end
+        end
+        local function Root()
+            local root = { entries = {} }
+            local function add(entry) root.entries[#root.entries + 1] = entry; return entry end
+            function root:CreateTitle(text) return add({ kind = 'title', text = text }) end
+            function root:CreateButton(text, fn) assert(type(fn) == 'function') return add({ kind = 'button', text = text, fn = fn }) end
+            function root:CreateRadio(text, isSelected, setSelected, data)
+                assert(type(isSelected) == 'function' and type(setSelected) == 'function')
+                return add({ kind = 'radio', text = text, isSelected = isSelected, setSelected = setSelected, data = data })
+            end
+            function root:CreateDivider() return add({ kind = 'divider' }) end
+            return root
+        end
+        STUB.NewMenuRoot = Root
+        MenuUtil = { CreateContextMenu = function(owner, generator)
+            local root = Root()
+            generator(owner, root)
+            STUB.menu, STUB.menuOwner = root, owner
+            return root
+        end }
+        STUB.modifiers = {}
+        Menu = { ModifyMenu = function(tag, fn) STUB.modifiers[tag] = fn end }
+        function hooksecurefunc(a, b, c)
+            local into, name, fn = _G, a, b
+            if type(a) == 'table' then into, name, fn = a, b, c end
+            local old = into[name]
+            assert(type(old) == 'function', 'hooksecurefunc: no function ' .. tostring(name))
+            into[name] = function(...)
+                local out = { old(...) }
+                fn(...)
+                return unpack(out)
+            end
+        end
+    """)
     # a map's data addon is read when the addon asks the game to load it, as in the game
     loaded = []
 
@@ -130,7 +183,7 @@ def main():
     stub.Fire("PLAYER_LOGIN")
     stub.Fire("PLAYER_ENTERING_WORLD", True, False)               # (as the game gives it: a login, not a reload)
     chat("login")
-    assert len(stub.settings) == 88 and stub.category and stub.front, "the settings pages were not built"
+    assert len(stub.settings) == 90 and stub.category and stub.front, "the settings pages were not built"
     assert stub.provider, "the world map layer was not attached"
 
     step("put a pin on Gadgetzan")
@@ -340,7 +393,7 @@ def main():
     assert any("/thread stop: stop routing (a route to a guide step or quest resumes" in t for t in text), text
 
     step("no pin: the route follows the RestedXP guide's arrow, step by step")
-    assert len(stub.settings) == 88, "the guide setting is missing from the settings page"
+    assert len(stub.settings) == 90, "the guide setting is missing from the settings page"
     stub.pin = None
     stub.Fire("USER_WAYPOINT_UPDATED")
     assert not ns.dest
@@ -776,10 +829,10 @@ def main():
                 assert s.variable[len(addon) + 1:] not in by_name, s.variable
                 by_name[s.variable[len(addon) + 1:]] = s
                 break
-    assert len(by_name) == 88, "expected 88 settings on the options pages, found %d" % len(by_name)
+    assert len(by_name) == 90, "expected 90 settings on the options pages, found %d" % len(by_name)
     assert "baseTellMissing" not in by_name, "the base's switch is on its front page, not a row of the game's"
     pages = sorted(stub.pages.keys())
-    WANT = {"Thread: Routes": 14, "Routes: Trail": 12, "Routes: Step Text": 6, "Thread: Sparkle": 4, "Sparkle: Names": 8,
+    WANT = {"Thread: Routes": 16, "Routes: Trail": 12, "Routes: Step Text": 6, "Thread: Sparkle": 4, "Sparkle: Names": 8,
             "Sparkle: Behind My Character": 6, "Sparkle: Looks": 30, "Sparkle: Loot Wisps": 8}
     assert pages == sorted(WANT), pages
     for page in pages:
@@ -787,7 +840,7 @@ def main():
         assert len(on_it) == WANT[page], "%s has %d settings, expected %d" % (page, len(on_it), WANT[page])
     # headings, each kind of sparkle under its own on the one page of looks
     assert list(stub.headers.values()) == [
-        "Destinations", "Travel Options", "Chat", "Gathering Nodes", "Display", "Line Style", "Colors", "Defaults",
+        "Destinations", "Focus And My Route", "Travel Options", "Chat", "Gathering Nodes", "Display", "Line Style", "Colors", "Defaults",
         "Herbs", "Ore", "Chests", "Quest Objects", "Other Objects", "Defaults"], list(stub.headers.values())
     # every page opens with its name, its tool's picture and a line in Patchwerk's voice
     intros = {i.name: i for i in stub.intros.values()}
@@ -795,7 +848,7 @@ def main():
     assert intros["Thread: Routes"].voice == "Follow the thread. Patchwerk knows the way. Mostly."
     assert intros["Routes: Trail"].voice.startswith("A line on the ground.") and intros["Sparkle: Looks"].voice.startswith("Every shiny thing")
     assert all(i.voice and i.icon and i.icon.endswith("icon") for i in intros.values()), [n for n, i in intros.items() if not i.voice]
-    assert stub.Rows() == len(WANT) + 14, "a row of our own could not be made"
+    assert stub.Rows() == len(WANT) + 15, "a row of our own could not be made"
     # the front page: what is sewn on, each with a button to its page
     front = stub.front
     front.shown = True
@@ -2085,6 +2138,303 @@ def main():
     stub.Tick(); frames()
     assert not ns.dest
     chat("a flight")
+
+    step("the focus: pin > choice > focus > auto; each kind of focus; nowhere to go said once; said on screen")
+    G = lua.globals()
+    Focus, MyRoute, Guides = G.PatchwerkForever.Focus, G.PatchwerkForever.MyRoute, G.PatchwerkForever.Guides
+    # (the focus and My Route are kept for each character: the game says who you are)
+    lua.execute("""
+        local was = UnitGUID
+        function UnitGUID(unit) if unit == 'player' then return 'Player-1-00000001' end return was(unit) end
+    """)
+    # a stand-in for the Dungeon Journal's list: a reader of its own, its steps in STUB.dj
+    lua.execute("""
+        STUB.dj = {}
+        PatchwerkForever.Guides:Register('fdj', { name = 'Dungeon Journal', Side = function() return true end, Read = function(count)
+            local now = STUB.dj[1]
+            if not now then return nil end
+            local info = { index = 1, total = #STUB.dj, kind = 'accept', key = 'dj' .. #STUB.dj, map = 1, x = now[1], y = now[2],
+                lines = { { text = 'Accept: Wailing Caverns Quest', done = false } }, ahead = {}, after = {} }
+            local nxt = STUB.dj[2]
+            if nxt and count > 0 then info.ahead[1] = { index = 2, kind = 'accept', lines = {}, map = 1, x = nxt[1], y = nxt[2] } end
+            return info
+        end })
+    """)
+
+    def focus():
+        return Focus.Get(Focus)
+
+    def lines():                       # the step text on screen, line by line
+        text = on_screen()[0]
+        return text.split("\n") if text else []
+
+    def ticks(n=3):
+        for _ in range(n):
+            stub.Tick(); frames()
+
+    stand((-442.0, -2598.0))
+    setting("rxp", True)
+    setting("quests", True)
+    setting("sourceFirst", "rxp")
+    setting("rxpAhead", 2)
+    stub.QuestAt(880, "Bristleback Interlopers", 1, *FIELD)
+    stub.QuestAt(881, "Tribes at War", 1, *CAMP)
+    stub.watched, stub.focus = lua.table_from([880]), 0
+    arrow = lua.eval("function() RXPG_ARROW = { element = nil }; return RXPG_ARROW end")()
+    arrow.element = lua.table_from({"wx": RATCHET[1], "wy": RATCHET[0], "instance": 1})
+    look("QUEST_WATCH_LIST_CHANGED")
+    chat("focus")
+    quiet()
+    assert focus() == "auto" and ns.dest and ns.dest.source == "rxp" and near(*RATCHET), "Auto did not follow the guide first"
+    # /thread focus: what is in use and what can be chosen (the journal has nothing to say yet: not offered)
+    slash("focus")
+    text = chat("focus")
+    assert any(t.endswith("Focus: Auto. Available: Auto, RestedXP, Quests, My Route.") for t in text), text
+    # Quests: the tracked quest, though the guide comes first by Priority, and said on screen with the focus above it
+    slash("focus quests")
+    frames()
+    text = chat("focus quests")
+    assert any(t.endswith("Focus: Quests.") for t in text), text
+    assert focus() == "quests" and ns.dest.source == "quest" and near(*FIELD), "the Quests focus did not follow the tracked quest"
+    assert lines() == ["Following: Quests", "Quest: Bristleback Interlopers"], lines()
+    quiet()
+    # your choice of focus stands even with Follow Tracked Quests switched off
+    setting("quests", False)
+    ticks()
+    assert near(*FIELD), "the Follow Tracked Quests setting held back the Quests focus"
+    setting("quests", True)
+    # a quest you choose comes before the focus, and a map pin before both
+    Choice.Set(Choice, "quest", 881)
+    frames()
+    assert ns.dest.chosen and near(*CAMP), "the focus came before a quest you chose"
+    stub.PinAt(1, -7140.0, -3790.0)
+    stub.Fire("USER_WAYPOINT_UPDATED"); frames()
+    ticks()
+    assert ns.dest.pin, "the choice or the focus came before your map pin"
+    stub.pin = None
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    ticks()
+    assert ns.dest.chosen and near(*CAMP), "not back to the chosen quest when the pin went"
+    Choice.Clear(Choice)
+    frames()
+    assert not ns.dest.chosen and near(*FIELD), "not back to the focus when the choice was cleared (at once, not at the next look)"
+    chat("precedence")
+    quiet()
+    # the Dungeon Journal: its list only, with its next step drawn on; not offered while it has nothing to say
+    slash("focus dj")
+    text = chat("focus dj")
+    assert any(t.endswith("Dungeon Journal is not available now.") for t in text), text
+    assert focus() == "quests"
+    lua.execute("STUB.dj = { { -1994, -156 }, { -600, -2800 } }")
+    slash("focus fdj")
+    frames()
+    chat("focus dj")
+    assert focus() == "fdj" and ns.dest.source == "rxp" and near(*CAMP), "the Dungeon Journal focus was not followed"
+    assert lines() == ["Following: Dungeon Journal", "Accept: Wailing Caverns Quest"], lines()
+    assert not ns.dest.chosen, "a focus is drawn in the colour of a path you chose"
+    ticks(2)
+    assert ns.ahead and len(ns.ahead.legs) == 1, "the focused list's next step is not drawn on"
+    quiet()
+    # its list done: back to Auto, said once in chat, and not again while it stays so
+    lua.execute("STUB.dj = {}")
+    ticks()
+    stub.time += 5
+    ticks(6)
+    text = chat("dj done")
+    said_nowhere = [t for t in text if "Nothing to follow in Dungeon Journal for now; following your guide and quests." in t]
+    assert len(said_nowhere) == 1, text
+    assert focus() == "fdj" and ns.dest.source == "rxp" and near(*RATCHET), "did not fall back to Auto (the guide first)"
+    stub.time += 30
+    ticks(6)
+    assert not any("Nothing to follow" in t for t in chat("dj done")), "the fall back was said again"
+    # somewhere to go again, then nowhere: said again
+    lua.execute("STUB.dj = { { -1994, -156 } }")
+    ticks()
+    assert near(*CAMP), "the journal was not followed again once it had a step"
+    lua.execute("STUB.dj = {}")
+    ticks()
+    stub.time += 5
+    ticks()
+    assert sum(1 for t in chat("dj again") if "Nothing to follow in Dungeon Journal" in t) == 1
+    quiet()
+    # RestedXP: followed with its own setting off, the step text says the focus once even where the place is the same
+    setting("rxp", False)
+    G.PatchwerkForever_Thread_Routes_Focus("rxp")
+    frames()
+    assert focus() == "rxp" and ns.dest.source == "rxp" and near(*RATCHET), "Follow RestedXP Guide held back the RestedXP focus"
+    assert lines()[:1] == ["Following: RestedXP"], lines()
+    slash("quest")
+    assert any("your RestedXP guide (it is your focus)" in t for t in chat("rxp focus"))
+    quiet()
+    setting("rxp", True)
+    # back to Auto, which goes to the same place: the focus is said on its own
+    G.PatchwerkForever_Thread_Routes_Focus("auto")
+    frames()
+    assert near(*RATCHET) and lines() == ["Following: Auto"], lines()
+    quiet()
+
+    step("My Route as the focus: followed in order, numbered on the world map, and changed from the marks' menu")
+    assert MyRoute.Add(MyRoute, lua.table_from({"kind": "quest", "id": 881}))
+    assert MyRoute.Add(MyRoute, lua.table_from({"kind": "quest", "id": 880}))
+    assert MyRoute.Add(MyRoute, lua.table_from({"kind": "spot", "map": 1, "x": RATCHET[0], "y": RATCHET[1], "label": "Ratchet"}))
+    assert MyRoute.Add(MyRoute, lua.table_from({"kind": "spot", "map": 0, "x": -9460.0, "y": 60.0, "label": "Stormwind"}))
+    world_map.shown = True
+    world_map.mapID = 1414
+    stub.provider.RefreshAllData()
+    assert len(ns.RouteMarks()) == 0, "My Route was marked on the map while it is not followed"
+    G.PatchwerkForever_Thread_Routes_Focus("route")
+    frames()
+    assert focus() == "route" and near(*CAMP), "My Route's first stop was not gone to"
+    assert lines() == ["Following: My Route", "Do: Tribes at War"], lines()
+    marks_now = list(ns.RouteMarks().values())
+    # (the stop in Stormwind is on the other continent's map: not marked on Kalimdor's)
+    assert [m.number.GetText(m.number) for m in marks_now] == ["1", "2", "3"], [m.number.text for m in marks_now]
+    assert all(m.shown and m.ownScale == 2 for m in marks_now), "the marks are not kept the same size on the screen"
+    # a mark's menu: Go Here First, Move Earlier, Move Later, Remove
+    def menu_texts():
+        return [e.text for e in stub.menu.entries.values() if e.kind != "divider"]
+
+    def pick(text):
+        entry = [e for e in stub.menu.entries.values() if e.text == text][0]
+        if entry.kind == "radio":
+            entry.setSelected(entry.data)
+        else:
+            entry.fn()
+
+    second = marks_now[1]
+    second.scripts.OnClick(second, "RightButton")
+    assert menu_texts() == ["2. Bristleback Interlopers", "Go Here First", "Move Earlier", "Move Later", "Remove"], menu_texts()
+    pick("Go Here First")
+    frames()
+    assert Guides.Read(Guides, 0, "route").route == 2 and near(*FIELD), "Go Here First did not lead to that stop"
+    first = ns.RouteMarks()[1]
+    first.scripts.OnClick(first, "RightButton")
+    assert menu_texts() == ["1. Tribes at War", "Go Here First", "Move Later", "Remove"], menu_texts()
+    pick("Move Later")
+    order = [e.id for e in MyRoute.Entries(MyRoute).values()]
+    assert order[:2] == [880, 881], order
+    assert [m.name for m in ns.RouteMarks().values()][:2] == ["Bristleback Interlopers", "Tribes at War"], "the marks were not redrawn"
+    third = ns.RouteMarks()[3]
+    third.scripts.OnClick(third, "RightButton")
+    pick("Remove")
+    assert len(MyRoute.Entries(MyRoute)) == 3 and len(ns.RouteMarks()) == 2, "Remove did not take the stop out"
+    third = ns.RouteMarks()[2]
+    third.scripts.OnClick(third, "LeftButton")              # (a left-click: go there first)
+    frames()
+    assert Guides.Read(Guides, 0, "route").route == 2 and near(*CAMP), "a left-click on a mark did not lead to it"
+    # Auto again: no marks; My Route selected as a side list: marks; the setting off: none
+    G.PatchwerkForever_Thread_Routes_Focus("auto")
+    frames()
+    assert len(ns.RouteMarks()) == 0, "My Route stayed on the map after the focus left it"
+    Choice.Set(Choice, "guide", "route")
+    assert len(ns.RouteMarks()) == 2, "My Route selected is not marked on the map"
+    setv("myRouteMap", False)
+    assert len(ns.RouteMarks()) == 0, "Show My Route On The World Map did not hide the marks"
+    setv("myRouteMap", True)
+    Choice.Clear(Choice)
+    chat("my route")
+    quiet()
+
+    step("the world map's focus button, its menu, and the keys")
+    button = ns.MapFocusButton()
+    assert button and same(button.parent, world_map.BorderFrame) and same(button.anchor, world_map.ScrollContainer) and button.shown, "no focus button on the map's border frame"
+    assert not world_map.overlayFrames, "the button went in among the map's overlay frames"
+    button.scripts.OnClick(button, "LeftButton")
+    texts = menu_texts()
+    assert texts == ["Route Focus", "Auto", "RestedXP", "Quests", "My Route", "Edit My Route", "Add Map Pin To My Route"], texts
+    radios = [e for e in stub.menu.entries.values() if e.kind == "radio"]
+    assert [e.text for e in radios if e.isSelected(e.data)] == ["Auto"], "the focus in use is not the one checked"
+    pick("Quests")
+    frames()
+    assert focus() == "quests" and near(*FIELD)
+    pick("Edit My Route")
+    assert any("Editing My Route needs Thread (Tracker)" in t for t in chat("edit")), "nothing said without the tracker"
+    lua.execute("function PatchwerkForever_Thread_Tracker_OpenMyRoute(anchor) STUB.editorBeside = anchor end")
+    pick("Edit My Route")
+    assert same(stub.editorBeside, world_map), "the editor was not opened beside the map"
+    pick("Add Map Pin To My Route")
+    assert any(t.endswith("Place a map pin first.") for t in chat("map pin"))
+    stub.PinAt(1, -1000.0, -2000.0)
+    pick("Add Map Pin To My Route")
+    entries = list(MyRoute.Entries(MyRoute).values())
+    assert entries[-1].kind == "spot" and entries[-1].name == "Map pin" and abs(entries[-1].x - -1000.0) < 1 and abs(entries[-1].y - -2000.0) < 1, [(e.kind, e.name) for e in entries]
+    pick("Add Map Pin To My Route")
+    assert any(t.endswith("Your map pin is already in My Route.") for t in chat("map pin")), "a pin was added twice"
+    MyRoute.Remove(MyRoute, len(entries))
+    stub.pin = None
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    setv("focusButton", False)
+    assert not button.shown, "Focus Button On The World Map did not hide the button"
+    setv("focusButton", True)
+    assert button.shown
+    # Next Focus goes round what can be chosen; each focus has a key of its own
+    G.PatchwerkForever_Thread_Routes_FocusNext()
+    assert focus() == "route", focus()
+    G.PatchwerkForever_Thread_Routes_FocusNext()
+    assert focus() == "auto", focus()
+    for word, want in (("myroute", "route"), ("quest", "quests"), ("restedxp", "rxp"), ("auto", "auto")):
+        slash("focus " + word)
+        assert focus() == want, (word, focus())
+    slash("focus nonsense")
+    assert any('Unknown focus "nonsense"' in t for t in chat("focus words"))
+    bindings = open(os.path.join(ADDONS, ADDON, "Bindings.xml"), encoding="utf-8").read()
+    for key in ("FOCUS_NEXT", "FOCUS_AUTO", "FOCUS_RXP", "FOCUS_FDJ", "FOCUS_QUESTS", "FOCUS_ROUTE"):
+        assert ('name="PATCHWERKFOREVER_THREAD_%s"' % key) in bindings and G["BINDING_NAME_PATCHWERKFOREVER_THREAD_" + key], key
+    slash("")
+    assert any("/thread focus auto, rxp, dj, quests or route" in t for t in chat("help")), "the help does not tell of /thread focus"
+    # a gathering run started here ends a choice, as one started through the base does
+    Choice.Set(Choice, "quest", 881)
+    slash("gather")
+    assert Choice.Get(Choice) is None, "/thread gather left the choice standing"
+    slash("gather stop")
+    ticks()
+    chat("gather")
+    quiet()
+
+    step("the quest log: a + beside each quest, and the quest's menu; nothing where the game has no quest log")
+    hooked, menued = ns.QuestLogHooked()
+    assert not hooked and menued, (hooked, menued)
+    stub.Fire("ADDON_LOADED", "Blizzard_UIPanels_Game")         # (still no quest log: nothing, and no error)
+    assert not ns.QuestLogHooked()[0]
+    lua.execute("""
+        local titles = { CreateFrame('Button'), CreateFrame('Button'), CreateFrame('Button') }
+        titles[1].questID, titles[2].questID = 880, 881            -- (the third is a header's: no quest)
+        STUB.titles = titles
+        QuestScrollFrame = { titleFramePool = { EnumerateActive = function() return pairs({ [titles[1]] = true, [titles[2]] = true, [titles[3]] = true }) end } }
+        function QuestLogQuests_Update() STUB.questLogDrawn = (STUB.questLogDrawn or 0) + 1 end
+    """)
+    stub.Fire("ADDON_LOADED", "Blizzard_UIPanels_Game")
+    assert ns.QuestLogHooked()[0], "the quest log was not hooked once it was there"
+    G.QuestLogQuests_Update()
+    assert stub.questLogDrawn == 1, "the game's own drawing of the quest log was lost"
+    titles = list(stub.titles.values())
+    plus = [ns.QuestLogPlus(t) for t in titles]
+    assert plus[0] and plus[1] and not plus[2], "the + is not on each quest's title (and only there)"
+    in_route = [e.id for e in MyRoute.Entries(MyRoute).values() if e.kind == "quest"]
+    assert sorted(in_route) == [880, 881], in_route
+    assert all("ReadyCheck" in p.icon.icon for p in plus[:2]), "quests in My Route do not show a check mark"
+    plus[0].scripts.OnClick(plus[0], "LeftButton")
+    assert not MyRoute.Has(MyRoute, "quest", 880) and "PlusButton" in plus[0].icon.icon, "the check mark did not take the quest out"
+    plus[0].scripts.OnClick(plus[0], "LeftButton")
+    assert MyRoute.Has(MyRoute, "quest", 880) and "ReadyCheck" in plus[0].icon.icon, "the + did not add the quest"
+    # the quest's own right-click menu, through the game's way of adding to it
+    modify = stub.modifiers["MENU_QUEST_MAP_LOG_TITLE"]
+    root = stub.NewMenuRoot()
+    modify(titles[1], root)
+    assert [e.text for e in root.entries.values() if e.kind == "button"] == ["Remove From My Route"]
+    [e for e in root.entries.values() if e.kind == "button"][0].fn()
+    assert not MyRoute.Has(MyRoute, "quest", 881)
+    root = stub.NewMenuRoot()
+    modify(titles[1], root)
+    assert [e.text for e in root.entries.values() if e.kind == "button"] == ["Add To My Route"]
+    root = stub.NewMenuRoot()
+    modify(titles[2], root)                                     # (a menu of that tag with no quest: the map pin's)
+    assert len(root.entries) == 0
+    MyRoute.Clear(MyRoute)
+    arrow.element = None
+    stub.watched = lua.table()
+    ticks()
+    chat("quest log")
     print("all steps ran; memory at the end %.1f MB" % (lua.eval("collectgarbage('count')") / 1024))
 
 

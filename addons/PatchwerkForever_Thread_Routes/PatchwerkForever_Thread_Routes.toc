@@ -2,7 +2,7 @@
 ## Title: Patchwerk Forever: Thread (Routes)
 ## Notes: Finds the way to your map pin, a quest you track or your RestedXP guide's next step: over the ground, through tunnels and over bridges, by flight path, boat and zeppelin. Also remembers herb and ore spots. Needs Patchwerk Forever. Type /thread.
 ## Author: Tyrone
-## Version: 1.0.0
+## Version: 1.1.0
 ## Group: PatchwerkForever
 ## X-Category: Map & Minimap
 ## X-License: MIT
@@ -20,9 +20,12 @@ Route.lua
 Flights.lua
 Ahead.lua
 Sources.lua
+Focus.lua
 Float.lua
 Trail.lua
 WorldMap.lua
+MapRoute.lua
 Minimap.lua
 Nodes.lua
 Gather.lua
+QuestLog.lua

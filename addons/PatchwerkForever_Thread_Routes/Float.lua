@@ -9,7 +9,8 @@
 --
 -- Nothing is said when the way is only found anew after a wrong turn, nor when a step that has been
 -- said gets a new place (Sources.lua). Where it stands, how large it is and how long it stays are
--- settings; /thread step says the last one again.
+-- settings; /thread step says the last one again. A change of focus is said as "Following: <its name>",
+-- above the words of the step it leads to (Sources.lua).
 local ADDON, ns = ...
 if not ns.linked then return end
 
@@ -113,13 +114,21 @@ local OWN = { pin = { 'To your map pin' }, spot = { 'To the spot you gave' } }
 -- none could be made; note: what to say in its place, where no way was found at all.
 function ns.FloatRoute(dest, route, note)
 	local lines = dest.lines
+	-- (a focus just chosen: "Following: <its name>" above the words, which are then shown in any case)
+	local following = dest.following
+	dest.following = nil                                  -- (said once: not again when the way is searched for anew)
 	if type(lines) ~= 'table' or #lines == 0 then
-		if dest.source then return end                    -- (a guide's step with no words of its own: nothing to say)
-		lines = dest.pin and OWN.pin or OWN.spot
+		if dest.source and not following then return end  -- (a guide's step with no words of its own: nothing to say)
+		lines = dest.source and {} or (dest.pin and OWN.pin or OWN.spot)
+	end
+	if following then
+		local with = { following }
+		for _, text in ipairs(lines) do with[#with + 1] = text end
+		lines = with
 	end
 	if route then note = nil end
 	-- (words that have been on screen already are only kept, unless there is news under them: no way was found)
-	ns.FloatStep(lines, route and ns.Summary(route) or note, note and true or nil, dest.quiet and not note)
+	ns.FloatStep(lines, route and ns.Summary(route) or note, note and true or nil, dest.quiet and not note and not following)
 end
 
 -- /thread step: the last one, again.

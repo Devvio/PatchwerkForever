@@ -28,6 +28,11 @@ ns.settings = {
 	{ key = 'sourceFirst', default = 'rxp', name = 'Priority',
 		choices = { { 'rxp', 'RestedXP guide first' }, { 'quest', 'Tracked quest first' } },
 		desc = 'Which to follow when both your guide and a tracked quest have a destination. The other is used when the first has none on this continent.' },
+	{ header = true, name = 'Focus And My Route' },
+	{ key = 'focusButton', default = true, name = 'Focus Button On The World Map',
+		desc = 'Show a button at the top right of the world map to choose what the route follows (Auto, a guide, your tracked quests or My Route), edit My Route, and add your map pin to My Route.' },
+	{ key = 'myRouteMap', default = true, name = 'Show My Route On The World Map',
+		desc = 'While My Route is your focus or selected, show its stops on the world map, numbered in order. Right-click a stop to go there first, move it or remove it.' },
 	{ header = true, name = 'Travel Options' },
 	{ key = 'flights', default = true, name = 'Use Flight Paths',
 		desc = 'Use flight paths when they are faster than walking.' },
@@ -105,6 +110,8 @@ local function Help()
 	ns.Print('  /thread to 45.2 61.8: route to those coordinates on your current map')
 	ns.Print('  /thread stop: stop routing (a route to a guide step or quest resumes when the step or objective changes)')
 	ns.Print('  /thread quest: list tracked quest locations and which one is being followed')
+	ns.Print('  /thread focus: show what the route follows by itself, and what else it can follow')
+	ns.Print('  /thread focus auto, rxp, dj, quests or route: follow your guide and quests (Auto), RestedXP, the Dungeon Journal, tracked quests only, or My Route')
 	ns.Print('  /thread step: show the step text again')
 	ns.Print('  /thread gather: route to the nearest recorded herb or ore node, then the next (gather round, gather <name>, gather list, gather stop)')
 	ns.Print('  /thread config: open the options')
@@ -141,6 +148,8 @@ SlashCmdList.PATCHWERKFOREVER_THREAD = function(text)
 		else
 			ns.Try('nodes', ns.NodesSay)
 		end
+	elseif word == 'focus' then
+		ns.Try('focus', ns.FocusSay, rest)
 	elseif word == 'quest' or word == 'quests' then
 		ns.Try('quest', ns.QuestSay)
 	elseif word == 'step' then
@@ -158,5 +167,14 @@ end
 BINDING_HEADER_PATCHWERKFOREVER_THREAD = ns.TITLE
 BINDING_NAME_PATCHWERKFOREVER_THREAD_GO = 'Route To Pin, Guide Step Or Quest'
 BINDING_NAME_PATCHWERKFOREVER_THREAD_STOP = 'Stop Routing'
+BINDING_NAME_PATCHWERKFOREVER_THREAD_FOCUS_NEXT = 'Next Focus'
+BINDING_NAME_PATCHWERKFOREVER_THREAD_FOCUS_AUTO = 'Focus: Auto'
+BINDING_NAME_PATCHWERKFOREVER_THREAD_FOCUS_RXP = 'Focus: RestedXP'
+BINDING_NAME_PATCHWERKFOREVER_THREAD_FOCUS_FDJ = 'Focus: Dungeon Journal'
+BINDING_NAME_PATCHWERKFOREVER_THREAD_FOCUS_QUESTS = 'Focus: Quests'
+BINDING_NAME_PATCHWERKFOREVER_THREAD_FOCUS_ROUTE = 'Focus: My Route'
 function PatchwerkForever_Thread_Routes_Go() ns.Try('go', ns.Go) end
 function PatchwerkForever_Thread_Routes_Stop() ns.Try('stop', ns.Stop, true) end
+function PatchwerkForever_Thread_Routes_FocusNext() ns.Try('focus', ns.FocusNext) end
+-- id: 'auto', 'rxp', 'fdj', 'quests' or 'route' (Focus.lua)
+function PatchwerkForever_Thread_Routes_Focus(id) ns.Try('focus', ns.FocusTo, id) end
