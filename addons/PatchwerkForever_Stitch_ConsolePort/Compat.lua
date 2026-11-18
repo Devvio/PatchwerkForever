@@ -8,6 +8,7 @@ if not env.NativeContext then return end;
 -- ConsolePort_Cursor's blocked action warning resizes the popup
 -- after rewriting its text: the dialogs resize themselves now.
 if not StaticPopup_Resize then
+	env.Applied.StaticPopup_Resize = true;
 	function StaticPopup_Resize(dialog, which)
 		if ( dialog and dialog.Resize ) then
 			dialog:Resize(which)
@@ -18,6 +19,7 @@ end
 -- ConsolePort_Cursor shows a Blizzard action button's tooltip when
 -- the interface cursor lands on it: a method of the button now.
 if not ActionButton_SetTooltip then
+	env.Applied.ActionButton_SetTooltip = true;
 	function ActionButton_SetTooltip(button)
 		if ( button and button.SetTooltip ) then
 			button:SetTooltip()
@@ -28,6 +30,7 @@ end
 -- ConsolePort_Keyboard reads it when the keyboard is dropped after
 -- a drag: only the login screen has it.
 if not GetScaledCursorPosition then
+	env.Applied.GetScaledCursorPosition = true;
 	function GetScaledCursorPosition()
 		local x, y = GetCursorPosition();
 		local scale = UIParent:GetEffectiveScale();

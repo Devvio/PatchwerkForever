@@ -53,7 +53,8 @@ for _, def in ipairs({
 	{	key  = 'cityStreets';
 		name = 'Keep To City Streets';
 		desc = "In the capitals Route uses only MelloUI's own walked streets, with their lifts and trams: nothing is learned from you there, and what was is forgotten at login.";
-		note = 'Stops trails that lead off Thunder Bluff where you once jumped or fell.';
+		note = "Stops trails that lead off Thunder Bluff where you once jumped or fell. Off until you enable it, since it deletes points from MelloUI Route's own saved paths.";
+		default = false;
 	};
 	{	key  = 'blocked';
 		name = 'Learn Blocked Spots';
@@ -113,7 +114,7 @@ function R:Set(key, value)
 end
 
 function R:Print(...)
-	ns:Print('|cff9b8cffRoute|r', ...)
+	ns:Print('|cff9b8cffMelloUI Route:|r', ...)
 end
 
 function R:Say(...)
@@ -132,7 +133,7 @@ function R.Try(label, fn, ...)
 	end
 	if not reported[label] then
 		reported[label] = true;
-		ns:Print('|cff9b8cffRoute|r', ('%s failed and was skipped: %s'):format(label, tostring(a)))
+		R:Print(('%s failed and was skipped: %s'):format(label, tostring(a)))
 	end
 end
 

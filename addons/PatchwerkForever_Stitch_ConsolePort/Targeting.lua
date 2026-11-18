@@ -29,5 +29,6 @@ for name, filter in pairs({
 	if ( button and filter ) then
 		button.patchwerkFilter = filter;
 		button:SetScript('OnClick', OnClick)
+		env.Applied['Target Friendly / Target Hostile'] = true;
 	end
 end

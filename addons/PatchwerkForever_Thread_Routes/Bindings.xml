@@ -1,26 +1,34 @@
 <Bindings>
-	<Binding name="PATCHWERKFOREVER_THREAD_GO" header="PATCHWERKFOREVER_THREAD" category="ADDONS">
-		PatchwerkForever_Thread_Routes_Go()
+	<!-- Each body asks first whether its function is there: with a base too old for this addon the
+	     files after Link.lua do nothing, and a bound key would otherwise give a Lua error. -->
+	<Binding name="PATCHWERKFOREVER_THREAD_GO" header="PATCHWERKFOREVER_THREAD" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Routes_Go then PatchwerkForever_Thread_Routes_Go() end
 	</Binding>
-	<Binding name="PATCHWERKFOREVER_THREAD_STOP" category="ADDONS">
-		PatchwerkForever_Thread_Routes_Stop()
+	<Binding name="PATCHWERKFOREVER_THREAD_STOP" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Routes_Stop then PatchwerkForever_Thread_Routes_Stop() end
 	</Binding>
-	<Binding name="PATCHWERKFOREVER_THREAD_FOCUS_NEXT" category="ADDONS">
-		PatchwerkForever_Thread_Routes_FocusNext()
+	<Binding name="PATCHWERKFOREVER_THREAD_STEP" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Routes_Step then PatchwerkForever_Thread_Routes_Step() end
 	</Binding>
-	<Binding name="PATCHWERKFOREVER_THREAD_FOCUS_AUTO" category="ADDONS">
-		PatchwerkForever_Thread_Routes_Focus('auto')
+	<Binding name="PATCHWERKFOREVER_THREAD_GATHER" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Routes_Gather then PatchwerkForever_Thread_Routes_Gather() end
 	</Binding>
-	<Binding name="PATCHWERKFOREVER_THREAD_FOCUS_RXP" category="ADDONS">
-		PatchwerkForever_Thread_Routes_Focus('rxp')
+	<Binding name="PATCHWERKFOREVER_THREAD_FOCUS_NEXT" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Routes_FocusNext then PatchwerkForever_Thread_Routes_FocusNext() end
 	</Binding>
-	<Binding name="PATCHWERKFOREVER_THREAD_FOCUS_FDJ" category="ADDONS">
-		PatchwerkForever_Thread_Routes_Focus('fdj')
+	<Binding name="PATCHWERKFOREVER_THREAD_FOCUS_AUTO" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Routes_Focus then PatchwerkForever_Thread_Routes_Focus('auto') end
 	</Binding>
-	<Binding name="PATCHWERKFOREVER_THREAD_FOCUS_QUESTS" category="ADDONS">
-		PatchwerkForever_Thread_Routes_Focus('quests')
+	<Binding name="PATCHWERKFOREVER_THREAD_FOCUS_RXP" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Routes_Focus then PatchwerkForever_Thread_Routes_Focus('rxp') end
 	</Binding>
-	<Binding name="PATCHWERKFOREVER_THREAD_FOCUS_ROUTE" category="ADDONS">
-		PatchwerkForever_Thread_Routes_Focus('route')
+	<Binding name="PATCHWERKFOREVER_THREAD_FOCUS_FDJ" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Routes_Focus then PatchwerkForever_Thread_Routes_Focus('fdj') end
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_THREAD_FOCUS_QUESTS" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Routes_Focus then PatchwerkForever_Thread_Routes_Focus('quests') end
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_THREAD_FOCUS_ROUTE" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Routes_Focus then PatchwerkForever_Thread_Routes_Focus('route') end
 	</Binding>
 </Bindings>

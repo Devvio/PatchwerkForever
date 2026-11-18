@@ -1,33 +1,33 @@
 <Bindings>
-	<Binding name="PATCHWERKFOREVER_TRACKER_FOLD" header="PATCHWERKFOREVER_TRACKER" category="ADDONS">
-		PatchwerkForever_Thread_Tracker_Fold()
+	<Binding name="PATCHWERKFOREVER_TRACKER_FOLD" header="PATCHWERKFOREVER_TRACKER" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Tracker_Fold then PatchwerkForever_Thread_Tracker_Fold() end
 	</Binding>
-	<Binding name="PATCHWERKFOREVER_TRACKER_SCROLL_UP" category="ADDONS">
-		PatchwerkForever_Thread_Tracker_ScrollUp()
+	<Binding name="PATCHWERKFOREVER_TRACKER_SCROLL_UP" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Tracker_ScrollUp then PatchwerkForever_Thread_Tracker_ScrollUp() end
 	</Binding>
-	<Binding name="PATCHWERKFOREVER_TRACKER_SCROLL_DOWN" category="ADDONS">
-		PatchwerkForever_Thread_Tracker_ScrollDown()
+	<Binding name="PATCHWERKFOREVER_TRACKER_SCROLL_DOWN" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Tracker_ScrollDown then PatchwerkForever_Thread_Tracker_ScrollDown() end
 	</Binding>
-	<Binding name="PATCHWERKFOREVER_TRACKER_NEXT" category="ADDONS">
-		PatchwerkForever_Thread_Tracker_Next()
+	<Binding name="PATCHWERKFOREVER_TRACKER_NEXT" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Tracker_Next then PatchwerkForever_Thread_Tracker_Next() end
 	</Binding>
-	<Binding name="PATCHWERKFOREVER_TRACKER_PREV" category="ADDONS">
-		PatchwerkForever_Thread_Tracker_Previous()
+	<Binding name="PATCHWERKFOREVER_TRACKER_PREV" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Tracker_Previous then PatchwerkForever_Thread_Tracker_Previous() end
 	</Binding>
-	<Binding name="CLICK PatchwerkForeverTrackerNearestItem:LeftButton" category="ADDONS"/>
-	<Binding name="PATCHWERKFOREVER_TRACKER_BACK" category="ADDONS">
-		PatchwerkForever_Thread_Tracker_Back()
+	<Binding name="CLICK PatchwerkForeverTrackerNearestItem:LeftButton" category="BINDING_CATEGORY_PatchwerkForever"/>
+	<Binding name="PATCHWERKFOREVER_TRACKER_BACK" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Tracker_Back then PatchwerkForever_Thread_Tracker_Back() end
 	</Binding>
-	<Binding name="PATCHWERKFOREVER_TRACKER_ROUTE_ADD" category="ADDONS">
-		PatchwerkForever_Thread_Tracker_RouteAdd()
+	<Binding name="PATCHWERKFOREVER_TRACKER_ROUTE_ADD" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Tracker_RouteAdd then PatchwerkForever_Thread_Tracker_RouteAdd() end
 	</Binding>
-	<Binding name="PATCHWERKFOREVER_TRACKER_ROUTE_UP" category="ADDONS">
-		PatchwerkForever_Thread_Tracker_RouteUp()
+	<Binding name="PATCHWERKFOREVER_TRACKER_ROUTE_UP" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Tracker_RouteUp then PatchwerkForever_Thread_Tracker_RouteUp() end
 	</Binding>
-	<Binding name="PATCHWERKFOREVER_TRACKER_ROUTE_DOWN" category="ADDONS">
-		PatchwerkForever_Thread_Tracker_RouteDown()
+	<Binding name="PATCHWERKFOREVER_TRACKER_ROUTE_DOWN" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Tracker_RouteDown then PatchwerkForever_Thread_Tracker_RouteDown() end
 	</Binding>
-	<Binding name="PATCHWERKFOREVER_TRACKER_ROUTE_OPEN" category="ADDONS">
-		PatchwerkForever_Thread_Tracker_RouteOpen()
+	<Binding name="PATCHWERKFOREVER_TRACKER_ROUTE_OPEN" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Tracker_RouteOpen then PatchwerkForever_Thread_Tracker_RouteOpen() end
 	</Binding>
 </Bindings>

@@ -42,7 +42,7 @@ ns.AddSection('dungeon', 5, function()
 			lines[#lines + 1] = { text = text, done = c.completed and true or false }
 			local duration, elapsed = tonumber(c.duration), tonumber(c.elapsed)
 			if duration and duration > 0 and elapsed and elapsed <= duration and not c.completed then
-				lines[#lines + 1] = { text = 'Time left: ' .. Clock(duration - elapsed), r = 1, g = 0.8, b = 0.3 }
+				lines[#lines + 1] = { text = 'Time left: ' .. Clock(duration - elapsed), r = 1, g = 0.8, b = 0.3, clock = true, plain = true }
 				tick = true
 			end
 		end

@@ -4,12 +4,16 @@ A quest tracker of our own for World of Warcraft: Forever, as a Thread tool. It 
 you track with their objectives, and the steps of the guide you are running. Guide addons are read
 through modules: RestedXP first, others later.
 
-Asked for by Tyrone on 2026-11-12 ("plan to build our own custom quest tracker, later we can add
-additional addon modules for other guide addons"). Nothing of it is built yet.
+Asked for on 2026-11-12: a quest tracker of our own, with modules for other guide addons later.
+
+**Where it stands (2026-11-18):** Tracker 1.3.0 is live on CurseForge, with the Dungeon Journal
+Stitch as a second guide, focus and My Route (`TRACKING-BLUEPRINT.md`) and polish passes A to J
+(`POLISH.md`). This file is the plan and log up to 1.0 and the Dungeon Journal Stitch; later work
+is in `ROADMAP.md` and each addon's CHANGELOG.
 
 ## Decided
 
-Tyrone's choices, from the interview of 2026-11-12:
+The user's choices, from the interview of 2026-11-12:
 
 | Question | Choice |
 |---|---|
@@ -126,8 +130,8 @@ moved while you are in combat. Rows in a list move whenever a quest above them c
 
 ## Milestones (as first planned; the order to version 1 is under "Version 1" at the end)
 
-Each ends the same way: the checks pass here, it is built into the game, Tyrone tries it, and it is
-committed when he says so. What "passes here" cannot show is listed with each.
+Each ends the same way: the checks pass here, it is built into the game, it is tried there, and it
+is committed on the user's word. What "passes here" cannot show is listed with each.
 
 | # | What | Done when | Only the game can show |
 |---|---|---|---|
@@ -142,9 +146,9 @@ committed when he says so. What "passes here" cannot show is listed with each.
 
 Milestones 0 to 2 give something worth using: your quests and your guide's steps in one list.
 
-**Milestone 1, as built (2026-11-13).** `PatchwerkForever_Thread_Tracker` 0.1.0: `Link.lua`, `Core.lua` (15 settings on two pages, `/tracker`, a binding to fold it), `Frame.lua` (sections of blocks of lines, all kept and used again; `ns.AddSection` for the guide section to come; scrolling by moving the content inside a clipping frame; a drag bar while unlocked), `Quests.lua` (the watch list read, and the Quests section), `Quiet.lua` (the game's tracker: alpha 0 and the mouse off on its unprotected pieces, redone half a second after the game changes its list, nothing in a fight, undone when asked). The stitches under a heading are small plain textures, so no art was needed. `lua_tracker.py` with `trackerstub.lua` plays it. Different from the plan: blocks do not take the mouse yet (milestone 3 will make them buttons); grouping by zone is left to milestone 4. Confirmed in the game by Tyrone on 2026-11-13: the tracker lists his quests ("Yes, it lists them"). Not heard one by one, and still unknown: whether quietening the game's tracker this way holds (does the game put its alpha back? do its pieces answer `IsMouseEnabled`?), where the default place lands beside EllesmereUI's layout, how the writing wraps, and whether a quest item button left unseen on the game's tracker gets in the way.
+**Milestone 1, as built (2026-11-13).** `PatchwerkForever_Thread_Tracker` 0.1.0: `Link.lua`, `Core.lua` (15 settings on two pages, `/tracker`, a binding to fold it), `Frame.lua` (sections of blocks of lines, all kept and used again; `ns.AddSection` for the guide section to come; scrolling by moving the content inside a clipping frame; a drag bar while unlocked), `Quests.lua` (the watch list read, and the Quests section), `Quiet.lua` (the game's tracker: alpha 0 and the mouse off on its unprotected pieces, redone half a second after the game changes its list, nothing in a fight, undone when asked). The stitches under a heading are small plain textures, so no art was needed. `lua_tracker.py` with `trackerstub.lua` plays it. Different from the plan: blocks do not take the mouse yet (milestone 3 will make them buttons); grouping by zone is left to milestone 4. Confirmed in the game on 2026-11-13: the tracker lists the character's quests. Not heard one by one, and still unknown: whether quietening the game's tracker this way holds (does the game put its alpha back? do its pieces answer `IsMouseEnabled`?), where the default place lands beside EllesmereUI's layout, how the writing wraps, and whether a quest item button left unseen on the game's tracker gets in the way.
 
-**Milestone 0, as built (2026-11-12).** `PatchwerkForever/Guides.lua` is the service (`Register`, `Read`, `Words`, `WorldOf`, `Here`, `AWAY`) and `PatchwerkForever/Guides/RestedXP.lua` the reader, which now also gives each line's `done` and `kind`, the guide's name, and how many steps there are. Routes' own `Guide.lua` is gone; `Sources.lua` and `Ahead.lua` ask `ns.Base.Guides`. `lua_patchwerk.py` checks the service (readers in turn, a failing one skipped and said once, RestedXP's stand-in read with its done lines, a hidden arrow, a step with nowhere to go, the fallback to the arrow alone); `lua_shell.py` passes unchanged on it. Built into the game with the game closed and confirmed there by Tyrone on 2026-11-13: Routes follows his guide as before.
+**Milestone 0, as built (2026-11-12).** `PatchwerkForever/Guides.lua` is the service (`Register`, `Read`, `Words`, `WorldOf`, `Here`, `AWAY`) and `PatchwerkForever/Guides/RestedXP.lua` the reader, which now also gives each line's `done` and `kind`, the guide's name, and how many steps there are. Routes' own `Guide.lua` is gone; `Sources.lua` and `Ahead.lua` ask `ns.Base.Guides`. `lua_patchwerk.py` checks the service (readers in turn, a failing one skipped and said once, RestedXP's stand-in read with its done lines, a hidden arrow, a step with nowhere to go, the fallback to the arrow alone); `lua_shell.py` passes unchanged on it. Built into the game with the game closed and confirmed there on 2026-11-13: Routes follows the guide as before.
 
 ## Risks, and what is not known
 
@@ -173,36 +177,36 @@ Milestones 0 to 2 give something worth using: your quests and your guide's steps
 
 ## Version 1
 
-What the tracker must be to be called 1.0, from an interview with Tyrone on 2026-11-13 (four rounds).
+What the tracker must be to be called 1.0, from an interview with the user on 2026-11-13 (four rounds).
 Milestones 0 and 1 are done and are not repeated here.
 
-### What he chose
+### What was chosen
 
-| About | His choice |
+| About | Choice |
 |---|---|
-| The guide section | the steps after the current one, dimmed; the guide's name and "step 34 of 120" with a thin bar; clicking a step skips it in RestedXP. A line of a step goes as soon as it is done (he did not pick "stays, ticked"). |
+| The guide section | the steps after the current one, dimmed; the guide's name and "step 34 of 120" with a thin bar; clicking a step skips it in RestedXP. A line of a step goes as soon as it is done ("stays, ticked" was not picked). |
 | A left-click on a quest | routes to it: it becomes the one the game's arrow is on, which Thread (Routes) follows. Shift-click opens it in the quest log. The rest is in a right-click menu. |
 | The order of quests | by zone under headings, the zone you are in first, its quests nearest first. The other orders stay as a setting. |
 | Quest items | a strip of buttons beside the tracker, in the order of their quests. |
-| Bound to a button | use the item of the nearest quest. (Folding is bound already. He did not pick next/previous quest or skipping a step.) |
-| By itself | follow the nearest quest; and finished quests leave the list for a short "ready to hand in" group. (He did not pick tracking by zone.) |
+| Bound to a button | use the item of the nearest quest. (Folding is bound already. Next/previous quest and skipping a step were not picked.) |
+| By itself | follow the nearest quest; and finished quests leave the list for a short "ready to hand in" group. (Tracking by zone was not picked.) |
 | On each quest | its distance; its kind (elite, group, dungeon, daily, timed, with the time left); an objective's count coloured from red to green as it fills; the party's progress. |
 | When something changes | a flash on the line. No sound, no words on screen. |
 | Stepping back | three switches, all off to begin with: fade in a fight, fade unless the mouse is over it, hide in dungeons and raids. |
-| Also listed | the items the guide's step wants used, in the item strip; a dungeon's stages and timers; and one he added himself, gathering (below). Not achievements. |
+| Also listed | the items the guide's step wants used, in the item strip; a dungeon's stages and timers; and one added in the interview, gathering (below). Not achievements. |
 | RestedXP's own window | hidden while the tracker shows the guide, the gentle way, with a switch. RestedXP's settings are not changed. |
-| Before it is called 1.0 | every feature seen working by him; a week of play as his only tracker, a dungeon included, with no errors; and it works with nothing else installed (no EllesmereUI, Console Port, RestedXP or Thread (Routes)). |
+| Before it is called 1.0 | every feature seen working in the game; a week of play as the only tracker, a dungeon included, with no errors; and it works with nothing else installed (no EllesmereUI, Console Port, RestedXP or Thread (Routes)). |
 
-**Gathering**, in his words "gathering professions - find and route to nearest", then asked about:
+**Gathering**: find the nearest node for your gathering professions and route to it. Then asked about:
 
 - It finds the nearest remembered spot of anything you can gather; the nearest of a kind you pick; and
   a round through several spots of the zone you are in.
 - On reaching a spot the route moves on to the next by itself, leaving out spots visited in the last
   few minutes, until it is stopped.
-- It is a section in the tracker listing the nearest few spots, each clickable. (He did not ask for a
-  binding or a command for it.)
-- The only spots known are the ones Thread (Routes) has remembered from his own gathering. The game's
-  files do not say where herbs and ore spawn, and he was told so.
+- It is a section in the tracker listing the nearest few spots, each clickable. (No binding or command
+  was asked for.)
+- The only spots known are the ones Thread (Routes) has remembered from the player's own gathering. The
+  game's files do not say where herbs and ore spawn, and that was said at the time.
 
 ### How I read three of the answers
 
@@ -213,8 +217,8 @@ Milestones 0 and 1 are done and are not repeated here.
   running and nothing was chosen. Thread (Routes) already follows the nearest tracked quest in that
   case without moving the game's arrow. The tracker will mark the quest that is being followed either
   way, and moving the game's arrow as well is the switch.
-- **Stepping back:** he ticked all four, "always fully shown" among them, and then said all three are
-  switches that start off.
+- **Stepping back:** all four were ticked, "always fully shown" among them, and then all three were
+  settled as switches that start off.
 
 ### What may not be possible as asked
 
@@ -237,8 +241,8 @@ Milestones 0 and 1 are done and are not repeated here.
 
 ### The order to version 1
 
-Each ends as before: the checks pass here, it is built into the game, Tyrone tries it, it is committed
-when he says so.
+Each ends as before: the checks pass here, it is built into the game, it is tried there, it is
+committed on the user's word.
 
 | # | What | Needs finding out first |
 |---|---|---|
@@ -250,16 +254,15 @@ when he says so.
 | 7 | **By itself, and stepping back.** Follow the nearest quest; a flash on a line that changes; the three fades. Who in the party has a quest. | whether the game says who is on a quest |
 | 8 | **Gathering.** In Routes: nearest spot, nearest of a kind, a round, moving on by itself, offered through the base. In the tracker: the section. | which gathering professions a character has |
 | 9 | **A dungeon's stages and timers.** | all of it, in play |
-| 10 | **Version 1.** Its own icon in the family's style; party progress between two trackers if it is to be in; then the three things he asked of 1.0. | - |
+| 10 | **Version 1.** Its own icon in the family's style; party progress between two trackers if it is to be in; then the three things asked of 1.0. | - |
 
 After 4 it is a better tracker than the one it replaces for everyday questing; 5 is the riskiest;
 8 and 9 are the largest and could each be left to a 1.1 if the week of play is wanted sooner. That is
-his to decide when they come up.
+the user's to decide when they come up.
 
 ## Version 1, as built (2026-11-13)
 
-Tyrone's word after the interview: "approved, lets build the entirety, then I can test and advise from
-there." So steps 2 to 9 of the table above were built in one go, as tracker 0.9.0 on base 2.2.0 (API 3)
+After the interview the whole plan was approved, to be built in one go and then tested. So steps 2 to 9 of the table above were built in one go, as tracker 0.9.0 on base 2.2.0 (API 3)
 and Routes 0.14.0. **None of it has been in the game yet.** It passes the checks here, which play it
 against stand-ins.
 
@@ -278,11 +281,11 @@ Settings: 43, on five pages (Thread: Tracker, Tracker: Quests, Tracker: Guide, T
 
 Choices made while building, open to change:
 
-- **Version 0.9.0**, not 1.0: his own bar for 1.0 is every feature seen working, a week of play, and
+- **Version 0.9.0**, not 1.0: the user's own bar for 1.0 is every feature seen working, a week of play, and
   working with nothing else installed.
 - **Sharing party progress starts ticked.** It sends the quest's number and a percentage to the party
-  only. Without it the party's progress, which he asked for, cannot be shown at all. A switch turns it off.
-- **A click on the guide's step skips it** (he chose that), so a stray click can skip a step:
+  only. Without it the party's progress, which was asked for, cannot be shown at all. A switch turns it off.
+- **A click on the guide's step skips it** (as chosen), so a stray click can skip a step:
   `/tracker back` undoes it, and a switch turns clicks on steps off.
 - **The binding never uses the guide's item**, only a quest's: a hearthstone on a quest-item key would
   be a bad surprise.
@@ -296,24 +299,24 @@ Choices made while building, open to change:
 What only the game can show, to be tried one by one:
 
 - The item buttons: that a click uses the item, that the binding does (key and gamepad), that nothing
-  is blocked in a fight, and where the strip stands beside the tracker at his UI scale.
+  is blocked in a fight, and where the strip stands beside the tracker at the user's UI scale.
 - The menu (`MenuUtil`), reading a quest (`QuestUtil.OpenQuestDetails`), sharing, and that abandon
   asks first.
 - Distances: that the game marks each quest on its map as the stand-in does; quests with no mark show none.
-- The kind tag (`QuestUtilsOverrides.GetQuestTagText`) and the zone headings as his quest log has them.
+- The kind tag (`QuestUtilsOverrides.GetQuestTagText`) and the zone headings as the quest log has them.
 - The guide section with real RestedXP wording; that a click skips a step (`RXP.SetStep`); whether
   RestedXP's window stays invisible or RestedXP makes it visible again (it is looked at every three seconds).
 - Party lines, and progress between two trackers (needs a second player running it).
 - Recipes: what Forever gives for a recipe's reagents.
-- Gathering in the tracker and `/thread gather`: which professions the game says he has, and how a
+- Gathering in the tracker and `/thread gather`: which professions the game says the character has, and how a
   run feels with real spots.
 - A dungeon's stages: whether Forever's dungeons say anything through `C_Scenario` at all.
 - The fades, and how the list wraps and looks with everything in it.
 
 ### First play, 2026-11-13
 
-Tyrone: "list works and well so far. clicking on the quest doesnt switch the tracking." The click moved the
-game's arrow, and Routes put the guide before any quest, so nothing changed. He set the order he wants:
+Reported: the list works, but clicking a quest does not change what is routed to. The click moved the
+game's arrow, and Routes put the guide before any quest, so nothing changed. The order wanted:
 the guide, when there is one, is the main route; selecting a quest highlights the path to it, the same
 with gathering; clicking it a second time resets to the main track.
 
@@ -327,20 +330,19 @@ Built the same day (not yet in the game when written):
 - The tracker's click sets and clears the choice (and the game's arrow with it). The bar beside a
   block marks what is followed: the guide's step, the chosen quest, or the run.
 
-My reading of "highlight": the chosen path becomes the route, in its own colour, with the main track
+My reading of the highlight asked for: the chosen path becomes the route, in its own colour, with the main track
 kept in sight as the fainter way back. Not built: both whole paths drawn from where you stand at once.
 
-He also asked for the options pages to be assessed and made "a little more elaborate", with "an
-immersive feel". Assessment and a proposal were given the same day; nothing of it is built until he
-has seen the proposal.
+Also asked for: the options pages assessed and made a little more elaborate and immersive. An
+assessment and a proposal were given the same day.
 
 ### The options pages, dressed (2026-11-13)
 
-He said "Yes, build it" to the mock-up. Built the same day, in the base (2.2.0), so every addon of the
+The mock-up was approved. Built the same day, in the base (2.2.0), so every addon of the
 family gets it:
 
 - **A front page** (`Front.lua`), drawn by us inside the game's options window
-  (`Settings.RegisterCanvasLayoutCategory`): his banner picture across the top
+  (`Settings.RegisterCanvasLayoutCategory`): the user's banner picture across the top
   (`Media/banner.tga`, made from `art/PatchwerkForever/listing/banner.png` by `tools/art.py`), the
   name and a line in Patchwerk's voice on its dark side, "What is sewn on" (every part with picture,
   version, a line from Patchwerk and an Open button), the missing parts greyed, the base's switch.
@@ -356,14 +358,13 @@ family gets it:
 
 Passes here against the stand-in, which makes each row from its mixin and opens the front page.
 What only the game can show: that the two row templates load and sit right in the list; how the
-front page lays out at his window size; that the banner draws; that the storybook font
+front page lays out at the user's window size; that the banner draws; that the storybook font
 (`Fonts\MORPHEUS.TTF`) is there; that Console Port's cursor reaches the Open buttons and the tick box.
 
 ### Plain, standard wording (2026-11-13)
 
-Tyrone: "we need to use simple language which everyone can understand, at least in english, such as
-changing the font size ... either we change it to be more patchwerk, or more easy to understand
-standard way of other addons. i.e whats the best practice here". The setting names had been written in
+Asked for: simple language everyone can understand, either more Patchwerk or the standard way of other
+addons, whichever is the best practice. The setting names had been written in
 a plain-words style of mine ("Size Of The Writing", "Tallest It Grows", "Stepping Back"), which read
 as neither.
 
@@ -378,19 +379,19 @@ The practice followed from here on, for anything the player reads in the game:
 - **A tooltip says what the option does in a sentence**, then any limit worth knowing.
 
 Done for every setting of the Tracker, Routes and Sparkle, the base's switch, the tracker's menus,
-chat lines, headings and bindings, and then (he said "Yes, reword them") for the chat lines, command
+chat lines, headings and bindings, and then, on approval, for the chat lines, command
 help and binding names of Routes and Sparkle. Not done: the Stitches' settings (mostly in standard
 words already), the READMEs' prose, and comments in the code.
 
 ### Confirmed, and version 1.0 (2026-11-13)
 
-Tyrone, after playing the build: "everything is working, lets go live". Taken as his confirmation of
+After playing the build, the user reported everything working and asked to go live. Taken as confirmation of
 what `V1.md` listed as built and waiting: the quest list, clicks and menus, the guide section, the item
 bar, the default tracker hidden, recipes, gathering, the fades, the chosen path in Routes, gathering
-runs, the Sparkle's pages, and the dressed options pages. He did not go through them one by one in
-writing, so "works" is his word for the whole, not a line-by-line report.
+runs, the Sparkle's pages, and the dressed options pages. They were not gone through one by one in
+writing, so "works" is said of the whole, not a line-by-line report.
 
-Asked which versions go live, he chose: **Tracker 1.0.0 and Sparkle 1.0.0** as full releases, Routes
+Asked which versions go live, the user chose: **Tracker 1.0.0 and Sparkle 1.0.0** as full releases, Routes
 still beta. Routes had not changed since 0.14.0, so it goes live as 0.14.0. The base is 2.3.0.
 
 Built for it:
@@ -401,17 +402,15 @@ Built for it:
 - **Route To Next Quest / Route To Previous Quest** bindings in the tracker (`ns.Cycle` in
   `Actions.lua`), in the listed order; one past either end clears the choice.
 
-Not in 1.0, by his choice of going live now: the week of play first, the check with nothing else
-installed, the tracker's own icon (the drawn stand-in ships). Going live itself is his: the CurseForge
-projects have to be made and their numbers put in `tools/curseforge.json`.
+Not in 1.0, by the choice of going live now: the week of play first, the check with nothing else
+installed, the tracker's own icon (the drawn stand-in ships). Going live itself is the user's step: the
+CurseForge projects have to be made and their numbers put in `tools/curseforge.json` (done by 2026-11-17).
 
 ## After the tracker: routing from the Dungeon Journal's quest to-do list
 
-Asked for by Tyrone on 2026-11-13: "another feature to add here, but would be another addon. is routing
-based on dungeon journals quest todo list". Later the same day: "it has the list they generate to
-track, but its only a list of quests not and location data. however, in the dungeon journal addon,
-they allow for map pointing. could we utilize this, / perhaps retrieve some of this information from
-the wow wiki."
+Asked for on 2026-11-13, as another addon: routing through the Dungeon Journal's quest to-do list.
+Later the same day: the list holds quests but no places; the journal does point at places on the map;
+could that be used, or the places taken from the wiki?
 
 ### What the journal has (looked at 2026-11-13, version 2.0.4, by Exehn)
 
@@ -445,7 +444,7 @@ the wow wiki."
 
 ### Built: Stitch (Dungeon Journal) 1.0.0 (2026-11-13)
 
-He said "Yes, build it". `addons/PatchwerkForever_Stitch_DungeonJournal`: `Link.lua` (API 4),
+Approved and built. `addons/PatchwerkForever_Stitch_DungeonJournal`: `Link.lua` (API 4),
 `Reader.lua`, a binding, `/patchwerk dj`, two settings on the page Stitch: Dungeon Journal.
 
 - **What the reader reads**, each time it is asked, from the running journal: the dungeons ticked in
@@ -460,9 +459,10 @@ He said "Yes, build it". `addons/PatchwerkForever_Stitch_DungeonJournal`: `Link.
 - **Two guides at once** was the thing to settle. The base now holds several readers (`Read(count,
   id)`, `ReadAll`, `Leads`). The first is the main route. A second is a side list: the tracker gives
   it a section, a click chooses it (`Choice:Set('guide', id)`), and Routes then follows it as it
-  follows a guide, until it has no more. "Dungeon Journal Before RestedXP" (off) makes it the main one.
+  follows a guide, until it has no more. "Dungeon Journal First" (off) makes it the main one.
 - **Skips** are the Stitch's own and last the session: the journal is not told.
 
 Not done: a note to the journal's author; leading to a dungeon's entrance; quests the journal gives no
-place for. Not seen in the game: any of it with the real journal. The names read are inside someone
+place for. Tried with the real journal from 1.0.2 (2026-11-18), which follows a hand-in only once the
+quest is finished. The names read are inside someone
 else's addon and may change with any update of it; every read is wary, and a miss gives no list.

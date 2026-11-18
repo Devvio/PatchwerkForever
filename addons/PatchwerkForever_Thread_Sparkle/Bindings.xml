@@ -1,5 +1,5 @@
 <Bindings>
-	<Binding name="PATCHWERKFOREVER_SPARKLE_IGNORE" header="PATCHWERKFOREVER_SPARKLE" category="ADDONS">
-		PatchwerkForever_Thread_Sparkle_Ignore()
+	<Binding name="PATCHWERKFOREVER_SPARKLE_IGNORE" header="PATCHWERKFOREVER_SPARKLE" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Sparkle_Ignore then PatchwerkForever_Thread_Sparkle_Ignore() end
 	</Binding>
 </Bindings>

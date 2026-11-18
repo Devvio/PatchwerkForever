@@ -2,7 +2,8 @@
 --
 -- A guide's steps come one after another, and the ones to come are known (the base's guides service). The way from
 -- each to the next is found here ahead of time, behind the search for your own route, and kept:
---   ns.ahead = { legs = { route, route, ... } }   drawn fainter by the world map and the minimap
+--   ns.ahead = { legs = { route, route, ... }, chosen = true for the steps of a list you selected }
+-- drawn fainter by the world map and the minimap (a selected list's in the selected route's color)
 -- The first of them does a second job. When you finish a step, the way to the next has usually been
 -- found already, from where that step was: it is handed over (Take) and the trail changes at once,
 -- with no search to wait for.
@@ -22,6 +23,7 @@ local floor = math.floor
 local found = {}          -- [leg] = { route = the way, or false for none; flight = true for a line that stands for a flight }
 local order = {}          -- the legs wanted now, nearest first
 local chainKey
+local chosen              -- the steps are of a list you selected
 
 local function Leg(a, b)
 	return ('%d:%d:%d>%d:%d:%d'):format(a.map, floor(a.x), floor(a.y), b.map, floor(b.x), floor(b.y))
@@ -33,16 +35,18 @@ local function Publish()
 		local have = found[leg]
 		if have and have.route then legs[#legs + 1] = have.route end
 	end
-	ns.ahead = #legs > 0 and { legs = legs } or nil
+	ns.ahead = #legs > 0 and { legs = legs, chosen = chosen } or nil
 	if ns.RouteChanged then ns.RouteChanged() end
 end
 
 -- chain: the place you are going to now, then the places of the steps after it, in order; each
 -- { map =, x =, y =, kind = }. One with no map breaks the chain. An empty chain shows nothing.
-function Ahead.Set(chain)
-	local parts = {}
+-- isChosen: the steps are of a list you selected.
+function Ahead.Set(chain, isChosen)
+	chosen = isChosen and true or nil
+	local parts = { chosen and 'chosen' or 'main' }
 	for i, at in ipairs(chain) do
-		parts[i] = at.map and ('%d:%d:%d:%s'):format(at.map, floor(at.x), floor(at.y), tostring(at.kind)) or 'none'
+		parts[i + 1] = at.map and ('%d:%d:%d:%s'):format(at.map, floor(at.x), floor(at.y), tostring(at.kind)) or 'none'
 	end
 	local key = table.concat(parts, '|')
 	if key == chainKey then return end

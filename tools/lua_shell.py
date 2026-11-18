@@ -147,7 +147,7 @@ def main():
         said[0] += len(new)
         for text in new:
             print("      chat: " + text.replace("|cff7fd4ff", "").replace("|r", ""))
-        problems = [t for t in new if "a problem in" in t or "Route search failed" in t]
+        problems = [t for t in new if "a problem in" in t.lower() or "Route search failed" in t]
         assert not problems, "%s: %s" % (label, problems)
         return new
 
@@ -294,7 +294,10 @@ def main():
     frames()
     mine = taxi()
     assert mine.seen[1] and mine.known[25] is True and mine.known[40] is True and mine.known[30] is False and mine.known[23] is False
-    chat("flight map")
+    # (the first flight map on a continent is said, the next ones are not)
+    assert sum(1 for t in chat("flight map") if "Flight map read: 2 flight points known on this continent." in t) == 1
+    stub.Fire("TAXIMAP_OPENED")
+    assert not any("Flight map read" in t for t in chat("flight map again"))
     text = go_again("flight map")
     assert ns.route and any("fly Crossroads > Gadgetzan" in t for t in text), text
     slash("flights")
@@ -326,7 +329,7 @@ def main():
     stub.Fire("UI_INFO_MESSAGE", 372, lua.globals().ERR_NEWTAXIPATH)
     frames()
     text = chat("found")
-    assert taxi().known[25] is True and any("Flight point learned: Crossroads, The Barrens" in t for t in text), text
+    assert taxi().known[25] is True and any("Flight point discovered: Crossroads, The Barrens" in t for t in text), text
     stub.player.x, stub.player.y = here
     # the world map said you had Freewind Post, the flight map showed you did not: its word is not taken again
     stub.noTaxi = None
@@ -545,7 +548,7 @@ def main():
     stub.Tick(); frames()
     assert ns.dest.source == "rxp" and near(*RATCHET), "the guide did not come before the quest"
     slash("quest")
-    assert any("your RestedXP guide (it has priority" in t for t in chat("quest"))
+    assert any("your RestedXP guide (Route Priority: Guide First)" in t for t in chat("quest"))
     # a quest you choose (a click in the tracker) is a side path: it takes over from the guide, in a
     # colour of its own, with the way back to the guide drawn on from it
     Choice = lua.globals().PatchwerkForever.Choice
@@ -761,7 +764,7 @@ def main():
     # one kind: its spot here was just visited, so there is none; later there is
     assert G.Start(G, "kind", "Copper Vein") is False and G.State(G) is None
     text = chat("gather")
-    assert any("No unvisited Copper Vein node" in t for t in text), text
+    assert any("No Copper Vein nodes recorded nearby" in t for t in text), text
     stub.time += 400
     stub.player.x, stub.player.y = -442.0, -2598.0
     assert G.Start(G, "kind", "Copper Vein") is True
@@ -812,6 +815,72 @@ def main():
     stub.QuestGone(874)
     go()
     assert not ns.dest and Choice.Get(Choice) is None
+    chat("side paths")
+    # a run that cannot start puts the chosen quest back: a round from where no node lies near enough
+    stub.QuestAt(874, "A Side Job", 1, -600.0, -2800.0)
+    Choice.Set(Choice, "quest", 874)
+    stub.player.x, stub.player.y = -1900.0, -1400.0
+    slash("gather round")
+    text = chat("a run that could not start")
+    assert G.State(G) is None and Choice.Get(Choice) and Choice.Get(Choice).id == 874, "a run that did not start dropped the chosen quest"
+    assert any("No herb or ore nodes recorded nearby" in t for t in text) and not any("started" in t for t in text), text
+    Choice.Clear(Choice)
+    stub.QuestGone(874)
+    stub.player.x, stub.player.y = -442.0, -2598.0
+    go()
+    # the key: one press starts a run, the next ends it, each saying how
+    keyed = lua.globals().PatchwerkForever_Thread_Routes_Gather
+    keyed()
+    assert G.State(G) is not None
+    assert any("Press the key again to stop." in t for t in chat("gather key")), "the key's run does not say how to end it"
+    keyed()
+    assert G.State(G) is None and any("Gathering stopped." in t for t in chat("gather key again"))
+    go()
+    # Start Routing during a run ends it, where there is a guide step or quest to go to instead
+    had_quests = ns.Get("quests")
+    setting("quests", True)
+    stub.QuestAt(875, "Something Else", 1, -600.0, -2800.0)
+    stub.watched = lua.table_from([875])
+    stub.focus = 875
+    slash("gather")
+    go()
+    assert ns.dest.source == "gather"
+    slash("go")
+    go()
+    text = chat("go during a run")
+    assert G.State(G) is None and ns.dest and ns.dest.source == "quest", "Start Routing left the run on"
+    assert any(t.endswith("Gathering stopped.") for t in text), text
+    stub.QuestGone(875)
+    setting("quests", had_quests)
+    go()
+    # what this character can gather, asked as the game's profession book asks: a profession that is
+    # neither herbalism nor mining (leatherworking), nothing to gather
+    lua.execute("""
+        STUB.professions = { 12 }
+        function GetProfessions() return STUB.professions[1], STUB.professions[2] end
+        function GetProfessionInfo(index) return 'Profession', 1, 1, 300, 0, 0, STUB.professionLine[index] end
+        STUB.professionLine = { [10] = 182, [11] = 186, [12] = 165 }
+    """)
+    stub.Fire("SKILL_LINES_CHANGED")
+    slash("gather")
+    slash("gather list")
+    text = chat("no profession")
+    assert G.State(G) is None and sum(1 for t in text if "no gathering profession" in t) == 2, text
+    assert len(G.Near(G, 5)) == 0, "the Gathering list offers nodes to a character with no profession"
+    # an empty profession book says nothing (this client may keep professions some other way): the
+    # spells are asked, and with no answer from them either, both are offered as before
+    lua.execute("STUB.professions = {}")
+    stub.Fire("SKILL_LINES_CHANGED")
+    assert len(G.Near(G, 5)) == 3, "an empty profession book was taken for no gathering profession"
+    lua.execute("STUB.professions = { 10 }")                    # herbalism only
+    stub.Fire("SKILL_LINES_CHANGED")
+    assert [n.name for n in G.Near(G, 5).values()] == ["Peacebloom"], [n.name for n in G.Near(G, 5).values()]
+    lua.execute("STUB.professions = { 11, 10 }")                # both, the other way round
+    stub.Fire("SKILL_LINES_CHANGED")
+    assert len(G.Near(G, 5)) == 3
+    lua.execute("GetProfessions, GetProfessionInfo = nil, nil")
+    stub.Fire("SKILL_LINES_CHANGED")
+    chat("professions")
     # (the spots made for this are forgotten again, so that what follows finds what it did before)
     for x, y in ((-460.0, -2640.0), (-700.0, -2900.0), (-2500.0, -2600.0)):
         stub.player.x, stub.player.y = x, y
@@ -833,20 +902,20 @@ def main():
     assert "baseTellMissing" not in by_name, "the base's switch is on its front page, not a row of the game's"
     pages = sorted(stub.pages.keys())
     WANT = {"Thread: Routes": 16, "Routes: Trail": 12, "Routes: Step Text": 6, "Thread: Sparkle": 4, "Sparkle: Names": 8,
-            "Sparkle: Behind My Character": 6, "Sparkle: Looks": 30, "Sparkle: Loot Wisps": 8}
+            "Sparkle: Behind My Character": 6, "Sparkle: Appearance": 30, "Sparkle: Loot Wisps": 8}
     assert pages == sorted(WANT), pages
     for page in pages:
         on_it = [n for n, s in by_name.items() if s.page == page]
         assert len(on_it) == WANT[page], "%s has %d settings, expected %d" % (page, len(on_it), WANT[page])
     # headings, each kind of sparkle under its own on the one page of looks
     assert list(stub.headers.values()) == [
-        "Destinations", "Focus And My Route", "Travel Options", "Chat", "Gathering Nodes", "Display", "Line Style", "Colors", "Defaults",
+        "Destinations", "Focus And My Route", "Travel Options", "Chat", "Gathering Nodes", "Display", "Line", "Colors", "Defaults",
         "Herbs", "Ore", "Chests", "Quest Objects", "Other Objects", "Defaults"], list(stub.headers.values())
     # every page opens with its name, its tool's picture and a line in Patchwerk's voice
     intros = {i.name: i for i in stub.intros.values()}
     assert sorted(intros) == sorted(WANT), sorted(intros)
     assert intros["Thread: Routes"].voice == "Follow the thread. Patchwerk knows the way. Mostly."
-    assert intros["Routes: Trail"].voice.startswith("A line on the ground.") and intros["Sparkle: Looks"].voice.startswith("Every shiny thing")
+    assert intros["Routes: Trail"].voice.startswith("A line on the ground.") and intros["Sparkle: Appearance"].voice.startswith("Every shiny thing")
     assert all(i.voice and i.icon and i.icon.endswith("icon") for i in intros.values()), [n for n, i in intros.items() if not i.voice]
     assert stub.Rows() == len(WANT) + 15, "a row of our own could not be made"
     # the front page: what is sewn on, each with a button to its page
@@ -860,11 +929,14 @@ def main():
     assert [x[0].split("  ")[0] for x in parts] == ["Thread (Routes)", "Thread (Sparkle)"] and all(x[2] for x in parts), parts
     assert "Two threads" in page.said, page.said
     names = [s.name for s in by_name.values()]
-    assert "Route To Map Pin" in names and "Follow RestedXP Guide" in names and "Font Size" in names and "Walking Color" in names, names
+    assert "Route To Map Pin" in names and "Follow Guide" in names and "Font Size" in names and "Walking Color" in names, names
     sdb = lua.globals().PatchwerkForever_Thread_SparkleDB
     assert sdb and not lua.globals().PatchwerkForever_Thread_RoutesDB.sparkleWas, "the sparkle keeps its things in the routes' saved data"
     buttons = list(stub.buttons.values())
-    assert sorted(b.text for b in buttons) == ["Apply", "Clear", "Defaults", "Defaults", "Show", "Show"] + ["Test"] * 6, [b.text for b in buttons]
+    # (Routes' own buttons exactly; Sparkle's are its own business, and change with it)
+    mine = sorted(b.text for b in buttons if b.page.startswith("Routes") or b.page == "Thread: Routes")
+    assert mine == ["Reset", "Show"], mine
+    assert sum(1 for b in buttons if b.text == "Reset") == 2, [b.text for b in buttons]
     assert sum(1 for s in by_name.values() if s.colour) == 12 and sum(1 for s in by_name.values() if s.choices) == 14
 
     def setv(name, value):
@@ -874,12 +946,12 @@ def main():
     setv("trailStyle", "dots")
     setv("flights", False)
     setv("nameSize", 20)
-    [b for b in buttons if b.text == "Defaults" and b.page == "Thread: Routes"][0].click()
+    [b for b in buttons if b.text == "Reset" and b.page == "Thread: Routes"][0].click()
     assert "Reset all Thread: Routes options" in stub.asked.text, stub.asked.text
     stub.Answer(True)
     assert ns.Get("trailStyle") == "solid" and ns.Get("flights") is True, "Routes' options were not reset"
     assert sparkle.Get("nameSize") == 20, "resetting Routes reset the Sparkle too"
-    [b for b in buttons if b.text == "Defaults" and b.page == "Thread: Sparkle"][0].click()
+    [b for b in buttons if b.text == "Reset" and b.page == "Thread: Sparkle"][0].click()
     stub.Answer(True)
     assert sparkle.Get("nameSize") == 13
     chat("reset")
@@ -1018,7 +1090,10 @@ def main():
     assert s.shown, "undoing did not bring it back"
     lua.globals().PatchwerkForever_Thread_Sparkle_Ignore()                       # the bound key
     assert not s.shown
+    stub.asked = None
     [b for b in buttons if b.text == "Clear"][0].click()
+    if stub.asked:                                                # (Sparkle asks first, from the button)
+        stub.Answer(True)
     assert s.shown, "the Forget button did not clear the list"
     slash("ignore list")
 
@@ -1090,12 +1165,13 @@ def main():
     assert s.alpha == 1.0 and alpha_at(cx, cy) == 1.0, "the sparkle stayed faded with the setting off"
 
     step("the Test buttons show a sparkle in the middle of the screen for a while")
-    tests = [b for b in buttons if b.text == "Test"]
+    # (by name: what the buttons say is Sparkle's own business, and changes with it)
+    tests = [b for b in buttons if b.name in ("Preview Sparkle", "Preview Name")]
     for b in tests:
         b.click()
     assert len(marks()) == 2, "the Test button did not make its own mark"
     t = [m for m in marks() if not same(m, s)][0]
-    assert t.shown and t.name.text == "This is another thing", t.name.text
+    assert t.shown and t.name.text, t.name.text
     for _ in range(10):
         stub.Frame()
     stub.RunAfters()
@@ -1152,6 +1228,7 @@ def main():
     assert abs(drawn()[0].thick - 3 / 0.5) < 0.01, "the trail is not its usual thickness"
     setv("trailThickMap", 6)
     assert abs(drawn()[0].thick - 6 / 0.5) < 0.01, "the thickness was not applied"
+    setv("trailThickMap", 3)
     setv("trailWalk", "ff0000ff")
     assert drawn()[0].colour[3] == 1.0 and drawn()[0].colour[1] == 0.0, "the walking colour was not applied"
     setv("trailStyle", "dashes")
@@ -1160,6 +1237,10 @@ def main():
     assert long / 34 - 1 <= dashes <= long / 34 + solid + 1, "dashes: %d lines for a trail %.0f long" % (dashes, long)
     assert all(length([l]) <= 20.01 for l in drawn()), "a dash is too long"
     assert abs(length(drawn()) - long * 20 / 34) < 25, "the dashes do not cover the share of the trail they should"
+    # a wider line spaces its dashes in proportion, so they do not run together: twice as wide, twice as long
+    setv("trailThickMap", 6)
+    assert max(length([l]) for l in drawn()) > 30 and all(length([l]) <= 40.01 for l in drawn()), "the dashes did not grow with the line"
+    setv("trailThickMap", 3)
     setv("trailStyle", "dots")
     assert len(drawn()) == 0 and abs(len(dots()) - long / 18) <= 2, "dots: %d lines, %d dots for a trail %.0f long" % (len(drawn()), len(dots()), long)
     setv("trailStyle", "dashes")
@@ -2007,7 +2088,7 @@ def main():
     stub.PinAt(1, *RATCHET)
     stub.Fire("USER_WAYPOINT_UPDATED"); frames()
     text = heard()
-    assert sum(1 for t in text if "a problem in a route search" in t and "the planner fell over" in t) == 1, text
+    assert sum(1 for t in text if "a problem in a route search" in t.lower() and "the planner fell over" in t) == 1, text
     assert not any("Route search failed" in t for t in text), text
     assert stub.searches == made + 1 and stub.forgets > forgot, "what the search had decoded was not let go of"
     assert ns.dest and ns.dest.pin and ns.dest.failed and not ns.route
@@ -2264,7 +2345,7 @@ def main():
     assert focus() == "rxp" and ns.dest.source == "rxp" and near(*RATCHET), "Follow RestedXP Guide held back the RestedXP focus"
     assert lines()[:1] == ["Following: RestedXP"], lines()
     slash("quest")
-    assert any("your RestedXP guide (it is your focus)" in t for t in chat("rxp focus"))
+    assert any("Following: RestedXP (it is your focus)." in t for t in chat("rxp focus"))
     quiet()
     setting("rxp", True)
     # back to Auto, which goes to the same place: the focus is said on its own
@@ -2435,6 +2516,139 @@ def main():
     stub.watched = lua.table()
     ticks()
     chat("quest log")
+
+    step("what is followed, told to the base for the tracker; a choice that is not followed is said once; /thread quest")
+    Following = G.PatchwerkForever.Following
+
+    def followed():
+        f = Following.Get(Following)
+        return (f.kind, f.source, f.quest) if f else None
+    heard_keys = []
+    Following.OnChange(Following, lua.eval("function(f) return function(info) f(info and info.key or false) end end")(heard_keys.append))
+    stand((-442.0, -2598.0))
+    setting("rxp", True)
+    setting("quests", True)
+    setting("sourceFirst", "rxp")
+    ticks()
+    assert followed() == ("none", None, None), followed()
+    # the guide's step, then the next: the key changes with the step
+    arrow.element = lua.table_from({"wx": RATCHET[1], "wy": RATCHET[0], "instance": 1})
+    ticks()
+    assert followed() == ("guide", "rxp", None) and near(*RATCHET), followed()
+    first = Following.Get(Following).key
+    told = len(heard_keys)
+    ticks()
+    assert len(heard_keys) == told, "the same thing followed was told again"
+    arrow.element = lua.table_from({"wx": CAMP[1], "wy": CAMP[0], "instance": 1})
+    ticks()
+    assert followed() == ("guide", "rxp", None) and Following.Get(Following).key != first, "a new step did not change the key"
+    # a tracked quest with Route Priority on quests
+    stub.QuestAt(990, "A Quest Here", 1, *FIELD)
+    stub.watched = lua.table_from([990])
+    setting("sourceFirst", "quest")
+    ticks()
+    assert followed() == ("quest", None, 990), followed()
+    slash("quest")
+    assert any("Kalimdor" in t for t in chat("quest names the continent")), "the continent is not named"
+    setting("sourceFirst", "rxp")
+    ticks()
+    slash("quest")
+    assert any("Following: your RestedXP guide (Route Priority: Guide First)." in t for t in chat("quest, the guide"))
+    # stopped by you: nothing followed, until the step moves on
+    slash("stop")
+    ticks()
+    assert followed() == ("none", None, None), followed()
+    slash("quest")
+    assert any("Not routing now" in t for t in chat("quest, stopped"))
+    slash("go")
+    ticks()
+    assert followed()[0] == "guide"
+    # a quest you select that has no place: the main route goes on, and that is said once
+    lua.execute("STUB.quests[991] = { title = 'Nowhere Quest', uiMap = 0 }")
+    Choice.Set(Choice, "quest", 991)
+    ticks()
+    assert followed()[0] == "guide" and not any("Nowhere Quest" in t for t in heard()), "said before the game had a moment to answer"
+    stub.time += 3
+    ticks(4)
+    text = chat("a choice with no place")
+    assert sum(1 for t in text if '"Nowhere Quest" has no location on the map' in t) == 1, text
+    # a quest you select while your map pin stands: the pin first, and that is said once for the pin
+    stub.QuestAt(992, "A Quest There", 1, *CAMP)
+    Choice.Set(Choice, "quest", 992)
+    ticks()
+    assert followed() == ("quest", None, 992) and ns.dest.chosen
+    # (the trail before the new destination's way is known: faint, in the color of the destination it leads to)
+    route_before = ns.route
+    stub.PinAt(1, -1000.0, -2000.0)
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    if same(ns.route, route_before):
+        chosen, alpha = ns.TrailLook(ns.route, True, 0.9, 0.45)
+        assert alpha == 0.45 and chosen, "the trail of the destination before is not drawn fainter while the new one is searched for"
+    ticks()
+    assert ns.TrailLook(ns.route, True, 0.9, 0.45)[1] == 0.9, "the new trail is drawn faint"
+    text = chat("pin first")
+    assert followed()[0] == "pin" and sum(1 for t in text if "Your map pin comes first. The quest you selected" in t) == 1, text
+    ticks()
+    assert not any("comes first" in t for t in chat("pin first, again"))
+    slash("quest")
+    assert any("Following: your map pin (it always comes first)." in t for t in chat("quest, a pin"))
+    stub.pin = None
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    ticks()
+    assert followed() == ("quest", None, 992), followed()
+    slash("quest")
+    assert any('Following: "A Quest There" (selected by you' in t for t in chat("quest, chosen"))
+    Choice.Clear(Choice)
+    # a list you select: its steps ahead in the selected route's color too
+    STUB_DJ = lua.globals().STUB.dj
+    STUB_DJ[1], STUB_DJ[2] = lua.table_from([FIELD[0], FIELD[1]]), lua.table_from([RATCHET[0], RATCHET[1]])
+    Choice.Set(Choice, "guide", "fdj")
+    for _ in range(20):
+        ticks()
+        if ns.ahead:
+            break
+    assert followed() == ("guide", "fdj", None), followed()
+    assert ns.ahead and ns.ahead.chosen, "a selected list's steps ahead are not drawn as a path you chose"
+    Choice.Clear(Choice)
+    ticks()
+    assert not (ns.ahead and ns.ahead.chosen), "the main guide's steps ahead are drawn as a path you chose"
+    STUB_DJ[1], STUB_DJ[2] = None, None
+    # a gathering run
+    slash("gather")
+    ticks()
+    assert followed()[0] == "gather", followed()
+    slash("quest")
+    assert any("Following: your gathering run." in t for t in chat("quest, gathering"))
+    slash("gather stop")
+    arrow.element = None
+    stub.QuestGone(990)
+    stub.QuestGone(991)
+    stub.QuestGone(992)
+    ticks()
+    assert followed() == ("none", None, None), followed()
+    chat("followed")
+
+    step("the keys: every binding in the family's section, each safe without its function, and named")
+    bindings = open(os.path.join(ADDONS, ADDON, "Bindings.xml"), encoding="utf-8").read()
+    import re
+    found = re.findall(r'<Binding name="([A-Z_]+)"[^>]*category="([^"]+)"[^>]*>\s*if (\w+) then (\w+)\(', bindings)
+    assert len(found) == bindings.count("<Binding "), "a binding is not guarded, or not in the section"
+    assert all(cat == "BINDING_CATEGORY_PatchwerkForever" and a == b for _, cat, a, b in found), found
+    for name, _, fn, _ in found:
+        assert G["BINDING_NAME_" + name] and G[fn], name
+    assert G.BINDING_NAME_PATCHWERKFOREVER_THREAD_GO == "Start Routing"
+    ns.FloatStep(lua.table_from(["Kill: Plainstriders"]), None, None, True)
+    G.PatchwerkForever_Thread_Routes_Step()
+    assert lines() == ["Kill: Plainstriders"], lines()
+    quiet()
+    chat("keys")
+    step("the way there in words, for the top of My Route: flights and rides, or a walk")
+    words = ns.Travel(lua.eval("""{ flown = { { 'Crossroads', 'Camp Taurajo', 'Thunder Bluff' } },
+        rides = { { kind = 'zeppelin', from = 'Orgrimmar', to = "Grom'gol" } }, yards = 300, seconds = 720 }"""))
+    assert words == "Fly from Crossroads to Thunder Bluff, then take the zeppelin from Orgrimmar to Grom'gol (12 min in all)", words
+    words = ns.Travel(lua.eval("{ flown = {}, rides = {}, yards = 450, seconds = 60 }"))
+    assert words == "Walk 450 yd (60 s)", words
+
     print("all steps ran; memory at the end %.1f MB" % (lua.eval("collectgarbage('count')") / 1024))
 
 

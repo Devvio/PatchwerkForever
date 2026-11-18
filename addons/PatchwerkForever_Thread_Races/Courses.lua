@@ -31,6 +31,11 @@ function ns.Clock(seconds)
 	return ('%d:%04.1f'):format(m, seconds - m * 60)
 end
 
+-- "1 checkpoint" or "3 checkpoints".
+function ns.Checkpoints(count)
+	return count == 1 and '1 checkpoint' or ('%d checkpoints'):format(count)
+end
+
 -- +1.2 or -0.8: how far behind (+) or ahead (-) of another time.
 function ns.Gap(seconds)
 	return (seconds >= 0 and '+%.1f' or '-%.1f'):format(math.abs(seconds))
@@ -183,8 +188,9 @@ function ns.CourseSave()
 	db.courses[making.name] = { points = making.points, radius = ns.Get('radius') or 12,
 		made = date and date('%Y-%m-%d') or '', by = UnitName('player') }
 	db.last = making.name
-	ns.Print(('Course "%s" saved: a start, %d checkpoint(s) and the finish. /race start to race it.')
-		:format(making.name, #making.points - 2))
+	local between = #making.points - 2
+	ns.Print(('Course "%s" saved: %s. /race start to race it.'):format(making.name, between == 0
+		and 'a start and the finish' or ('a start, %s and the finish'):format(ns.Checkpoints(between))))
 	making = nil
 end
 
@@ -205,7 +211,7 @@ end
 
 local function Describe(name, course)
 	local length = Length(course)
-	return ('"%s": %d checkpoints%s%s'):format(name, #course.points - 1,
+	return ('"%s": %s%s%s'):format(name, ns.Checkpoints(#course.points - 1),
 		length and (', %d yards'):format(length) or '',
 		course.best and (', best ' .. ns.Clock(course.best.time)) or '')
 end
@@ -344,8 +350,8 @@ local function Heard(prefix, text, channel, sender)
 	if not name then return end
 	course.by = sender
 	offered = { name = name, course = course, from = sender }
-	ns.Print(('%s sent you the course "%s" (%d checkpoints). /race accept to keep it.')
-		:format(tostring(sender), name, #course.points - 1))
+	ns.Print(('%s sent you the course "%s" (%s). /race accept to keep it.')
+		:format(tostring(sender), name, ns.Checkpoints(#course.points - 1)))
 end
 
 function ns.CourseAccept()

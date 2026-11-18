@@ -27,12 +27,20 @@
 local addonName, ns = ...;
 
 -- API: raised when something is added that a part may need (2: the guides service, Guides.lua;
--- 3: the gathering service, Gather.lua, and a guide step's items and skipping)
+-- 3: the gathering service, Gather.lua, and a guide step's items and skipping; 4: more than one
+-- guide at a time; 5: Focus.lua, MyRoute.lua and Choice:OnChange). Something an older part simply
+-- does not use (Following.lua, a reader's Side) leaves it as it is.
 local P = { API = 5, Fixes = {}, Parts = {}, Settings = { list = {}, byKey = {} } };
 PatchwerkForever = P;
 ns.P = P;
 
 local GOLD = '|cffd6a35b';
+
+-- The heading every part's key bindings are listed under. A binding's
+-- category="BINDING_CATEGORY_PatchwerkForever" in a Bindings.xml is
+-- looked up as a global when the Key Bindings page is drawn; a
+-- category that names no string global is shown as it is written.
+BINDING_CATEGORY_PatchwerkForever = 'Patchwerk Forever';
 
 -- The parts there are, and the addon each one is for. A part that
 -- is not listed here still joins and works: this list is only for
@@ -69,9 +77,17 @@ function P:WhenLoaded(fn)
 	loadHooks[#loadHooks + 1] = fn;
 end
 
+-- A chat line of a part: "Patchwerk" and then the part's own colored tag with its colon
+-- (ns:Print('|cff69ccf0Console Port:|r', ...) reads "Patchwerk Console Port: ...").
 function P:Print(...)
 	print(GOLD .. 'Patchwerk|r', ...)
 end
+
+-- A chat line of the base itself: "Patchwerk: ...".
+local function Say(...)
+	print(GOLD .. 'Patchwerk:|r', ...)
+end
+ns.Say = Say;
 
 ---------------------------------------------------------------
 -- Settings
@@ -90,6 +106,7 @@ end
 --     section = heading it is listed under (string)
 --     parent  = key of the setting it depends on (optional)
 --     min, max, step = for a number
+--     percent = true for a number shown as a percentage (optional)
 -- }
 local handlers = {};
 
@@ -131,7 +148,7 @@ function P:FireSetting(key, initial)
 	for _, fn in ipairs(handlers[key] or {}) do
 		local ok, err = pcall(fn, value, initial);
 		if not ok then
-			P:Print(('The %s setting could not be applied: %s'):format(key, tostring(err)))
+			Say(('The %s setting could not be applied: %s'):format(key, tostring(err)))
 		end
 	end
 end
@@ -285,7 +302,7 @@ local function Flush()
 	for _, fn in ipairs(hooks) do
 		local ok, err = pcall(fn);
 		if not ok then
-			P:Print('A part failed while loading: ' .. tostring(err))
+			Say('A part failed while loading: ' .. tostring(err))
 		end
 	end
 	local keys = fresh;
@@ -306,17 +323,26 @@ P:AddSetting({
 -- Since 2.0.0 the fixes are addons of their own. Someone who had
 -- them all in one, or who adds Console Port later, is told once
 -- for each which part to get; a part that is installed but
--- unticked was switched off on purpose and is not mentioned.
+-- disabled was disabled on purpose and is not mentioned.
 local function TellMissing()
 	if not P:GetSetting('baseTellMissing') then return end;
 	local told = P:GetSaved('told');
 	for _, part in ipairs(P.Family) do
 		if ( not told[part.addon] and IsLoaded(part.needs) and not IsInstalled(part.addon) ) then
 			told[part.addon] = true;
-			P:Print(('%s is running. The fixes and additions for it are a separate addon: |cffffffff%s|r.')
+			Say(('%s is running. The fixes and additions for it are a separate addon: |cffffffff%s|r.')
 				:format(part.what, part.name))
 		end
 	end
+end
+
+-- Once for the account, at its first login with the base: where the options are, since nothing
+-- else says so and a gamepad player may never type a command.
+local function Welcome()
+	local told = P:GetSaved('told');
+	if told.welcome then return end;
+	told.welcome = true;
+	Say('Options are under Options > AddOns > Patchwerk Forever.')
 end
 
 local Loader = CreateFrame('Frame')
@@ -343,10 +369,11 @@ Loader:SetScript('OnEvent', function(self, event, name)
 	local hooks = loginHooks;
 	loginHooks = {};
 	hooks[#hooks + 1] = TellMissing;
+	hooks[#hooks + 1] = Welcome;
 	for _, fn in ipairs(hooks) do
 		local ok, err = pcall(fn);
 		if not ok then
-			P:Print('Something failed at login: ' .. tostring(err))
+			Say('Something failed at login: ' .. tostring(err))
 		end
 	end
 end)
@@ -359,7 +386,7 @@ local function SetCommand(args)
 	local key, text = args:match('^(%S+)%s+(%S+)$');
 	local def = key and P:FindSetting(key);
 	if not def then
-		P:Print('settings (/patchwerk set <name> on|off):')
+		Say('Options (/patchwerk set <name> on|off):')
 		for _, known in ipairs(P.Settings.list) do
 			print(('  %s: %s  |cff808080%s|r'):format(known.key, OnOff(P:GetSetting(known.key)), known.name or ''))
 		end
@@ -372,26 +399,52 @@ local function SetCommand(args)
 		value = ( text == 'on' );
 	end
 	if ( value == nil or not P:SetSetting(def.key, value) ) then
-		return P:Print(type(def.default) == 'number' and 'Give a number.' or 'Give on or off.');
+		return Say(('Usage: /patchwerk set %s %s'):format(def.key, type(def.default) == 'number' and '<number>' or 'on|off'));
 	end
-	P:Print(('%s: %s'):format(def.key, OnOff(P:GetSetting(def.key))))
+	Say(('%s: %s'):format(def.key, OnOff(P:GetSetting(def.key))))
 end
 
 local function ListParts()
-	print(('%s%sPatchwerk Forever|r %s. Its parts:'):format(P:IconText(addonName, 14), GOLD, Meta(addonName, 'Version') or ''))
+	print(('%s%sPatchwerk Forever|r %s. Installed parts:'):format(P:IconText(addonName, 14), GOLD, Meta(addonName, 'Version') or ''))
 	for _, part in ipairs(P.Parts) do
 		print(('  %s%s%s|r %s%s'):format(P:IconText(part.addon, 14), GOLD, part.title, part.version or '',
 			part.slash and ('  |cff808080' .. part.slash .. '|r') or ''))
 	end
 	if ( #P.Parts == 0 ) then
-		print('  none. This is the base: the Stitch and Thread addons are downloads of their own.')
+		print('  None. Patchwerk Forever is the base; the Stitch and Thread addons are installed separately.')
 	end
 	for _, part in ipairs(P.Family) do
 		if ( IsLoaded(part.needs) and not IsLoaded(part.addon) ) then
 			print(('  |cff808080%s (for %s): %s|r'):format(part.name, part.what,
-				IsInstalled(part.addon) and 'installed, not switched on' or 'not installed'))
+				IsInstalled(part.addon) and 'installed but disabled' or 'not installed'))
 		end
 	end
+end
+
+-- The options, from the command, the key binding and the minimap's addon list alike.
+function ns.OpenOptions()
+	if P:OpenSettings() then return true end;
+	if InCombatLockdown() then
+		Say('Options cannot be opened in combat.')
+	else
+		Say('Options are under Options > AddOns > Patchwerk Forever. /patchwerk set lists them in chat.')
+	end
+	return false;
+end
+
+-- The key binding (Bindings.xml), listed under the family's own heading.
+BINDING_HEADER_PATCHWERKFOREVER = 'Patchwerk Forever';
+BINDING_NAME_PATCHWERKFOREVER_OPTIONS = 'Open Options';
+function PatchwerkForever_OpenOptions() ns.OpenOptions() end
+
+local function Help()
+	Say('Commands:')
+	print('  /patchwerk: list the installed parts and their fixes')
+	print('  /patchwerk set <name> on|off: change a Stitch option; /patchwerk set lists them')
+	if ( #P.Fixes > 0 ) then
+		print("  /patchwerk <id>: a fix's own commands (the id in parentheses above)")
+	end
+	print('  /patchwerk config: open the options')
 end
 
 SLASH_PATCHWERK1 = '/patchwerk';
@@ -399,9 +452,7 @@ SlashCmdList.PATCHWERK = function(msg)
 	local word, args = (msg or ''):trim():match('^(%S*)%s*(.-)$');
 	word = word:lower();
 	if ( word == 'config' or word == 'settings' or word == 'options' ) then
-		if not P:OpenSettings() then
-			P:Print('The settings page could not be opened here. /patchwerk set lists the settings.')
-		end
+		ns.OpenOptions()
 		return;
 	elseif ( word == 'set' ) then
 		return SetCommand(args:lower());
@@ -413,12 +464,13 @@ SlashCmdList.PATCHWERK = function(msg)
 
 	ListParts()
 	if ( #P.Fixes > 0 ) then
-		P:Print('Active fixes:')
+		-- (each status reads "on", "off" or "waiting: <addon> is not loaded", maybe followed by a count)
+		Say('Fixes:')
 		for _, known in ipairs(P.Fixes) do
 			local status = known.status and known.status();
 			print(('  %s%s|r (%s) for %s%s'):format(GOLD, known.name, known.id, known.addon,
 				status and (': '..status) or ''))
 		end
 	end
-	print('  /patchwerk config opens the settings. /patchwerk <id> for a fix\'s own commands.')
+	Help()
 end

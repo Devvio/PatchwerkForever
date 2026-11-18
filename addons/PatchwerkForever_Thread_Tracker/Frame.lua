@@ -14,12 +14,16 @@
 --                    click = function(button), mark = true, small = true } } }
 -- or nothing when the section has nothing to show. Of a block: `note` is written on the right of
 -- its title (a distance); `click` makes it take the mouse and is called with 'LeftButton' or
--- 'RightButton'; `mark` draws a bar beside it (the quest being followed); `small` makes it a quiet
--- heading inside the section (a zone's name); `drag = fn(block)` lets it be dragged with the left
--- button (fn is called as the drag starts; Drag.lua does the rest). Of a section: `menu = fn(head)`
--- is called on a right-click of its heading (a left-click still folds it). Sections are drawn in the
--- order of `order`. ns.Refresh() asks for the list to be drawn again; it is done at most ten times a
--- second.
+-- 'RightButton'; `tip = { 'line', ... }` is shown in a tooltip while the mouse is over it (what a
+-- click does); `mark` draws a bar beside it (the quest being followed); `small` makes it a quiet
+-- heading inside the section (a zone's name); `oneLine` keeps its title to one line, cut short with
+-- an ellipsis (a guide's later steps); `drag = fn(block)` lets it be dragged with the left button
+-- (fn is called as the drag starts; Drag.lua does the rest). Of a line: `clock` marks words that
+-- change by themselves (a timer), which do not count as a change of the block; `plain` writes it
+-- without the dash of an objective (a note, such as who in your party has the quest). Of a
+-- section: `menu = fn(head)` is called on a right-click of its heading (a left-click still folds
+-- it). Sections are drawn in the order of `order`. ns.Refresh() asks for the list to be drawn
+-- again; it is done at most ten times a second.
 --
 -- One more thing may stand above the sections, inside the list: ns.AddTop(fn), where
 -- fn(content, x, y, width, size) places itself at that spot and gives back how tall it is (0 when
@@ -28,6 +32,11 @@
 -- A block whose words change since it was last drawn glows for a moment. The frame can dim in a
 -- fight, dim while the mouse is elsewhere, and hide in dungeons: three settings, all off to begin with.
 -- (In a dungeon it also steps aside while the game's own tracker is let back there: ns.AsideInInstance.)
+-- While it is unlocked to be moved it is never dimmed or hidden, and an empty one is shown with a
+-- line saying so, so there is always a bar to drag.
+--
+-- If the quest list cannot be read (an error, said once), the game's own tracker is let back
+-- (ns.questsBroken, read by Quiet.lua) until the list has been read without one for a while.
 --
 -- The frame is as tall as what is in it, up to a height you set; past that the list scrolls with the
 -- mouse wheel or two key bindings (ns.Scroll), and the edge with more of the list past it darkens.
@@ -53,11 +62,12 @@ local SHADE = 14              -- pixels of an edge that darken while more of the
 local STITCH, STITCH_GAP = 7, 5
 local GLOW = 0.9              -- seconds a changed block glows
 local AWAKE = 4               -- seconds it stays bright after a change, when it dims while the mouse is elsewhere
+local HEALED = 10             -- seconds the quest list must be read without an error before the game's tracker is quiet again
 
 local sections = {}
 local top                     -- what stands above the sections (ns.AddTop)
 local drawn = {}              -- functions called after each drawing (the item strip)
-local frame, back, body, content, handle, shade
+local frame, back, body, content, handle, shade, empty
 local heads, blocks = {}, {}
 local scroll, dirty, last, unlocked = 0, true, 0, false
 local scaled                  -- the scale the frame was last placed at
@@ -65,6 +75,8 @@ local reveal                  -- 'mark' or 'top': what a key asked the next draw
 local seen = {}               -- [section .. block key] = its words when last drawn
 local changed = 0             -- when something in it last changed
 local alpha = 1
+local brokenAt                -- when the quest list last failed to be read
+local toldBroken = false
 
 function ns.AddSection(id, order, read)
 	sections[#sections + 1] = { id = id, order = order, read = read }
@@ -217,8 +229,12 @@ local function Make()
 	handle.words = Writing(handle, 'CENTER')
 	handle.words:SetPoint('CENTER', handle, 'CENTER', 0, 0)
 	Font(handle.words, 11)
-	handle.words:SetText('Drag to move   /tracker lock')
+	handle.words:SetText('Drag to move. Right-click to lock.')
 	handle:RegisterForDrag('LeftButton')
+	handle:RegisterForClicks('RightButtonUp')
+	handle:SetScript('OnClick', function(_, button)
+		if button == 'RightButton' then ns.Try('lock', ns.Unlock, false) end
+	end)
 	handle:SetScript('OnDragStart', function() frame:StartMoving() end)
 	handle:SetScript('OnDragStop', function()
 		frame:StopMovingOrSizing()
@@ -230,12 +246,53 @@ local function Make()
 		ns.Refresh()
 	end)
 	handle:Hide()
+	-- what an empty tracker says while it is unlocked
+	empty = Writing(content, 'CENTER')
+	empty:SetWordWrap(false)
+	empty:Hide()
 	Place()
 end
 
 ---------------------------------------------------------------------------
 -- Headings and blocks, kept and used again
 ---------------------------------------------------------------------------
+-- A tooltip of what a click does (a block's `tip`, a heading's fold), beside the tracker on the
+-- side of the screen with room for it.
+local function ShowTip(owner, title, lines)
+	local tip = rawget(_G, 'GameTooltip')
+	if not (type(tip) == 'table' and tip.SetOwner and #lines > 0) then return end
+	tip:SetOwner(owner, 'ANCHOR_NONE')
+	tip:ClearAllPoints()
+	local left, right = frame:GetLeft(), frame:GetRight()
+	if left and right and (left + right) / 2 * Scale() < UIParent:GetWidth() / 2 then
+		tip:SetPoint('TOPLEFT', owner, 'TOPRIGHT', PAD + 4, 0)
+	else
+		tip:SetPoint('TOPRIGHT', owner, 'TOPLEFT', -(PAD + 4), 0)
+	end
+	tip:SetText(title ~= '' and title or ' ', 1, 1, 1, 1, true)
+	for _, line in ipairs(lines) do tip:AddLine(line, 0.7, 0.7, 0.7, true) end
+	tip:Show()
+end
+
+local function HideTip(owner)
+	local tip = rawget(_G, 'GameTooltip')
+	if not (type(tip) == 'table' and tip.Hide) then return end
+	if tip.GetOwner and tip:GetOwner() ~= owner then return end
+	tip:Hide()
+end
+
+-- (a heading's: folding, and its menu where it has one)
+local function HeadTip(head)
+	local lines = { Saved().folded[head.id] and 'Click to expand.' or 'Click to collapse.' }
+	if head.menu then lines[2] = 'Right-click for more options.' end
+	ShowTip(head, head.title:GetText() or '', lines)
+end
+
+local function BlockTip(block)
+	local data = block.data
+	if data and type(data.tip) == 'table' then ShowTip(block, block.title:GetText() or '', data.tip) else HideTip(block) end
+end
+
 local function Head(i)
 	local head = heads[i]
 	if not head then
@@ -245,6 +302,7 @@ local function Head(i)
 		head.note = Writing(head, 'RIGHT')
 		head.note:SetPoint('RIGHT', head, 'RIGHT', 0, 1)
 		head.stitches = {}
+		head.track = head:CreateTexture(nil, 'BORDER')
 		head.bar = head:CreateTexture(nil, 'ARTWORK')
 		head:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
 		head:SetScript('OnClick', function(self, button)
@@ -257,14 +315,24 @@ local function Head(i)
 			folded[self.id] = not folded[self.id] or nil
 			ns.Refresh()
 		end)
+		-- (the tooltip is written again at each drawing while the mouse is over it: Render)
+		head:SetScript('OnEnter', function(self)
+			self.tipping = true
+			HeadTip(self)
+		end)
+		head:SetScript('OnLeave', function(self)
+			self.tipping = nil
+			HideTip(self)
+		end)
 		heads[i] = head
 	end
 	return head
 end
 
--- the row of stitches under a heading
+-- The row of stitches under a heading, spread so that the last one ends at the right edge.
 local function Stitch(head, width, r, g, b)
 	local n = math.floor((width + STITCH_GAP) / (STITCH + STITCH_GAP))
+	local gap = n > 1 and (width - n * STITCH) / (n - 1) or 0
 	for i = 1, n do
 		local s = head.stitches[i]
 		if not s then
@@ -274,7 +342,7 @@ local function Stitch(head, width, r, g, b)
 		s:SetColorTexture(r, g, b, 0.75)
 		s:SetSize(STITCH, 2)
 		s:ClearAllPoints()
-		s:SetPoint('TOPLEFT', head, 'BOTTOMLEFT', (i - 1) * (STITCH + STITCH_GAP), 0)
+		s:SetPoint('TOPLEFT', head, 'BOTTOMLEFT', math.floor((i - 1) * (STITCH + gap) + 0.5), 0)
 		s:Show()
 	end
 	for i = n + 1, #head.stitches do head.stitches[i]:Hide() end
@@ -289,7 +357,7 @@ local function Block(i)
 		block.title:SetPoint('TOPLEFT', block, 'TOPLEFT', 0, 0)
 		block.note = Writing(block, 'RIGHT')
 		block.note:SetPoint('TOPRIGHT', block, 'TOPRIGHT', 0, 0)
-		block.lines = {}
+		block.lines, block.dashes = {}, {}
 		block.mark = block:CreateTexture(nil, 'ARTWORK')
 		block.mark:SetPoint('TOPLEFT', block, 'TOPLEFT', -5, 0)
 		block.over = block:CreateTexture(nil, 'BACKGROUND')
@@ -301,7 +369,7 @@ local function Block(i)
 		block.glow:Hide()
 		block:SetScript('OnClick', function(self, button)
 			-- (the button let go at the end of a drag is not also a click, whichever the game sends first)
-			if ns.Dragging and (ns.Dragging() or ns.DragJustEnded()) then return end
+			if ns.Dragging() or ns.DragJustEnded() then return end
 			local data = self.data
 			if data and data.click then ns.Try('a click on the tracker', data.click, button, self) end
 		end)
@@ -310,17 +378,31 @@ local function Block(i)
 			if data and data.drag then ns.Try('dragging in the tracker', data.drag, self) end
 		end)
 		-- (the drop: OnDragStop, or the button let go where the game sends no OnDragStop)
-		block:SetScript('OnDragStop', function() if ns.DragStop then ns.Try('dragging in the tracker', ns.DragStop) end end)
+		block:SetScript('OnDragStop', function() ns.Try('dragging in the tracker', ns.DragStop) end)
 		block:SetScript('OnMouseUp', function(_, button)
-			if button == 'LeftButton' and ns.Dragging and ns.Dragging() then ns.Try('dragging in the tracker', ns.DragStop) end
+			if button == 'LeftButton' and ns.Dragging() then ns.Try('dragging in the tracker', ns.DragStop) end
 		end)
 		block:SetScript('OnEnter', function(self)
 			if self.data and self.data.click then self.over:Show() end
+			self.tipping = true
+			BlockTip(self)
 		end)
-		block:SetScript('OnLeave', function(self) self.over:Hide() end)
+		block:SetScript('OnLeave', function(self)
+			self.over:Hide()
+			self.tipping = nil
+			HideTip(self)
+		end)
 		blocks[i] = block
 	end
 	return block
+end
+
+-- How wide an objective's dash stands, with the room after it. A line's words start there, so the
+-- second row of a long objective starts under its words and not under the dash.
+local function DashWide(dash, size)
+	local w = type(dash.GetStringWidth) == 'function' and dash:GetStringWidth()
+	if not (type(w) == 'number' and w > 0) then w = size * 0.5 end
+	return math.ceil(w) + 3
 end
 
 -- Writes a block's title and lines into it. Returns how tall it came out.
@@ -332,6 +414,8 @@ local function Fill(block, data, width, size)
 	block.note:SetText(data.note or '')
 	block.note:SetTextColor(0.7, 0.7, 0.7)
 	local noteWide = (data.note and data.note ~= '') and (#data.note * (size - 1) * 0.6 + 6) or 0
+	-- (set both ways: blocks are used again for other rows)
+	block.title:SetWordWrap(not data.oneLine)
 	block.title:SetWidth(math.max(40, width - noteWide))
 	block.title:SetText(data.title or '')
 	block.title:SetTextColor(data.r or 1, data.g or 0.82, data.b or 0)
@@ -340,27 +424,40 @@ local function Fill(block, data, width, size)
 	local dr, dg, db = ns.RGB(ns.Get('lookDone'))
 	local lines = data.lines or {}
 	for i, line in ipairs(lines) do
-		local fs = block.lines[i]
+		local fs, dash = block.lines[i], block.dashes[i]
 		if not fs then
 			fs = Writing(block, 'LEFT')
 			block.lines[i] = fs
+			dash = Writing(block, 'LEFT')
+			dash:SetWordWrap(false)
+			block.dashes[i] = dash
 		end
 		Font(fs, size)
-		fs:SetWidth(width - INDENT)
-		fs:SetText('- ' .. tostring(line.text))
+		Font(dash, size)
+		dash:SetText('-')
+		local dashWide = DashWide(dash, size)
+		fs:SetWidth(math.max(40, width - INDENT - dashWide))
+		fs:SetText(tostring(line.text))
+		local r, g, b = lr, lg, lb
 		if line.r then
-			fs:SetTextColor(line.r, line.g, line.b)
+			r, g, b = line.r, line.g, line.b
 		elseif line.done then
-			fs:SetTextColor(dr, dg, db)
-		else
-			fs:SetTextColor(lr, lg, lb)
+			r, g, b = dr, dg, db
 		end
+		fs:SetTextColor(r, g, b)
+		dash:SetTextColor(r, g, b)
 		fs:ClearAllPoints()
-		fs:SetPoint('TOPLEFT', block, 'TOPLEFT', INDENT, -(h + 2))
+		fs:SetPoint('TOPLEFT', block, 'TOPLEFT', INDENT + dashWide, -(h + 2))
+		dash:ClearAllPoints()
+		dash:SetPoint('TOPLEFT', block, 'TOPLEFT', INDENT, -(h + 2))
 		fs:Show()
+		if line.plain then dash:Hide() else dash:Show() end
 		h = h + 2 + Tall(fs, size)
 	end
-	for i = #lines + 1, #block.lines do block.lines[i]:Hide() end
+	for i = #lines + 1, #block.lines do
+		block.lines[i]:Hide()
+		block.dashes[i]:Hide()
+	end
 	if data.mark then
 		local hr, hg, hb = ns.RGB(ns.Get('lookHeader'))
 		block.mark:SetColorTexture(hr, hg, hb, 0.95)
@@ -373,14 +470,17 @@ local function Fill(block, data, width, size)
 	if not data.click then block.over:Hide() end
 	-- (only a block that can be dragged takes a drag: on the others a click that moves a little is still a click)
 	if data.drag then block:RegisterForDrag('LeftButton') else block:RegisterForDrag() end
+	if block.tipping then BlockTip(block) end
 	return h
 end
 
--- What a block says, to tell whether it has changed since it was last drawn.
+-- What a block says, to tell whether it has changed since it was last drawn. (A clock's words
+-- change by themselves every second: they are left out, or a timed quest would glow for as long
+-- as its timer runs.)
 local function Words(data)
 	local parts = { data.title or '' }
 	for _, line in ipairs(data.lines or {}) do
-		parts[#parts + 1] = tostring(line.text) .. (line.done and '*' or '')
+		if not line.clock then parts[#parts + 1] = tostring(line.text) .. (line.done and '*' or '') end
 	end
 	return table.concat(parts, '\n')
 end
@@ -399,17 +499,37 @@ end
 -- Whether the tracker steps aside because you are in a dungeon, a raid or a battleground: you asked
 -- for that (Hide In Instances), or the game's own tracker is let back there (Quiet.lua), and two
 -- lists of the same quests are not shown side by side. With the game's tracker left alone
--- everywhere (Hide Default Quest Tracker off) both are yours to have, there as anywhere.
+-- everywhere (Hide Default Tracker off) both are yours to have, there as anywhere.
 function ns.AsideInInstance()
 	if not (IsInInstance and IsInInstance()) then return false end
 	return (ns.Get('hideInstance') or (ns.Get('quiet') and ns.Get('quietInstance'))) and true or false
+end
+
+-- The quest list could not be read (bad) or could (not bad). The game's own tracker is let back at
+-- the first error and kept back until the list has been read without one for HEALED seconds, so a
+-- passing error heals by itself and one that comes and goes does not make the two trackers flicker.
+local function QuestsRead(bad, now)
+	if bad then
+		brokenAt = now
+		if not ns.questsBroken then
+			ns.questsBroken = true
+			if not toldBroken then
+				toldBroken = true
+				ns.Print('The quest list could not be shown. The default quest tracker is shown instead.')
+			end
+			if ns.QuietSoon then ns.QuietSoon() end
+		end
+	elseif ns.questsBroken and now - (brokenAt or 0) >= HEALED then
+		ns.questsBroken = false
+		if ns.QuietSoon then ns.QuietSoon() end
+	end
 end
 
 local function Render()
 	-- (what a key asked to see is for this drawing only: a list that is not drawn does not scroll later)
 	local show = reveal
 	reveal = nil
-	if not ns.Get('on') or ns.AsideInInstance() then
+	if not ns.Get('on') or (ns.AsideInInstance() and not unlocked) then
 		if frame then frame:Hide() end
 		return After(false)
 	end
@@ -427,7 +547,13 @@ local function Render()
 	local now, live = GetTime(), {}
 	wantsTick = false
 	for _, section in ipairs(sections) do
-		local data = ns.Try('the ' .. section.id .. ' list', section.read)
+		-- (an error is said once, as ns.Try says it; for the quests it also lets the game's tracker back)
+		local ok, data = pcall(section.read)
+		if not ok then
+			ns.Try('the ' .. section.id .. ' list', error, tostring(data), 0)
+			data = nil
+		end
+		if section.id == 'quests' then QuestsRead(not ok, now) end
 		if type(data) == 'table' and type(data.blocks) == 'table' and #data.blocks > 0 then
 			if data.tick then wantsTick = true end
 			usedHeads = usedHeads + 1
@@ -444,6 +570,7 @@ local function Render()
 			head.title:SetWordWrap(false)
 			head.title:SetWidth(math.max(40, inner - (note ~= '' and (#note * (size - 1) * 0.6 + 8) or 0)))
 			head.menu = data.menu
+			if head.tipping then HeadTip(head) end
 			head:ClearAllPoints()
 			head:SetPoint('TOPLEFT', content, 'TOPLEFT', PAD, -y)
 			head:SetSize(inner, size + 6)
@@ -456,9 +583,16 @@ local function Render()
 				head.bar:ClearAllPoints()
 				head.bar:SetPoint('TOPLEFT', head, 'BOTTOMLEFT', 0, -4)
 				head.bar:Show()
+				-- (a faint track the whole width behind it, so a guide just begun reads as progress)
+				head.track:SetColorTexture(br, bg, bb, 0.25)
+				head.track:SetSize(inner, 2)
+				head.track:ClearAllPoints()
+				head.track:SetPoint('TOPLEFT', head, 'BOTTOMLEFT', 0, -4)
+				head.track:Show()
 				y = y + 4
 			else
 				head.bar:Hide()
+				head.track:Hide()
 			end
 			head:Show()
 			y = y + size + 6 + 6
@@ -492,11 +626,26 @@ local function Render()
 		blocks[i]:Hide()
 		blocks[i].glowAt, blocks[i].data = nil, nil
 	end
-	if usedHeads == 0 then
+	if usedHeads == 0 and not unlocked then
+		empty:Hide()
 		frame:Hide()
 		return After(false)
 	end
-	local total = y + PAD - 2
+	-- (unlocked with nothing to list: a line saying so, so that there is a tracker and a bar to drag)
+	local least = 0
+	if usedHeads == 0 then
+		Font(empty, size)
+		empty:SetWidth(inner)
+		empty:SetText('No tracked quests.')
+		empty:SetTextColor(hr, hg, hb)
+		empty:ClearAllPoints()
+		empty:SetPoint('TOP', content, 'TOP', 0, -(y + 14))
+		empty:Show()
+		least = y + 14 + size + 14 + PAD
+	else
+		empty:Hide()
+	end
+	local total = math.max(y + PAD - 2, least)
 	local tall = math.min(total, ns.Get('height') or 450)
 	-- a key asked for the top of the list, or for the block being followed, to be in view
 	if show == 'top' then
@@ -525,7 +674,8 @@ local function Render()
 	if shade.bottom then
 		if total - tall - scroll > PAD + GAP then shade.bottom:Show() else shade.bottom:Hide() end
 	end
-	back:SetColorTexture(0, 0, 0, (ns.Get('back') or 25) / 100)
+	-- (unlocked and empty, a background faint enough at 0 would leave nothing to see where it is)
+	back:SetColorTexture(0, 0, 0, math.max(usedHeads == 0 and 40 or 0, ns.Get('back') or 25) / 100)
 	if unlocked then handle:Show() else handle:Hide() end
 	frame:Show()
 	-- (a place saved by an earlier version: made a top corner now that the frame has a size to measure)
@@ -546,11 +696,12 @@ function ns.Shown()
 			local note = block.note:GetText()
 			out[#out + 1] = (block.data and block.data.mark and '> ' or '') .. (block.title:GetText() or '')
 				.. ((note and note ~= '') and (' | ' .. note) or '')
-			for _, fs in ipairs(block.lines) do
-				if fs:IsShown() then out[#out + 1] = '  ' .. (fs:GetText() or '') end
+			for i, fs in ipairs(block.lines) do
+				if fs:IsShown() then out[#out + 1] = '  ' .. (block.dashes[i]:IsShown() and '- ' or '') .. (fs:GetText() or '') end
 			end
 		end
 	end
+	if empty and empty:IsShown() then out[#out + 1] = empty:GetText() end
 	return out
 end
 
@@ -622,7 +773,7 @@ function ns.Unlock(on)
 		unlocked = false
 		return
 	end
-	ns.Print(unlocked and 'Unlocked. Drag the bar above the tracker to move it, then /tracker lock.' or 'Locked.')
+	ns.Print(unlocked and 'Unlocked. Drag the bar above the tracker to move it. Right-click the bar to lock it.' or 'Locked.')
 	Render()
 end
 
@@ -630,6 +781,7 @@ function ns.ResetPlace()
 	Saved().place = nil
 	if frame then Place() end
 	ns.Print('Position reset.')
+	ns.Wake()
 	ns.Refresh()
 end
 
@@ -643,6 +795,7 @@ function ns.Fold()
 	for _, section in ipairs(sections) do
 		folded[section.id] = open or nil
 	end
+	ns.Wake()
 	ns.Refresh()
 end
 
@@ -650,8 +803,9 @@ end
 -- When it is drawn, and how bright
 ---------------------------------------------------------------------------
 -- How bright the tracker should be now: full, or dimmed in a fight, or dimmed while the mouse is
--- elsewhere and nothing in it has just changed.
+-- elsewhere and nothing in it has just changed. Never dimmed while it is unlocked to be moved.
 local function Bright()
+	if unlocked then return 1 end
 	local low = (ns.Get('fadeTo') or 35) / 100
 	if ns.Get('fadeCombat') and InCombatLockdown() then return low end
 	if ns.Get('fadeIdle') then

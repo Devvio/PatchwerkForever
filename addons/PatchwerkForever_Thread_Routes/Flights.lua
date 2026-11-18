@@ -21,15 +21,9 @@ local ADDON, ns = ...
 if not ns.linked then return end
 
 local P = ns.Planner
-local CONTINENT_MAP = { [0] = 1415, [1] = 1414 }     -- the world-map ids of the two continents
+local CONTINENT_MAP = ns.CONTINENT_MAP                -- the world-map ids of the two continents (Route.lua)
 local NEAR = 60               -- cells (about 250 yards) within which a point just found is the one you stand at
-
-local function Ask(fn, ...)
-	if type(fn) ~= 'function' then return nil end
-	local ok, a, b = pcall(fn, ...)
-	if ok then return a, b end
-	return nil
-end
+local Ask, Side = ns.Ask, ns.Side
 
 -- What is remembered for this character.
 local function Mine()
@@ -48,11 +42,6 @@ local function Mine()
 	mine.known = type(mine.known) == 'table' and mine.known or {}
 	mine.seen = type(mine.seen) == 'table' and mine.seen or {}
 	return mine
-end
-
-local function Side()
-	local side = UnitFactionGroup('player')
-	return side == 'Alliance' and 'A' or side == 'Horde' and 'H' or nil
 end
 
 -- The flight points of a continent, from its map data (when that is loaded): { { id, name, x, y, sides ... } }.
@@ -155,6 +144,14 @@ local function AtFlightMaster()
 	for id, yes in pairs(listed) do
 		if mine.known[id] == nil then mine.known[id] = yes end
 	end
+	-- (the first time on this continent: said, as the notice that asked you to open the flight map is)
+	if not mine.seen[map] then
+		local count = 0
+		for _, yes in pairs(listed) do
+			if yes then count = count + 1 end
+		end
+		ns.Print(('Flight map read: %d flight points known on this continent.'):format(count))
+	end
 	mine.seen[map] = true
 	-- (the world map said you had one the flight map shows you do not: its word is not taken again)
 	local game = GameSays(map)
@@ -172,6 +169,8 @@ end
 local function Found()
 	local px, py, map = ns.Place()
 	if not px or not P or not P.CellOf then return end
+	-- (the map data, where no route has loaded it yet: a point found before any route is remembered too)
+	if ns.Data and not ns.Data(map) then return end
 	local cx, cy = Ask(P.CellOf, map, px, py)
 	if not cx then return end
 	local side, best, far = Side(), nil, nil
@@ -185,7 +184,7 @@ local function Found()
 	local mine = Mine()
 	if mine.known[best[1]] == true then return end
 	mine.known[best[1]] = true
-	if ns.Get('notify') then ns.Print(('Flight point learned: %s.'):format(tostring(best[2]))) end
+	if ns.Get('notify') then ns.Print(('Flight point discovered: %s.'):format(tostring(best[2]))) end
 	Changed()
 end
 
@@ -202,6 +201,16 @@ function ns.FlightsSay()
 		ns.Print('Your position is not available here.')
 		return
 	end
+	if not ns.Get('flights') then
+		ns.Print('Use Flight Paths is disabled: routes do not fly.')
+		return
+	end
+	-- (the map data holds the flight points: loaded first, where no route has loaded it yet)
+	if ns.Data and not ns.Data(map, true) then return end
+	if #Points(map) == 0 then
+		ns.Print('No flight points on this map.')
+		return
+	end
 	local mine = Mine()
 	local known, sure = ns.FlightsKnown(map)
 	local side, have, lack = Side(), {}, {}
@@ -213,14 +222,16 @@ function ns.FlightsSay()
 	end
 	table.sort(have)
 	table.sort(lack)
-	if not ns.Get('knownOnly') then ns.Print('Known Flight Points Only is disabled: routes use every flight point of your faction.') end
+	if not ns.Get('knownOnly') then
+		ns.Print('Known Flight Points Only is disabled: routes use every flight point of your faction.')
+	end
 	ns.Print(('Flight points on this continent: %d known, %d not.'):format(#have, #lack))
 	if mine.seen[map] then
 		ns.Print('Source: the flight map you last opened here, and points found since.')
 	elseif sure then
 		ns.Print('Source: the game\'s world map. Open a flight map at any flight master to confirm it.')
 	else
-		ns.Print('Source: none yet. Open a flight map at any flight master; until then routes go on foot.')
+		ns.Print('Source: none yet. Open a flight map at any flight master' .. (ns.Get('knownOnly') and '; until then routes go on foot.' or '.'))
 	end
 	if #have > 0 then ns.Print('  Known: ' .. table.concat(have, '; ') .. '.') end
 	if #lack > 0 then ns.Print('  Not known: ' .. table.concat(lack, '; ') .. '.') end

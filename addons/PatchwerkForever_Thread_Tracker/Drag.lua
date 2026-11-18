@@ -177,7 +177,7 @@ function ns.DragStop()
 		end
 		if not from then return end
 	end
-	if ns.RouteSelect and key then ns.RouteSelect(key) end
+	if key then ns.RouteSelect(key) end
 	MyRoute:Move(from, to)
 	ns.Refresh()
 end

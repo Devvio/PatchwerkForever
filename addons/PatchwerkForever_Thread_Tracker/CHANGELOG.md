@@ -1,5 +1,49 @@
 # Patchwerk Forever: Thread (Tracker)
 
+## 1.4.0
+
+Polish: the finer details. Works with Patchwerk Forever 2.6.0; the percent signs and the marker that follows Thread (Routes) need the newer base (and Routes) released beside this.
+
+- **My Route says where it goes next**: at its top, the next stop, its zone, and while My Route is followed, the way there as Thread (Routes) finds it, such as "Fly from Crossroads to Thunder Bluff (3 min in all)". Each stop also shows its zone beside what to do there.
+### Hints and the marker
+- **Hovering a row or a heading shows what a click does**: "Click to route to this quest.", "Click to skip this step.", "Click to collapse." and so on, with "Right-click for more options." where there is a menu. An upcoming guide step's tooltip also shows its full text.
+- **The bar beside a block marks what Thread (Routes) really follows.** After Stop Routing, or while Routes leads to your map pin, nothing is marked; with Routes leading to a quest, that quest is. Without Routes it works as before.
+
+### Key bindings
+- **The key bindings have a section of their own**, Patchwerk Forever, in the Key Bindings options. Bindings you already set are kept. A key bound while the Tracker is not running (its base too old) does nothing instead of giving an error.
+- **Use Nearest Quest Item works with the item bar hidden**, and with nothing to use it says "No quest item to use." in the game's red error text.
+- Collapse / Expand Tracker, a gathering click, Reset Position and a focus changed by a key now wake a tracker faded by Fade When Not Hovered, as Route To Next Quest already did.
+
+### The list
+- **Upcoming guide steps take one line each**, cut short, so they no longer take more room than the step you are on.
+- **A timed quest no longer flashes every second** for as long as its timer runs, and no longer keeps a faded tracker awake.
+- **Sort Order Completed First, Then By Zone** now puts the Ready To Turn In group at the top while Group Completed Quests is enabled (the default).
+- Objectives that wrap now start their second line under their words, not under the dash; the time left and the party line have no dash.
+- The heading's stitched underline reaches the right edge, and the guide's progress bar has a faint track behind it.
+
+### The quest arrow
+- **Going back to your main route puts the game's quest arrow back** where it was before you chose a quest, unless you moved it since.
+- **Quest Arrow On Nearest Quest** (was Auto-Track Nearest Quest) keeps working after the game puts its arrow on a quest you accept, after a reload, and when you enable it with an arrow already placed.
+- A quest you chose and then stop tracking in the quest log is let go: "Back to your main route."
+
+### Moving it, and the quest item bar
+- **Unlocked with nothing to list, the tracker is still shown**, saying "No tracked quests.", so there is a bar to drag. While unlocked it is never faded or hidden, and a right-click on the bar locks it.
+- The quest item bar moves to the other side of the tracker when there is no room on the screen.
+- Item buttons light up when pointed at and look pressed when clicked, and their count grows with Button Size.
+
+### The game's tracker
+- After a loading screen the game's tracker is made invisible at once, not half a second later.
+- If the quest list ever cannot be shown, the game's tracker is shown instead, and a chat line says so once.
+
+### Options and words
+- Headings: Fading is now **Visibility**; Appearance's Size is now **Scale And Font**, and Background Opacity moved to the end of Colors.
+- Faded Opacity, Scale and Background Opacity show a percent sign.
+- The guide settings are grayed out while Show Guide Steps is disabled, and the item bar's Position while Show Quest Item Bar is.
+- Choices in Title Case ("By Zone (Current Zone First)", "Left", "Right"); "Hide Default Quest Tracker" is now **Hide Default Tracker**, "Upcoming Steps" is **Upcoming Steps Shown**, and "Ready to Turn In" is **Ready To Turn In**. Saved settings are kept.
+- On the Dungeon Journal list, `/tracker back` and Undo Skipped Guide Step now take back the last skip or jump and say "Skip taken back.", since that list's step number does not move.
+- With a Patchwerk Forever too old for it, the line that says so names the addon, its version and the base version it needs (2.6.0).
+- Route To Next Quest's chat line reads as Thread (Routes)' does: Routing to quest "Raptor Thieves". American spelling throughout.
+
 ## 1.3.0
 
 Choose what the route follows, and build your own route. **Needs Patchwerk Forever 2.6.0 or later.**

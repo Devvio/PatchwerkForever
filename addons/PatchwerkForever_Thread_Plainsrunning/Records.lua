@@ -17,7 +17,7 @@ if not ns.linked then return end
 local SAVED = 'PatchwerkForever_Thread_PlainsrunningRecords'
 local EVERY = 0.25                    -- seconds between counts during a run
 
-local run                             -- { start, partial, yards, full, reached, top }
+local run                             -- { start, partial, yards, full, reached, stacks }
 local clock
 
 local function DB()
@@ -78,7 +78,7 @@ local function Clock()
 				if not ok then
 					run = nil
 					self:Hide()
-					ns.Print('a problem keeping the run records; this run is not counted: ' .. tostring(problem))
+					ns.Print('This run is not counted in your records, because of a problem: ' .. tostring(problem))
 				end
 			end
 		end)
@@ -107,9 +107,9 @@ local function Finish()
 			if old ~= nil then news[#news + 1] = ( '%s: %s (was %s)' ):format(name, shown(value), shown(old)) end
 		end
 	end
-	Better('longest', this.full, false, Time, 'longest at full speed')
-	if not this.partial then Better('fastest', this.reached, true, Time, 'fastest to 30 stacks') end
-	if this.yards > 0 then Better('farthest', this.yards, false, Yards, 'farthest run') end
+	Better('longest', this.full, false, Time, 'Longest at full speed')
+	if not this.partial then Better('fastest', this.reached, true, Time, 'Fastest to 30 stacks') end
+	if this.yards > 0 then Better('farthest', this.yards, false, Yards, 'Farthest run') end
 	if not ns.Get('recordsTell') then return end
 	if first then
 		ns.Print(( 'First run at full speed recorded: %s at 30 stacks%s, %s. /plains records lists your records.' ):format(
@@ -139,7 +139,7 @@ function ns.RecordsAura(stacks, before)
 	if not ok then
 		run = nil
 		if clock then clock:Hide() end
-		ns.Print('a problem keeping the run records; this run is not counted: ' .. tostring(problem))
+		ns.Print('This run is not counted in your records, because of a problem: ' .. tostring(problem))
 	end
 end
 
@@ -155,7 +155,7 @@ function ns.SayRecords()
 	ns.Print('  Fastest to 30 stacks: ' .. ( db.fastest and ( Time(db.fastest) .. Day('fastest') ) or 'none yet' ))
 	ns.Print('  Farthest run: ' .. ( db.farthest and ( Yards(db.farthest) .. Day('farthest') ) or 'none yet' ))
 	ns.Print(( '  Runs at full speed: %d, %s in all' ):format(db.runs, Yards(db.total)))
-	if run then ns.Print('  (a run is going on now; it is counted when it ends)') end
+	if run then ns.Print('  A run is going on now; it is counted when it ends.') end
 end
 
 function ns.ResetRecords()

@@ -21,7 +21,8 @@
 --     short   a short trip through them: the nearest first, each next the nearest to the one before
 --             (the base's Guides.ShortOrder, as My Route's Order For Me). Worked out again only when
 --             a quest comes, goes or is done, so the rows do not swap as you walk.
--- A quest that is ready can leave the list for a short group of its own at the foot (a setting).
+-- A quest that is ready can leave the list for a short group of its own at the foot (a setting); with
+-- the order "ready" that group comes first instead.
 local ADDON, ns = ...
 if not ns.linked then return end
 
@@ -89,7 +90,7 @@ end
 function ns.ReadQuests()
 	local zones, order, held = Zones()
 	local quests = {}
-	local followed = ns.Marked and ns.Marked()
+	local followed = ns.Marked()
 	local watched = Ask(C_QuestLog.GetNumQuestWatches) or 0
 	for i = 1, watched do
 		local id = Ask(C_QuestLog.GetQuestIDForQuestWatchIndex, i)
@@ -174,14 +175,18 @@ local function BlockOf(quest, brief)
 		end
 	end
 	if quest.left and not quest.done then
-		lines[#lines + 1] = { text = 'Time left: ' .. Clock(quest.left), r = 1, g = quest.left < 60 and 0.3 or 0.8, b = 0.3 }
+		lines[#lines + 1] = { text = 'Time left: ' .. Clock(quest.left), r = 1, g = quest.left < 60 and 0.3 or 0.8, b = 0.3,
+			clock = true, plain = true }
 	end
-	if ns.PartyLine and ns.Get('party') and not brief then
+	if ns.Get('party') and not brief then
 		local with = ns.PartyLine(quest.id)
-		if with then lines[#lines + 1] = { text = with, r = 0.55, g = 0.75, b = 1 } end
+		if with then lines[#lines + 1] = { text = with, r = 0.55, g = 0.75, b = 1, plain = true } end
 	end
+	local chosen = ns.Base.Choice:Is('quest', quest.id)
 	return { key = quest.id, title = title, r = r, g = g, b = b, lines = lines, mark = quest.followed,
 		note = ns.Get('distance') and ns.YardsText(quest.yards) or nil,
+		tip = { chosen and 'Click to stop routing to this quest.' or 'Click to route to this quest.',
+			'Shift-click for quest details.', 'Right-click for more options.' },
 		click = function(button, block) ns.QuestClick(quest, button, block) end }
 end
 
@@ -242,6 +247,14 @@ ns.AddSection('quests', 50, function()
 	end
 	if ns.Get('distance') and #data.quests > 0 then tick = true end
 	local blocks = {}
+	-- (the ready group: at the foot, or first with the order "ready")
+	local function Ready()
+		table.sort(ready, Nearer)
+		blocks[#blocks + 1] = ZoneHeading('Ready To Turn In')
+		for _, quest in ipairs(ready) do blocks[#blocks + 1] = BlockOf(quest, true) end
+		ready = {}
+	end
+	if order == 'ready' and #ready > 0 then Ready() end
 	if order == 'near' then
 		table.sort(open, Nearer)
 		for _, quest in ipairs(open) do blocks[#blocks + 1] = BlockOf(quest) end
@@ -287,11 +300,7 @@ ns.AddSection('quests', 50, function()
 			end
 		end
 	end
-	if #ready > 0 then
-		table.sort(ready, Nearer)
-		blocks[#blocks + 1] = ZoneHeading('Ready to Turn In')
-		for _, quest in ipairs(ready) do blocks[#blocks + 1] = BlockOf(quest, true) end
-	end
+	if #ready > 0 then Ready() end
 	local note = data.room and ('%d/%d'):format(data.held, data.room) or tostring(data.held)
 	return { title = 'Quests', note = note, blocks = blocks, tick = tick }
 end)

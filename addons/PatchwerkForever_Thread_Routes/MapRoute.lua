@@ -21,14 +21,6 @@ local Guides = Base.Guides
 
 local function MyRoute() return Base.MyRoute end
 
--- Asks the game; an error or a function this client lacks gives nothing.
-local function Ask(fn, ...)
-	if type(fn) ~= 'function' then return nil end
-	local ok, a, b, c = pcall(fn, ...)
-	if ok then return a, b, c end
-	return nil
-end
-
 -- A menu at the mouse, made with the game's own menus (as Thread (Tracker)'s right-click menus are).
 -- build(root) adds the entries. Returns false when this client has none.
 local toldNoMenu
@@ -52,8 +44,7 @@ end
 
 -- Whether My Route is what the route follows now: your focus, or the list you selected.
 local function Followed()
-	local focus = Base.Focus
-	if focus and focus.Get and focus:Get() == 'route' then return true end
+	if ns.FocusGet() == 'route' then return true end
 	local choice = Base.Choice and Base.Choice:Get()
 	return choice ~= nil and choice.kind == 'guide' and choice.id == 'route'
 end
@@ -66,10 +57,10 @@ local function Changed()
 	if ns.RedrawWorldMap then ns.RedrawWorldMap() end
 end
 
--- Has My Route lead with the stop at `index` of its list, for this session (the list's order is kept).
+-- Has the stop at `index` of My Route's list lead, for this session (the list's order is kept).
 function ns.RouteGoFirst(index)
-	local MyRoute = PatchwerkForever.MyRoute
-	if MyRoute and MyRoute.Lead then MyRoute:Lead(index) end
+	local list = MyRoute()
+	if list and list.Lead then list:Lead(index) end
 	Changed()
 end
 
@@ -87,7 +78,7 @@ end
 function ns.RouteAddPin()
 	local list = MyRoute()
 	if not list then return end
-	local pin = C_Map and Ask(C_Map.GetUserWaypoint)
+	local pin = C_Map and ns.Ask(C_Map.GetUserWaypoint)
 	if not (type(pin) == 'table' and pin.uiMapID and pin.position) then
 		ns.Print('Place a map pin first.')
 		return
@@ -99,7 +90,8 @@ function ns.RouteAddPin()
 		ns.Print('Your map pin is not on a map the route can use.')
 		return
 	end
-	if list:Add({ kind = 'spot', map = map, x = x, y = y, label = 'Map pin' }) then
+	local zone = Guides.ZoneName and Guides.ZoneName(pin.uiMapID) or nil
+	if list:Add({ kind = 'spot', map = map, x = x, y = y, label = 'Map pin', zone = zone }) then
 		ns.Print('Map pin added to My Route.')
 	else
 		ns.Print('Your map pin is already in My Route.')
@@ -220,8 +212,7 @@ local function Mark(i)
 	disc:SetVertexColor(1, 0.82, 0.1)
 	local number = mark:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
 	number:SetPoint('CENTER', mark, 'CENTER', 0, 0)
-	local path = GameFontNormal and GameFontNormal.GetFont and GameFontNormal:GetFont()
-	if not (path and number:SetFont(path, 11, 'OUTLINE')) then number:SetFont('Fonts\\FRIZQT__.TTF', 11, 'OUTLINE') end
+	ns.Font(number, 11, 'OUTLINE')
 	number:SetTextColor(1, 1, 1)
 	mark.number = number
 	if mark.RegisterForClicks then mark:RegisterForClicks('LeftButtonUp', 'RightButtonUp') end

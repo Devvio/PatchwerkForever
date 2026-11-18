@@ -14,6 +14,11 @@ if not env.NativeContext then return end;
 
 local CVAR = 'GamePadCursorAutoEnable';
 
+local function Print(...)
+	env:Print('|cff69ccf0Console Port:|r', ...)
+end
+
+-- It changes a setting of the game's, so it says so each time it does, and when it puts it back.
 function env:UpdateDirectGameMenu()
 	local saved = self:GetConsolePortSaved();
 	if not saved then return end;
@@ -26,10 +31,12 @@ function env:UpdateDirectGameMenu()
 		end
 		if ( GetCVar(CVAR) ~= '0' ) then
 			SetCVar(CVAR, 0)
+			Print("Open Game Menu Directly turned off the game's automatic gamepad cursor. Disable that option to put it back.")
 		end
 	elseif ( saved.autoEnable ~= nil ) then
 		SetCVar(CVAR, saved.autoEnable)
 		saved.autoEnable = nil;
+		Print("The game's automatic gamepad cursor is set back as it was.")
 	end
 end
 
@@ -49,8 +56,20 @@ end)
 ---------------------------------------------------------------
 -- Registration and diagnostics: /patchwerk consoleport
 ---------------------------------------------------------------
-local function Print(...)
-	env:Print('|cff69ccf0Console Port|r', ...)
+-- Which of the smaller fixes took hold (env.Applied, set by each fix's file where it attaches): a fix
+-- that did not may no longer be needed, or Console Port may have changed under it.
+local FIXES = {
+	'Extra Action Button', 'Item menu equip slots', 'Interact (tap)', 'Target Friendly / Target Hostile',
+	'Key ring slot', 'StaticPopup_Resize', 'ActionButton_SetTooltip', 'GetScaledCursorPosition',
+	'Micro menu', 'Bag bar',
+};
+
+local function Applied()
+	local yes, no = {}, {};
+	for _, name in ipairs(FIXES) do
+		if env.Applied[name] then yes[#yes + 1] = name else no[#no + 1] = name end;
+	end
+	return yes, no;
 end
 
 local function DescribeKey(keyChord)
@@ -61,6 +80,9 @@ local function DescribeKey(keyChord)
 end
 
 local function PrintDiagnostics()
+	local yes, no = Applied();
+	Print('Fixes applied:', #yes > 0 and table.concat(yes, ', ') or 'none')
+	Print('Not applied (not needed here, or Console Port has changed):', #no > 0 and table.concat(no, ', ') or 'none')
 	local saved = env:GetConsolePortSaved() or {};
 	Print('Gamepad UI enabled:', tostring(InputUtil and InputUtil.IsGamepadUIEnabled and InputUtil.IsGamepadUIEnabled()))
 	Print(CVAR..':', GetCVar(CVAR), '| saved:', tostring(saved.autoEnable),
@@ -99,7 +121,7 @@ env:RegisterFix('consoleport', {
 	addon   = 'ConsolePort';
 	command = PrintDiagnostics;
 	status  = function()
-		return ('game menu opens directly %s; /patchwerk config for settings, /patchwerk consoleport for diagnostics')
-			:format(env:GetSetting('foreverDirectGameMenu') and 'on' or 'off');
+		local yes = Applied();
+		return ('on: %d of %d fixes applied'):format(#yes, #FIXES);
 	end;
 })

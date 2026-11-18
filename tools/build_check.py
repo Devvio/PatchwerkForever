@@ -5,8 +5,8 @@
 Copies addons/ and the three tools into a temporary folder, makes it a git repository of its own, and
 builds into a pretend AddOns folder beside it: a junction where a folder should be, a second build
 with nothing to do, a changed file, a file that stops shipping, broken Lua, a TOC naming a missing
-file, somebody else's folder, an addon the repository no longer has, a picture of your own, and
-watching for a save. Nothing of the real game folder is touched.
+file, somebody else's folder, an addon the repository no longer has, a picture of your own, release.py's
+changelog and family checks, and watching for a save. Nothing of the real game folder is touched.
 """
 import filecmp
 import os
@@ -222,6 +222,36 @@ def main():
                     assert lines == open(b, "rb").read().splitlines(), a
                 else:
                     assert filecmp.cmp(a, b, shallow=False), a
+
+    print("release.py: a changelog's title and first entry, and every part named in the base's README")
+
+    def release(*keys, expect=0):
+        r = subprocess.run([sys.executable, "release.py"] + list(keys), cwd=TOOLS, capture_output=True, text=True)
+        print(">>> release.py " + " ".join(keys))
+        for line in (r.stdout + r.stderr).rstrip().splitlines():
+            if "NOT BUILT" in line or "WARNING" in line or "CHANGELOG" in line or "README" in line:
+                print("    " + line)
+        assert (r.returncode == 0) == (expect == 0), (r.returncode, expect, r.stdout + r.stderr)
+        return r.stdout + r.stderr
+
+    journal = "PatchwerkForever_Stitch_DungeonJournal"
+    log = os.path.join(REPO, "addons", journal, "CHANGELOG.md")
+    readme = os.path.join(REPO, "addons", "PatchwerkForever", "README.md")
+    kept_log, kept_readme = open(log, "rb").read(), open(readme, "rb").read()
+    out = release("dungeonjournal")
+    assert "CHANGELOG.md" not in out and "does not name" not in out, out
+    title, rest = kept_log.split(b"\n", 1)
+    open(log, "wb").write(b"# Dungeon Journal\n" + rest)
+    assert "does not begin with the title line" in release("dungeonjournal", expect=1)
+    open(log, "wb").write(title + b"\n\n## 9.9.9\n\n- Not this one.\n" + rest)
+    assert "first entry is 9.9.9" in release("dungeonjournal", expect=1)
+    open(log, "wb").write(kept_log)
+    open(readme, "wb").write(kept_readme.replace(b"Stitch (Dungeon Journal)", b"Stitch (the journal)"))
+    out = release("dungeonjournal")
+    assert "WARNING" in out and "does not name %s" % journal in out, out
+    out = release("patchwerk", expect=1)
+    assert "NOT BUILT" in out and "does not name %s" % journal in out, out
+    open(readme, "wb").write(kept_readme)
 
     print("watching: a save arrives by itself, a broken save is kept out")
     src = os.path.join(MAIN, "Minimap.lua")

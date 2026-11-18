@@ -1,5 +1,11 @@
 # Patchwerk Forever: Thread (Races)
 
+## 0.1.1 (beta)
+
+- A key bound while this addon is not running (its base too old) does nothing instead of giving an error.
+- **Key bindings** are in a section of their own, **Patchwerk Forever**, with the rest of the family's. Your bindings are kept.
+- Checkpoints are counted in plain words ("1 checkpoint", "2 checkpoints"), `/race help` lists one command to a line, and `/race config` in combat says the options cannot be opened in combat.
+
 ## 0.1.0 (beta)
 
 The first release.

@@ -27,7 +27,7 @@ Nothing in MelloUI's own files is changed, and its road data is not included, re
 - **First route sooner.** The road data loads behind the loading screen and the road map is built straight after login.
 - **Prefer roads, avoid swimming.** Shortcuts across open ground and through water must be clearly shorter to win.
 - **Learn only real paths.** Route no longer learns a path while you drop off a ledge, swim, fly or run as a ghost.
-- **Keep to city streets.** Nothing is learned inside the capitals, and what was learned there is forgotten at login, so MelloUI's own walked streets and lifts are used. *This removes those points from the paths Route saved for you.*
+- **Keep to city streets** (off until you enable it). Nothing is learned inside the capitals, and what was learned there is forgotten at login, so MelloUI's own walked streets and lifts are used. *This removes those points from the paths Route saved for you.*
 - **Blocked spots.** When you can't follow the trail, the stretch ahead is marked blocked for all your characters. You can also mark one by hand, undo the last, and ask what the trail ahead is made of (`/patchwerk route why`).
 - **Hearthstone and teleport suggestions.** Landing places are learned as you use them; when one would get you to the destination clearly sooner, you are told and given a button.
 - **Next guide steps.** With RestedXP Guides, the world map and the minimap show a fainter trail on through the next few steps.
@@ -39,14 +39,14 @@ Not possible from outside MelloUI: closing MelloUI's own shipped roads at a bloc
 
 The page **Stitch: MelloUI Route**, under **Options → AddOns → Patchwerk Forever** (`/patchwerk config` opens the page above it).
 
-The actions can be bound in Console Port, when you have it, or used in macros: `/click PatchwerkRouteQuestRun`, `PatchwerkRouteNextStop`, `PatchwerkRouteBlock`, `PatchwerkRouteUnblock`, `PatchwerkRouteTravel`.
+Bind these under **Options → Keybindings**, in the **Patchwerk Forever** section, or in Console Port's binding list: **Route: Mark Trail Ahead Blocked**, **Route: Undo Blocked Spot**, **Route: Quest Run**, **Route: Next Quest Run Stop** and **Route: Use Suggested Shortcut**. In a macro: `/click PatchwerkRouteQuestRun` (and `PatchwerkRouteNextStop`, `PatchwerkRouteBlock`, `PatchwerkRouteUnblock`, `PatchwerkRouteTravel`).
 
 ## Commands
 
 | Command | Does |
 |---|---|
-| `/patchwerk route` | Route settings and state |
-| `/patchwerk route set <name> on/off` | changes a Route setting |
+| `/patchwerk route` | Route options and state |
+| `/patchwerk route set <name> on/off` | changes a Route option |
 | `/patchwerk route run` / `next` / `stop` | quest run |
 | `/patchwerk route block` / `unblock` / `blocks clear` | blocked spots |
 | `/patchwerk route why` | what the trail ahead is made of |
@@ -56,3 +56,5 @@ The actions can be bound in Console Port, when you have it, or used in macros: `
 ## Credits
 
 Not affiliated with MelloUI, which is by MelloCro. This addon is under the MIT License.
+
+**Reporting a problem:** please leave a comment on the addon's CurseForge page, with the chat line it printed if there is one.

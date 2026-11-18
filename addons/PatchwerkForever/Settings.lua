@@ -93,11 +93,7 @@ local function Build()
 			function(value) P:SetSetting(key, value) end);
 		local control;
 		if isNumber then
-			local options = Settings.CreateSliderOptions(def.min or 0, def.max or 1, def.step or 1);
-			if ( options.SetLabelFormatter and MinimalSliderWithSteppersMixin and MinimalSliderWithSteppersMixin.Label ) then
-				options:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right)
-			end
-			control = Settings.CreateSlider(category, setting, options, Tooltip(def));
+			control = Settings.CreateSlider(category, setting, ns.SliderOptions(def), Tooltip(def));
 		else
 			control = Settings.CreateCheckbox(category, setting, Tooltip(def));
 		end
@@ -112,7 +108,7 @@ local function Build()
 	-- our own tools' pages, under this one (Tools.lua)
 	local ok, err = pcall(ns.BuildToolPages, parentCategory);
 	if not ok then
-		P:Print('The pages of the tools could not be made (' .. tostring(err) .. ').')
+		ns.Say('The options pages of the Thread tools could not be created (' .. tostring(err) .. ').')
 	end
 	Settings.RegisterAddOnCategory(parentCategory)
 	settingsCategory = parentCategory;
@@ -142,6 +138,11 @@ end
 ns.AtLogin(function()
 	local ok, err = pcall(Build);
 	if not ok then
-		P:Print('The settings page could not be made (' .. tostring(err) .. '). /patchwerk set lists the settings.')
+		ns.Say('The options pages could not be created (' .. tostring(err) .. '). /patchwerk set lists the options in chat.')
 	end
 end)
+
+-- A click on Patchwerk Forever in the minimap's addon list (AddonCompartmentFunc in the TOC).
+function PatchwerkForever_OnAddonCompartmentClick()
+	ns.OpenOptions()
+end

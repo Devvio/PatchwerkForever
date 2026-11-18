@@ -139,8 +139,17 @@ def main():
         parts = ", ".join("map %d: %d points" % (p.map, len(p.points)) for p in line.parts.values())
         print("  %s (%s): %.1f min; %s%s; walks %.0f yd; %s; %.0f ms%s" % (
             what, side, line.seconds / 60.0, said, ("; " + flown) if flown else "", line.yards, parts, took * 1000, bad))
+    # every stop has a name a player can place: a town, near a town, or a continent (crossings.py), never
+    # "a landing", which a route summary read as "zeppelin Thunder Bluff > a landing"
+    unnamed = []
+    for t in ns.Crossings.values():
+        for stop in t.stops.values():
+            name = str(stop[2])
+            if not name or name.startswith("a landing"):
+                unnamed.append("%d: %s" % (t.id, name))
+    print("stops with no name to place them by: %d%s" % (len(unnamed), (" (" + ", ".join(unnamed) + ")") if unnamed else ""))
     print("largest difference in cost %.2f%%; journeys that differ: %d; routes worked out here: %d" % (worst, differ, len(walks)))
-    return differ
+    return differ + len(unnamed)
 
 
 if __name__ == "__main__":

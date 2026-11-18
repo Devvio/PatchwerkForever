@@ -19,7 +19,7 @@ local P = ns.P;
 -- closed like any other, with the mouse or a gamepad.
 
 local BANNER = 3;             -- the picture is three times as wide as it is tall
-local ROW = 48;               -- the height of one part's row
+local ROW = 60;               -- the height of one part's row: its name, and two lines of what is said
 local NUMBER = { 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten' };
 
 -- what Patchwerk says at the top; one is picked each time the page opens. %s: what is sewn on.
@@ -55,8 +55,12 @@ local function Short(title)
 end
 
 local function Open(addon)
+	if InCombatLockdown() then
+		ns.Say('Options cannot be opened in combat. Select the page in the list on the left.')
+		return;
+	end
 	local category = ns.pageOf[addon];
-	if not ( category and Settings and Settings.OpenToCategory ) or InCombatLockdown() then return end;
+	if not ( category and Settings and Settings.OpenToCategory ) then return end;
 	pcall(function() Settings.OpenToCategory(category:GetID()) end)
 end
 
@@ -72,13 +76,15 @@ local function Row(i)
 		row.Name:SetPoint('TOPLEFT', row, 'TOPLEFT', 46, -7)
 		row.Name:SetPoint('TOPRIGHT', row, 'TOPRIGHT', -70, -7)
 		row.Name:SetWordWrap(false)
+		-- (the whole width of the row under the name, the button beside the name: two lines fit)
 		row.Says = ns.Writing(row, 11, true);
-		row.Says:SetPoint('TOPLEFT', row, 'TOPLEFT', 46, -24)
-		row.Says:SetPoint('TOPRIGHT', row, 'TOPRIGHT', -70, -24)
-		row.Says:SetWordWrap(false)
+		row.Says:SetPoint('TOPLEFT', row, 'TOPLEFT', 46, -29)
+		row.Says:SetPoint('TOPRIGHT', row, 'TOPRIGHT', -6, -29)
+		row.Says:SetWordWrap(true)
+		if row.Says.SetMaxLines then row.Says:SetMaxLines(2) end;
 		row.Open = CreateFrame('Button', nil, row, 'UIPanelButtonTemplate');
 		row.Open:SetSize(58, 22)
-		row.Open:SetPoint('RIGHT', row, 'RIGHT', -6, 0)
+		row.Open:SetPoint('TOPRIGHT', row, 'TOPRIGHT', -6, -4)
 		row.Open:SetText('Open')
 		row.Open:SetScript('OnClick', function(self) Open(self.addon) end)
 		rows[i] = row;
@@ -93,14 +99,25 @@ local function Check(i)
 		check:SetSize(26, 26)
 		check.Label = ns.Writing(frame, 12, true);
 		check.Label:SetPoint('LEFT', check, 'RIGHT', 4, 0)
+		-- as the game's own tick boxes on the other pages: its sound, and a tooltip of name and description
 		check:SetScript('OnClick', function(self)
 			P:SetSetting(self.key, self:GetChecked() and true or false)
+			local play, kit = rawget(_G, 'PlaySound'), rawget(_G, 'SOUNDKIT');
+			if ( type(play) == 'function' and type(kit) == 'table' ) then
+				play(self:GetChecked() and kit.IG_MAINMENU_OPTION_CHECKBOX_ON or kit.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+			end
 		end)
 		check:SetScript('OnEnter', function(self)
 			local tip = rawget(_G, 'GameTooltip');
 			if not ( self.desc and type(tip) == 'table' and tip.SetOwner ) then return end;
 			tip:SetOwner(self, 'ANCHOR_RIGHT')
-			tip:SetText(self.desc, 1, 1, 1, 1, true)
+			local title, line = rawget(_G, 'GameTooltip_SetTitle'), rawget(_G, 'GameTooltip_AddNormalLine');
+			if ( type(title) == 'function' and type(line) == 'function' and self.name ) then
+				title(tip, self.name)
+				line(tip, self.desc, true)
+			else
+				tip:SetText(self.desc, 1, 1, 1, 1, true)
+			end
 			tip:Show()
 		end)
 		check:SetScript('OnLeave', function()
@@ -118,7 +135,7 @@ local function Refresh()
 	if not ( width and width > 100 ) then width = 640 end;
 	local tall = math.floor(width / BANNER);
 	frame.Banner:SetHeight(tall)
-	frame.Voice:SetWidth(math.max(120, width * 0.36))
+	frame.Voice:SetWidth(math.max(120, width * 0.26))   -- (left of the candles in the picture)
 	frame.stitches:Fit(width)
 
 	-- the parts that are running, then the ones that are for an addon you run and are not there
@@ -129,7 +146,7 @@ local function Refresh()
 	for _, part in ipairs(P.Family) do
 		if ( ns.IsLoaded(part.needs) and not ns.IsLoaded(part.addon) ) then
 			list[#list + 1] = { addon = part.addon, name = Short(part.name), on = false,
-				says = ( ns.IsInstalled(part.addon) and 'Installed, not switched on.' or 'Not sewn on.' )
+				says = ( ns.IsInstalled(part.addon) and 'Disabled in the addon list.' or 'Not sewn on.' )
 					.. ' It is for ' .. part.what .. ', which is running.' };
 		end
 	end
@@ -169,11 +186,15 @@ local function Refresh()
 		if ( ( def.part or addonName ) == addonName and type(def.default) == 'boolean' ) then
 			used = used + 1;
 			local check = Check(used);
-			check.key, check.desc = def.key, def.desc;
+			check.key, check.desc, check.name = def.key, def.desc, ns.Sentence(def.name or def.key);
 			check:ClearAllPoints()
 			check:SetPoint('TOPLEFT', frame, 'TOPLEFT', 4, -y)
 			check:SetChecked(P:GetSetting(def.key) and true or false)
-			check.Label:SetText(ns.Sentence(def.name or def.key))
+			check.Label:SetText(check.name)
+			-- (the label is part of what takes the click)
+			if ( check.SetHitRectInsets and check.Label.GetStringWidth ) then
+				check:SetHitRectInsets(0, -( check.Label:GetStringWidth() + 4 ), 0, 0)
+			end
 			check:Show()
 			check.Label:Show()
 			y = y + 28;
@@ -212,7 +233,7 @@ function ns.FrontPage()
 	frame.Voice = ns.Writing(frame, 12, true);
 	frame.Voice:SetPoint('TOPLEFT', frame.Version, 'BOTTOMLEFT', 0, -12)
 	frame.Voice:SetWordWrap(true)
-	frame.Voice:SetWidth(230)
+	frame.Voice:SetWidth(170)
 	frame.Voice:SetTextColor(ns.CREAM[1], ns.CREAM[2], ns.CREAM[3])
 	frame.Said = frame.Voice;
 	-- a row of stitches along the foot of the picture
@@ -234,7 +255,7 @@ function ns.TryFront(fn)
 	local ok, err = pcall(fn);
 	if ( not ok and not told ) then
 		told = true;
-		P:Print('Its front page could not be drawn (' .. tostring(err) .. '). The other pages are as they were.')
+		ns.Say('The front page could not be drawn (' .. tostring(err) .. '). The other pages are as they were.')
 	end
 end
 

@@ -111,11 +111,15 @@ function env:IsNativeAction(action)
 	return action and C_KeyBindings.GetBindingContextForAction(action) == self.NativeContext;
 end
 
-function env:Notify(...)
+-- A binding change, said in chat as every other line of this addon (Report Binding Changes).
+function env:Notify(text, ...)
 	if self:GetSetting('foreverNotify') then
-		CPAPI.Log(...)
+		self:Print('|cff69ccf0Console Port:|r', text:format(...))
 	end
 end
+
+-- The smaller fixes that took hold, by name (GameMenu.lua lists them in /patchwerk consoleport).
+env.Applied = {};
 
 function env:SaveBindings()
 	local setID = GetCurrentBindingSet()

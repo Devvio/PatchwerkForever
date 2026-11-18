@@ -70,6 +70,7 @@ ns.AddSection('recipes', 70, function()
 				local r, g, b = ns.RGB(ns.Get((all and #lines > 0) and 'lookDone' or 'lookTitle'))
 				local title = schematic.name or ('Recipe ' .. tostring(id))
 				blocks[#blocks + 1] = { key = (recraft and 'r' or '') .. tostring(id), title = title, r = r, g = g, b = b, lines = lines,
+					tip = { 'Click to open this recipe.', 'Right-click for more options.' },
 					click = function(button, block)
 						if button == 'RightButton' then
 							ns.Menu(block, title, {

@@ -1,7 +1,6 @@
 -- Thread (Sparkle): a wisp that carries what you pick up into your bag.
 --
--- Asked for on 2026-11-16: "when picking up an item, I would like a wisp to float into the bag".
--- The game says when an item goes into a bag, and which bag, and the item's picture (ITEM_PUSH). A
+-- Asked for on 2026-11-16: a wisp that floats into the bag when you pick an item up. The game says when an item goes into a bag, and which bag, and the item's picture (ITEM_PUSH). A
 -- small light then leaves the place the thing was and flies in a curve to that bag's button, with a
 -- short tail and, if wanted, the item's picture riding along, and the bag glows as it lands.
 --
@@ -25,17 +24,10 @@ local FLIGHT = 0.9            -- seconds a wisp flies at Wisp Speed 100
 local GLOW = 0.45             -- seconds the bag glows
 local LOOTED = 2.5            -- seconds after the loot window closes that an item still counts as looted
 local FRESH = 5               -- seconds the place of a sparkle counts as where a thing was
-local FALLBACK = 'ffffe680'   -- the wisp's colour when the thing it came from is not known
+local FALLBACK = 'ffffe680'   -- the wisp's color when the thing it came from is not known
 
-local sin, cos, PI, random = math.sin, math.cos, math.pi, math.random
-
-local function Fade(a)
-	return a < 0 and 0 or a > 1 and 1 or a
-end
-
-local function Plain(value)
-	return value ~= nil and not (issecretvalue and issecretvalue(value))
-end
+local sin, random = math.sin, math.random
+local Fade, Plain = ns.Fade, ns.Plain           -- (Sparkle.lua's)
 
 ---------------------------------------------------------------------------
 -- What counts as picked up
@@ -58,8 +50,10 @@ end
 
 -- Why no wisp flies just now, or nil.
 local function Barred()
-	if not ns.Get('wisp') then return 'loot wisps are disabled' end
-	if ns.Get('wispCombat') and InCombatLockdown and InCombatLockdown() then return 'you are in combat' end
+	if not ns.Get('wisp') then return 'Show Loot Wisps is disabled' end
+	if ns.Get('wispCombat') and InCombatLockdown and InCombatLockdown() then
+		return 'you are in combat and Hide In Combat is enabled'
+	end
 	return nil
 end
 
@@ -241,7 +235,7 @@ end
 
 local last = 0                -- when the last wisp was sent off, to space out several at once
 
--- Sends a wisp from (ax, ay) to (bx, by). kind: the kind of thing it came from, for its colour; icon:
+-- Sends a wisp from (ax, ay) to (bx, by). kind: the kind of thing it came from, for its color; icon:
 -- the item's picture.
 local function Launch(ax, ay, bx, by, kind, icon)
 	Sky()
@@ -310,16 +304,19 @@ function ns.WispTest()
 	local bx, by = Land(0)
 	Launch(UIParent:GetWidth() / 2, UIParent:GetHeight() * 0.6, bx, by, ns.spot and ns.spot.kind or 'herb')
 	if not ns.Get('wisp') then
-		ns.Print('This is a preview: loot wisps are disabled, so none fly when you loot.')
+		ns.Print('Preview only: Show Loot Wisps is disabled, so no wisps fly when you loot.')
 	end
 end
 
 -- /sparkle wisp: what it would do, and why.
 function ns.WispSay()
 	local barred = Barred()
-	local bx, by = Land(0)
-	ns.Print(('Loot wisps: %s; they fly for %s; the backpack is at %d, %d.'):format(barred or 'enabled',
-		ns.Get('wispWhen') == 'all' and 'every item that enters your bags' or 'what you loot or gather', bx, by))
+	if barred then
+		ns.Print(('No loot wisps fly right now: %s.'):format(barred))
+	else
+		ns.Print(('Loot wisps are enabled, for %s.'):format(
+			ns.Get('wispWhen') == 'all' and 'every item that enters your bags' or 'what you loot or gather'))
+	end
 	if Busy() then
 		local open = {}
 		for name in pairs(busy) do open[#open + 1] = name end

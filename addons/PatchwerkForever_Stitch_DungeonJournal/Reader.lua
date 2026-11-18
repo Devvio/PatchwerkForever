@@ -31,13 +31,22 @@ if not ns.linked then return end;
 -- where to hand it in once it is done. A quest you hold and have
 -- not finished has no stop: its work is inside the dungeon. The
 -- stops are put in a short order, the nearest first and each next
--- one nearest the one before.
+-- one nearest the one before. The stop that led last time keeps
+-- the lead unless another is clearly nearer, so two stops about as
+-- near as each other do not take turns as you walk.
 --
 -- The journal's own map arrow comes first, with one exception: the
 -- journal points it at a quest's hand-in as soon as the quest is in
 -- your log, finished or not. An arrow to a hand-in is followed only
 -- once that quest is finished (seen 2026-11-18: Wailing Caverns
 -- quests sent you to Nalpak and Ebru before their work was done).
+-- An arrow on a listed stop (within 15 yards) brings that stop to
+-- the front; elsewhere it is a stop of its own.
+--
+-- Skipping a stop (a click in Thread (Tracker)) lasts for the
+-- session; Previous Step or /tracker back takes the last skip or
+-- jump back, and the binding brings every skipped stop back when
+-- nothing else is left.
 
 local P = ns.Base;
 local Guides = P.Guides;
@@ -56,13 +65,25 @@ ns:AddSetting({
 	default = false;
 	section = SECTION;
 	parent  = 'djList';
-	name    = 'Dungeon Journal Before RestedXP';
-	desc    = 'Make the Dungeon Journal list the main route, ahead of your levelling guide, whenever it has somewhere to send you. When disabled, your guide stays the main route and the list is followed only while you select it.';
+	name    = 'Dungeon Journal First';
+	desc    = 'Make the Dungeon Journal list the main route, ahead of your leveling guide, whenever it has somewhere to send you. When disabled, your guide stays the main route and the list is followed only while you select it.';
 })
 
-local skipped, skipOrder = {}, {};     -- quests you skipped this session, and in what order
-local pinned;                          -- the quest you asked to go to first
-local last = { index = 0, order = {} };-- what was last given: its step number, and its stops' quests in order
+local FOLD = 15;                        -- yards: the journal's arrow this near a listed stop is that stop
+local NEARER = 0.72;                    -- (0.85 squared) how much nearer another stop must be to take the lead
+
+local skipped = {};                     -- quests you skipped this session
+local arrowSkipped;                     -- the spot of the journal's arrow, skipped (pointing it elsewhere ends that)
+local undo = {};                        -- skips and jumps, the last one last, for Previous Step and /tracker back
+local pinned;                           -- the quest you asked to go to first
+local told = false;                     -- (the first skip of a session says how to take it back)
+-- what was last given: its step number, its stops' quests in order (false for the arrow's own spot),
+-- and the arrow's spot when the arrow leads
+local last = { index = 0, order = {} };
+
+local function Print(...)
+	ns:Print('|cff7fd4a0Dungeon Journal:|r', ...)
+end
 
 local function Ask(fn, ...)
 	if ( type(fn) ~= 'function' ) then return nil end;
@@ -105,13 +126,14 @@ local function Place(spot)
 	if ( type(spot) ~= 'table' or not spot.mapID ) then return nil end;
 	local map, x, y = Guides.WorldOf(spot.mapID, tonumber(spot.x), tonumber(spot.y));
 	if not map then return nil end;
-	return { map = map, x = x, y = y, label = type(spot.label) == 'string' and spot.label or nil };
+	return { map = map, x = x, y = y, label = type(spot.label) == 'string' and spot.label or nil,
+		zone = Guides.ZoneName and Guides.ZoneName(spot.mapID) or nil };
 end
 
 local function Stop(quest, kind, words, place)
 	local lines = { { text = words, done = false, kind = kind } };
 	if place.label then lines[2] = { text = place.label, done = false } end;
-	return { quest = quest, kind = kind, lines = lines, map = place.map, x = place.x, y = place.y };
+	return { quest = quest, kind = kind, lines = lines, map = place.map, x = place.x, y = place.y, zone = place.zone };
 end
 
 -- Where one quest of a dungeon sends you now, or nothing.
@@ -163,9 +185,10 @@ local function FollowArrow(journal, spot)
 	return id ~= nil and Held(id) and Finished(id);
 end
 
--- Every stop of the dungeons you track, how many quests there are in all, and how many are handed in.
+-- Every stop of the dungeons you track, how many quests there are in all, how many are handed in, the
+-- dungeons' names, and (for saying why there is no stop) how many have none and how many are skipped.
 local function Stops(journal)
-	local stops, total, done = {}, 0, 0;
+	local stops, total, done, inside, skips = {}, 0, 0, 0, 0;
 	local side = Ask(UnitFactionGroup, 'player');
 	local names = {};
 	for _, name in ipairs(Tracked()) do
@@ -180,17 +203,20 @@ local function Stops(journal)
 						done = done + 1;
 					elseif not skipped[quest.id] then
 						local stop = StopFor(journal, quest);
-						if stop then stops[#stops + 1] = stop end;
+						if stop then stops[#stops + 1] = stop else inside = inside + 1 end;
+					else
+						skips = skips + 1;
 					end
 				end
 			end
 		end
 	end
-	return stops, total, done, names;
+	return stops, total, done, names, inside, skips;
 end
 
--- The stops in the order to go: the one you asked for first, then always the nearest to the one
--- before, beginning from where you stand. A stop on another continent comes after those on yours.
+-- The stops in the order to go: the one you asked for first, else the one that led last time unless
+-- another on your continent is clearly nearer, then always the nearest to the one before, beginning
+-- from where you stand. A stop on another continent comes after those on yours.
 local function InOrder(stops)
 	local px, py, here = Guides.Here();
 	local at = { map = here, x = px, y = py };
@@ -200,9 +226,30 @@ local function InOrder(stops)
 		at = table.remove(left, i);
 		out[#out + 1] = at;
 	end
-	for i, stop in ipairs(left) do
-		if ( pinned and stop.quest == pinned ) then Take(i); break end;
+	local function Far(stop)
+		return ( stop.x - px ) ^ 2 + ( stop.y - py ) ^ 2;
 	end
+	local first;
+	for i, stop in ipairs(left) do
+		if ( pinned and stop.quest == pinned ) then first = i; break end;
+	end
+	-- (a pin whose stop has gone, accepted or handed in, is let go)
+	if ( pinned and not first ) then pinned = nil end;
+	-- (the list is read all the time, followed or not: the lead is kept only against stops on your
+	-- continent, so one picked far away an hour ago does not stay first)
+	local keep = last.order[1] or last.order[2];
+	if ( not first and keep and px ) then
+		for i, stop in ipairs(left) do
+			if ( stop.quest == keep and stop.map == here ) then first = i; break end;
+		end
+		if first then
+			local mine = Far(left[first]);
+			for _, stop in ipairs(left) do
+				if ( stop.map == here and Far(stop) < mine * NEARER ) then first = nil; break end;
+			end
+		end
+	end
+	if first then Take(first) end;
 	while ( #left > 0 ) do
 		local best, far;
 		for i, stop in ipairs(left) do
@@ -219,19 +266,38 @@ local function InOrder(stops)
 	return out;
 end
 
+-- The journal's arrow as a key: its continent and spot, to the yard.
+local function ArrowKey(place)
+	return ('%d:%d:%d'):format(place.map, math.floor(place.x + 0.5), math.floor(place.y + 0.5));
+end
+
 local function Read(count)
 	if not ns:GetSetting('djList') then return nil end;
 	local journal = Journal();
 	if not journal then return nil end;
 	local stops, total, done, names = Stops(journal);
 	stops = InOrder(stops);
-	-- the spot the journal's own map arrow is on comes first: you asked it to point there
+	-- the spot the journal's own map arrow is on comes first: you asked it to point there. On a listed
+	-- stop it is that stop, which keeps its own words and can be skipped as any other.
+	local arrow;
 	local spot = Ask(journal.WaypointArrowTarget);
 	local place = Place(spot);
 	if ( place and FollowArrow(journal, spot) ) then
-		local words = type(spot.questTitle) == 'string' and spot.questTitle or place.label or 'Dungeon Journal map point';
-		table.insert(stops, 1, { kind = 'place', map = place.map, x = place.x, y = place.y,
-			lines = { { text = ( spot.turnIn and 'Turn in: ' or 'Go to: ' ) .. words, done = false, kind = 'place' } } });
+		arrow = ArrowKey(place);
+		local near, nearest;
+		for i, stop in ipairs(stops) do
+			local d = ( stop.map == place.map ) and ( stop.x - place.x ) ^ 2 + ( stop.y - place.y ) ^ 2;
+			if ( d and d <= FOLD ^ 2 and ( not nearest or d < nearest ) ) then near, nearest = i, d end;
+		end
+		if near then
+			table.insert(stops, 1, table.remove(stops, near));
+		elseif ( arrow ~= arrowSkipped ) then
+			local words = type(spot.questTitle) == 'string' and spot.questTitle or place.label or 'Dungeon Journal map point';
+			table.insert(stops, 1, { kind = 'place', map = place.map, x = place.x, y = place.y,
+				lines = { { text = ( spot.turnIn and 'Turn in: ' or 'Go to: ' ) .. words, done = false, kind = 'place' } } });
+		else
+			arrow = nil;
+		end
 	end
 	local now = stops[1];
 	if not now then
@@ -241,7 +307,8 @@ local function Read(count)
 	local index = math.min(math.max(total, 1), done + 1);
 	local info = {
 		guide = 'Dungeon Journal' .. ( #names == 1 and ( ': ' .. names[1] ) or '' ),
-		index = index, total = math.max(total, index), quest = now.quest,
+		-- (the arrow's own stop is one more than the quests: no line is numbered past the total)
+		index = index, total = math.max(total, index + #stops - 1), quest = now.quest,
 		kind = now.kind, lines = now.lines, map = now.map, x = now.x, y = now.y,
 		key = ('%s:%s:%d:%d'):format(tostring(now.quest or 'arrow'), now.kind, math.floor(now.x + 0.5), math.floor(now.y + 0.5)),
 		ahead = {}, after = {}, items = {},
@@ -256,34 +323,41 @@ local function Read(count)
 			info.after[#info.after + 1] = step;
 		end
 	end
-	last = { index = index, order = order };
+	last = { index = index, order = order, arrow = arrow };
 	return info;
 end
 
--- Moves the list, because you clicked: the next step number skips the stop you are on; a later one
--- brings that stop to the front; an earlier one takes the last skip back.
+-- Moves the list, because you clicked. The step number counts the quests turned in, so it does not
+-- move with a skip: the next number skips the stop that leads, and the stop shown next (the one you
+-- clicked) leads after it; a later one brings that stop to the front; the same or an earlier number
+-- (Previous Step, /tracker back) takes the last skip or jump back.
 local function Go(index)
 	local offset = index - last.index;
 	if ( offset == 1 ) then
-		local quest = last.order[1];
-		if not quest then return false end;                   -- (the journal's own map point: cleared in the journal)
-		skipped[quest] = true;
-		skipOrder[#skipOrder + 1] = quest;
-		if ( pinned == quest ) then pinned = nil end;
+		local quest, arrow = last.order[1], last.arrow;
+		if not ( quest or arrow ) then return false end;
+		if quest then skipped[quest] = true end;
+		if arrow then arrowSkipped = arrow end;
+		undo[#undo + 1] = { quest = quest or nil, arrow = arrow, pinned = pinned };
+		pinned = last.order[2] or nil;
+		if not told then
+			told = true;
+			Print('A skipped stop stays skipped until you reload. Previous Step in the tracker, or /tracker back, brings it back.')
+		end
 		return true;
 	elseif ( offset > 1 ) then
 		local quest = last.order[offset + 1];
 		if not quest then return false end;
-		pinned = quest;
-		return true;
-	elseif ( offset < 0 ) then
-		local quest = table.remove(skipOrder);
-		if not quest then return false end;
-		skipped[quest] = nil;
+		undo[#undo + 1] = { pinned = pinned };
 		pinned = quest;
 		return true;
 	end
-	return false;
+	local back = table.remove(undo);
+	if not back then return false end;
+	if back.quest then skipped[back.quest] = nil end;
+	if ( back.arrow and arrowSkipped == back.arrow ) then arrowSkipped = nil end;
+	pinned = back.quest or back.pinned;
+	return true;
 end
 
 -- The quest of a step, as My Route keeps it: where the journal sends you for it now (to pick it up,
@@ -313,7 +387,7 @@ if P.MyRoute then
 			local found = StopFor(journal, quest);
 			if not found then return nil end;
 			local label = found.lines[1] and found.lines[1].text;
-			return found.map, found.x, found.y, label;
+			return found.map, found.x, found.y, label, found.zone;
 		end,
 	});
 end
@@ -333,32 +407,91 @@ Guides:Register(SOURCE, {
 -- A key or a gamepad button: route through the list, or stop
 ---------------------------------------------------------------
 BINDING_HEADER_PATCHWERKFOREVER_DUNGEONJOURNAL = 'Patchwerk Forever: Stitch (Dungeon Journal)';
-BINDING_NAME_PATCHWERKFOREVER_DUNGEONJOURNAL_ROUTE = 'Route Through Dungeon Journal Quests';
+BINDING_NAME_PATCHWERKFOREVER_DUNGEONJOURNAL_ROUTE = 'Toggle Dungeon Journal Route';
 
-function PatchwerkForever_Stitch_DungeonJournal_Route()
-	local Choice = P.Choice;
-	if Choice:Is('guide', SOURCE) then
-		Choice:Clear()
-		ns:Print('Dungeon Journal: back to your main route.')
-		return;
+-- Why the list is empty, in one sentence (only when asked: not on the reads many times a second).
+local function Why()
+	local journal = Journal();
+	if not journal then
+		local loaded = C_AddOns and C_AddOns.IsAddOnLoaded;
+		if Ask(loaded, 'ForeverDungeonJournal') then
+			return 'Dungeon Journal is running, but its quest data was not found. This addon may need an update.';
+		end
+		return 'Dungeon Journal is not running.';
 	end
-	if not Guides:Read(0, SOURCE) then
-		ns:Print(Journal() and 'Dungeon Journal: nothing to route to. Track a dungeon in the journal first, or every quest is done.'
-			or 'Dungeon Journal is not running.')
-		return;
+	if not ns:GetSetting('djList') then
+		return 'Route Dungeon Journal Quests is disabled (Options > AddOns > Patchwerk Forever > Stitch: Dungeon Journal).';
 	end
-	Choice:Set('guide', SOURCE)
-	ns:Print('Dungeon Journal: routing through the quests of your tracked dungeons.')
+	local _, total, done, names, inside, skips = Stops(journal);
+	if ( #names == 0 ) then return 'No dungeon is tracked in the Dungeon Journal.' end;
+	if ( total == 0 ) then return 'The tracked dungeons have no quests for your faction.' end;
+	if ( done == total ) then return 'Every quest of your tracked dungeons is turned in.' end;
+	return ('Nothing to route to right now: %d of %d turned in, %d in your quest log to finish in the dungeon, %d skipped.')
+		:format(done, total, inside, skips);
 end
 
--- /patchwerk dj: the same, from the chat
+local function Stopped()
+	if not P.Choice:Is('guide', SOURCE) then return false end;
+	P.Choice:Clear()
+	Print('Back to your main route.')
+	return true;
+end
+
+local function Started()
+	local info = Guides:Read(0, SOURCE);
+	-- (everything left was skipped: the skips are taken back, since you asked for the list)
+	if ( not info and ( next(skipped) or arrowSkipped ) ) then
+		wipe(skipped)
+		wipe(undo)
+		arrowSkipped, pinned = nil, nil;
+		info = Guides:Read(0, SOURCE);
+		if info then Print('Skipped stops are back on the list.') end;
+	end
+	if not info then
+		Print(Why())
+		return false;
+	end
+	P.Choice:Set('guide', SOURCE)
+	local first = info.lines and info.lines[1] and info.lines[1].text or '';
+	local stops = #last.order;
+	if ( stops == 1 ) then
+		Print(('Routing to 1 stop: %s.'):format(first))
+	else
+		Print(('Routing through %d stops. First: %s.'):format(stops, first))
+	end
+	return true;
+end
+
+function PatchwerkForever_Stitch_DungeonJournal_Route()
+	if not Stopped() then Started() end;
+end
+
+local function Status()
+	if not Journal() then return 'waiting: Dungeon Journal is not loaded' end;
+	if not ns:GetSetting('djList') then return 'off' end;
+	if not Guides:Read(0, SOURCE) then return 'on: no stops. ' .. Why() end;
+	local stops = #last.order;
+	return ('on: %d %s%s'):format(stops, stops == 1 and 'stop' or 'stops',
+		P.Choice:Is('guide', SOURCE) and ', being followed' or '');
+end
+
+-- /patchwerk dj [on | off | status]: the same, from the chat
 ns:RegisterFix('dj', {
 	name    = 'Dungeon Journal quests as a route';
 	addon   = 'ForeverDungeonJournal';
-	status  = function()
-		if not Journal() then return 'waiting: Dungeon Journal is not loaded' end;
-		if not ns:GetSetting('djList') then return 'off' end;
-		return P.Choice:Is('guide', SOURCE) and 'on, and being followed' or 'on';
+	status  = Status;
+	command = function(args)
+		local word = tostring(args or ''):lower():match('^%s*(%S*)');
+		if ( word == '' ) then
+			PatchwerkForever_Stitch_DungeonJournal_Route()
+		elseif ( word == 'on' or word == 'start' ) then
+			if not P.Choice:Is('guide', SOURCE) then Started() end;
+		elseif ( word == 'off' or word == 'stop' ) then
+			if not Stopped() then Print('The Dungeon Journal list is not being followed.') end;
+		elseif ( word == 'status' ) then
+			Print(Status())
+		else
+			Print('Usage: /patchwerk dj [on | off | status]')
+		end
 	end;
-	command = function() PatchwerkForever_Stitch_DungeonJournal_Route() end;
 })

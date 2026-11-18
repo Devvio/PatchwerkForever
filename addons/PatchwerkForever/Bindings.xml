@@ -1,0 +1,5 @@
+<Bindings>
+	<Binding name="PATCHWERKFOREVER_OPTIONS" header="PATCHWERKFOREVER" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_OpenOptions then PatchwerkForever_OpenOptions() end
+	</Binding>
+</Bindings>

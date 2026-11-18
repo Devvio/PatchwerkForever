@@ -1,5 +1,18 @@
 # Patchwerk Forever: Stitch (Dungeon Journal)
 
+## 1.2.0
+
+- A journal quest in My Route shows its zone.
+- **Skips can be taken back.** `/tracker back` and Previous Step in the tracker take back the last skip, or the last stop you brought to the front. The first skip of a session says how. When every stop is skipped, the key binding (or `/patchwerk dj`) brings them all back.
+- **The stop you click leads.** A click on the stop shown next skips the one you are on and leads to the one you clicked, not to a third that happens to be nearer.
+- **The lead does not flip.** The stop that leads keeps the lead unless another is clearly nearer, so two stops about as near as each other no longer take turns as you walk, each turn a new trail.
+- **The journal's map arrow on a listed stop is that stop**, not a second one beside it: it keeps the stop's own words and can be skipped. An arrow elsewhere can be skipped too now, and no step is numbered past the total.
+- **It says why the list is empty**: no dungeon tracked, every quest turned in, the rest of the work inside the dungeon (with the counts), the setting disabled, the journal not running, or its data not found.
+- `/patchwerk dj` takes `on`, `off` and `status`; alone it still starts or stops. Starting says how many stops there are and which is first. The binding is now called **Toggle Dungeon Journal Route** (your saved key is kept) and is under **Patchwerk Forever** in Key Bindings.
+- **Dungeon Journal Before RestedXP** is now called **Dungeon Journal First** (it is saved as before). Its chat lines carry a colored tag of their own.
+- DungeonJournal is now a required dependency, as the description always said: without it this addon does not load, and the addon list shows what is missing.
+- With a Patchwerk Forever too old for it, it now names itself and the version it needs (2.4.0 or later).
+
 ## 1.1.0
 
 - **The journal's quests can go in My Route** (with Patchwerk Forever 2.6.0): a quest not yet picked up is routed to where the journal says it starts, or to the quest that must be done first; once you take it, it is a quest in your log.

@@ -1,5 +1,12 @@
 # Patchwerk Forever: Thread (Immersive Plainsrunning)
 
+## 1.2.1
+
+- A key bound while this addon is not running (its base too old) does nothing instead of giving an error.
+- **Key bindings** are in a section of their own, **Patchwerk Forever**, with the rest of the family's. Your bindings are kept.
+- Sliders measured in percent (Hidden Interface Opacity, Clear Middle, Vertical Offset and the effects' brightness, size, length, thickness, speed and darkness) show a percent sign.
+- Chat lines reworded to read as plain sentences: "New record! Longest at full speed: ...", and the lines after a problem. `/plains help` lists one command to a line, and `/plains config` in combat says the options cannot be opened in combat.
+
 ## 1.2.0
 
 - **Standing still for five seconds** brings the interface back (it was two). **Once you move again for five seconds**, it fades away again, if Plainsrunning is still on you; before, it faded away the moment you moved. The new setting **Seconds Moving Again** changes that wait, from 0 to 10 seconds.

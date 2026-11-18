@@ -1,5 +1,18 @@
 # Patchwerk Forever
 
+## 2.7.0
+
+- For addon authors: `Following:SetTravel(words)` (the way there, in words, kept as `info.travel` until the destination changes), `Guides.ZoneName(uiMap)` and `Guides.QuestZone(id)`; My Route's stops carry their `zone`, and a part's `Kind` can give one as the fifth answer of `Place`.
+- **Key bindings have a heading.** Every binding of the family is now in one section of its own, **Patchwerk Forever**, under Options → Keybindings, instead of unnamed among every other addon's. Your saved bindings are kept.
+- **Open Options**, a new key binding, and Patchwerk Forever in the minimap's addon list both open the options. The first login says once where the options are.
+- In combat, every way of opening the options says "Options cannot be opened in combat." instead of a vague line or nothing.
+- **The front page**: each part's line uses the whole row and wraps to two lines instead of being cut off; Patchwerk's line on the picture stays clear of the candles; the tick box makes the game's sound, and its tooltip shows the name above the description like the other pages, with the label part of what takes the click. A part you have disabled reads "Disabled in the addon list."
+- **The Reset To Defaults button** reads "Reset", and its question says that positions and saved data are not changed.
+- **Chat lines** read "Patchwerk: ..." for the base and "Patchwerk Console Port: ..." for a Stitch. `/patchwerk` lists its commands one to a line, says "options" where it said "settings", answers a wrong value with a usage line, and lists each fix as on, off or waiting. A disabled part is "installed but disabled".
+- An error in a Thread tool is said once for each different error, up to three under one label, instead of once a label, so a second problem is not hidden behind the first.
+- **Percent sliders** show "100%" where a tool marks a setting as a percentage.
+- For addon authors: `PatchwerkForever.Following` (`Set`, `Get`, `OnChange`): the route planner says there what it leads to, and another tool can mark it. A setting may carry `percent = true`. The base defines `BINDING_CATEGORY_PatchwerkForever`, the category every part's Bindings.xml uses. The API number stays 5: an older part simply does not use these.
+
 ## 2.6.0
 
 - **Focus**: what the route follows, chosen by you and kept for each character: Auto (your guide and quests, as before), RestedXP, the Dungeon Journal, Quests or My Route. Thread (Routes) follows it and Thread (Tracker) shows its buttons; a quest you click and your map pin still come first.

@@ -13,7 +13,7 @@ local P = ns.P;
 --     local addonName, ns = ...;
 --     PatchwerkForever:Tool(addonName, ns, {
 --         api    = 1,                 -- the P.API it was written for
---         name   = 'Thread',          -- what its chat lines begin with
+--         name   = 'Routes',          -- what its chat lines begin with
 --         colour = 'ff7fd4ff',        -- and in what colour
 --         saved  = 'MyToolDB',        -- its SavedVariables, as its TOC names it
 --         page   = 'Thread: Routes',  -- its first page under Patchwerk Forever's
@@ -22,7 +22,7 @@ local P = ns.P;
 --
 -- and then finds on its own table (ns):
 --     ns.Print(...)             a chat line
---     ns.Try(label, fn, ...)    runs fn; an error is said once, not thrown
+--     ns.Try(label, fn, ...)    runs fn; an error is said in chat, not thrown
 --     ns.On(event, fn)          fn(...) on a game event;  ns.frame
 --     ns.Get(key), ns.Set(key, value), ns.OnSetting(fn(key, value))
 --     ns.RGB('ffRRGGBB')        red, green, blue, each 0 to 1
@@ -33,7 +33,7 @@ local P = ns.P;
 -- in the order they are shown. What control each gets follows
 -- from the entry:
 --     default true/false                  a tick box
---     default a number, min, max, step    a slider
+--     default a number, min, max, step    a slider (percent = true: its value shown as "100%")
 --     choices = { { value, label }, ... } a list to pick from
 --     colour = true                       a colour (default 'ffRRGGBB')
 --     button = 'text', click = function   a button; no value
@@ -74,13 +74,16 @@ function P:Tool(name, env, spec)
 		end
 	end
 
-	local reported = {};
+	-- Each different error is said once, and at most three under one label: many handlers share a
+	-- label (every handler of one event, every settings watcher), so one per label would hide the rest.
+	local reported, counts = {}, {};
 	function env.Try(label, fn, ...)
 		local ok, a, b, c = pcall(fn, ...);
 		if ok then return a, b, c end;
-		if not reported[label] then
-			reported[label] = true;
-			env.Print('a problem in ' .. label .. ' (reported once): ' .. tostring(a))
+		local key, said = label .. '\n' .. tostring(a), counts[label] or 0;
+		if ( not reported[key] and said < 3 ) then
+			reported[key], counts[label] = true, said + 1;
+			env.Print('A problem in ' .. label .. ' (reported once): ' .. tostring(a))
 		end
 		return nil;
 	end
@@ -198,6 +201,17 @@ local function Page(category, tool, name)
 	return page;
 end
 
+-- A slider's options: its range, and its value shown at its right, as "100%" for a setting marked
+-- percent = true (a Stitch's setting from AddSetting may be marked so too).
+local function Percent(value) return ('%d%%'):format(math.floor(value + 0.5)) end
+function ns.SliderOptions(def)
+	local options = Settings.CreateSliderOptions(def.min or 0, def.max or 1, def.step or 1);
+	if ( options.SetLabelFormatter and MinimalSliderWithSteppersMixin and MinimalSliderWithSteppersMixin.Label ) then
+		options:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right, def.percent and Percent or nil)
+	end
+	return options;
+end
+
 -- puts something that is not a setting (a heading, a button) on a page
 local function Place(page, initializer)
 	ns.PlaceOn(page, initializer)
@@ -244,10 +258,7 @@ local function Control(category, tool, def)
 		if not ( Settings.CreateSlider and Settings.CreateSliderOptions ) then return end;
 		setting = Settings.RegisterProxySetting(page.category, variable, Settings.VarType.Number, shown,
 			def.default, get, set);
-		local options = Settings.CreateSliderOptions(def.min, def.max, def.step);
-		if ( options.SetLabelFormatter and MinimalSliderWithSteppersMixin and MinimalSliderWithSteppersMixin.Label ) then
-			options:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right)
-		end
+		local options = ns.SliderOptions(def);
 		control = Settings.CreateSlider(page.category, setting, options, def.desc);
 	else
 		setting = Settings.RegisterProxySetting(page.category, variable, Settings.VarType.Boolean, shown,
@@ -285,7 +296,7 @@ local function AskReset(tool)
 	if not ( type(show) == 'function' and type(dialogs) == 'table' ) then return Reset(tool) end;
 	if not dialogs.PATCHWERKFOREVER_RESET then
 		dialogs.PATCHWERKFOREVER_RESET = {
-			text = 'Reset all %s options to their defaults?',
+			text = 'Reset all %s options, on all of its pages, to their defaults?\n\nPositions and saved data are not changed.',
 			button1 = rawget(_G, 'YES') or 'Yes', button2 = rawget(_G, 'NO') or 'No',
 			OnAccept = function(_, which) if which then which.env.Try('resetting the options', Reset, which) end end,
 			timeout = 0, whileDead = true, hideOnEscape = true,
@@ -311,7 +322,7 @@ function ns.BuildToolPages(category)
 		env.Try('the options page (reset)', function()
 			if not ( tool.first and CreateSettingsButtonInitializer ) then return end;
 			ns.PlaceHeader(tool.first, 'Defaults')
-			Place(tool.first, CreateSettingsButtonInitializer('Reset To Defaults', 'Defaults', function() AskReset(tool) end,
+			Place(tool.first, CreateSettingsButtonInitializer('Reset To Defaults', 'Reset', function() AskReset(tool) end,
 				'Reset every option of this addon, on all of its pages, to its default. Positions and saved data are not changed.', true))
 		end)
 	end

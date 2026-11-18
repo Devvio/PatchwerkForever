@@ -33,6 +33,7 @@ function print(...)
 	STUB.messages[#STUB.messages + 1] = table.concat(out, ' ')
 end
 tinsert = table.insert
+function wipe(t) for k in pairs(t) do t[k] = nil end return t end
 function string.trim(s) local out = s:gsub('^%s+', ''):gsub('%s+$', '') return out end
 STUB.meta, STUB.loaded, STUB.installed = {}, {}, {}
 C_AddOns.GetAddOnMetadata = function(name, field) return STUB.meta[name] and STUB.meta[name][field] end
@@ -111,7 +112,7 @@ def toc(folder):
 class Session:
     """One login: a Lua of its own with the stand-in for the game in it."""
 
-    def __init__(self, saved=None, running=(), installed=(), console_port=False):
+    def __init__(self, saved=None, running=(), installed=(), console_port=False, welcomed=True):
         self.lua = LuaRuntime(unpack_returned_tuples=True)
         self.lua.execute(open(os.path.join(HERE, "wowstub.lua"), encoding="utf-8").read())
         self.lua.execute(EXTRA)
@@ -126,6 +127,10 @@ class Session:
             self.stub.installed[name] = True
         if saved:
             self.lua.execute("PatchwerkForeverDB = " + saved)
+        if welcomed:
+            # (the one-time line on where the options are, said at an account's first login, is had)
+            self.lua.execute("PatchwerkForeverDB = PatchwerkForeverDB or {}; PatchwerkForeverDB.told = PatchwerkForeverDB.told or {};"
+                             " PatchwerkForeverDB.told.welcome = true")
         self._load = self.lua.eval(
             "function(code, name, addon, ns) return assert(loadstring(code, name))(addon, ns) end")
         self.ns = {}
@@ -190,11 +195,13 @@ def step(label):
 def main():
     step("the base alone, for someone who had 1.x and runs Console Port")
     s = Session(saved="{ settings = { foreverNotify = false }, ConsolePort = { cleared = { X = true } } }",
-                running=["ConsolePort"])
+                running=["ConsolePort"], welcomed=False)
     base = s.addon(BASE)
     s.login()
     text = s.chat()
-    assert len(text) == 1 and "Patchwerk Forever: Stitch (Console Port)" in text[0], text
+    assert len(text) == 2 and "Patchwerk Forever: Stitch (Console Port)" in text[0], text
+    assert text[1] == "Patchwerk: Options are under Options > AddOns > Patchwerk Forever.", text
+    assert s.g.PatchwerkForeverDB.told.welcome is True
     assert s.stub.category and s.stub.front, "the base's page was not built"
     # its first page is drawn by the base: what Patchwerk says, what is sewn on, its own switch
     assert len(s.stub.settings) == 0, "the base's switch is still a row of the game's"
@@ -211,6 +218,7 @@ def main():
     switches = list(page.switches.values())
     assert len(switches) == 1 and switches[0].key == "baseTellMissing" and switches[0].checked is True
     assert switches[0].Label.text == "Notify About Missing Addons", switches[0].Label.text
+    assert switches[0].name == "Notify About Missing Addons", "the tick box's tooltip has no name"
     switches[0].checked = False
     switches[0].scripts.OnClick(switches[0])
     assert s.g.PatchwerkForever.GetSetting(s.g.PatchwerkForever, "baseTellMissing") is False
@@ -220,7 +228,10 @@ def main():
     assert s.g.PatchwerkForeverDB.ConsolePort.cleared.X, "the old saved data was touched"
     assert s.g.PatchwerkForeverDB.settings.foreverNotify is False
     text = s.slash("")
-    assert text[0] == "Patchwerk Forever %s. Its parts:" % toc(BASE)[0]["Version"] and any("none. This is the base" in t for t in text), text
+    assert text[0] == "Patchwerk Forever %s. Installed parts:" % toc(BASE)[0]["Version"] and any("None. Patchwerk Forever is the base" in t for t in text), text
+    # the commands, one to a line, the options last; no fix's command with no fix
+    assert text[-1] == "  /patchwerk config: open the options" and "Patchwerk: Commands:" in text, text
+    assert not any("/patchwerk <id>" in t for t in text), text
     assert any("Patchwerk Forever: Stitch (Console Port) (for Console Port): not installed" in t for t in text), text
     icon = s.g.PatchwerkForever.Icon(s.g.PatchwerkForever, BASE)
     assert icon == "Interface\\AddOns\\PatchwerkForever\\Media\\icon", icon
@@ -238,7 +249,7 @@ def main():
     s.login()
     assert s.chat() == []
     text = s.slash("")
-    assert sum("installed, not switched on" in t for t in text) == 3, text
+    assert sum("installed but disabled" in t for t in text) == 3, text
 
     step("MelloUI running, nothing for it installed: told of both parts; the setting off: told nothing")
     s = Session(running=["MelloUI"])
@@ -286,17 +297,35 @@ def main():
     text = s.slash("")
     assert any("PatchwerkForever_MadeUp 1.2.3" in t for t in text), text
     assert any("A made-up fix (madeup) for Nothing: fine" in t for t in text), text
+    assert any("/patchwerk <id>: a fix's own commands" in t for t in text), text
     text = s.slash("madeup hello there")
     assert text == ["Patchwerk made-up command: hello there"], text
     text = s.slash("set madeupon on")
     assert s.log()[-1] == "setting true false" and "madeUpOn: on" in text[0], (s.log(), text)
     assert s.g.PatchwerkForeverDB.settings.madeUpOn is True
+    text = s.slash("set madeupon maybe")
+    assert text == ["Patchwerk: Usage: /patchwerk set madeUpOn on|off"], text
     text = s.slash("set madeupsteps 99")
     assert s.g.PatchwerkForeverDB.settings.madeUpSteps == 5, "a number is not kept inside its range"
     text = s.slash("set")
     assert sum(1 for t in text if t.startswith("  ")) == 3, text
     s.slash("config")
     assert s.stub.opened == 7, "the settings page was not opened"
+    # the binding and the minimap's addon list open it too; in combat, said why not
+    s.stub.opened = None
+    s.g.PatchwerkForever_OpenOptions()
+    assert s.stub.opened == 7, "the Open Options binding did not open the options"
+    s.stub.opened = None
+    s.g.PatchwerkForever_OnAddonCompartmentClick()
+    assert s.stub.opened == 7, "the minimap's addon list did not open the options"
+    s.stub.opened = None
+    s.lua.execute("STUB.combat = true")
+    text = s.slash("config")
+    assert text == ["Patchwerk: Options cannot be opened in combat."] and s.stub.opened is None, text
+    parts[0].row.Open.scripts.OnClick(parts[0].row.Open)
+    assert s.chat() == ["Patchwerk: Options cannot be opened in combat. Select the page in the list on the left."]
+    s.lua.execute("STUB.combat = false")
+    assert s.g.BINDING_CATEGORY_PatchwerkForever == "Patchwerk Forever" and s.g.BINDING_NAME_PATCHWERKFOREVER_OPTIONS == "Open Options"
     # the page's own controls read and write the same values
     for i in s.stub.settings:
         setting = s.stub.settings[i]
@@ -416,7 +445,7 @@ def main():
         s.lua.execute(setup)
         ns = s.addon(PARTS[0])
         text = list(s.stub.messages.values())
-        assert len(text) == 1 and "needs a newer Patchwerk Forever" in text[0], (label, text)
+        assert len(text) == 1 and "Patchwerk Forever: Stitch (Console Port)|r needs Patchwerk Forever 2.0.0 or later" in text[0], (label, text)
         assert not ns.linked and not ns.NativeContext, label
     s = Session()
     s.addon(BASE)
@@ -455,7 +484,7 @@ def main():
     # another character, whose own profile has everything on: trimmed, once
     s, now, text = mello(after, "Alt", ALL)
     assert now == ["QuestTracker", "Route"], now
-    assert any("Switched off: Chat, Map" in t for t in text) and s.stub.popup == "PATCHWERK_MELLOUI_RELOAD", text
+    assert any("MelloUI: Disabled: Chat, Map" in t for t in text) and s.stub.popup == "PATCHWERK_MELLOUI_RELOAD", text
     assert s.g.PatchwerkForeverDB.MelloUI.seenIn.Alt.Map and s.g.PatchwerkForeverDB.MelloUI.seenIn.Main.Map
     both = "{ settings = { melloRouteOnly = true }, MelloUI = { seenIn = { Main = { Chat = true, Map = true, QuestTracker = true, Route = true }, Alt = { Chat = true, Map = true, QuestTracker = true, Route = true } } } }"
     # that character again, Chat switched back on there: it stays on
@@ -711,34 +740,62 @@ def main():
     info = G.Read(G, 9, "fdj")
     assert [a.lines[1].text for a in info.after.values()][-1] == "Accept: First Things (needed for Chained Job)"
     assert len(info.after) == 3
-    # skipping a stop, taking the skip back, bringing a later stop to the front
+    # skipping a stop: a click on the stop shown next skips the one you are on, and the one clicked leads,
+    # though from where you stand now another is nearer
+    s.lua.execute("STUB.player.x, STUB.player.y = -420, 0")
     assert G.Go(G, info, info.index + 1) is True
-    assert G.Read(G, 0, "fdj").lines[1].text == "Accept: Horde Job"
-    info = G.Read(G, 0, "fdj")
-    # (its step number counts the quests turned in: it stays through a skip, and the list cannot be sent
-    # to that number itself. Thread (Tracker) tells such a list by this to word its chat lines, and the
-    # stand-in for it in lua_tracker.py, STAYS, moves the same way: change them together.)
+    text = s.chat()
+    assert text == ["Patchwerk Dungeon Journal: A skipped stop stays skipped until you reload. Previous Step in the tracker, "
+                    "or /tracker back, brings it back."], text
+    info = G.Read(G, 9, "fdj")
+    assert info.lines[1].text == "Accept: Horde Job", "the stop clicked does not lead: " + info.lines[1].text
+    s.lua.execute("STUB.player.x, STUB.player.y = 0, 0")
+    # (its step number counts the quests turned in: it stays through a skip. Thread (Tracker) tells such a
+    # list by this to word its chat lines, and the stand-in for it in lua_tracker.py, STAYS, moves the same
+    # way: change them together.)
     assert info.index == 1, "the step number moved on a skip"
-    assert G.Go(G, info, info.index) is False and G.Read(G, 0, "fdj").lines[1].text == "Accept: Horde Job"
-    assert G.Go(G, info, info.index - 1) is True and G.Read(G, 0, "fdj").lines[1].text == "Turn in: Deep Job"
+    # /tracker back asks for the number it was at, the same number: the skip is taken back; with nothing
+    # left to take back, Previous Step does nothing
+    assert G.Go(G, info, info.index) is True and G.Read(G, 0, "fdj").lines[1].text == "Turn in: Deep Job"
     info = G.Read(G, 9, "fdj")
     assert info.index == 1, "the step number moved when a skip was taken back"
+    assert G.Go(G, info, info.index - 1) is False, "a skip taken back with none left"
+    # a later stop brought to the front, and the jump taken back
     assert G.Go(G, info, info.index + 2) is True
     info = G.Read(G, 9, "fdj")
     assert info.lines[1].text == "Accept: Second Job", "a later stop was not brought to the front"
     assert info.index == 1, "the step number moved when a later stop was brought to the front"
+    assert G.Go(G, info, info.index) is True and G.Read(G, 0, "fdj").lines[1].text == "Turn in: Deep Job", "a jump not taken back"
+    assert s.chat() == []
     # as you play: a quest accepted has no stop until it is done; one handed in counts as done
     s.lua.execute("STUB.QuestAt(5003, 'Second Job', 1, -300, -300)")
     assert G.Read(G, 0, "fdj").lines[1].text == "Turn in: Deep Job"
     s.lua.execute("STUB.QuestGone(5002); STUB.flagged[5002] = true")
     info = G.Read(G, 9, "fdj")
     assert (info.index, info.total) == (2, 5) and info.lines[1].text == "Accept: Horde Job", (info.index, info.lines[1].text)
-    # the journal's own map arrow comes first, and cannot be skipped from here
+    # the stop that leads keeps the lead while another is only a little nearer (two stops about as near as
+    # each other do not take turns as you walk), and gives it up to one clearly nearer
+    s.lua.execute("STUB.player.x, STUB.player.y = -255, -50")
+    assert G.Read(G, 0, "fdj").lines[1].text == "Accept: Horde Job", "the lead flipped to a stop only a little nearer"
+    s.lua.execute("STUB.player.x, STUB.player.y = -330, -20")
+    assert G.Read(G, 0, "fdj").lines[1].text.startswith("Accept: First Things"), "a stop clearly nearer did not lead"
+    s.lua.execute("STUB.player.x, STUB.player.y = 0, 0")
+    assert G.Read(G, 0, "fdj").lines[1].text == "Accept: Horde Job"
+    # the journal's own map arrow comes first; it can be skipped, and the skip taken back
     s.lua.execute("STUB.arrow = STUB.spot(-2000, -2000); STUB.arrow.questTitle = 'The Unsent Letter'")
     info = G.Read(G, 1, "fdj")
     assert info.kind == "place" and info.lines[1].text == "Go to: The Unsent Letter" and round(info.x) == -2000
     assert info.after[1].lines[1].text == "Accept: Horde Job"
-    assert G.Go(G, info, info.index + 1) is False
+    assert G.Go(G, info, info.index + 1) is True and G.Read(G, 0, "fdj").lines[1].text == "Accept: Horde Job", "the arrow not skipped"
+    info = G.Read(G, 1, "fdj")
+    assert G.Go(G, info, info.index) is True and G.Read(G, 0, "fdj").lines[1].text == "Go to: The Unsent Letter"
+    # ... and an arrow on a listed stop is that stop: no stop of its own, the stop's own words, numbered as before
+    s.lua.execute("STUB.arrow = STUB.spot(-108, -100); STUB.arrow.questTitle = 'Horde Job'")
+    s.lua.execute("STUB.player.x, STUB.player.y = -400, 10")
+    info = G.Read(G, 9, "fdj")
+    assert info.lines[1].text == "Accept: Horde Job" and info.total == 5, (info.lines[1].text, info.total)
+    assert [a.lines[1].text for a in info.after.values()] == ["Accept: First Things (needed for Chained Job)"]
+    s.lua.execute("STUB.player.x, STUB.player.y = 0, 0")
     # ... but not to a hand-in before the quest is finished (the journal points there as soon as it is in your
     # log: Wailing Caverns, 2026-11-18), nor to a hand-in of a quest it cannot tell
     s.lua.execute("STUB.arrow = STUB.spot(-2000, -2000); STUB.arrow.questTitle = 'Second Job'; STUB.arrow.turnIn = true")
@@ -756,9 +813,9 @@ def main():
     assert list(s.stub.pages.keys()) == ["Stitch: Dungeon Journal"], list(s.stub.pages.keys())
     intro = list(s.stub.intros.values())[0]
     assert intro.voice.startswith("The big book knows who has the jobs."), intro.voice
-    assert sorted(x.name for x in s.stub.settings.values()) == ["Dungeon Journal Before RestedXP", "Route Dungeon Journal Quests"]
+    assert sorted(x.name for x in s.stub.settings.values()) == ["Dungeon Journal First", "Route Dungeon Journal Quests"]
     assert G.readers.fdj.Leads() is False and G.readers.fdj.Side() is True
-    # Dungeon Journal Before RestedXP enabled: no side list any more, it is the main route as before
+    # Dungeon Journal First enabled: no side list any more, it is the main route as before
     P.SetSetting(P, "djLeads", True)
     assert G.readers.fdj.Leads() is True and G.readers.fdj.Side() is False
     info = G.Read(G, 2)
@@ -778,22 +835,53 @@ def main():
     assert G.Read(G, 0) is None and G.Read(G, 0, "fdj") is not None
     s.g.PatchwerkForever_Stitch_DungeonJournal_Route()
     assert Ch.Is(Ch, "guide", "fdj")
+    text = s.chat()
+    assert text == ["Patchwerk Dungeon Journal: Routing through 2 stops. First: Accept: Horde Job."], text
     # selected: still not what is read as the main route, and read by its name as long as it is the choice
     assert G.Read(G, 0) is None and G.Read(G, 3, "fdj").lines[1].text == "Accept: Horde Job" and Ch.Get(Ch).id == "fdj"
     s.g.PatchwerkForever_Stitch_DungeonJournal_Route()
-    assert Ch.Get(Ch) is None
+    assert Ch.Get(Ch) is None and s.chat() == ["Patchwerk Dungeon Journal: Back to your main route."]
     text = s.slash("dj")
-    assert Ch.Is(Ch, "guide", "fdj") and any("routing through the quests" in t for t in text), text
-    # every quest handed in: no list, and the choice lets go by itself
+    assert Ch.Is(Ch, "guide", "fdj") and any("Routing through 2 stops" in t for t in text), text
+    # /patchwerk dj on, off and status do only that
+    assert s.slash("dj on") == [] and Ch.Is(Ch, "guide", "fdj")
+    assert s.slash("dj status") == ["Patchwerk Dungeon Journal: on: 2 stops, being followed"]
+    assert s.slash("dj off") == ["Patchwerk Dungeon Journal: Back to your main route."] and Ch.Get(Ch) is None
+    assert s.slash("dj stop") == ["Patchwerk Dungeon Journal: The Dungeon Journal list is not being followed."] and Ch.Get(Ch) is None
+    assert s.slash("dj sideways") == ["Patchwerk Dungeon Journal: Usage: /patchwerk dj [on | off | status]"]
+    assert any("Dungeon Journal quests as a route (dj) for ForeverDungeonJournal: on: 2 stops" in t for t in s.slash(""))
+    # every stop skipped: the binding brings them back, since you asked for the list
+    for _ in range(3):
+        info = G.Read(G, 1, "fdj")
+        if info is None:
+            break
+        G.Go(G, info, info.index + 1)
+    assert G.Read(G, 0, "fdj") is None
+    s.chat()
+    s.g.PatchwerkForever_Stitch_DungeonJournal_Route()
+    text = s.chat()
+    assert text[0] == "Patchwerk Dungeon Journal: Skipped stops are back on the list." and Ch.Is(Ch, "guide", "fdj"), text
+    s.g.PatchwerkForever_Stitch_DungeonJournal_Route()
+    s.chat()
+    # every quest handed in: no list, and the choice lets go by itself; asked for, it says why
+    s.g.PatchwerkForever_Stitch_DungeonJournal_Route()
     s.lua.execute("for _, id in ipairs({ 5001, 5003, 5004, 5006 }) do STUB.flagged[id] = true end")
     assert G.Read(G, 0, "fdj") is None and len(G.ReadAll(G, 0)) == 0 and Ch.Get(Ch) is None
+    s.chat()
     s.g.PatchwerkForever_Stitch_DungeonJournal_Route()
-    assert any("nothing to route to" in t for t in s.chat())
-    # switched off; a journal changed beyond recognition; no journal at all: no list, no error
+    assert s.chat() == ["Patchwerk Dungeon Journal: Every quest of your tracked dungeons is turned in."]
+    # a quest held and not finished has its work inside: said with the counts
+    s.lua.execute("STUB.flagged[5001] = nil; STUB.QuestAt(5001, 'Horde Job', 1, -100, -100)")
+    s.g.PatchwerkForever_Stitch_DungeonJournal_Route()
+    text = s.chat()
+    assert text == ["Patchwerk Dungeon Journal: Nothing to route to right now: 4 of 5 turned in, 1 in your quest log to finish in the dungeon, 0 skipped."], text
+    # disabled; a journal changed beyond recognition; no journal at all: no list, no error
     s.lua.execute("STUB.flagged = {}")
     assert G.Read(G, 0, "fdj") is not None
     P.SetSetting(P, "djList", False)
     assert G.Read(G, 0, "fdj") is None
+    s.g.PatchwerkForever_Stitch_DungeonJournal_Route()
+    assert any("Route Dungeon Journal Quests is disabled" in t for t in s.chat())
     P.SetSetting(P, "djList", True)
     s.lua.execute("ForeverDungeonJournal_NS.DB['The Deadmines'].quests = 'moved'; ForeverDungeonJournal_NS.QUEST_START_MAPS = 7")
     assert G.Read(G, 0, "fdj") is None
@@ -801,6 +889,9 @@ def main():
     assert G.Read(G, 0, "fdj") is None
     s.lua.execute("ForeverDungeonJournal_NS = nil")
     assert G.Read(G, 0, "fdj") is None
+    s.g.PatchwerkForever_Stitch_DungeonJournal_Route()
+    assert any("Dungeon Journal is running, but its quest data was not found" in t for t in s.chat())
+    s.stub.loaded["ForeverDungeonJournal"] = False
     s.g.PatchwerkForever_Stitch_DungeonJournal_Route()
     assert any("Dungeon Journal is not running" in t for t in s.chat())
     # the journal running without this part: the base says which addon to get, once
@@ -899,6 +990,81 @@ def main():
     assert R.Remove(R, 1) is True and R.Clear(R) is True and len(R.Entries(R)) == 0
     assert G.Read(G, 0, "route") is None
     assert s.chat() == [], s.chat()
+
+    step("2.7.0: what is followed (Following), percent sliders, a tool's errors said once each and three to a label")
+    s = Session()
+    s.lua.execute("""
+        local made = Settings.CreateSliderOptions
+        Settings.CreateSliderOptions = function(...)
+            local options = made(...)
+            options.SetLabelFormatter = function(_, how, format) STUB.formatted = format and format(99.6) or 'plain' end
+            return options
+        end
+        MinimalSliderWithSteppersMixin = { Label = { Right = 'right' } }
+    """)
+    base = s.addon(BASE)
+    s.login()
+    P = s.g.PatchwerkForever
+    Fo = P.Following
+    told = []
+    Fo.OnChange(Fo, s.lua.eval("function(f) return function(info) f(info and info.key or 'nothing') end end")(lambda k: told.append(k)))
+    Fo.OnChange(Fo, s.lua.eval("function() error('a listener that breaks') end"))
+    s.lua.execute("geterrorhandler = function() return function(problem) STUB.problem = problem end end")
+    assert Fo.Get(Fo) is None
+    Fo.Set(Fo, s.lua.eval("{ kind = 'guide', source = 'rxp', key = 'rxp:12' }"))
+    assert Fo.Get(Fo).key == "rxp:12" and told == ["rxp:12"] and "a listener that breaks" in str(s.stub.problem)
+    Fo.Set(Fo, s.lua.eval("{ kind = 'guide', source = 'rxp', key = 'rxp:12' }"))
+    assert told == ["rxp:12"], "told again of the same thing"
+    Fo.Set(Fo, s.lua.eval("{ kind = 'quest', quest = 870, key = 'rxp:12' }"))
+    Fo.Set(Fo, None)
+    Fo.Set(Fo, None)
+    assert told == ["rxp:12", "rxp:12", "nothing"] and Fo.Get(Fo) is None, told
+    # the way there, told once the route is found: kept while the same destination is told again, and
+    # gone with a new one (2.7.0)
+    Fo.Set(Fo, s.lua.eval("{ kind = 'guide', source = 'route', key = 'route:1' }"))
+    Fo.SetTravel(Fo, "Fly from Crossroads to Thunder Bluff (3 min in all)")
+    assert told[-1] == "route:1" and len(told) == 5 and Fo.Get(Fo).travel.startswith("Fly from"), told
+    Fo.Set(Fo, s.lua.eval("{ kind = 'guide', source = 'route', key = 'route:1' }"))
+    assert Fo.Get(Fo).travel.startswith("Fly from"), "the way there was lost when the same place was told again"
+    Fo.Set(Fo, s.lua.eval("{ kind = 'guide', source = 'route', key = 'route:2' }"))
+    assert Fo.Get(Fo).travel is None
+    Fo.Set(Fo, None)
+    base.SliderOptions(s.lua.eval("{ min = 0, max = 200, step = 5, percent = true }"))
+    assert s.stub.formatted == "100%", s.stub.formatted
+    base.SliderOptions(s.lua.eval("{ min = 0, max = 200, step = 5 }"))
+    assert s.stub.formatted == "plain"
+    tool = s.lua.table()
+    assert P.Tool(P, "PatchwerkForever_MadeUpTool", tool, s.lua.eval("{ saved = 'MadeUpToolDB', name = 'Made Up' }"))
+    for problem in ("one", "one", "two", "three", "four"):
+        tool.Try("an event", s.lua.eval("function(p) error(p, 0) end"), problem)
+    said = list(s.stub.messages.values())[-3:]
+    assert said == ["|cffd6a35bMade Up|r: A problem in an event (reported once): one",
+                    "|cffd6a35bMade Up|r: A problem in an event (reported once): two",
+                    "|cffd6a35bMade Up|r: A problem in an event (reported once): three"], said
+    s.said = len(s.stub.messages)
+
+    step("the Console Port part's binding changes and its fixes, said through Patchwerk")
+    s = Session(saved="{ settings = { foreverNotify = true } }", running=["ConsolePort"], console_port=True)
+    s.addon(BASE)
+    env = s.addon("PatchwerkForever_Stitch_ConsolePort", only=["Link.lua", "Database.lua", "Compat.lua"])
+    s.login()
+    env.Notify(env, "Restored native gamepad bindings: %s", "PAD1 (Ping)")
+    assert s.chat() == ["Patchwerk Console Port: Restored native gamepad bindings: PAD1 (Ping)"]
+    assert env.Applied.GetScaledCursorPosition is True and env.Applied.StaticPopup_Resize is True
+
+    step("MelloUI Route's five actions are named for the game's Key Bindings list")
+    xml = open(os.path.join(ADDONS, "PatchwerkForever_Stitch_MelloUIRoute", "Bindings.xml"), encoding="utf-8").read()
+    controls = open(os.path.join(ADDONS, "PatchwerkForever_Stitch_MelloUIRoute", "Controls.lua"), encoding="utf-8").read()
+    for button in re.findall(r'CLICK (\w+):LeftButton', xml):
+        assert "button = '%s'" % button in controls, button
+    assert len(re.findall(r'CLICK (\w+):LeftButton', xml)) == 5
+
+    step("every binding of the family is under its one heading")
+    for folder in os.listdir(ADDONS):
+        path = os.path.join(ADDONS, folder, "Bindings.xml")
+        if folder.startswith("PatchwerkForever") and os.path.exists(path):
+            for binding in re.findall(r"<Binding [^>]*>", open(path, encoding="utf-8").read()):
+                assert 'category="BINDING_CATEGORY_PatchwerkForever"' in binding, (folder, binding)
 
     step("every part carries the same joining file")
     for part in PARTS[1:]:

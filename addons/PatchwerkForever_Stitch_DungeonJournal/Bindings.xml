@@ -1,5 +1,7 @@
 <Bindings>
-	<Binding name="PATCHWERKFOREVER_DUNGEONJOURNAL_ROUTE" header="PATCHWERKFOREVER_DUNGEONJOURNAL" category="ADDONS">
-		PatchwerkForever_Stitch_DungeonJournal_Route()
+	<!-- The body asks first whether its function is there: with a base too old for this addon the
+	     files after Link.lua do nothing, and a bound key would otherwise give a Lua error. -->
+	<Binding name="PATCHWERKFOREVER_DUNGEONJOURNAL_ROUTE" header="PATCHWERKFOREVER_DUNGEONJOURNAL" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Stitch_DungeonJournal_Route then PatchwerkForever_Stitch_DungeonJournal_Route() end
 	</Binding>
 </Bindings>

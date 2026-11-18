@@ -1,7 +1,12 @@
 -- Thread (Routes): the route on the minimap.
 --
 -- Lines over the minimap for the part of the route within its view, turned with the minimap when it
--- turns with the character, and cut off at its round edge.
+-- turns with the character, and cut off at its edge (round, or square where the minimap says it is).
+--
+-- Drawn again when something it shows may have changed (where you stand, the route, the minimap's
+-- view, a setting), looked at twenty times a second; and every frame while the minimap turns with
+-- you (Rotate Minimap), so the trail turns with it rather than a step behind. The herb and ore
+-- nodes on the minimap (Nodes.lua) are drawn the same way.
 --
 -- The layer is a frame of its own laid over the minimap, not a part of the minimap: with MelloUI's
 -- Route and EllesmereUI's minimap both running, a layer inside the minimap went with the minimap
@@ -10,7 +15,7 @@
 local ADDON, ns = ...
 if not ns.linked then return end
 
-local EVERY = 0.05        -- seconds between redraws
+local EVERY = 0.05        -- seconds between looks at whether to draw again
 local MOST = 160          -- lines at most
 local MOST_DOTS = 200     -- and dots
 local STEADY = 1          -- seconds the minimap must hold still for after a login or reload
@@ -74,6 +79,59 @@ function ns.MinimapLayer()
 	return frame
 end
 
+-- Whether the minimap turns with the character, and which way the character faces then.
+local function Facing()
+	if GetCVar('rotateMinimap') ~= '1' or not GetPlayerFacing then return nil end
+	return GetPlayerFacing()
+end
+
+-- Keeps something drawn over the minimap up to date. draw() draws it; always(), where given, says it
+-- must be drawn at each look all the same (a flowing trail). Returns { On = function(on), Dirty = function() }:
+-- On starts or stops it, Dirty has it drawn at the next look. Each look compares what the drawing rests
+-- on with the last time (where you stand, the minimap's view, size, place and whether it is shown);
+-- while the minimap is settling after a login (see Settled) every look draws. A skipped look leaves
+-- nothing floating: a minimap hidden or faded out changes what is compared, and is drawn (hidden) for.
+function ns.MinimapRedraws(label, draw, always)
+	local ticker, dirty = nil, true
+	local lx, ly, lmap, lview, lwidth, lleft, ltop, lshown, lface
+	local function Look()
+		local px, py, map = ns.Place()
+		local view = C_Minimap and C_Minimap.GetViewRadius and C_Minimap.GetViewRadius()
+		local shown = Minimap and Minimap:IsVisible() and not (Minimap.GetEffectiveAlpha and Minimap:GetEffectiveAlpha() < 0.05)
+		local width = Minimap and Minimap:GetWidth()
+		local left, top = Minimap and Minimap:GetLeft(), Minimap and Minimap:GetTop()
+		local face = Facing()
+		if not (dirty or settling or (always and always())) and px == lx and py == ly and map == lmap
+			and view == lview and width == lwidth and left == lleft and top == ltop and shown == lshown and face == lface then
+			return
+		end
+		dirty = false
+		lx, ly, lmap, lview, lwidth, lleft, ltop, lshown, lface = px, py, map, view, width, left, top, shown, face
+		draw()
+	end
+	-- every frame while the minimap turns with you: only a turn is looked for there, the rest at each look
+	local turner = CreateFrame('Frame', nil, UIParent)
+	turner:Hide()
+	turner:SetScript('OnUpdate', function()
+		local face = Facing()
+		if face and face ~= lface then ns.Try(label, Look) end
+	end)
+	local self = {}
+	function self.On(on)
+		if on and not ticker then
+			dirty = true
+			ticker = C_Timer.NewTicker(EVERY, function() ns.Try(label, Look) end)
+			turner:Show()
+		elseif not on and ticker then
+			ticker:Cancel()
+			ticker = nil
+			turner:Hide()
+		end
+	end
+	function self.Dirty() dirty = true end
+	return self
+end
+
 local layer, lines, used = nil, {}, 0
 local dots, dotted = {}, 0
 
@@ -89,6 +147,7 @@ local function Layer()
 end
 
 -- The part of a line inside a circle of radius r about the middle, or nil.
+-- (A square minimap's edge is a box: ns.ClipBox, Trail.lua.)
 local function InCircle(ax, ay, bx, by, r)
 	local dx, dy = bx - ax, by - ay
 	local a = dx * dx + dy * dy
@@ -115,10 +174,13 @@ local function Trail()
 	local px, py, map, perYard, sin, cos, radius = ns.MinimapView(parent, 8)
 	if not px then return end
 	local edge = radius * 0.96
+	-- (asked as the node icons ask, Nodes.lua: a minimap addon that makes it square says so here)
+	local square = GetMinimapShape and GetMinimapShape() == 'SQUARE'
 	local full = ns.Get('trailThickMini') or 2.5
 	local thick, alpha = full, 0.9
-	local pen = ns.TrailPen(1, true)
+	local pen = ns.TrailPen(1, true, full)
 	local r, g, b = 1, 1, 1
+	local chosen
 	local function line(x1, y1, x2, y2)
 		if used >= MOST then return end
 		used = used + 1
@@ -162,6 +224,7 @@ local function Trail()
 	local drew = false
 	local function Run(trail, follow)
 		points, at, loose = trail.points, follow and trail.at or nil, follow and trail.loose
+		chosen, alpha = ns.TrailLook(trail, follow, 0.9, 0.45)
 		if map ~= trail.map then
 			points, at = trail.parts and trail.parts[map], nil
 		end
@@ -171,16 +234,21 @@ local function Trail()
 			if used >= MOST then break end
 			local ax, ay = spot(i)
 			local bx, by = spot(i + 1)
-			local cx, cy, ex, ey = InCircle(ax, ay, bx, by, edge)
+			local cx, cy, ex, ey
+			if square then
+				cx, cy, ex, ey = ns.ClipBox(ax, ay, bx, by, -edge, -edge, edge, edge)
+			else
+				cx, cy, ex, ey = InCircle(ax, ay, bx, by, edge)
+			end
 			if cx and points[i + 1][3] ~= 'gap' then
-				r, g, b = ns.TrailColour(points[i + 1][3], follow and ns.dest and ns.dest.chosen)
+				r, g, b = ns.TrailColour(points[i + 1][3], chosen)
 				ns.Stroke(pen, cx, cy, ex, ey, line, dot)
 			end
 		end
 	end
 	if route and map == route.map then Run(route, true) end
 	-- the way on through a guide's next steps (Ahead.lua): fainter and finer
-	thick, alpha = full * 0.7, 0.45
+	thick = full * 0.7
 	for _, leg in ipairs(ahead or {}) do
 		Run(leg, false)
 	end
@@ -191,14 +259,12 @@ local function Draw()
 	if not Trail() and layer then layer:Hide() end
 end
 
-local ticker
+local redraws = ns.MinimapRedraws('the minimap trail', Draw, ns.TrailMoves)
 local function Watch()
 	local want = (ns.route ~= nil or ns.ahead ~= nil) and ns.Get('minimap')
-	if want and not ticker then
-		ticker = C_Timer.NewTicker(EVERY, function() ns.Try('the minimap trail', Draw) end)
-	elseif not want and ticker then
-		ticker:Cancel()
-		ticker = nil
+	redraws.Dirty()
+	redraws.On(want)
+	if not want then
 		Clear()
 		if layer then layer:Hide() end
 	end
@@ -210,5 +276,5 @@ ns.On('PLAYER_ENTERING_WORLD', function()
 	since, began = GetTime(), GetTime()
 end)
 ns.OnSetting(function(key)
-	if key == 'minimap' then Watch() end
+	if key == 'minimap' then Watch() else redraws.Dirty() end
 end)

@@ -164,7 +164,7 @@ def main():
         for text in new:
             print("      chat: " + text.replace("|cffe0b04d", "").replace("|r", ""))
         if not problems_ok:
-            problems = [t for t in new if "a problem in" in t or "error" in t.lower()]
+            problems = [t for t in new if "a problem" in t.lower() or "error" in t.lower()]
             assert not problems, problems
         return " / ".join(new)
 
@@ -200,6 +200,14 @@ def main():
     chat()
     pages = sorted(stub.pages.keys())
     assert "Thread: Immersive Plainsrunning" in pages and "Plainsrunning: Effects" in pages, pages
+    # every slider whose tooltip once said "in percent" shows a percent sign; the bindings in the family's section
+    defs = [d for d in ns.settings.values() if d.key]
+    assert not any(d.desc.endswith(", in percent.") for d in defs), [d.key for d in defs if d.desc.endswith(", in percent.")]
+    assert sum(1 for d in defs if d.percent) == 13, [d.key for d in defs if d.percent]
+    bindings = open(os.path.join(ADDONS, PLAINS, "Bindings.xml"), encoding="utf-8").read()
+    assert bindings.count('category="BINDING_CATEGORY_PatchwerkForever"') == 2 and "ADDONS" not in bindings
+    slash("help")
+    assert "/plains records reset: forget your run records" in chat()
 
     step("the passive alone (same name, no stacks): nothing runs")
     buff(0)
@@ -503,9 +511,9 @@ def main():
     buff(0)
     run(0.5)
     text = chat()
-    assert "New record! longest at full speed: 0:35 (was 0:21)" in text, text
-    assert "fastest to 30 stacks: 0:12 (was 0:15)" in text, text
-    assert "farthest run" in text, text
+    assert "New record! Longest at full speed: 0:35 (was 0:21)." in text, text
+    assert "Fastest to 30 stacks: 0:12 (was 0:15)" in text, text
+    assert "Farthest run" in text, text
     _, db = ns.RecordsState()
     assert db.runs == 2 and abs(db.farthest - 10.0 * (12.06 + 25.42)) < 3, db.farthest
 
@@ -598,7 +606,7 @@ def main():
     run(0.1)
     assert alpha() == 1, alpha()
     text = chat(problems_ok=True)
-    assert "stopped" in text and text.count("a problem in speed mode") == 1, text
+    assert text.count("Speed mode stopped after a problem, and your interface is back") == 1, text
     run(0.5)
     buff(30)
     run(0.5)

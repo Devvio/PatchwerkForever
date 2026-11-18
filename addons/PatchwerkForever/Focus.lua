@@ -20,11 +20,11 @@ local P = ns.P;
 -- tool that follows it says so.
 --
 --     PatchwerkForever.Focus:Get()          the focus in use ('auto' when none)
---     PatchwerkForever.Focus:Set(id)        true when it is one of Available
+--     PatchwerkForever.Focus:Set(id)        true when it is known: Auto, Quests or a registered reader
 --     PatchwerkForever.Focus:Available()    { { id =, name = }, ... }: what can be chosen now
 --     PatchwerkForever.Focus:Name(id)       its name, as shown
 --     PatchwerkForever.Focus:Next()         the next of Available after the one in use (a key)
---     PatchwerkForever.Focus:OnChange(fn)   fn(id) whenever it changes
+--     PatchwerkForever.Focus:OnChange(fn)   fn(id) whenever it is set to another
 --
 -- Kept in PatchwerkForeverDB.characters[<character's GUID>].focus.
 

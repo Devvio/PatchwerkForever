@@ -12,7 +12,7 @@ When Patchwerk stops, everything comes back. Patchwerk sewed it all on very care
 
 For Tauren in **World of Warcraft: Forever**. As **Plainsrunning** stacks up, the interface slowly fades away until nothing is left but the world; then streaks of speed rush outward across the screen, with wind, dust, rings and a glow if you like, and the camera eases back. The moment the run ends, a fight starts or you open a window, it all comes back. Each character keeps its run records.
 
-One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the settings pages, and nothing else.
+One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the options pages, and nothing else.
 
 ## How it goes
 
@@ -38,7 +38,7 @@ Even while the buff lasts, the interface comes back:
 - **When you stand still** for five seconds. It fades away again once you have been moving for five seconds, if the buff is still on you. Both can be changed (**Seconds Standing Still**, **Seconds Moving Again**).
 - **When you die or take a flight.**
 
-Each can be turned off on **Thread: Immersive Plainsrunning**. Hold the **Show Interface While Held** key to see the interface for a moment; `/plains show` brings it back for the rest of the run.
+Each can be turned off on **Thread: Immersive Plainsrunning** (Options → AddOns → Patchwerk Forever, or `/plains config`). Hold the **Show Interface While Held** key to see the interface for a moment; `/plains show` brings it back for the rest of the run.
 
 ## Is it safe?
 
@@ -71,15 +71,17 @@ Each character keeps its records: the **longest time at full speed** (30 stacks)
 
 | Command | Does |
 |---|---|
-| `/plains` | says your stacks, how far the interface is faded, and why it is kept if it is |
+| `/plains` | says your stacks, how far the interface is faded, and why it is kept if it is (`/pfplains` is the same; `/plains help` lists the commands) |
 | `/plains on` / `off` | turns speed mode on or off |
 | `/plains test` | pretends to run with Plainsrunning for fifteen seconds |
 | `/plains show` | brings the interface back for the rest of this run |
 | `/plains records` | lists this character's run records |
 | `/plains records reset` | forgets this character's run records |
-| `/plains config` | opens the settings |
+| `/plains config` | opens the options |
 
-Two actions can be bound to a key or a gamepad button (Options → Keybindings → AddOns, or Console Port's binding list): Show Interface While Held and Turn Speed Mode On Or Off.
+Bind these under Options → Keybindings → Patchwerk Forever, or in Console Port's binding list: **Show Interface While Held** and **Turn Speed Mode On Or Off**.
+
+Something wrong? Report it as a comment on the addon's CurseForge page.
 
 ## Credits
 

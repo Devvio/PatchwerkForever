@@ -1,0 +1,9 @@
+<Bindings>
+	<!-- Each clicks one of the buttons Controls.lua makes (Travel.lua the shortcut's own); a button
+	     that was not made, with MelloUI's Route missing, makes the key do nothing. -->
+	<Binding name="CLICK PatchwerkRouteBlock:LeftButton" header="PATCHWERKFOREVER_MELLOUIROUTE" category="BINDING_CATEGORY_PatchwerkForever"/>
+	<Binding name="CLICK PatchwerkRouteUnblock:LeftButton" category="BINDING_CATEGORY_PatchwerkForever"/>
+	<Binding name="CLICK PatchwerkRouteQuestRun:LeftButton" category="BINDING_CATEGORY_PatchwerkForever"/>
+	<Binding name="CLICK PatchwerkRouteNextStop:LeftButton" category="BINDING_CATEGORY_PatchwerkForever"/>
+	<Binding name="CLICK PatchwerkRouteTravel:LeftButton" category="BINDING_CATEGORY_PatchwerkForever"/>
+</Bindings>

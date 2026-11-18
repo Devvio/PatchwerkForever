@@ -78,7 +78,7 @@ local function Ask(id, count)
 		-- (a guide addon changed under its reader: said once, and the next reader is asked)
 		if not reported[id] then
 			reported[id] = true;
-			P:Print(('The reader for %s failed and was skipped: %s'):format(reader.name or id, tostring(info)))
+			ns.Say(('The reader for %s failed and was skipped: %s'):format(reader.name or id, tostring(info)))
 		end
 		return nil;
 	end
@@ -158,6 +158,26 @@ function Guides.Here()
 	local x, y, _, map = UnitPosition('player');
 	if not x then return nil end;
 	return x, y, map;
+end
+
+-- For readers: the name of one of the game's maps (a zone, usually), or nil.
+function Guides.ZoneName(uiMap)
+	if ( type(uiMap) ~= 'number' or not ( C_Map and C_Map.GetMapInfo ) ) then return nil end;
+	local ok, info = pcall(C_Map.GetMapInfo, uiMap);
+	local name = ok and type(info) == 'table' and info.name;
+	return type(name) == 'string' and name ~= '' and name or nil;
+end
+
+-- For readers: the zone a quest in your log is done in (or the map the game would open for it), or nil.
+function Guides.QuestZone(id)
+	local get = rawget(_G, 'GetQuestUiMapID');
+	if ( type(get) ~= 'function' ) then return nil end;
+	for _, done in ipairs({ true, false }) do
+		local ok, uiMap = pcall(get, id, done or nil);
+		local name = ok and Guides.ZoneName(uiMap);
+		if name then return name end;
+	end
+	return nil;
 end
 
 -- For readers: where the game marks a quest in your log (its next objective, or whoever takes it in once

@@ -5,8 +5,8 @@
 -- Journal list, My Route) or your quests only. This row has one small button for each focus there is
 -- to choose now, the one in use lit, and the name of the one in use beside them. A click follows that
 -- one; a right-click on the row gives the same choices as a menu. Choosing a focus lets go of a list
--- you selected in the tracker (a click on a side list), since the focus is now that choice; a quest
--- you clicked still comes first, as it does over your guide.
+-- you selected in the tracker (a click on a side list: the base's Focus:Set does that), since the
+-- focus is now that choice; a quest you clicked still comes first, as it does over your guide.
 --
 -- Thread (Routes) follows the focus and has /thread focus and the focus key bindings; this is only a
 -- place to see and change it. "Show Focus Buttons" hides the row.
@@ -39,11 +39,8 @@ local function Icon(id)
 	return ICONS[id] or OTHER
 end
 
--- Follows the focus `id` (see the top of this file for the list let go).
+-- Follows the focus id (see the top of this file for the list let go).
 function ns.ChooseFocus(id)
-	local Choice = ns.Base.Choice
-	local pick = Choice:Get()
-	if pick and pick.kind == 'guide' then Choice:Clear() end
 	ns.Base.Focus:Set(id)
 	ns.Refresh()
 end
@@ -70,7 +67,7 @@ local function Tip(self)
 	else
 		tip:AddLine('Click to follow.', 1, 1, 1)
 	end
-	tip:AddLine('Right-click for a menu.', 0.6, 0.6, 0.6)
+	tip:AddLine('Right-click for more options.', 0.6, 0.6, 0.6)
 	tip:Show()
 end
 

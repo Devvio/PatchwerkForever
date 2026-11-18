@@ -21,7 +21,7 @@ Nothing in MelloUI's own files is changed.
 ## What it does
 
 - **MelloUI and EllesmereUI game menu buttons** no longer sit on top of each other. Only matters when you run both.
-- **MelloUI trimmed to Route and the Quest Tracker** (optional, **off until you ask**): the **Only Route And The Quest Tracker** setting, or `/patchwerk mello on`, switches every other MelloUI module off and unticks MelloUI's other addons, for using its Route beside another interface addon. It does this once for each character's MelloUI profile (MelloUI keeps one a character since 2.1.46): anything you switch back on in MelloUI afterwards stays on. Turning the setting off does not switch anything back on; use `/mello` and the addon list for that.
+- **MelloUI trimmed to Route and the Quest Tracker** (optional, **off until you ask**): the **Only Route And The Quest Tracker** setting, or `/patchwerk mello on`, disables every other MelloUI module and MelloUI's other addons, for using its Route beside another interface addon. It does this once for each character's MelloUI profile (MelloUI keeps one a character since 2.1.46): anything you enable again in MelloUI afterwards stays enabled. Disabling the setting does not enable anything again; use `/mello` and the addon list for that.
 
 ## Settings and commands
 
@@ -37,3 +37,5 @@ For additions to MelloUI's route planner itself, see **Patchwerk Forever: Stitch
 ## Credits
 
 Not affiliated with MelloUI, which is by MelloCro, or with EllesmereUI. This addon is under the MIT License.
+
+**Reporting a problem:** please leave a comment on the addon's CurseForge page, with the chat line it printed if there is one.

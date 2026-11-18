@@ -51,9 +51,11 @@ function ns.RouteSelected()
 	return selected
 end
 
--- Is My Route the track being followed now: the list you selected, or the focus with nothing chosen
--- before it (a quest you clicked, a gathering run).
+-- Is My Route the track being followed now: what Thread (Routes) says; without its word, the list
+-- you selected, or the focus with nothing chosen before it (a quest you clicked, a gathering run).
 function ns.RouteFollowed()
+	local said = ns.FollowingNow()
+	if said then return said.kind == 'guide' and said.source == SOURCE end
 	local Choice = ns.Base.Choice
 	if Choice:Is('guide', SOURCE) then return true end
 	if Choice:Get() then return false end
@@ -89,30 +91,16 @@ ns.RouteYards = Yards
 -- Going to a stop
 ---------------------------------------------------------------------------
 -- The base puts any stop first for this session without changing the saved order (MyRoute:Lead).
--- (A base without Lead moves along the list only as the guides do, through Guides:Go: the stop after
--- the one you are on skips it, a later one is put first, an earlier one takes back the last skip. It
--- is asked again until that stop is the one you are on: a few times at most, once for each skip.)
 function ns.RouteGo(index)
-	local Guides = ns.Base.Guides
-	local entries = MyRoute():Entries()
-	local target = entries[index]
+	local target = MyRoute():Entries()[index]
 	if not target then return false end
 	if not target.map then
 		ns.Print(('No place is known for %s yet.'):format(target.name))
 		return false
 	end
 	Follow()
-	if type(MyRoute().Lead) == 'function' then
-		MyRoute():Lead(index)
-	else
-		for _ = 1, #entries + 1 do
-			local info = Guides:Read(0, SOURCE)
-			if not info or info.route == index then break end
-			if not Guides:Go(info, index) then break end
-		end
-	end
-	ns.Refresh()
-	local info = Guides:Read(0, SOURCE)
+	MyRoute():Lead(index)
+	local info = ns.Base.Guides:Read(0, SOURCE)
 	return info ~= nil and info.route == index
 end
 
@@ -137,12 +125,13 @@ function ns.RouteWalk(step)
 	if not to then
 		Follow()
 		ns.Print(step > 0 and 'This is the last stop in My Route.' or 'This is the first stop in My Route.')
+		ns.Wake()
 		ns.Refresh()
 		return true
 	end
 	if ns.RouteGo(to) then
 		selected = entries[to].key
-		ns.Print(('Routing to: %s (stop %d of %d).'):format(entries[to].name, to, #entries))
+		ns.Print(('Routing to stop %d of %d in My Route: %s.'):format(to, #entries, entries[to].name))
 	end
 	ns.Reveal()
 	return true
@@ -239,7 +228,8 @@ function ns.RouteAddPin()
 	end
 	local info = C_Map and Ask(C_Map.GetMapInfo, pin.uiMapID)
 	local label = (type(info) == 'table' and type(info.name) == 'string') and ('Map Pin: ' .. info.name) or 'Map Pin'
-	ns.RouteAdd({ kind = 'spot', map = map, x = wx, y = wy, label = label }, label)
+	local zone = (type(info) == 'table' and type(info.name) == 'string') and info.name or nil
+	ns.RouteAdd({ kind = 'spot', map = map, x = wx, y = wy, label = label, zone = zone }, label)
 end
 
 function ns.RouteOrder()
@@ -363,7 +353,7 @@ local function Rows()
 	return out
 end
 
--- A stop's colour by what is to be done there.
+-- A stop's color by what is to be done there.
 function ns.RouteColour(state)
 	if state == 'done' then return ns.RGB(ns.Get('lookDone')) end
 	if state == 'nowhere' then return 0.5, 0.5, 0.5 end
@@ -389,6 +379,24 @@ ns.AddSection('route', 30, function()
 	local current = now and now.route
 	local followed = ns.RouteFollowed()
 	local blocks = {}
+	-- at the top, where the route goes next: the stop, its zone, and while My Route is followed, how
+	-- the way goes there (where to fly from and to), as Thread (Routes) words it once the route is found
+	local coming = current and entries[current]
+	if coming then
+		local lines = {}
+		if coming.zone then lines[#lines + 1] = { text = 'In ' .. coming.zone } end
+		local info = followed and ns.Base.Following and ns.Base.Following:Get()
+		if info and info.source == SOURCE and info.travel then lines[#lines + 1] = { text = info.travel } end
+		blocks[#blocks + 1] = {
+			key = 'route:next', title = ('Next: %s'):format(coming.name), lines = lines,
+			r = 1, g = 0.82, b = 0,
+			tip = { 'Where My Route goes next.', 'Click to route there.' },
+			click = function()
+				local i = IndexOf(coming.key)
+				if i then ns.RouteGo(i) end
+			end,
+		}
+	end
 	for _, one in ipairs(entries) do
 		local index, key = one.index, one.key
 		local r, g, b = ns.RouteColour(one.state)
@@ -396,10 +404,11 @@ ns.AddSection('route', 30, function()
 		local word = WORDS[one.state]
 		blocks[#blocks + 1] = {
 			key = 'route:' .. key, title = title, r = r, g = g, b = b, routeIndex = index,
-			lines = word and { { text = word, done = one.state == 'done', r = one.state == 'nowhere' and 0.5 or nil,
+			lines = word and { { text = one.zone and ('%s (%s)'):format(word, one.zone) or word, done = one.state == 'done', r = one.state == 'nowhere' and 0.5 or nil,
 				g = one.state == 'nowhere' and 0.5 or nil, b = one.state == 'nowhere' and 0.5 or nil } } or nil,
 			note = ns.Get('distance') and ns.YardsText(Yards(one.map, one.x, one.y)) or nil,
 			mark = followed and current == index,
+			tip = { 'Click to go here first.', 'Drag to move it.', 'Right-click for more options.' },
 			click = function(button, block)
 				selected = key
 				if button == 'RightButton' then
@@ -419,7 +428,11 @@ ns.AddSection('route', 30, function()
 		menu = menu, blocks = blocks, tick = ns.Get('distance') and true or nil }
 end)
 
--- (the list, the choice and the focus change at a click, in this addon or another: drawn again then)
+-- (the list, the choice and the focus change at a click, in this addon or another: drawn again then.
+-- A focus changed by a key binding of Thread (Routes) wakes a faded tracker, as the tracker's own keys do.)
 MyRoute():OnChange(function() ns.Refresh() end)
 ns.Base.Choice:OnChange(function() ns.Refresh() end)
-ns.Base.Focus:OnChange(function() ns.Refresh() end)
+ns.Base.Focus:OnChange(function()
+	ns.Wake()
+	ns.Refresh()
+end)

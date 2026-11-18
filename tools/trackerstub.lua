@@ -20,7 +20,7 @@ local function Writing(fs)
 	function fs:GetText() return self.text end
 	function fs:SetWidth(w) assert(w > 0, 'writing given no width') self.width = w end
 	function fs:SetJustifyH(how) assert(how == 'CENTER' or how == 'LEFT' or how == 'RIGHT') end
-	function fs:SetWordWrap(on) assert(type(on) == 'boolean') end
+	function fs:SetWordWrap(on) assert(type(on) == 'boolean') self.wrap = on end
 	function fs:IsShown() return self.shown end
 	-- as tall as its lines: about two letters to the font's size in width
 	function fs:GetStringHeight()
@@ -29,6 +29,7 @@ local function Writing(fs)
 		local lines = math.max(1, math.ceil(#(self.text or '') / across))
 		return lines * (size + 2)
 	end
+	function fs:GetStringWidth() return #(self.text or '') * (self.size or 12) * 0.55 end
 	return fs
 end
 
@@ -103,6 +104,9 @@ function CreateFrame(kind, name, parent, template)
 		self.propagate = on
 	end
 	function frame:RegisterForClicks(...) self.clicks = { ... } end
+	-- the game's own look for a button pointed at and pressed
+	function frame:SetHighlightTexture(path, mode) assert(type(path) == 'string') self.highlight = { path, mode } end
+	function frame:SetPushedTexture(path) assert(type(path) == 'string') self.pushed = path end
 	function frame:GetScale() return self.scale or 1 end
 	-- Where a frame hung from the screen is, in its own units as the game gives it: worked out from
 	-- its last SetPoint, its size and its scale (the offsets of a SetPoint are counted in the frame's
@@ -194,6 +198,28 @@ STUB.cursor = { x = 0, y = 0 }
 function GetCursorPosition() return STUB.cursor.x, STUB.cursor.y end
 -- the frames Escape closes
 UISpecialFrames = {}
+-- The game's tooltip: what it was last given, kept for a check to read. STUB.tip.lines holds its title
+-- and lines while it is shown; owner is the frame it was shown for.
+STUB.tip = { lines = {} }
+GameTooltip = {
+	SetOwner = function(self, owner, anchor) assert(owner and type(anchor) == 'string') STUB.tip.owner, STUB.tip.lines = owner, {} end,
+	GetOwner = function(self) return STUB.tip.owner end,
+	ClearAllPoints = function(self) STUB.tip.points = {} end,
+	SetPoint = function(self, point, to, rel, x, y)
+		assert(type(point) == 'string' and to, 'a tooltip placed against nothing')
+		STUB.tip.points = STUB.tip.points or {}
+		STUB.tip.points[#STUB.tip.points + 1] = { point, to, rel, x, y }
+	end,
+	SetText = function(self, text) assert(type(text) == 'string') STUB.tip.lines = { text } end,
+	AddLine = function(self, text) assert(type(text) == 'string') STUB.tip.lines[#STUB.tip.lines + 1] = text end,
+	SetHyperlink = function(self, link) STUB.tip.lines = { tostring(link) } end,
+	SetItemByID = function(self, id) STUB.tip.lines = { 'item ' .. tostring(id) } end,
+	Show = function(self) STUB.tip.shown = true end,
+	Hide = function(self) STUB.tip.shown, STUB.tip.owner = false, nil end,
+}
+-- the red error text in the middle of the screen
+STUB.errors = {}
+UIErrorsFrame = { AddMessage = function(self, text, r, g, b) assert(type(text) == 'string' and r and g and b) STUB.errors[#STUB.errors + 1] = text end }
 -- who you are: each character keeps its own focus and My Route (the base's Focus.lua)
 STUB.guid = 'Player-1-0001'
 local unitGUID = UnitGUID

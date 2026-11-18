@@ -165,16 +165,14 @@ local function Make()
 	local back = win:CreateTexture(nil, 'BACKGROUND')
 	back:SetAllPoints(win)
 	back:SetColorTexture(0, 0, 0, 0.85)
-	-- a thin edge in the header colour, and a row of stitches under the title, as the tracker's headings have
+	-- a thin edge in the header color at its top and its foot
 	local hr, hg, hb = ns.RGB(ns.Get('lookHeader'))
-	win.edges = {}
 	for _, side in ipairs({ 'TOP', 'BOTTOM' }) do
 		local e = win:CreateTexture(nil, 'BORDER')
 		e:SetPoint(side .. 'LEFT', win, side .. 'LEFT', 0, 0)
 		e:SetPoint(side .. 'RIGHT', win, side .. 'RIGHT', 0, 0)
 		e:SetHeight(1)
 		e:SetColorTexture(hr, hg, hb, 0.8)
-		win.edges[#win.edges + 1] = e
 	end
 	-- the title bar, to drag the window by
 	local bar = CreateFrame('Frame', nil, win)

@@ -6,7 +6,7 @@ The Patchwerk Forever addons for **World of Warcraft: Forever**, and the tools t
 
 One parent and two tracks. Each addon is its own download (a CurseForge project of its own), so people install only what they use.
 
-- **Patchwerk Forever** is the parent: the base every other addon here needs. It holds the settings home, the saved data of the Stitches, `/patchwerk` and the API the others join. It does nothing by itself.
+- **Patchwerk Forever** is the parent: the base every other addon here needs. It holds the settings home, the saved data of the Stitches, `/patchwerk`, the API the others join, and the services they share (the guide readers, gathering, the route focus and My Route). It does nothing by itself.
 - **Stitch** is what is sewn onto other people's addons: fixes and additions for third-party addons. A Stitch needs the base and the addon it is for.
 - **Thread** is our own tools: first-party, needing nothing but the base.
 
@@ -17,14 +17,14 @@ One parent and two tracks. Each addon is its own download (a CurseForge project 
 | `addons/PatchwerkForever_Stitch_MelloUIRoute` | **Stitch (MelloUI Route)**: additions to MelloUI's route planner. | the base, MelloUI |
 | `addons/PatchwerkForever_Stitch_DungeonJournal` | **Stitch (Dungeon Journal)**: the quests of the dungeons tracked in DungeonJournal as a list to route through. Reads the journal as it runs; holds none of its data. | the base, DungeonJournal |
 | `addons/PatchwerkForever_Stitch_MelloUI` | **Stitch (MelloUI)**: the game menu button fix and the trim to Route and the Quest Tracker. | the base, MelloUI |
-| `addons/PatchwerkForever_Thread_Routes` | **Thread (Routes)**: a route planner with its own map data, and herb and ore spots. | the base |
+| `addons/PatchwerkForever_Thread_Routes` | **Thread (Routes)**: a route planner with its own map data, and herb and ore spots. It follows the focus you choose (your guide, the Dungeon Journal list, your quests or My Route). Its plan and early log are in `tools/PLAN.md`. | the base |
 | `addons/PatchwerkForever_Thread_Routes_Kalimdor`, `_EasternKingdoms`, `_ZephrasIsle` | Routes' map data, one folder a continent, loaded on demand. Written by `tools/pack.py`; not edited by hand. They ship in Routes' zip. | Thread (Routes) |
 | `addons/PatchwerkForever_Thread_Sparkle` | **Thread (Sparkle)**: a sparkle and a name on things you can use, and a wisp that carries what you loot into your bag. | the base |
 | `addons/PatchwerkForever_Thread_Races` | **Thread (Races)**: race courses of your own: checkpoints placed as you ride, a marker on the next one in the world, split times and best runs, courses shared with your party. | the base |
 | `addons/PatchwerkForever_Thread_Plainsrunning` | **Thread (Immersive Plainsrunning)**: for Tauren: the interface fades away as Plainsrunning stacks up, then speed streaks rush across the screen; it all comes back when the run ends, a fight starts or a window opens. | the base |
-| `addons/PatchwerkForever_Thread_Tracker` | **Thread (Tracker)**: a quest tracker of our own: quests by zone, the guide's steps, item buttons, recipes, gathering. 1.0. Its history is in `tools/PLAN-tracker.md`. | the base |
+| `addons/PatchwerkForever_Thread_Tracker` | **Thread (Tracker)**: a quest tracker of our own: quests by zone, the guide's steps, item buttons, recipes, gathering, the focus buttons and My Route. Its plan is in `tools/PLAN-tracker.md`, focus and My Route in `TRACKING-BLUEPRINT.md`. | the base |
 
-Each addon has its own README, changelog and licence in its folder.
+Each addon has its own README, changelog and licence in its folder. The base's README names every part of the family, and `tools/release.py` checks that it does.
 
 ### How an addon joins the base
 
@@ -35,15 +35,16 @@ Its TOC says `## Dependencies: PatchwerkForever` and lists `Link.lua` first. Eve
 
 - **The guide you are running** is read by the base, for any tool that wants it: `PatchwerkForever.Guides:Read(count)` gives the step you are on, its lines, where it sends you and the steps after it (the base's `Guides.lua` describes all of it). There is one reader for each guide addon, in `addons/PatchwerkForever/Guides/` (RestedXP for a start). A reader looks at its guide addon as it runs, changes nothing of it, and says nothing when that addon is not running. **To add a guide addon:** one file there that ends in `Guides:Register(id, { name = ..., Read = ... })`, and one line in the base's TOC. First find where that addon keeps its steps while it runs, and read its licence: nothing of it is copied.
 
-To add one: a new folder under `addons/` named for its track (`PatchwerkForever_Stitch_<Addon>` or `PatchwerkForever_Thread_<Tool>`) with a TOC, `Link.lua`, a README, a CHANGELOG, a LICENSE; an entry in `PROJECTS` in `tools/release.py`; an icon in `tools/art.py` (or your own in `art/`); and, for a Stitch, a line in the base's `P.Family` if players should be told when it is missing.
+To add one: a new folder under `addons/` named for its track (`PatchwerkForever_Stitch_<Addon>` or `PatchwerkForever_Thread_<Tool>`) with a TOC, `Link.lua`, a README, a CHANGELOG, a LICENSE; an entry in `PROJECTS` in `tools/release.py` and a row in the base's README (the release checks it); an icon in `tools/art.py` (or your own in `art/`); and, for a Stitch, a line in the base's `P.Family` if players should be told when it is missing.
 
 ## Other folders
 
 | Folder | What it is |
 |---|---|
-| `tools` | Python tools: reading the game's files, building Routes' map data, testing the Lua outside the game, drawing the art, building the addons into the game, building the uploads. `tools/PLAN.md` is the plan and the log of what was built and what was tried in the game. |
+| `tools` | Python tools: reading the game's files, building Routes' map data, testing the Lua outside the game, drawing the art, building the addons into the game, building the uploads. `tools/PLAN.md` and `tools/PLAN-tracker.md` are the plans and logs of Routes and the Tracker; `tools/POLISH-findings.md` holds the polish audit's findings in full. |
 | `art` | Your own pictures, used in place of the drawn icons or beside them. See `art/README.md`. |
 | `release` | The upload for each project (zip, CurseForge texts, logo). Written by the tools; git does not keep it. |
+| (top) | `ROADMAP.md` (what is next, and what was built since), `V1.md` (the road to 1.0), `POLISH.md` (the polish passes and the decisions taken), `TRACKING-BLUEPRINT.md` (focus and My Route). |
 
 ## How the game sees the addons
 
@@ -51,7 +52,7 @@ The repository is kept outside the game's folder. The game loads addons from `_f
 
 | Command (in `tools`) | Does |
 |---|---|
-| `python build.py` | builds every addon into the game's AddOns folder (`patchwerk`, `consoleport`, `melloui`, `melloroute`, `routes` or `sparkle` for one) |
+| `python build.py` | builds every addon into the game's AddOns folder (`patchwerk`, `consoleport`, `melloui`, `melloroute`, `dungeonjournal`, `routes`, `sparkle`, `tracker`, `races` or `plains` for one) |
 | `python build.py watch` | keeps running, and builds again whenever a source file or a picture in `art/` is saved |
 | `python build.py check` | says what a build would change, and writes nothing |
 
@@ -79,19 +80,21 @@ The tools need Python 3 and the package `lupa` (a Lua 5.1 interpreter). Run them
 |---|---|
 | `python luacheck.py <addon folder>` | checks that every Lua file of an addon parses |
 | `python lua_patchwerk.py` | runs the base and the Stitches through pretend logins: a Stitch's settings, saved data and load order; what someone who had 1.x is told; a Stitch with no base |
-| `python lua_shell.py` | runs the base with both Thread tools through a pretend play session against a stand-in for the game |
-| `python lua_tracker.py` | runs the base with Thread (Tracker) through pretend logins against a stand-in quest log, guide, party and secure buttons (which it fails on any touch of during a fight) |
+| `python lua_shell.py` | runs the base with Thread (Routes) and Thread (Sparkle) through a pretend play session against a stand-in for the game: routes, the step text, gathering, the focus, My Route |
+| `python lua_tracker.py` | runs the base with Thread (Tracker) through pretend logins against a stand-in quest log, guide, Dungeon Journal list, party and secure buttons (which it fails on any touch of during a fight) |
 | `python lua_races.py` | runs the base with Thread (Races) and Sparkle's loot wisp through a pretend session: a course made, raced three times and sent to a party member; items looted, gathered and bought |
 | `python lua_plainsrunning.py` | runs the base with Thread (Immersive Plainsrunning) through a pretend run: the buff stacking to 30, the interface fading and coming back for a fight, a window, typing, standing still, the buff ending, the preview, each effect, the parts kept, the camera, the run records, a problem mid-run |
 | `python lua_trips.py 1 horde` | checks Routes' planner against the prototype, trip by trip (`0 alliance` for the Eastern Kingdoms) |
 | `python lua_journeys.py` | checks Routes' journeys by boat and zeppelin against a brute-force reckoning |
-| `python build_check.py` | tries the build tool on a scratch copy: junctions, changed and removed files, broken Lua, retired folders, your own art, watching |
+| `python lua_smooth.py` | checks that Routes' smoothed route line stays on walkable ground and keeps the route's length, time and flights |
+| `python build_check.py` | tries the build tool on a scratch copy: junctions, changed and removed files, broken Lua, retired folders, your own art, watching; and release.py's changelog and family checks |
 | `python crossings.py` | reads the boats and zeppelins out of the game's files |
 | `python pack.py` | writes Routes' map data folders, and its boats and zeppelins, from what the tools read out of the game |
 | `python media.py` | draws the pictures Sparkle's effects, Routes' dotted trail and Plainsrunning's streaks are made of |
 | `python art.py` | draws the icons and logos, and takes in your own from `art/` |
 | `python build.py` | builds the addons into the game (see above) |
 | `python release.py [project]` | checks a project and builds its upload: zip, description, changelog, summary, notes on what to set on CurseForge |
+| `python cf_html.py` | turns each README into the HTML that CurseForge's description editor keeps, and checks it |
 | `python upload.py <project>` | builds a project and uploads its zip to CurseForge (see Releasing); `--dry-run` says what would be sent |
 | `python upload_check.py` | tries the uploader against a pretend CurseForge on this machine; nothing leaves it |
 
@@ -99,10 +102,10 @@ Passing these says the code runs; only playing says it works. `tools/PLAN.md` re
 
 ## Releasing
 
-1. Add an entry to the addon's `CHANGELOG.md` and raise the version in its TOC (for Routes: in all four TOCs and in `tools/pack.py`). Every addon has a version of its own; raise only what changed. A change to the base's API that an addon needs means raising `api` in that addon's `Link.lua` and `P.API` in the base.
+1. Add an entry to the top of the addon's `CHANGELOG.md` and raise the version in its TOC (for Routes: in all four TOCs and in `tools/pack.py`). `release.py` refuses a changelog that does not open with `# <the addon's title>` or whose first entry is not the TOC's version, and a base whose README does not name every part. Every addon has a version of its own; raise only what changed. A change to the base's API that an addon needs means raising `api` in that addon's `Link.lua` and `P.API` in the base.
 2. Commit, then `python release.py`. Each project's upload is written to `release/<its folder>` here. The zip holds the same bytes a build puts in the game, build line included; it warns when built from files that are not committed.
 3. Upload: by hand on CurseForge, or with `python upload.py <project>` (below). `release/UPLOAD.md` and `CurseForge-notes.txt` in each release folder say what to set; every project but the base must name **Patchwerk Forever** as a required dependency.
-4. Tag the commit: `patchwerk-forever-2.0.0`, `stitch-consoleport-2.0.0`, `stitch-melloui-2.0.0`, `stitch-melloroute-2.0.0`, `thread-routes-0.11.0`, `thread-sparkle-0.11.0`, `thread-races-0.1.0`, `thread-plainsrunning-1.0.0`.
+4. Tag the commit with the project's tag and version, as `release/UPLOAD.md` gives it: `patchwerk-forever-`, `stitch-consoleport-`, `stitch-melloui-`, `stitch-melloroute-`, `stitch-dungeonjournal-`, `thread-routes-`, `thread-sparkle-`, `thread-tracker-`, `thread-races-` or `thread-plainsrunning-`, then the version (`thread-routes-1.1.0`).
 
 ### Uploading with the tool
 
@@ -138,7 +141,7 @@ It will not send a zip built from files that are not committed, and it only talk
 
 ### Uploading from CI
 
-`.github/workflows/upload.yml` does the same when a release tag is pushed: `git push origin thread-routes-0.12.0` builds that project from the tagged commit and uploads it. It needs this repository on GitHub and a repository secret named `CF_API_TOKEN`. Until both are there, the file does nothing.
+`.github/workflows/upload.yml` does the same when a release tag is pushed: `git push origin thread-routes-1.1.0` builds that project from the tagged commit and uploads it. It needs a repository secret named `CF_API_TOKEN` on GitHub. Do not push the tag of a version already uploaded with `upload.py`: it would be uploaded again.
 
 ## Rules these addons keep
 

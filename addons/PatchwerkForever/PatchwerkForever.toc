@@ -1,10 +1,11 @@
 ## Interface: 16001
 ## Title: Patchwerk Forever
-## Notes: The base of the Patchwerk Forever addons: their shared settings pages, saved data and /patchwerk. It does nothing by itself; add Stitch (fixes for Console Port and MelloUI) and Thread (our own tools: Routes, Sparkle).
+## Notes: The base of the Patchwerk Forever addons: their shared options pages, saved data and /patchwerk. It does nothing by itself; add the Stitch addons (fixes and additions for other addons) and the Thread addons (our own tools) you want.
 ## Author: Tyrone
-## Version: 2.6.0
+## Version: 2.7.0
 ## Group: PatchwerkForever
 ## IconTexture: Interface\AddOns\PatchwerkForever\Media\icon
+## AddonCompartmentFunc: PatchwerkForever_OnAddonCompartmentClick
 ## X-Category: Miscellaneous
 ## X-License: MIT
 ## SavedVariables: PatchwerkForeverDB
@@ -16,6 +17,7 @@ Tools.lua
 Guides.lua
 Guides\RestedXP.lua
 Choice.lua
+Following.lua
 Focus.lua
 MyRoute.lua
 Gather.lua

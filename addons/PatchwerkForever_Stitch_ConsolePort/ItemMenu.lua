@@ -39,6 +39,7 @@ end
 EventUtil.ContinueOnAddOnLoaded('ConsolePort_Menu', function()
 	local ItemMenu = ConsolePortItemMenu;
 	if not ( ItemMenu and ItemMenu.AddEquipCommands and ItemMenu.GetEquipCommand ) then return end;
+	env.Applied['Item menu equip slots'] = true;
 
 	local AddEquipCommands = ItemMenu.AddEquipCommands;
 

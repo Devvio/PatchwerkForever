@@ -1,7 +1,8 @@
 # Polish blueprint
 
-Written 2026-11-14, asked for as "blueprint some polish". It follows `V1.md` and `ROADMAP.md`.
-**Nothing here is built.** It is a plan to pick from.
+Written 2026-11-14 as a blueprint for polish. It follows `V1.md` and `ROADMAP.md`.
+Pass A was built on 2026-11-14 and passes B to J on 2026-11-18: see [Built so far](#built-so-far).
+The tables below describe the code as it was audited, before either.
 
 ## What this is
 
@@ -162,8 +163,8 @@ would build them: what you meet every session first, documents last.
 
 ### H. Stitches
 
-*None of the Dungeon Journal Stitch has been tried with the real journal yet. H8 and half of
-D10 are for MelloUI, which you do not run.*
+*When audited, none of the Dungeon Journal Stitch had been tried with the real journal (it has
+since, from 1.0.2). H8 and half of D10 are for MelloUI, which you do not run.*
 
 | # | What is rough now | The change | Size | Game | From |
 |---|---|---|---|---|---|
@@ -196,39 +197,40 @@ D10 are for MelloUI, which you do not run.*
 
 ## Yours to decide
 
-These came up in the audit and are choices, not fixes. My pick is first in each.
+These came up in the audit and are choices, not fixes. My pick is first in each; the pick taken
+is marked after each number.
 
-1. **A Skip Guide Step binding** (GP-1). One checker kept it (a gamepad has no other way but a
+1. (**left out, 2026-11-18**) **A Skip Guide Step binding** (GP-1). One checker kept it (a gamepad has no other way but a
    cursor click); another cut it as a feature you were offered earlier and did not pick.
    *Leave it out;* A9 adds only the undo. Say if you want it.
-2. **"Route To Pin, Guide Step Or Quest" as a binding name.** *Rename it "Start Routing"*, to
+2. (**renamed "Start Routing", 2026-11-18**) **"Route To Pin, Guide Step Or Quest" as a binding name.** *Rename it "Start Routing"*, to
    pair with "Stop Routing", once B1 gives the bindings a section of their own. The long name
    is accurate, which is the case for keeping it.
-3. **Routes' chat lines begin "Thread:"** while the Tracker's begin "Tracker:" and Sparkle's
+3. (**"Routes:", 2026-11-18**) **Routes' chat lines begin "Thread:"** while the Tracker's begin "Tracker:" and Sparkle's
    "Sparkle:", and all three are Thread tools. *Change it to "Routes:"*; the `/thread` command
    stays.
-4. **Keep To City Streets (MelloUI Route) on by default.** It is the one default in the family
+4. (**opt-in, said in the changelog, 2026-11-18**) **Keep To City Streets (MelloUI Route) on by default.** It is the one default in the family
    that deletes another addon's saved data for good, against the opt-in rule. Turning it off
    by default silently changes behavior for anyone who left it alone. *Make it opt-in and say
    so in the changelog.*
-5. **Open Game Menu Directly (Console Port) on by default.** It changes a game setting by
+5. (**kept on, and says so, 2026-11-18**) **Open Game Menu Directly (Console Port) on by default.** It changes a game setting by
    itself. It is also the Stitch's headline fix and is put back when disabled. *Keep it on and
    make it say so* (H5).
-6. **The Dungeon Journal Stitch is numbered 1.0.0 and has never met the real journal.** *Play
+6. (**settled by play: tried with the real journal and uploaded as 1.0.2, 2026-11-18**) **The Dungeon Journal Stitch is numbered 1.0.0 and has never met the real journal.** *Play
    it before uploading*, or upload it as 0.9.0, which the release tool marks as a beta.
-7. **`V1.md` and `ROADMAP.md` carry your first name and quote your messages.** That is fine
-   for a private repository. *Take them out before it goes to GitHub.* The author line in the
-   TOC files is a separate choice and yours.
-8. **Where reports go** (J6). *A comment on the addon's CurseForge page* until the repository
+7. (**taken out, 2026-11-18**) **`V1.md` and `ROADMAP.md` carry your first name and quote your
+   messages.** That is fine for a private repository. *Take them out before it goes to GitHub.*
+   The author line in the TOC files is a separate choice and yours.
+8. (**a comment on the addon's CurseForge page, 2026-11-18**) **Where reports go** (J6). *A comment on the addon's CurseForge page* until the repository
    is public; its issues page after.
-9. **"Not sewn on."** on the front page for a part that is not installed. The front page is
+9. (**kept there, plain words in chat, 2026-11-18**) **"Not sewn on."** on the front page for a part that is not installed. The front page is
    one of the places Patchwerk's voice is allowed. *Keep it there*, and use plain words in the
    chat listing.
-10. **"Sparkle: Looks" beside "Tracker: Appearance".** *Call both "Appearance"*; the checker
+10. (**both "Appearance", 2026-11-18**) **"Sparkle: Looks" beside "Tracker: Appearance".** *Call both "Appearance"*; the checker
     offered "Sparkle: Effects".
-11. **Hint tooltips on every tracker row** (E4) may feel busy with a mouse. *Build it and
+11. (**built, 2026-11-18**) **Hint tooltips on every tracker row** (E4) may feel busy with a mouse. *Build it and
     look*; it is easy to limit to guide steps and headings.
-12. **Where the step text sits.** One reader thought its default lands on the game's own quest
+12. (**no change, 2026-11-18**) **Where the step text sits.** One reader thought its default lands on the game's own quest
     progress messages. That depends on your UI scale and could not be settled from the code.
     If you have seen them overlap, say so and it becomes an item.
 13. **Two trackers in every instance** (A12; **yes on 2026-11-14, built**). When the tracker was planned you chose that
@@ -263,11 +265,9 @@ Reported, checked and dropped. The reasons in full are at the end of each sectio
 
 - Passes A to D are where most of what you would notice is; E to G are finer.
 - All of it is 89 items: 76 small and 13 medium. 33 want a look in the game.
-- It would land as base 2.5.0, Tracker 1.2.0, Routes 0.17.0, Sparkle 1.1.0 and a small bump
-  for each Stitch touched. A11, C5 and E15 add to what the base offers the parts, in a way an
-  older part or base simply ignores, so the API number need not rise.
-- The uncommitted Routes 0.16.0 (flight points you know) is the starting point: the line
-  numbers in the findings include it.
+- A11, C5 and E15 add to what the base offers the parts, in a way an older part or base simply
+  ignores, so the API number need not rise.
+- The line numbers in the findings are those of Routes 0.16.0, before pass A.
 - The items marked **Game** are the ones to look at first when playing a pass.
 
 ## Built so far
@@ -319,3 +319,11 @@ position saved by 1.1.0 (A7); the darkened edges and the two scroll bindings on 
 without a number if RestedXP moves its step a moment late); two quests in one camp (A10);
 the Dungeon Journal list with no guide loaded (A11); a dungeon or battleground with the
 default settings: one list, the default tracker's, and where it stands under EllesmereUI (A12).
+
+### Pass B to J, 2026-11-18
+
+Built across the addons, each by its own pass, together with an unslop pass over each addon
+(dead code, stale comments, uneven wording), on the decisions above. Details in each addon's
+CHANGELOG. `tools/release.py` now checks J1 (the base's README names every part) and J3 (each
+CHANGELOG.md opens with the addon's title and its first entry is the TOC's version), and
+`tools/build_check.py` covers both. **None of it has been tried in the game.**

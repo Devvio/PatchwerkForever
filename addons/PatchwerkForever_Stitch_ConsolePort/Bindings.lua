@@ -48,6 +48,7 @@ if ( ExtraActionButton1 and not HasBinding(EXTRA_ACTION) ) then
 			set.binding = EXTRA_ACTION_CLICK;
 		end
 	end
+	env.Applied['Extra Action Button'] = true;
 end
 
 ---------------------------------------------------------------

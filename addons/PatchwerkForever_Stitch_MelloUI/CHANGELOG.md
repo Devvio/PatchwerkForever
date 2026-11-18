@@ -1,5 +1,11 @@
 # Patchwerk Forever: Stitch (MelloUI)
 
+## 2.1.0
+
+- Plain words throughout: the option, its chat lines and the reload question say enable and disable instead of switch on, switch off and untick, and the reload question is no longer in Patchwerk's voice. The fix is listed as "MelloUI: only Route and the Quest Tracker", like its option.
+- Chat lines read "Patchwerk MelloUI: ...".
+- With a Patchwerk Forever too old for it, it now names itself and the version it needs.
+
 ## 2.0.1
 
 - Its options page opens with its picture and a line from Patchwerk, on Patchwerk Forever 2.2.0. Nothing changes in what it does.

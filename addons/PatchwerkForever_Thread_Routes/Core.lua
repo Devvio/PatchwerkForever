@@ -4,6 +4,14 @@ if not ns.linked then return end
 
 ns.TITLE = 'Patchwerk Forever: Thread (Routes)'
 
+-- Asks the game: fn's first three answers, or nothing where it errs or this client lacks it.
+function ns.Ask(fn, ...)
+	if type(fn) ~= 'function' then return nil end
+	local ok, a, b, c = pcall(fn, ...)
+	if ok then return a, b, c end
+	return nil
+end
+
 ---------------------------------------------------------------------------
 -- Settings: kept in PatchwerkForever_Thread_RoutesDB.settings
 ---------------------------------------------------------------------------
@@ -14,8 +22,8 @@ ns.settings = {
 	{ header = true, name = 'Destinations' },
 	{ key = 'auto', default = true, name = 'Route To Map Pin',
 		desc = 'Automatically route to a pin you place on the world map.' },
-	{ key = 'rxp', default = true, name = 'Follow RestedXP Guide',
-		desc = 'With no map pin, route to the current step of your RestedXP guide and continue to the next as you progress.' },
+	{ key = 'rxp', default = true, name = 'Follow Guide',
+		desc = 'With no map pin, route to the current step of your guide addon (RestedXP) and continue to the next as you progress.' },
 	{ key = 'rxpTravel', default = true, name = 'Use Guide Travel Steps', parent = 'rxp',
 		desc = 'When a guide step tells you to fly, route on foot to the flight master it names instead of planning a different route. Steps without a location (hearthstone, training) are shown on screen, and no quest is routed to in their place.' },
 	{ key = 'rxpAhead', default = 2, min = 0, max = 5, step = 1, name = 'Upcoming Steps Shown', parent = 'rxp',
@@ -23,11 +31,11 @@ ns.settings = {
 	{ key = 'quests', default = true, name = 'Follow Tracked Quests',
 		desc = 'With no map pin, route to a tracked quest: to its objective, and to the turn-in once it is complete.' },
 	{ key = 'questPick', default = 'nearest', name = 'Quest Selection', parent = 'quests',
-		choices = { { 'nearest', 'Quest arrow, else nearest tracked' }, { 'focus', 'Quest arrow only' } },
+		choices = { { 'nearest', 'Quest Arrow, Then Nearest Tracked' }, { 'focus', 'Quest Arrow Only' } },
 		desc = 'The quest with the game\'s quest arrow always comes first. Without one, route either to the nearest tracked quest or to none.' },
-	{ key = 'sourceFirst', default = 'rxp', name = 'Priority',
-		choices = { { 'rxp', 'RestedXP guide first' }, { 'quest', 'Tracked quest first' } },
-		desc = 'Which to follow when both your guide and a tracked quest have a destination. The other is used when the first has none on this continent.' },
+	{ key = 'sourceFirst', default = 'rxp', name = 'Route Priority',
+		choices = { { 'rxp', 'Guide First' }, { 'quest', 'Tracked Quest First' } },
+		desc = 'With the focus on Auto: which to follow when both your guide and a tracked quest have a destination. The other is used when the first has none you can reach. A gathering run, your map pin or coordinates, a quest or list you selected in the tracker, and a focus other than Auto always come before both.' },
 	{ header = true, name = 'Focus And My Route' },
 	{ key = 'focusButton', default = true, name = 'Focus Button On The World Map',
 		desc = 'Show a button at the top right of the world map to choose what the route follows (Auto, a guide, your tracked quests or My Route), edit My Route, and add your map pin to My Route.' },
@@ -42,7 +50,7 @@ ns.settings = {
 		desc = 'Use boats and zeppelins when they are faster, and to reach other continents. Only those available to your faction. Waiting time is unknown, so the estimate allows half a round trip.' },
 	{ header = true, name = 'Chat' },
 	{ key = 'notify', default = true, name = 'Print Route In Chat',
-		desc = 'Print the time, distance and flights of each new route in chat.' },
+		desc = 'Print the time, distance and flights in chat when you route to a map pin or coordinates or use Start Routing, and a line when you arrive or discover a flight point. Routes followed from your guide or quests are shown on screen instead.' },
 
 	{ header = true, name = 'Gathering Nodes' },
 	{ key = 'nodes', default = true, name = 'Record Gathering Nodes',
@@ -59,14 +67,14 @@ ns.settings = {
 		desc = 'Draw the route on the world map.' },
 	{ page = 'Routes: Trail', key = 'minimap', default = true, name = 'Show On Minimap',
 		desc = 'Draw the route on the minimap.' },
-	{ page = 'Routes: Trail', header = true, name = 'Line Style' },
+	{ page = 'Routes: Trail', header = true, name = 'Line' },
 	{ page = 'Routes: Trail', key = 'trailStyle', default = 'solid', name = 'Line Style',
 		choices = { { 'solid', 'Solid' }, { 'dashes', 'Dashed' }, { 'dots', 'Dotted' } },
 		desc = 'How the route line is drawn.' },
 	{ page = 'Routes: Trail', key = 'trailMoving', default = false, name = 'Animate Line',
 		desc = 'Animate dashes or dots along the route toward your destination. Solid lines are not animated.' },
 	{ page = 'Routes: Trail', key = 'trailSpeed', default = 100, min = 25, max = 300, step = 25, name = 'Animation Speed',
-		parent = 'trailMoving', desc = 'Speed of the line animation, in percent.' },
+		parent = 'trailMoving', percent = true, desc = 'Speed of the line animation.' },
 	{ page = 'Routes: Trail', key = 'trailThickMap', default = 3, min = 1, max = 8, step = 0.5, name = 'World Map Line Width',
 		desc = 'Width of the route line on the world map.' },
 	{ page = 'Routes: Trail', key = 'trailThickMini', default = 2.5, min = 1, max = 6, step = 0.5, name = 'Minimap Line Width',
@@ -81,7 +89,7 @@ ns.settings = {
 	{ page = 'Routes: Trail', key = 'trailRide', colour = true, default = 'ff66e6c8', name = 'Boat And Zeppelin Color',
 		desc = 'Color of boat and zeppelin crossings.' },
 	{ page = 'Routes: Trail', key = 'trailChosen', colour = true, default = 'ffff8c42', name = 'Selected Route Color',
-		desc = 'Color of walking sections on a route you selected yourself: a quest clicked in the tracker, or a gathering run. Your main route (guide or tracked quests) uses the walking color.' },
+		desc = 'Color of walking sections on a route you selected yourself: a quest or list selected in the tracker, or a gathering run. Your main route (guide or tracked quests) uses the walking color.' },
 
 	-- the step, said on screen
 	{ page = 'Routes: Step Text', voice = 'Big words in the sky, so Patchwerk does not forget why he is walking.' },
@@ -106,14 +114,14 @@ ns.settings = {
 ---------------------------------------------------------------------------
 local function Help()
 	ns.Print('Route planner commands:')
-	ns.Print('  /thread go: route to your map pin, or to your guide step or tracked quest')
+	ns.Print('  /thread go: route to your map pin, or to your guide step or tracked quest (Start Routing)')
 	ns.Print('  /thread to 45.2 61.8: route to those coordinates on your current map')
 	ns.Print('  /thread stop: stop routing (a route to a guide step or quest resumes when the step or objective changes)')
 	ns.Print('  /thread quest: list tracked quest locations and which one is being followed')
 	ns.Print('  /thread focus: show what the route follows by itself, and what else it can follow')
 	ns.Print('  /thread focus auto, rxp, dj, quests or route: follow your guide and quests (Auto), RestedXP, the Dungeon Journal, tracked quests only, or My Route')
-	ns.Print('  /thread step: show the step text again')
-	ns.Print('  /thread gather: route to the nearest recorded herb or ore node, then the next (gather round, gather <name>, gather list, gather stop)')
+	ns.Print('  /thread step: show the step text again (Show Step Text Again)')
+	ns.Print('  /thread gather: route to the nearest recorded herb or ore node, then the next (gather round, gather <name>, gather list, gather stop; Toggle Gathering Run)')
 	ns.Print('  /thread config: open the options')
 	ns.Print('  /thread where: show your position as the planner sees it')
 	ns.Print('  /thread flights: list the flight points you know on this continent, and how that is known')
@@ -163,10 +171,14 @@ SlashCmdList.PATCHWERKFOREVER_THREAD = function(text)
 	end
 end
 
--- For key and gamepad bindings (Bindings.xml).
+-- For key and gamepad bindings (Bindings.xml), in the family's own section of the Key Bindings page
+-- (its name, BINDING_CATEGORY_PatchwerkForever, is the base's). The ids (PATCHWERKFOREVER_THREAD_GO
+-- and so on) stay as they were, so keys bound to them are kept.
 BINDING_HEADER_PATCHWERKFOREVER_THREAD = ns.TITLE
-BINDING_NAME_PATCHWERKFOREVER_THREAD_GO = 'Route To Pin, Guide Step Or Quest'
+BINDING_NAME_PATCHWERKFOREVER_THREAD_GO = 'Start Routing'
 BINDING_NAME_PATCHWERKFOREVER_THREAD_STOP = 'Stop Routing'
+BINDING_NAME_PATCHWERKFOREVER_THREAD_STEP = 'Show Step Text Again'
+BINDING_NAME_PATCHWERKFOREVER_THREAD_GATHER = 'Toggle Gathering Run'
 BINDING_NAME_PATCHWERKFOREVER_THREAD_FOCUS_NEXT = 'Next Focus'
 BINDING_NAME_PATCHWERKFOREVER_THREAD_FOCUS_AUTO = 'Focus: Auto'
 BINDING_NAME_PATCHWERKFOREVER_THREAD_FOCUS_RXP = 'Focus: RestedXP'
@@ -175,6 +187,9 @@ BINDING_NAME_PATCHWERKFOREVER_THREAD_FOCUS_QUESTS = 'Focus: Quests'
 BINDING_NAME_PATCHWERKFOREVER_THREAD_FOCUS_ROUTE = 'Focus: My Route'
 function PatchwerkForever_Thread_Routes_Go() ns.Try('go', ns.Go) end
 function PatchwerkForever_Thread_Routes_Stop() ns.Try('stop', ns.Stop, true) end
+function PatchwerkForever_Thread_Routes_Step() ns.Try('step', ns.FloatAgain) end
+-- (one key starts a run and, pressed again, ends it)
+function PatchwerkForever_Thread_Routes_Gather() ns.Try('gather', ns.GatherSay, ns.GatherActive() and 'stop' or '', true) end
 function PatchwerkForever_Thread_Routes_FocusNext() ns.Try('focus', ns.FocusNext) end
 -- id: 'auto', 'rxp', 'fdj', 'quests' or 'route' (Focus.lua)
 function PatchwerkForever_Thread_Routes_Focus(id) ns.Try('focus', ns.FocusTo, id) end

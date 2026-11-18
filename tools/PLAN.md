@@ -4,11 +4,14 @@ Goal: a route planner for WoW Forever that is ours end to end: map data made fro
 game's own files by our tools, a planner written by us, shipped as its own addon. No
 MelloUI code or data in it.
 
-**Next: a quest tracker of our own, Thread (Tracker).** Planned 2026-11-12, not begun: see `PLAN-tracker.md`.
+**Where it stands (2026-11-18):** Thread (Routes) 1.1.0 is live on CurseForge, out of beta since 1.0.0.
+This file is the planner's plan, the log of its early versions (to Routes 0.12.0) and of the checks
+against other addons' updates. The quest tracker's plan is `PLAN-tracker.md`; what came later is in
+`ROADMAP.md`, `POLISH.md`, `TRACKING-BLUEPRINT.md` and each addon's CHANGELOG.
 
-**Two tracks under one parent (2026-11-12, later the same day; Tyrone's design and names):**
+**Two tracks under one parent (2026-11-12, later the same day; the user's design and names):**
 Patchwerk Forever is the parent (the base). **Stitch** is for third-party addons: fixes and
-additions sewn onto Console Port and MelloUI. **Thread** is first-party: tools made by us. He
+additions sewn onto Console Port and MelloUI. **Thread** is first-party: tools made by us. The user
 chose Thread as the tools' name in place of Wayfarer, the tools under the parent (they need the
 base), the sparkle split from the route planner, and MelloUI Route's additions under Stitch.
 - Folders: `PatchwerkForever_Stitch_ConsolePort`, `_Stitch_MelloUI`, `_Stitch_MelloUIRoute` (each
@@ -33,32 +36,32 @@ base), the sparkle split from the route planner, and MelloUI Route's additions u
 - Passes: luacheck on all nine folders, `lua_patchwerk.py`, `lua_shell.py` (the base with both
   tools: 72 settings, 10 sub-pages), `lua_trips.py`, `lua_journeys.py`, `build_check.py`,
   `release.py`. Built into the game the same day, with the game closed: nine folders written,
-  the seven old ones taken away; `carry_tracks.py` carried Tyrone's saved data over (9 route
+  the seven old ones taken away; `carry_tracks.py` carried the user's saved data over (9 route
   settings, 22 herb and ore spots, 11 sparkle settings; the old saved file is left).
-- Icons: Tyrone made six pictures from the prompts in `art/PROMPTS.md` (written to match the
+- Icons: the user made six pictures from the prompts in `art/PROMPTS.md` (written to match the
   art of the first listing); they are `art/<folder>/icon.png` and replace the drawn icons.
-- Confirmed in-game by Tyrone (2026-11-12, after a full start): all the addons load, with
-  their icons and settings pages ("Yes, all there"). So Forever's addon list does show
+- Confirmed in-game (2026-11-12, after a full start): all the addons load, with
+  their icons and settings pages. So Forever's addon list does show
   `## IconTexture`, and sub-pages of several addons under one parent page work. Not heard one
   by one: `/thread config` and `/sparkle config` opening their own page, a route and a sparkle
   in play under the new names, each Console Port fix.
-- Two things from Tyrone's look at it in the game (2026-11-12): he did not find the Stitch options, which were a
+- Two things from a look at it in the game (2026-11-12): the Stitch options were not found where they were, a
   section of the parent's first page, so each Stitch now has a sub-page of its own ("Stitch: Console Port");
-  and his screenshot of the addon list showed the three map data folders standing outside the Patchwerk
+  and a screenshot of the addon list showed the three map data folders standing outside the Patchwerk
   Forever group with their titles cut off. Forever's addon list goes by a `## Group:` line in the TOC (set by
   the client from names and dependencies when absent; read in Blizzard's AddonList.lua): every TOC now says
   `## Group: PatchwerkForever`, and the map data titles are "Thread (Routes) map: Kalimdor" and so on.
   Both built into the game; neither seen there yet.
-- Checked against the addons updated on 2026-11-12 (Tyrone's ask): MelloUI 2.1.44 to 2.1.48 and RestedXP Guides
+- Checked against the addons updated on 2026-11-12 (asked for): MelloUI 2.1.44 to 2.1.48 and RestedXP Guides
   v4.11.36; Console Port (3.3.13) and EllesmereUI (9.8.4) had not changed. MelloUI's Route files, its game menu
   button and its guide hookup are untouched (diffed tag to tag in a blobless clone, data files never fetched).
   One thing mattered: since 2.1.46 MelloUI keeps a profile for each character and a profile carries which
   modules are on, so the trim's account-wide "seen" list would have left another character untrimmed. It is
   kept for each profile now (`seenIn`), checked by pretend logins in `lua_patchwerk.py`; not tried in the game
-  (Tyrone does not run MelloUI). RestedXP still sets `RXPG_ARROW.element` with zone, x, y, wx, wy, instance.
+  (the user does not run MelloUI). RestedXP still sets `RXPG_ARROW.element` with zone, x, y, wx, wy, instance.
   Also in the repository now: the CurseForge uploader (`upload.py`, `upload_check.py`, `curseforge.json`, the
   CI workflow), and Patchwerk's flavour text at the top of each README.
-- Checked against the addons updated by 2026-11-14 (Tyrone: "check addon updates"): MelloUI 2.1.48 to 2.1.51,
+- Checked against the addons updated by 2026-11-14 (asked for): MelloUI 2.1.48 to 2.1.51,
   EllesmereUI 9.8.4 to 9.8.5, DungeonJournal 2.0.4 to 2.0.5; Console Port (3.3.13) and RestedXP Guides
   (v4.11.36) had not changed. Nothing of ours needed a change. MelloUI: every one of the 68 names the two
   Stitches lean on is still defined, and no line defining one was taken away or changed (tag to tag in a
@@ -89,7 +92,7 @@ base), the sparkle split from the route planner, and MelloUI Route's additions u
   no Route entry beyond dropping the First: loot line. All 68 MelloUI names still defined. DungeonJournal: the
   eight names are there (`FDJ.QuestMatchesFaction` still exported). EllesmereUI: both menu button names and
   `EllesmereUIQuestTracker` there. None of this was tried in the game.
-- Checked against the addons updated by 2026-11-17 (Tyrone: "check for addon updates"): Console Port 3.3.13 to
+- Checked against the addons updated by 2026-11-17 (asked for): Console Port 3.3.13 to
   3.3.14 (its first release since 30 Oct), MelloUI 2.1.52 to 2.1.58, EllesmereUI 9.8.6 to 9.8.8, DungeonJournal
   2.0.7 to 2.0.9; RestedXP v4.11.36 unchanged. Nothing of ours needed a change. Console Port: of the 31 files
   changed none holds the bindings, `db.Radial` or the CPAPI calls the Stitch makes (`GetBindingAction`,
@@ -108,10 +111,10 @@ base), the sparkle split from the route planner, and MelloUI Route's additions u
   the eight names the reader reads are there with the same shapes (`FDJ.TurnInSpotFor`,
   `FDJ.QuestMatchesFaction`, `trackedDungeons` on the character's saved table). EllesmereUI: both menu button
   names and `EllesmereUIQuestTracker` there. None of this was tried in the game.
-- Thread (Routes) 0.12.0: RestedXP read ahead, and the step said on screen (Tyrone, 2026-11-12: "deep dive
-  routing for restedxp, read the upcoming step and direct accordingly", "with a route change, a graceful
-  floating text describing the step"; of the interview he took all four read-ahead parts, the step then the
-  route for the words, upper middle and configurable, every new destination).
+- Thread (Routes) 0.12.0: RestedXP read ahead, and the step said on screen (asked for 2026-11-12: route by
+  the upcoming RestedXP steps, and a floating text that describes the step when the route changes; of the
+  interview all four read-ahead parts were taken, the step then the route for the words, upper middle and
+  configurable, every new destination).
   - `Guide.lua` reads RestedXP as it runs: `RXP.currentGuide.steps`, `RXPCData.currentStep`, each step's
     elements (`tag`, `text`, `completed`, `skip`, and for a place `zone/x/y` or `wx/wy/instance`), and the
     arrow's element only while the arrow is shown (hidden, it keeps its last spot: that was a fault before).
@@ -123,21 +126,21 @@ base), the sparkle split from the route planner, and MelloUI Route's additions u
   - Passes the pretend session with a stand-in guide (a route to the step, two ways found ahead, the handover
     with no search, a fly step walked to, a hearthstone step said and not routed, two steps at one place, the
     words going out and coming back).
-  - Confirmed in-game by Tyrone (2026-11-12, after a full start, his guide running): the step's words appear
-    on screen and the fainter trail runs on ahead ("Yes, both work"). So RestedXP's `RXP` table and its
+  - Confirmed in-game (2026-11-12, after a full start, with a guide running): the step's words appear
+    on screen and the fainter trail runs on ahead. So RestedXP's `RXP` table and its
     steps are there as read. Not heard one by one: the handover with no pause when a step is done, a fly
     step walked to, a hearthstone step said and not routed, and whether the size and place of the words suit.
 Below, read Wayfarer, `PatchwerkForever_Wayfarer` and `/wayfarer` as Thread (Routes) and its names;
 the log keeps the names things had when it was written.
 
 **Name (2026-11-12): "Patchwerk Forever: Wayfarer".** It was "Wayfinder Forever" until then; CurseForge
-already has an addon of that name, so Tyrone renamed it for the upload. Folders
+already has an addon of that name, so it was renamed for the upload. Folders
 `PatchwerkForever_Wayfarer` and `_Kalimdor`, `_EasternKingdoms`, `_ZephrasIsle`; saved data
 `PatchwerkForever_WayfarerDB`; commands `/wayfarer` and `/pfw`. Below, the log keeps the old name
 where it was written before the change: read Wayfinder, `WayfinderForever` and `/wayfinder` as the
 new ones. A copy from just before the rename is in `backup/wayfinder-before-rename/`.
 
-**Where it all is (moved 2026-11-12, at Tyrone's request):** the repository is
+**Where it all is (moved 2026-11-12, as asked):** the repository is
 `G:\Dev\patchwerk-forever` (addons/, tools/, release/), out of the game's folder. The game's
 `Interface\AddOns` no longer holds junctions: `python build.py` writes the addons there from
 `addons/`, file for file, with a line `## X-Build: <commit>` in each TOC; `python build.py watch`
@@ -146,7 +149,7 @@ the build says so). The tools find `addons/` from where they are; only the game'
 (`G:/Games/World of Warcraft`) is written into them. The build tool passed its tries on a scratch
 copy and built the real folders; the game has NOT been started on the built folders yet.
 
-**Patchwerk Forever split into a base and parts (2026-11-12, at Tyrone's request; his choices: one
+**Patchwerk Forever split into a base and parts (2026-11-12, as asked; the user's choices: one
 part per addon it fixes, separate CurseForge projects, Wayfarer standalone but sharing the look,
 icons drawn by the tools and replaceable):** `PatchwerkForever` 2.0.0 is the base (Core.lua,
 Settings.lua: the global `PatchwerkForever`, the settings page made at login, `/patchwerk`, saved
@@ -159,26 +162,26 @@ changed. Art: `python art.py` draws an icon family (64 x 64 `Media/icon.tga` per
 `release/<folder>/logo.png`, `release/art-preview.png`); a PNG in `art/<folder>/` replaces or adds
 a picture and is converted on every build. `python release.py` now builds five projects, each with
 a summary and notes on what to set on CurseForge. `python lua_patchwerk.py` plays logins of the
-base with and without parts. Passes here; built into the game. Confirmed in-game by Tyrone
+base with and without parts. Passes here; built into the game. Confirmed in-game
 (2026-11-12, after a full start): the base and the Console Port part load from the built folders
-with his settings intact ("Yes, all there"). Not heard one by one: whether the addon list shows
+with the settings intact. Not heard one by one: whether the addon list shows
 the icons, and each Console Port fix in play. The
 fixes inside the Console Port and MelloUI parts cannot be run outside the game. Not known until
 tried: whether Forever's addon list shows `## IconTexture`, and that the Console Port part behaves
-as before now that it is an addon of its own (Tyrone runs Console Port; he does not run MelloUI,
-so the two MelloUI parts will go untried by him).
+as before now that it is an addon of its own (the user runs Console Port but not MelloUI, so the
+two MelloUI parts go untried here).
 
 **Release (prepared 2026-11-12, not yet uploaded):** version 0.9.0, a beta: only a Horde character
 in Kalimdor has been played. MIT for the code and pictures; README.md, CHANGELOG.md and LICENSE in
 the main folder. `python release.py` checks the four folders (versions agree, every listed file is
 there, no old name left) and writes `release/PatchwerkForever_Wayfarer/` in the repository:
 the zip of all four folders, the description (the README) and the changelog; the short summary is
-there too. Tyrone uploads by hand. After a change: CHANGELOG.md, the version in the four TOCs and in
-`pack.py`, then `release.py`. `python carry_saved.py` carried his settings and herb spots over from
-the old name's saved file (done, with the game closed). Confirmed in-game by Tyrone (2026-11-12):
-the renamed addon loads with his settings and herb spots intact.
+there too. Uploaded by hand (now also by `upload.py`). After a change: CHANGELOG.md, the version in the four TOCs and in
+`pack.py`, then `release.py`. `python carry_saved.py` carried the settings and herb spots over from
+the old name's saved file (done, with the game closed). Confirmed in-game (2026-11-12):
+the renamed addon loads with the settings and herb spots intact.
 
-Decided with Tyrone (2026-11-11):
+Decided with the user (2026-11-11):
 - First usable version covers **ground and flight paths**; buildings, bridges and lifts come later.
 - It is **its own addon**, separate from Patchwerk Forever.
 - A Lua interpreter (LuaJIT via the Python package `lupa`) is installed so code is run here before it is tried in-game.
@@ -268,7 +271,7 @@ For the addon (milestone 4):
   table's id; each node it returns has `isUndiscovered` and `faction`, so which points the character
   knows should be available anywhere, not only at a flight master. To be tried in-game in milestone 4.
 
-### 4. The addon, first version — built 2026-11-11; Tyrone tried it in-game the same day: "it works"
+### 4. The addon, first version — built 2026-11-11; tried in-game the same day and reported working
 Working name **Wayfinder Forever** (folder `WayfinderForever`, `/wayfinder`, saved data `WayfinderForeverDB`).
 
 Done and checked here:
@@ -288,8 +291,8 @@ Done and checked here:
 - `python lua_shell.py` runs all of it against a stand-in for the game (`wowstub.lua`) through a
   whole session. It proves the addon's own code runs; it cannot prove the game answers like the stand-in.
 
-Decided by Tyrone 2026-11-11: **MelloUI is disabled from here on**; Wayfinder is the routing system.
-So Wayfinder stands alone (it never used MelloUI), and what he used MelloUI's Route for has to come
+Decided by the user 2026-11-11: **MelloUI is disabled from here on**; Wayfinder is the routing system.
+So Wayfinder stands alone (it never used MelloUI), and what MelloUI's Route was used for has to come
 from Wayfinder: destinations from the tracked quest and RestedXP steps first, then milestone 6.
 Gone with MelloUI and not replaced: RestedXP steps shown in the quest tracker (a MelloUI feature).
 Patchwerk Forever's MelloUI fixes switch themselves off without MelloUI; they stay for other users.
@@ -297,11 +300,11 @@ Patchwerk Forever's MelloUI fixes switch themselves off without MelloUI; they st
 Reported in-game:
 - 2026-11-11: with MelloUI and Wayfinder both running, the minimap turned black under EllesmereUI's
   minimap. Cause not found by reading either addon. Our minimap layer was a child of the minimap;
-  it is now a frame of its own laid over it, and Tyrone confirmed that cured it. The cause itself
+  it is now a frame of its own laid over it, and that was confirmed to cure it. The cause itself
   was never found: do not hang frames on the minimap in this setup.
 
-- 2026-11-11: on first load the minimap trail jumped about for a few seconds; Tyrone: "the map
-  bounces then settles" (the minimap itself, most likely EllesmereUI setting its size and zoom). The
+- 2026-11-11: on first load the minimap trail jumped about for a few seconds; reported as the map
+  bouncing, then settling (the minimap itself, most likely EllesmereUI setting its size and zoom). The
   trail now waits after a login or reload until the minimap has kept one size, place and zoom for a
   second (eight at most). Not yet confirmed in-game.
 
@@ -309,9 +312,9 @@ Reported in-game:
   EllesmereUI's minimap background grows upward. Not explained. Checked: Wayfinder only reads from
   the minimap (size, place, strata, alpha) and lays a mouse-disabled frame over it; nothing in
   EllesmereUI's minimap module looks for such frames; its saved minimap position is intact (centre
-  820, 383, size 280); only its unlock mode makes frames follow the cursor. Tyrone's test: it still
+  820, 383, size 280); only its unlock mode makes frames follow the cursor. Tried in the game: it still
   happens with "Trail On The Minimap" off, so the trail is not the cause.
-  Found by Tyrone: the addon **Lueur** (herb and ore icons on the minimap). To read the minimap's dots
+  Found by the user: the addon **Lueur** (herb and ore icons on the minimap). To read the minimap's dots
   it moves the minimap under the mouse and sweeps over it (`Minimap:AdjustPointsOffset`,
   `UpdateMouseoverAtPoint`); its own settings say "each scan hides the minimap for a moment". That
   is the scanning, the bounce and the sticking to the cursor. Nothing to do with Wayfinder,
@@ -319,7 +322,7 @@ Reported in-game:
   login; MapUtils, which also sweeps the minimap but was not the cause). The hold-until-steady guard
   in Minimap.lua came from the first guess; it is harmless and stays.
 
-- 2026-11-11: "navigation doesn't update unless MelloUI is enabled". Cause: MelloUI's Route was what
+- 2026-11-11: reported that navigation did not update unless MelloUI was enabled. Cause: MelloUI's Route was what
   laid the game's map pin on each RestedXP guide step, and Wayfinder only followed the pin. Fix:
   `Sources.lua`. With no pin, the route goes to the place RestedXP's arrow points at
   (`RXPG_ARROW.element`: `zone`, `x`, `y` as a place on a zone's map, turned into world coordinates by
@@ -328,8 +331,8 @@ Reported in-game:
   you reach is not routed to again unless you walk 40 yards away with it still open. Setting "Follow My
   RestedXP Guide". Passes the stand-in session; not yet confirmed in-game. Needs a full game restart
   (a new file in the TOC).
-- Guide following confirmed in-game by Tyrone (2026-11-11, MelloUI off).
-- Herb and ore spots (asked for 2026-11-11): built as `Nodes.lua`; Tyrone confirmed in-game that a gathered spot shows on the minimap. A spot is
+- Guide following confirmed in-game (2026-11-11, MelloUI off).
+- Herb and ore spots (asked for 2026-11-11): built as `Nodes.lua`; confirmed in-game that a gathered spot shows on the minimap. A spot is
   remembered when a cast aimed at something that is not a creature (UNIT_SPELLCAST_SENT gives its
   name) is followed within 12 s by loot holding a herb or an ore (item class 7, subclass 9 or 7; not
   from a creature where the game says). Kept in `WayfinderForeverDB.nodes` and `.nodeKinds` for all
@@ -340,7 +343,7 @@ Reported in-game:
   numbers (it works). Not yet heard about: ore icons, the zone map, `/wayfinder nodes forget`.
 - `ns.MinimapView(frame, above)` and `ns.WorldMapView()` share the placing maths with other layers.
 
-- Sparkle on things nearby (asked for 2026-11-11, "similar to Lueur"): built as `Sparkle.lua`, not yet
+- Sparkle on things nearby (asked for 2026-11-11, like Lueur's): built as `Sparkle.lua`, not yet
   tried in-game. The game picks one "soft interact" target and gives it a nameplate; a turning star
   (the game's own `Interface\Cooldown\star4`, no art of Lueur's) is hung on it when it is a herb, a
   vein, a chest or a quest object, coloured by kind. The kind comes from the cursor the game would show
@@ -363,10 +366,10 @@ Reported in-game:
   also looked for among the nameplates on screen (`UnitIsUnit(token, "softinteract")`) when asking by
   "softinteract" gives nothing. The command now also says what was last pointed at, since typing on
   a keyboard can make the game let go (its SoftTargetInteract is 1: gamepad only). The stand-in now
-  behaves like Forever here, so the first version would have failed its test. Confirmed in-game by Tyrone: a herb sparkles and
+  behaves like Forever here, so the first version would have failed its test. Confirmed in-game: a herb sparkles and
   shows its name. Not yet heard about: veins, chests, quest objects, the colours, the star's size.
 - Customising (asked for 2026-11-11, by interview): built, passes the stand-in session, not yet tried
-  in-game. Tyrone chose: the sparkle, the name and the trail; each kind of thing its own look; hide in
+  in-game. Chosen: the sparkle, the name and the trail; each kind of thing its own look; hide in
   combat and in instances as options, and an ignore list; everything on the options page with the
   game's colour picker and a Test button.
   - `ns.settings` in Core.lua now holds tick boxes, sliders, pick lists, colours ("ffRRGGBB", as the
@@ -381,13 +384,13 @@ Reported in-game:
     lacks falls back to the game's), outline, the kind's colour or one fixed colour, above or below.
   - Trail.lua: the trail's three colours, its thickness on each map, solid, dashes or dots, and a
     pattern that flows toward the destination; used by WorldMap.lua and Minimap.lua.
-  - Confirmed in-game by Tyrone (2026-11-11, after a full restart): the new options pages open and
+  - Confirmed in-game (2026-11-11, after a full restart): the new options pages open and
     work. Not yet heard about, one by one: each effect's look in the world, the name's fonts, the
     trail styles, the cost of a flowing trail on the open world map (redrawn about 30 times a
     second), the ignore list and its bound key.
-- Sparkle "behind the character" (asked for 2026-11-11): Tyrone wanted the sparkle in the world with
-  depth. Not possible: an addon draws on top of the finished 3D picture, and the game's own outline is
-  already at its highest on his client (`graphicsOutlineMode` 2). Built the stand-in he agreed to: the
+- Sparkle "behind the character" (asked for 2026-11-11): the sparkle in the world with depth. Not
+  possible: an addon draws on top of the finished 3D picture, and the game's own outline is already at
+  its highest on the user's client (`graphicsOutlineMode` 2). Built the stand-in that was agreed: the
   whole mark fades as it comes over an oval where the character is taken to stand (Sparkle.lua,
   `Body`, `Covered`, `Tuck`). The oval is worked out from the camera's distance (`GetCameraZoom`),
   hanging under the middle of the screen. New page "Sparkle: Behind My Character" (off by default):
@@ -398,11 +401,11 @@ Reported in-game:
     without it 15 yards is assumed and `/wayfinder sparkle` says so;
   - whether the game tells where a mark hung on a nameplate is (`GetCenter` is documented as secret
     "when anchoring secret"); if not, the mark stays bright and `/wayfinder sparkle` says so;
-  - whether the oval sits on the character with his camera (ConsolePort may keep it off-centre).
+  - whether the oval sits on the character with the user's camera (ConsolePort may keep it off-centre).
   It assumes the thing is on the far side of the character and cannot cut to the character's shape.
-  Confirmed in-game by Tyrone (2026-11-12): the sparkle fades over his character. So the game does
+  Confirmed in-game (2026-11-12): the sparkle fades over the character. So the game does
   tell where a mark hung on a herb's nameplate is. Not yet heard: whether the oval follows the zoom
-  (that is, whether `GetCameraZoom` is there), and which slider values he settled on.
+  (that is, whether `GetCameraZoom` is there), and which slider values were settled on.
 - Destinations from a tracked quest (asked for 2026-11-12): built in Sources.lua, which now chooses
   between two sources when there is no pin: the RestedXP guide and a tracked quest.
   - Which quest: the one the game's arrow is on (`C_SuperTrack.GetSuperTrackedQuestID`), else (setting
@@ -418,18 +421,18 @@ Reported in-game:
     moves; one you stopped, until its mark moves. `/wayfinder quest` says what the game reports.
   - Passes the stand-in session; not tried in-game. Unknown until tried: whether Forever's quests
     have marks on the map at all, and whether the game's arrow is on a quest by itself there.
-- Subtle sparkles (asked for 2026-11-12, "subtle and immersive"): five more effects in the list,
+- Subtle sparkles (asked for 2026-11-12, subtle and immersive): five more effects in the list,
   Subtle: glints, fireflies, faint shimmer, ground ripple, wisp. Two new pictures from media.py
   (glint.tga, mote.tga). An Apply button on the first page gives every kind one of them, changing
   only the effect. Every mark, and its name, now comes in over a third of a second instead of
   popping. 69 settings, 8 sub-pages, 8 buttons now. Passes the stand-in session. New picture files
   need a full restart of the game.
-- Confirmed in-game by Tyrone (2026-11-12, after a full restart): the quest route and the subtle
+- Confirmed in-game (2026-11-12, after a full restart): the quest route and the subtle
   sparkles both work. So Forever's quests do have marks on the map. Not yet heard, one by one: which
-  subtle effects he kept, a quest on the other continent, guide and quest together, the nearest-quest
+  subtle effects were kept, a quest on the other continent, guide and quest together, the nearest-quest
   choice with nothing under the game's arrow.
 - Boats and zeppelins, and with them routes to another continent (asked for 2026-11-12; version
-  0.10.0): built, passes the checks here. Confirmed in-game by Tyrone (2026-11-12, after a full
+  0.10.0): built, passes the checks here. Confirmed in-game (2026-11-12, after a full
   start): both addons load through the junctions into the repository, and a pin on the other
   continent gets a route. Not yet heard: an actual ride (boarding, the loading screen, the trail
   picking up after landing), whether the waits and boarding spots are right, and which of the
@@ -467,7 +470,7 @@ Reported in-game:
   (was 277), spread over frames in the game. Not yet tried in-game.
 
 Not done yet:
-- In-game so far: Tyrone's first try worked (no detail given on which parts he looked at). Not yet
+- In-game so far: the first try worked (no detail given on which parts were looked at). Not yet
   heard about: the minimap trail turning with the character, a wrong turn, arriving, the settings page,
   the bindings, a route through a lift or a tunnel.
 - The time left shown on screen. (Destinations from RestedXP steps and from a tracked quest, the
@@ -475,7 +478,7 @@ Not done yet:
 - Flight points known: taken from `C_TaxiMap.GetTaxiNodesForMap` on the continent's map (1414, 1415).
   If the game returns nothing there, all of the side's points are used and it says so once.
 - Memory during a search right across a continent on foot is tens of MB for a moment.
-- Done when: Tyrone has walked a few routes in-game.
+- Done when: a few routes have been walked in-game.
 
 ### 5. Structures and special links (the hard part)
 Milestone 2 showed the key links are needed for the first version, not after it.
@@ -506,18 +509,18 @@ Milestone 2 showed the key links are needed for the first version, not after it.
   Thunder Bluff. So they are marked in-game: a macro stores the character's position in
   `PatchwerkForeverDB.marks`, and `marks.py` reads the saved file, checks each mark against our ground
   and height, and writes the pairs into `hand_links.txt`.
-- Done for Thunder Bluff's two western lifts (Tyrone's marks, 2026-11-11). Two things learned:
+- Done for Thunder Bluff's two western lifts (marks made in the game, 2026-11-11). Two things learned:
   WoW Forever's UnitPosition gives no height (0), and a lift's upper landing is a wooden platform
   standing out over the lower ground, so both marks of a lift fall on the same ground in our data.
   `python marks.py TBBT` says which marks are tops; the top end is then moved to the nearest ground
   at least 15 yards higher (18 and 25 yards away here). The inn on the bluff to Bloodhoof Village now
   routes: 1469 yd through one lift. The lift's seconds are the gap between the two presses (35, 45).
 - The two eastern lifts were added later the same day (marks 5 to 8, `python marks.py TBBTBTTB`).
-  Marks 6 and 7 are the tops (worked out from his walking between them, then confirmed by Tyrone).
+  Marks 6 and 7 are the tops (worked out from the walk between them, then confirmed).
   From the inn, Crossroads now routes by
   an eastern lift and Bloodhoof Village by a western one.
 - One-way links (2026-11-11): a safe drop off Thunder Bluff's south-west rise, marks 9 to 11, in two
-  steps (48 yd then 78 yd down in our data; Tyrone says it is safe, it is steep ground and probably a
+  steps (48 yd then 78 yd down in our data; reported safe in the game: it is steep ground and probably a
   slide). `python marks.py TBBTBTTBDDD`: D marks made going down become links from each to the next
   only. `hand_links.txt` lines take `oneway` after the seconds; `Coarse.add_link(..., oneway=True)`;
   pack.py writes a 1 after such a link and Planner.lua then joins it one way. Checked in both
@@ -564,7 +567,7 @@ These get simpler and better once the planner is ours:
   encrypted is unknown until milestone 1 (some files in the install are).
 - **Patches.** A patch that changes the world means re-running the extractor and re-releasing data.
 - **Publishing.** The map data is derived from Blizzard's game files. Fine for personal use;
-  shipping it publicly is Tyrone's call (other addons do ship client-derived data).
+  shipping it publicly is the user's call (other addons do ship client-derived data).
 - **Testing.** Everything up to milestone 4 can be verified here. In-game behaviour (drawing, waypoints,
   combat restrictions) cannot.
 

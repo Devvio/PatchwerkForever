@@ -186,18 +186,27 @@ def pack_map(map_id, flights):
     write("Extra.lua", "".join(extra))
 
     with open(os.path.join(folder, "PatchwerkForever_Thread_Routes_%s.toc" % NAMES[map_id]), "w", encoding="utf-8", newline="\n") as f:
-        f.write("## Interface: 16001\n## Title: Thread (Routes) map: %s\n"
+        f.write("## Interface: 16001\n## Title: Thread (Routes) Map: %s\n"
                 "## Notes: Map data for Patchwerk Forever: Thread (Routes). Loaded by it when needed.\n"
-                "## Author: Tyrone\n## Version: 0.17.0\n"
+                "## Author: Tyrone\n## Version: %s\n"
                 # (the game's addon list shows it under the parent; without this line it stood apart)
                 "## Group: PatchwerkForever\n"
                 "## IconTexture: Interface\\AddOns\\PatchwerkForever_Thread_Routes\\Media\\icon\n"
                 "## X-License: MIT (code); map data made from the game's own files\n"
                 "## Dependencies: PatchwerkForever_Thread_Routes\n## LoadOnDemand: 1\n\n%s\n"
-                % (TITLES[map_id], "\n".join(files)))
+                % (TITLES[map_id], routes_version(), "\n".join(files)))
     print("map %d -> %s: %d tiles, %d blocks, %d links, %d flight points, %d flights; %d files, %.1f MB%s" % (
         map_id, os.path.basename(folder), len(tiles), len(graph), len(far), len(points), len(paths), len(files),
         total / 1e6, "; %d links between cells side by side" % odd if odd else ""))
+
+
+def routes_version():
+    """The version of Thread (Routes) itself: its map data carries the same (release.py checks it)."""
+    main = "PatchwerkForever_Thread_Routes"
+    for line in open(os.path.join(ADDONS, main, main + ".toc"), encoding="utf-8"):
+        if line.startswith("## Version:"):
+            return line.split(":", 1)[1].strip()
+    raise SystemExit("no version in %s.toc" % main)
 
 
 def pack_crossings():

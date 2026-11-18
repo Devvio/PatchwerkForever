@@ -28,7 +28,9 @@ When all of them are built it also writes release/UPLOAD.md: what to upload, in 
 to set on each project.
 
 The version is the one in the main folder's TOC; every other folder of the addon must carry the same.
-Nothing is uploaded: that is done by hand on CurseForge.
+Each CHANGELOG.md starts with "# <the addon's title>" and its first entry is that version. The base's
+README names every other project of the family: building the base fails when one is missing, and
+building only other projects warns. Nothing is uploaded here: that is upload.py, or done by hand.
 """
 import json
 import os
@@ -41,7 +43,7 @@ import zipfile
 import cf_html
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-# the repository's addons/ folder; the game's Interface/AddOns holds junctions to the folders in it
+# the repository's addons/ folder, from which build.py writes the game's copy and this the uploads
 REPO = os.path.normpath(os.path.join(HERE, ".."))
 ADDONS = os.path.join(REPO, "addons")
 OUT = os.path.join(REPO, "release", "%s")
@@ -62,7 +64,7 @@ PROJECTS = {
         "more": [],
         "requires": [],
         "stale": PRIVATE + ("wayfinder", "wayfarer"),
-        "needs": ("README.md", "CHANGELOG.md", "LICENSE", "Media/icon.tga"),
+        "needs": ("README.md", "CHANGELOG.md", "LICENSE", "Media/icon.tga", "Bindings.xml"),
         "summary": "The base of the Patchwerk Forever addons for WoW Forever: one settings home, saved data and "
                    "/patchwerk for all of them. It does nothing by itself; add Stitch (fixes for other addons) "
                    "and Thread (our own tools).",
@@ -93,7 +95,7 @@ PROJECTS = {
         "requires": ["PatchwerkForever"],
         "with": "MelloUI",
         "stale": PRIVATE + ("wayfinder", "wayfarer"),
-        "needs": ("README.md", "CHANGELOG.md", "LICENSE", "Media/icon.tga", "Link.lua"),
+        "needs": ("README.md", "CHANGELOG.md", "LICENSE", "Media/icon.tga", "Link.lua", "Bindings.xml"),
         "summary": "Additions to MelloUI's Route on WoW Forever: roads ready at login, roads before shortcuts, "
                    "blocked spots, hearthstone and teleport suggestions, next guide steps, a quest run. "
                    "Needs Patchwerk Forever.",
@@ -266,6 +268,44 @@ def contents(folder, mark):
     return out
 
 
+def changelog_problems(main, version):
+    """What is wrong with an addon's CHANGELOG.md: it must open with "# <the TOC's title>", and its first
+    entry ("## <version>", perhaps with words after it) must be the version being built, so the entry
+    upload.py sends is the right one."""
+    path = os.path.join(ADDONS, main, "CHANGELOG.md")
+    if not os.path.exists(path):
+        return []                                   # (the missing file is reported with the others)
+    lines = [line.rstrip() for line in open(path, encoding="utf-8") if line.strip()]
+    title = toc(main)[0].get("Title", main)
+    problems = []
+    if not lines or lines[0] != "# " + title:
+        problems.append("CHANGELOG.md does not begin with the title line \"# %s\"" % title)
+    first = next((line[3:].split()[0] for line in lines if line.startswith("## ") and line[3:].split()), None)
+    if first is None:
+        problems.append("CHANGELOG.md has no entry (a \"## %s\" line)" % version)
+    elif first != version:
+        problems.append("CHANGELOG.md's first entry is %s; the TOC says %s" % (first, version))
+    return problems
+
+
+def family_problems():
+    """The other projects that the base's README does not name. A part is named by its title without the
+    family's prefix ("Thread (Routes)"), as the README's tables give it."""
+    base = PROJECTS["patchwerk"]["main"]
+    readme = open(os.path.join(ADDONS, base, "README.md"), encoding="utf-8").read()
+    prefix = toc(base)[0].get("Title", base) + ": "
+    problems = []
+    for key in sorted(PROJECTS):
+        main = PROJECTS[key]["main"]
+        if main == base:
+            continue
+        title = toc(main)[0].get("Title", main)
+        name = title[len(prefix):] if title.startswith(prefix) else title
+        if name not in readme:
+            problems.append("%s/README.md does not name %s (\"%s\")" % (base, main, name))
+    return problems
+
+
 def build(key):
     project = PROJECTS[key]
     main, folders = project["main"], [project["main"]] + project["more"]
@@ -315,8 +355,9 @@ def build(key):
             problems.append("%s has no %s" % (main, name))
     if len(project["summary"]) > 250:
         problems.append("the summary is %d characters; CurseForge takes 250" % len(project["summary"]))
-    if ("## %s" % version) not in open(os.path.join(ADDONS, main, "CHANGELOG.md"), encoding="utf-8").read():
-        problems.append("CHANGELOG.md has no entry for %s" % version)
+    problems += changelog_problems(main, version)
+    if key == "patchwerk":
+        problems += family_problems()
     if problems:
         print("%s NOT BUILT:" % main)
         for p in problems:
@@ -396,12 +437,11 @@ def listing(main, out):
     return sorted(os.listdir(dst))
 
 
-# the tag a project's release commit gets, and whether its CurseForge project is there already
+# the tag a project's release commit gets
 TAGS = {"patchwerk": "patchwerk-forever", "consoleport": "stitch-consoleport", "melloui": "stitch-melloui",
         "melloroute": "stitch-melloroute", "routes": "thread-routes", "sparkle": "thread-sparkle",
         "tracker": "thread-tracker", "dungeonjournal": "stitch-dungeonjournal", "races": "thread-races",
         "plains": "thread-plainsrunning"}
-EXISTS = {"patchwerk"}
 ORDER = ["consoleport", "melloui", "melloroute", "dungeonjournal", "routes", "sparkle", "tracker", "races", "plains", "patchwerk"]
 
 
@@ -409,10 +449,8 @@ def checklist():
     """release/UPLOAD.md: every project, in the order to upload them, with what to set on each."""
     lines = ["# Upload checklist", "",
              "Made by `python release.py`. One section a CurseForge project, in the order to upload them.", "",
-             "**The order matters.** Patchwerk Forever 2.0.0 does nothing by itself, and people who have 1.x get it as",
-             "an update. Have the Stitch and Thread projects up (and approved) first, so that when the base's update",
-             "tells them which addon to get, it is there to be found. Every project but the base names",
-             "**Patchwerk Forever** as a required dependency.", "",
+             "**The base goes last**, so that when its update names a part to get, that part's file is there to be",
+             "found. Every project but the base names **Patchwerk Forever** as a required dependency.", "",
              "By hand, or with `python upload.py <project>` once the project is made on CurseForge and its id and slug",
              "are in `tools/curseforge.json` (the repository's README says how). The tool sends the zip, the changelog",
              "entry, the release type, the game version and the dependency; the name, summary, description, logo,",
@@ -426,7 +464,7 @@ def checklist():
         pictures = sorted(os.listdir(os.path.join(out, "listing"))) if os.path.isdir(os.path.join(out, "listing")) else []
         mark = commit([main] + project["more"])
         lines += ["## %d. %s %s" % (n, fields.get("Title", main), version), "",
-                  "- **Project:** %s" % ("the one that is there (it becomes the base)" if key in EXISTS
+                  "- **Project:** %s" % ("on CurseForge (id %s)" % curse_id(main) if curse_id(main)
                                          else "new; name it exactly as above"),
                   "- **Folder here:** `release/%s/`" % main,
                   "- **File:** `%s-%s.zip`, built from commit `%s`%s" % (
@@ -452,6 +490,9 @@ def main():
     for key in keys:
         if key not in PROJECTS:
             sys.exit("no such addon: %s (there are: %s)" % (key, ", ".join(sorted(PROJECTS))))
+    if "patchwerk" not in keys:
+        for problem in family_problems():
+            print("WARNING: " + problem)
     if not all([build(key) for key in keys]):
         sys.exit(1)
     if sorted(keys) == sorted(PROJECTS):

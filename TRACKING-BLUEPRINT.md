@@ -1,10 +1,10 @@
 # Blueprint: route focus and your own quest routes
 
-Asked for on 2026-11-18: "buttons for focusing specific routes, e.g. RestedXP, Dungeon Journal and questing. Then custom quest routes by selecting the quest and stacking them in order, drag and drop to reorder the path. Integrate into the map/journal."
+Asked for on 2026-11-18: buttons to focus the route on one source (RestedXP, the Dungeon Journal, questing), then routes of your own made by selecting quests and stacking them in order, reordered by drag and drop, on the map and the journal too.
 
 Built on 2026-11-18 (all five milestones; base 2.6.0, Routes 1.1.0, Tracker 1.3.0, Stitch (Dungeon Journal) 1.1.0), passing the checks outside the game; not yet tried in the game. Your answers to the ten decisions are at the end; the text below follows them.
 
-## Where things stand
+## Where things stood before it was built
 
 - **What the route follows** is decided every half second in Routes' `Sources.lua` (`Look()` → `Target()`), highest first:
   1. a gathering run;

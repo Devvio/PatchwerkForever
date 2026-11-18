@@ -10,6 +10,7 @@ if not env.NativeContext then return end;
 -- toolbar lays its slots out.
 
 if not ( KeyRingButton and C_ActionBar and C_ActionBar.ShouldShowKeyring ) then return end;
+env.Applied['Key ring slot'] = true;
 
 hooksecurefunc(KeyRingButton, 'Show', function(self)
 	if not C_ActionBar.ShouldShowKeyring() then

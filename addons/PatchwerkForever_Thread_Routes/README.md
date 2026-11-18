@@ -29,18 +29,20 @@ With nothing else to do, you only have to pick a destination:
 - **Your RestedXP guide.** With no pin, it routes to the guide's current step and moves on with it (more below). Nothing of RestedXP's is changed.
 - **A spot you type.** `/thread to 45.2 61.8` routes to that place on the map you are on.
 
-When a guide and a quest both lead somewhere, the guide goes first; a setting turns that round.
+When a guide and a quest both lead somewhere, the guide goes first; the setting **Route Priority** turns that round.
 
 ## The main track, and a path you choose
 
 What the route follows by itself is the main track: your guide when one is running, else your tracked quests (the settings say which first). Now and then you want to go somewhere else for a while.
 
-- **A quest you click in Thread (Tracker)** becomes the route, even while a guide is running. Its walking is drawn in a colour of its own, so you can tell a side path from the main track.
+- **A quest you click in Thread (Tracker)** becomes the route, even while a guide is running. Its walking is drawn in a color of its own, so you can tell a side path from the main track.
 - **The way back is drawn too**: fainter, on from the quest to the step your guide is waiting at.
 - **Click it again**, or hand the quest in, and the main track is followed once more.
-- **A second guide's list** can be chosen the same way: the Dungeon Journal's quests (with its Stitch), clicked in the tracker, are followed stop after stop until the list is done or you go back.
-- **A gathering run** is a side path of the same kind. There is one at a time: choosing a quest ends a run, and starting a run lets the quest go.
+- **A second guide's list** can be chosen the same way: the Dungeon Journal's quests (with its Stitch), clicked in the tracker, are followed stop after stop until the list is done or you go back. Its next stops are drawn in the selected color too.
+- **A gathering run** is a side path of the same kind. There is one at a time: choosing a quest ends a run, and starting a run lets the quest go (unless the run cannot start).
 - A map pin of your own still comes before everything.
+- **When a quest you select cannot be followed**, the chat says why, once: it has no location on the map, it is on a continent the route cannot reach from here, or your map pin comes first.
+- **Thread (Tracker) marks what the route follows**: Routes tells it, so the mark is right for a map pin, for a quest ahead of the guide, and after Stop Routing (with a Patchwerk Forever that passes it on).
 
 ## Focus: you choose what the route follows
 
@@ -48,13 +50,13 @@ By itself the route follows the main track. A **focus** is your standing choice 
 
 | Focus | The route follows |
 |---|---|
-| **Auto** | the main track: your guide or your tracked quests, by the Priority setting |
+| **Auto** | the main track: your guide or your tracked quests, by Route Priority |
 | **RestedXP** | your RestedXP guide only |
 | **Dungeon Journal** | the Dungeon Journal's quests only (with its Stitch) |
 | **Quests** | your tracked quests only: the quest arrow's, or the nearest |
 | **My Route** | your own list of stops, in your order (below) |
 
-Only what is running is offered. A gathering run, your map pin and a quest or list you select still come first. You chose the focus yourself, so **Follow RestedXP Guide** and **Follow Tracked Quests** being off do not hold it back.
+Only what is running is offered. A gathering run, your map pin and a quest or list you select still come first. You chose the focus yourself, so **Follow Guide** and **Follow Tracked Quests** being disabled do not hold it back.
 
 - **When the focus has nowhere to send you** (the journal's list is done, nothing is tracked, My Route is empty), the route follows Auto instead and says so once in chat.
 - **A change of focus is said on screen**: "Following: Dungeon Journal", above the words of the step it leads to.
@@ -76,7 +78,7 @@ On the world map's quest log, each quest has a small **+** beside its title: cli
 
 A route only flies between flight points your character has discovered (the setting **Known Flight Points Only**, on by default).
 
-- **Open the flight map at any flight master** and what it shows is remembered: which points you can fly to, and which you cannot. Do this once on each continent.
+- **Open the flight map at any flight master** and what it shows is remembered: which points you can fly to, and which you cannot. Do this once on each continent; the chat confirms it ("Flight map read: 14 flight points known on this continent.").
 - **A point you discover later** is added as you find it.
 - **Until then, routes on that continent go on foot.** You are told once.
 - **When your guide says "fly" to a point you do not have**, the route does not lead you to the flight master. It goes by another way to where the guide sends you next, and says so.
@@ -111,6 +113,7 @@ Where the words stand, how large they are and how long they stay are on the page
 - **Boats and zeppelins.** It takes one where that is quicker, and to reach another continent: the trail leads to the dock or the tower, shows the course across, and carries on from where you land. Only the ones your side can use. How long you wait for one is not known, so the time given allows for half its round trip.
 - **A wrong turn.** Stray from the trail and a new route is found from where you are.
 - **On a flight path** the trail runs from you to where you land, and on from there.
+- **A new destination.** Until its way is found, the trail before it stays, fainter, in its own color.
 - **No route.** When no way can be found, the step text says so. The search is made again after 20 seconds, then less and less often (every two minutes at most), and at once when you have moved 300 yards or changed continent. A gathering run goes on to the next spot instead.
 
 The chat says how long the route takes and which flights it uses.
@@ -125,16 +128,16 @@ Each spot where you pick a herb or mine a vein is remembered for all your charac
 
 - `/thread gather round` keeps to the spots near where you began, and ends when you have been round them.
 - `/thread gather Peacebloom` goes only to spots of that one thing. `/thread gather list` shows what is near.
-- Only what your character can gather is gone to. While a run is on, your guide and your quests are not followed; a pin of your own still comes first.
-- With **Thread (Tracker)** installed, its Gathering section lists the nearest spots and starts a run on a click.
+- Only what your character can gather is gone to, as the game's profession book says; a character with no gathering profession gets no runs. While a run is on, your guide and your quests are not followed; a pin of your own still comes first, and **Start Routing** ends the run.
+- With **Thread (Tracker)** installed, its Gathering section lists the nearest spots and starts a run on a click. The **Toggle Gathering Run** key starts one and, pressed again, ends it.
 
 The only spots known are the ones you have gathered from yourself: the game's files do not say where herbs and ore grow.
 
 ## Settings
 
-**Options → AddOns → Patchwerk Forever → Thread: Routes**, or `/thread config`. The trail's colours, thickness and style (solid, dashes, dots, flowing) are on **Routes: Trail**; the words on screen are on **Routes: Step Text**.
+**Options → AddOns → Patchwerk Forever → Thread: Routes**, or `/thread config`. The trail's colors, width and style (solid, dashed or dotted, animated if you like) are on **Routes: Trail**; the words on screen are on **Routes: Step Text**, whose sample follows the sliders while you move them.
 
-Under **Focus And My Route**: **Focus Button On The World Map** and **Show My Route On The World Map** (both on to begin with).
+Under **Destinations**: **Route To Map Pin**, **Follow Guide**, **Follow Tracked Quests** and **Route Priority** (what always comes first is in its tooltip). Under **Focus And My Route**: **Focus Button On The World Map** and **Show My Route On The World Map** (both on to begin with).
 
 ## Commands
 
@@ -144,9 +147,9 @@ Under **Focus And My Route**: **Focus Button On The World Map** and **Show My Ro
 | `/thread go` | routes to your map pin, or with none to your guide step or tracked quest |
 | `/thread to 45.2 61.8` | routes to that spot on the map you are on |
 | `/thread stop` | stops routing, and says what was stopped; a route to a guide step or a quest resumes when the step or objective changes, or with `/thread go` |
-| `/thread config` | opens the settings |
+| `/thread config` | opens the options |
 | `/thread where` | says where the planner thinks you are |
-| `/thread quest` | says where the game puts your tracked quests, and which one is followed |
+| `/thread quest` | says where the game puts your tracked quests, and what is followed, in the order the route decides it |
 | `/thread focus` | says which focus is in use, and which can be chosen |
 | `/thread focus auto` / `rxp` / `dj` / `quests` / `route` | follows Auto, RestedXP, the Dungeon Journal, your tracked quests only, or My Route |
 | `/thread step` | says the current step on screen again |
@@ -154,12 +157,14 @@ Under **Focus And My Route**: **Focus Button On The World Map** and **Show My Ro
 | `/thread nodes` / `nodes forget` | counts the herb and ore spots; forgets the ones within 15 yards |
 | `/thread gather` / `gather round` / `gather <name>` / `gather list` / `gather stop` | a gathering run to the nearest spot and on; a round near here; one kind only; what is near; end it |
 
-These can be bound to a key or a gamepad button (Options → Keybindings → AddOns, or Console Port's binding list): **Route To Pin, Guide Step Or Quest**, **Stop Routing**, **Next Focus** (goes round the focuses that can be chosen), and one for each focus: **Focus: Auto**, **Focus: RestedXP**, **Focus: Dungeon Journal**, **Focus: Quests** and **Focus: My Route**.
+## Key bindings
+
+Bind these under Options → Keybindings → Patchwerk Forever, or in Console Port's binding list: **Start Routing** (`/thread go`), **Stop Routing**, **Show Step Text Again**, **Toggle Gathering Run**, **Next Focus** (goes round the focuses that can be chosen), and one for each focus: **Focus: Auto**, **Focus: RestedXP**, **Focus: Dungeon Journal**, **Focus: Quests** and **Focus: My Route**.
 
 ## What it does not do yet
 
 - **Docks and towers.** The trail ends on the ground beside a dock or a zeppelin tower, and a straight line stands in for the walk along the dock or the climb.
-- **Boats that may not run.** The boat and zeppelin lines come from the game's files, which do not say which of them are in service. If the trail leads you to one that never comes, switch off Use Boats And Zeppelins and please report it.
+- **Boats that may not run.** The boat and zeppelin lines come from the game's files, which do not say which of them are in service. If the trail leads you to one that never comes, disable Use Boats And Zeppelins and report it.
 - **Portals, the Deeprun Tram and hearthstones** are not used.
 - **Inside buildings.** A place on an upper floor or inside a city's buildings (Booty Bay, parts of the capitals) is routed to the nearest ground outside.
 - **Some lifts and flight masters.** The Great Lift and the Undercity's lifts are not known. Flights are not started or ended at Ironforge or the Undercity.
@@ -172,9 +177,11 @@ These can be bound to a key or a gamepad button (Options → Keybindings → Add
 The download holds four folders. All four go in `Interface\AddOns`:
 
 - `PatchwerkForever_Thread_Routes`: the tool.
-- `PatchwerkForever_Thread_Routes_Kalimdor`, `_EasternKingdoms`, `_ZephrasIsle`: the map data, about 4 MB in all. Each is loaded only when you are on that continent.
+- `PatchwerkForever_Thread_Routes_Kalimdor`, `_EasternKingdoms`, `_ZephrasIsle`: the map data, about 4 MB in all. Each is loaded the first time a route needs it; with boats and zeppelins on, the first route loads all three.
 
 The sparkle on things you can use, once part of this addon, is now **Patchwerk Forever: Thread (Sparkle)**.
+
+Something wrong? Report it as a comment on the addon's CurseForge page.
 
 ## Credits
 

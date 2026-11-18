@@ -87,7 +87,7 @@ local function Repair()
 	ring.ObjectPool, ring.ObjectPoolMixin = nil, nil;
 	local ok, problem = pcall(CPAPI.EventMixin.ADDON_LOADED, ring, ADDON_NAME);
 	if not ok then
-		env:Print('|cff69ccf0Console Port|r', "the menu ring's buttons could not be added:", tostring(problem))
+		env:Print('|cff69ccf0Console Port:|r', "The menu ring's buttons could not be added:", tostring(problem))
 	end
 end
 

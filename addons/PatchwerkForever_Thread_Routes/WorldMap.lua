@@ -39,28 +39,6 @@ local function Line(parent)
 	return line
 end
 
--- The part of a line from (ax, ay) to (bx, by) that lies inside the map (0 to 1 both ways), or nil.
-local function Clip(ax, ay, bx, by)
-	local t0, t1 = 0, 1
-	local dx, dy = bx - ax, by - ay
-	local function edge(p, q)
-		if p == 0 then return q >= 0 end
-		local t = q / p
-		if p < 0 then
-			if t > t1 then return false end
-			if t > t0 then t0 = t end
-		else
-			if t < t0 then return false end
-			if t < t1 then t1 = t end
-		end
-		return true
-	end
-	if edge(-dx, ax) and edge(dx, 1 - ax) and edge(-dy, ay) and edge(dy, 1 - ay) then
-		return ax + dx * t0, ay + dy * t0, ax + dx * t1, ay + dy * t1
-	end
-	return nil
-end
-
 local function Wipe()
 	for i = 1, used do lines[i]:Hide() end
 	for i = 1, dotted do dots[i]:Hide() end
@@ -89,10 +67,12 @@ local function Draw()
 	local width, height = parent:GetWidth(), parent:GetHeight()
 	local scale = map.GetCanvasScale and tonumber(map:GetCanvasScale()) or 1
 	if scale <= 0 then scale = 1 end
-	local full = (ns.Get('trailThickMap') or 3) / scale
+	local lineWidth = ns.Get('trailThickMap') or 3
+	local full = lineWidth / scale
 	local thick, alpha = full, 0.95
-	local pen = ns.TrailPen(1 / scale)
+	local pen = ns.TrailPen(1 / scale, false, lineWidth)
 	local r, g, b = 1, 1, 1
+	local chosen
 	local points, at, loose
 	local function line(x1, y1, x2, y2)
 		if used >= MOST then return end
@@ -132,6 +112,7 @@ local function Draw()
 	-- another continent, the part over there)
 	local function Run(trail, follow)
 		points, at, loose = trail.points, follow and trail.at or nil, follow and trail.loose
+		chosen, alpha = ns.TrailLook(trail, follow, 0.95, 0.45)
 		if m1 ~= trail.map then
 			points, at = trail.parts and trail.parts[m1], nil
 		end
@@ -140,23 +121,23 @@ local function Draw()
 			if used >= MOST then break end
 			local ax, ay = spot(i)
 			local bx, by = spot(i + 1)
-			local cx, cy, ex, ey = Clip(ax, ay, bx, by)
+			local cx, cy, ex, ey = ns.ClipBox(ax, ay, bx, by, 0, 0, 1, 1)
 			if cx and points[i + 1][3] ~= 'gap' then
-				r, g, b = ns.TrailColour(points[i + 1][3], follow and ns.dest and ns.dest.chosen)
+				r, g, b = ns.TrailColour(points[i + 1][3], chosen)
 				ns.Stroke(pen, cx * width, -cy * height, ex * width, -ey * height, line, dot)
 			end
 		end
 	end
 	if route then Run(route, true) end
 	-- the way on through a guide's next steps (Ahead.lua): fainter and finer, each ending in a dot
-	thick, alpha = full * 0.7, 0.45
+	thick = full * 0.7
 	for _, leg in ipairs(ahead or {}) do
 		Run(leg, false)
 		local last = points and points[#points]
 		if last then
 			local x, y = (left - last[2]) / (left - right), (top - last[1]) / (top - bottom)
 			if x >= 0 and x <= 1 and y >= 0 and y <= 1 then
-				r, g, b = ns.TrailColour('walk')
+				r, g, b = ns.TrailColour('walk', chosen)
 				thick = full * 1.2
 				dot(x * width, -y * height)
 				thick = full * 0.7

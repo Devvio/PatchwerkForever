@@ -24,14 +24,17 @@ end
 
 -- A pen for one drawing of the trail. `per` is how many of the map's own units make a pixel on the
 -- screen (the world map's canvas is scaled, the minimap is not); `small` is for the minimap, whose
--- pattern is finer. pen.at is how far along the trail the pen is, in those units.
-function ns.TrailPen(per, small)
+-- pattern is finer; `width` the line's width in pixels on the screen: past the default widths the
+-- dashes and gaps grow with it, so a wide dotted or dashed line does not run together into a solid
+-- one. pen.at is how far along the trail the pen is, in those units.
+function ns.TrailPen(per, small, width)
 	local style = ns.Get('trailStyle')
 	local dash, gap = 0, 0
+	local grow = math.max(1, (width or 0) / (small and 2.5 or 3))
 	if style == 'dashes' then
-		dash, gap = (small and 6 or 10) * per, (small and 5 or 7) * per
+		dash, gap = (small and 6 or 10) * per * grow, (small and 5 or 7) * per * grow
 	elseif style == 'dots' then
-		gap = (small and 7 or 9) * per
+		gap = (small and 7 or 9) * per * grow
 	else
 		style = 'solid'
 	end
@@ -42,6 +45,42 @@ function ns.TrailPen(per, small)
 		at = -(flowed % period)                    -- the pattern starts this far in: so it flows forward
 	end
 	return { style = style, dash = dash, gap = gap, at = at }
+end
+
+-- The part of a line from (ax, ay) to (bx, by) that lies inside the box from (x0, y0) to (x1, y1), or nil.
+function ns.ClipBox(ax, ay, bx, by, x0, y0, x1, y1)
+	local t0, t1 = 0, 1
+	local dx, dy = bx - ax, by - ay
+	local function edge(p, q)
+		if p == 0 then return q >= 0 end
+		local t = q / p
+		if p < 0 then
+			if t > t1 then return false end
+			if t > t0 then t0 = t end
+		else
+			if t < t0 then return false end
+			if t < t1 then t1 = t end
+		end
+		return true
+	end
+	if edge(-dx, ax - x0) and edge(dx, x1 - ax) and edge(-dy, ay - y0) and edge(dy, y1 - ay) then
+		return ax + dx * t0, ay + dy * t0, ax + dx * t1, ay + dy * t1
+	end
+	return nil
+end
+
+-- The colors and strength of one trail on a map: r, g, b for each piece by how it is gone (a function),
+-- and the alpha. trail: the route or a leg ahead; follow: it is the route you are on.
+--   the route you are on   its walking in the selected route's color when its destination is one you
+--                          selected; drawn fainter while the way to a new destination is searched for
+--                          (it still leads to the one before: Route.lua's route.dest)
+--   a leg ahead            fainter, in the selected route's color too for a list you selected (Ahead.lua)
+function ns.TrailLook(trail, follow, strong, faint)
+	if follow then
+		local dest = trail.dest
+		return dest and dest.chosen, (dest == nil or dest == ns.dest) and strong or faint
+	end
+	return ns.ahead and ns.ahead.chosen, faint
 end
 
 -- Whether the trail has to be drawn again and again (its pattern is flowing).

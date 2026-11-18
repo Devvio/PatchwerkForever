@@ -22,6 +22,8 @@ local REACH = 3000            -- yards within which a spot is looked for
 local ROUND = 1200            -- yards from where a round began that its spots lie within
 local AGAIN = 300             -- seconds before a spot you have been to is gone to again
 local HERBS, ORE = 2383, 2580 -- Find Herbs and Find Minerals: learned with the profession
+local HERBALISM, MINING = 182, 186    -- the professions' skill lines, where the game cannot be asked for them
+local KEEP = 10               -- seconds what you can gather is kept before the game is asked again
 
 local state                   -- nil, or { mode =, name =, map =, x =, y = (where it began), going = the spot gone to }
 local visited = {}            -- [spot] = when you reached it
@@ -29,15 +31,57 @@ local visited = {}            -- [spot] = when you reached it
 -- is on: that was from where you stood, and the next run may start where there is a way.
 local noWay = {}
 
--- What this character can gather: { h = true, o = true }. The game is asked whether the profession's
--- tracking spell is known; when it will not say, or says neither, both are taken as possible.
-local function Able()
+-- What this character can gather: { h = true or false, o = true or false }. The game is asked the way
+-- its own profession book asks (GetProfessions: each profession's skill line); where it cannot be
+-- asked, whether the profession's tracking spell is known; where neither can be, or the spells say
+-- neither, both are taken as possible. Kept a few seconds, and forgotten when your skills change.
+local able, ableAt = nil, 0
+
+local function SkillLine(profession, fallback)
+	local trade, kinds = rawget(_G, 'C_TradeSkillUI'), Enum and Enum.Profession
+	local id = trade and kinds and kinds[profession] and ns.Ask(trade.GetProfessionSkillLineID, kinds[profession])
+	return type(id) == 'number' and id or fallback
+end
+
+local function AskProfessions()
+	local list, info = rawget(_G, 'GetProfessions'), rawget(_G, 'GetProfessionInfo')
+	if type(list) ~= 'function' or type(info) ~= 'function' then return nil end
+	local ok, a, b, c, d, e = pcall(list)
+	if not ok then return nil end
+	local herbs, ore = SkillLine('Herbalism', HERBALISM), SkillLine('Mining', MINING)
+	local out = { h = false, o = false }
+	for _, index in pairs({ a, b, c, d, e }) do           -- (any of them can be nil)
+		local line = select(8, pcall(info, index))         -- (pcall's true first, then the skill line seventh)
+		if line == herbs then out.h = true elseif line == ore then out.o = true end
+	end
+	-- (a list with nothing in it is no answer: this client may keep its professions some other way, so
+	-- the spells are asked next rather than every character being told it gathers nothing; a list with
+	-- professions in it, and neither of these two, is an answer)
+	if a == nil and b == nil and c == nil and d == nil and e == nil then return nil end
+	return out
+end
+
+local function AskSpells()
 	local known = rawget(_G, 'IsPlayerSpell') or rawget(_G, 'IsSpellKnown')
-	if type(known) ~= 'function' then return { h = true, o = true } end
+	if type(known) ~= 'function' then return nil end
 	local okH, herbs = pcall(known, HERBS)
 	local okO, ore = pcall(known, ORE)
-	if not (okH and okO) or not (herbs or ore) then return { h = true, o = true } end
+	if not (okH and okO) or not (herbs or ore) then return nil end
 	return { h = herbs and true or false, o = ore and true or false }
+end
+
+local function Able()
+	if not able or GetTime() - ableAt > KEEP then
+		able, ableAt = AskProfessions() or AskSpells() or { h = true, o = true }, GetTime()
+	end
+	return able
+end
+ns.Try('watching for professions learned', ns.On, 'SKILL_LINES_CHANGED', function() able = nil end)
+
+-- Whether this character can gather anything at all.
+local function AbleAny()
+	local can = Able()
+	return can.h or can.o
 end
 
 local function Far(node, x, y)
@@ -48,10 +92,10 @@ end
 local function Near(count)
 	local px, py, map = ns.Place()
 	if not px then return {} end
-	local able, best = Able(), {}
+	local can, best = Able(), {}
 	ns.NodesAround(map, px, py, REACH, function(node)
 		local kind = ns.NodeKind(node[3])
-		if kind and able[kind] then
+		if kind and can[kind] then
 			local far = Far(node, px, py)
 			local had = best[node[3]]
 			if not had or far < had.yards then
@@ -70,11 +114,11 @@ end
 local function Pick()
 	local px, py, map = ns.Place()
 	if not (px and state) then return nil end
-	local able, now = Able(), GetTime()
+	local can, now = Able(), GetTime()
 	local best, far
 	ns.NodesAround(map, px, py, REACH, function(node)
 		local kind = ns.NodeKind(node[3])
-		if not (kind and able[kind]) then return end
+		if not (kind and can[kind]) then return end
 		if state.mode == 'kind' and node[3] ~= state.name then return end
 		if state.mode == 'round' and (map ~= state.map or Far(node, state.x, state.y) > ROUND) then return end
 		if visited[node] and now - visited[node] < AGAIN then return end
@@ -88,8 +132,13 @@ end
 local function Go()
 	local node, map = Pick()
 	if not node then
-		ns.Print(state.mode == 'kind' and ('No unvisited %s node recorded nearby. Gathering stopped.'):format(state.name)
-			or 'No unvisited herb or ore node recorded nearby. Gathering stopped.')
+		if state.going then
+			ns.Print('All nearby nodes were visited in the last 5 minutes. Gathering stopped.')
+		else
+			-- (the run never began)
+			ns.Print(('No %s nodes recorded nearby, or all were visited in the last 5 minutes.')
+				:format(state.mode == 'kind' and state.name or 'herb or ore'))
+		end
 		state = nil
 		return
 	end
@@ -115,18 +164,30 @@ local function Start(mode, name)
 	end
 	if mode ~= 'kind' and mode ~= 'round' then mode = 'any' end
 	if mode == 'kind' and type(name) ~= 'string' then return false end
+	if not AbleAny() then
+		ns.Print('This character has no gathering profession.')
+		return false
+	end
 	state = { mode = mode, name = name, map = map, x = px, y = py }
-	-- one side path at a time, as the base's Gather:Start has it: a run started here (/thread gather)
-	-- ends a choice too. (After the run is set, so the look this sets off already sees the run.)
+	-- One side path at a time, as the base's Gather:Start has it: a run started here (/thread gather)
+	-- ends a choice too. (After the run is set, so the look this sets off already sees the run.) A run
+	-- that does not start puts the choice back.
 	local Choice = ns.Base.Choice
-	if Choice and Choice.Clear then Choice:Clear() end
+	local had = Choice and Choice.Get and Choice:Get()
+	if had and Choice.Clear then Choice:Clear() end
 	noWay = {}
 	Go()
+	if had and not state and Choice.Set then Choice:Set(had.kind, had.id) end
 	return state ~= nil
 end
 
 function ns.GatherActive()
 	return state ~= nil
+end
+
+-- Ends the run, if one is on. Returns true when there was one.
+function ns.GatherStop()
+	return Stop()
 end
 
 -- Once a second: a spot reached is noted and the next one gone to.
@@ -174,17 +235,23 @@ if ns.Base.Gather and ns.Base.Gather.Offer then
 	ns.Base.Gather:Offer(offered)
 end
 
--- /thread gather, /thread gather round, /thread gather Peacebloom, /thread gather stop
-function ns.GatherSay(rest)
+-- /thread gather, /thread gather round, /thread gather Peacebloom, /thread gather stop.
+-- fromKey: started with the Toggle Gathering Run key, which also ends it.
+function ns.GatherSay(rest, fromKey)
 	rest = (rest or ''):gsub('^%s+', ''):gsub('%s+$', '')
+	local ends = fromKey and 'Press the key again to stop.' or '/thread gather stop ends it.'
 	if rest == 'stop' then
 		ns.Print(Stop() and 'Gathering stopped.' or 'No gathering run is active.')
 	elseif rest == '' or rest == 'round' then
 		if Start(rest == 'round' and 'round' or 'any') then
-			ns.Print(rest == 'round' and 'Farming nearby nodes: routing to the next one at each. /thread gather stop to end.'
-				or 'Routing to the nearest node, then the next at each. /thread gather stop to end.')
+			ns.Print((rest == 'round' and 'Gathering run started near here: nearest node first, then the next. %s'
+				or 'Gathering run started: nearest node first, then the next. %s'):format(ends))
 		end
 	elseif rest == 'list' then
+		if not AbleAny() then
+			ns.Print('This character has no gathering profession.')
+			return
+		end
 		local near = Near(8)
 		if #near == 0 then ns.Print('No herb or ore nodes recorded nearby.') end
 		for _, spot in ipairs(near) do
@@ -199,7 +266,7 @@ function ns.GatherSay(rest)
 		if not want then
 			ns.Print(('No "%s" node recorded nearby. /thread gather list shows what is.'):format(rest))
 		elseif Start('kind', want) then
-			ns.Print(('Routing to the nearest %s, then the next at each. /thread gather stop to end.'):format(want))
+			ns.Print(('Gathering run started: nearest %s first, then the next. %s'):format(want, ends))
 		end
 	end
 end

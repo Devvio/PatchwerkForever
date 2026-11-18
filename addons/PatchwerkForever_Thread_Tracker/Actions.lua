@@ -10,7 +10,16 @@
 --
 -- Everything here is done only because you clicked, with one exception that is a setting and starts
 -- off: with no guide running and no quest or side list chosen by you, the game's arrow is put on the
--- nearest quest you track ("Follow The Nearest Quest By Itself").
+-- nearest quest you track ("Quest Arrow On Nearest Quest"). An arrow the game itself puts on a quest
+-- you have just accepted counts as that setting's to move, and so does its own arrow after a reload.
+--
+-- Choosing a quest moves the game's arrow to it. Going back to the main route by a click or a key
+-- puts the arrow back where it was before you chose (unless you have moved it since), so with no
+-- guide the route leads where it did before. A quest you chose that you stop tracking in the quest
+-- log is let go, as it is when you stop tracking it here.
+--
+-- Which block wears the bar of "being followed" is what Thread (Routes) says it follows, through the
+-- base (PatchwerkForever.Following); with no such word (Routes not installed) it is worked out here.
 --
 -- Abandoning asks first, with the game's own question. Stopping tracking changes the game's watch
 -- list, as the same entry in the game's own menu does.
@@ -21,6 +30,8 @@ local LOOK = 2                -- seconds between two looks for the nearest quest
 local NEARER = 0.85           -- another quest must be this much nearer before the arrow moves to it
 
 local auto                    -- the quest the arrow was put on by itself (not by your click)
+local arrowBefore             -- where the arrow was before you chose a quest, and whether it was
+local autoBefore              -- the setting's own then: put back when you go back to the main route
 
 local function Ask(fn, ...)
 	if type(fn) ~= 'function' then return nil end
@@ -39,18 +50,50 @@ local function PutArrow(id)
 	return (pcall(C_SuperTrack.SetSuperTrackedQuestID, id or 0))
 end
 
+-- The quest the arrow is the setting's own on, kept for this character across a reload.
+local function SetAuto(id)
+	auto = id
+	local db = ns.Saved()
+	db.auto = type(db.auto) == 'table' and db.auto or {}
+	db.auto[Ask(UnitGUID, 'player') or 'player'] = id
+end
+
+-- Before a quest is chosen where none was: where the arrow is now, to be put back after.
+local function Remember()
+	local pick = ns.Base.Choice:Get()
+	if pick and pick.kind == 'quest' then return end
+	arrowBefore = Followed()
+	autoBefore = auto ~= nil and auto == arrowBefore
+end
+
+-- Back to the main route by your own click or key, from the quest id: the arrow goes back where it
+-- was before you chose, if that quest is still in your log. An arrow you moved since is left alone.
+local function PutBack(id)
+	local now = Followed()
+	if now == nil or now == id then
+		local back = arrowBefore
+		if back == id or not (back and Ask(C_QuestLog.GetLogIndexForQuestID, back)) then back = nil end
+		PutArrow(back or 0)
+		if back and autoBefore then SetAuto(back) end
+	end
+	arrowBefore, autoBefore = nil, nil
+end
+
 -- Chooses a quest: the side path to follow in place of the main track. On the quest chosen
 -- already, goes back to the main track.
 function ns.Follow(id)
-	auto = nil
 	local Choice = ns.Base.Choice
 	if Choice:Is('quest', id) then
+		auto = nil
 		Choice:Clear()
-		PutArrow(0)
+		PutBack(id)
 	else
+		Remember()
+		auto = nil
 		Choice:Set('quest', id)
 		PutArrow(id)
 	end
+	ns.Wake()
 	ns.Refresh()
 end
 
@@ -69,7 +112,7 @@ end
 -- quest, the first (or the last); one step past either end is no quest again: your main route.
 -- While My Route is the focus or the list selected, its stops are walked instead (Route.lua).
 function ns.Cycle(step)
-	if ns.RouteWalk and ns.RouteWalk(step) then return end
+	if ns.RouteWalk(step) then return end
 	local order = ns.questOrder
 	if not (order and #order > 0) then                       -- (the list is not drawn: the game's own order)
 		order = {}
@@ -88,18 +131,20 @@ function ns.Cycle(step)
 		if pick and pick.kind == 'quest' and pick.id == id then at = i end
 	end
 	local to = at and (at + step) or (step > 0 and 1 or #order)
-	auto = nil
 	-- (the quest chosen may be past the edge of a long list: it is scrolled into view, and with no
 	-- quest the list goes back to its top. The list is drawn again either way.)
 	if to < 1 or to > #order then
+		auto = nil
 		Choice:Clear()
-		PutArrow(0)
+		PutBack(at and order[at])
 		ns.Print('Back to your main route.')
 		ns.Reveal(true)
 	else
+		Remember()
+		auto = nil
 		Choice:Set('quest', order[to])
 		PutArrow(order[to])
-		ns.Print('Routing to: ' .. tostring(Ask(C_QuestLog.GetTitleForQuestID, order[to]) or order[to]))
+		ns.Print(('Routing to quest "%s".'):format(tostring(Ask(C_QuestLog.GetTitleForQuestID, order[to]) or order[to])))
 		ns.Reveal()
 	end
 end
@@ -107,17 +152,27 @@ end
 -- (for the gathering list: a run takes the place of a quest you chose, and the arrow put on it goes too)
 function ns.ArrowOff() PutArrow(0) end
 
--- The quest to mark as the one being followed: the one you chose; with none chosen and no guide
--- leading, the one the game's arrow is on. With your quests as the focus, that one even while a guide
--- runs; with a guide as the focus (My Route among them), none.
+-- What Thread (Routes) says it follows now (the base's Following), or nothing when no route planner
+-- says (Routes not installed, or it has not looked yet): then the tracker works it out itself.
+function ns.FollowingNow()
+	local Following = ns.Base.Following
+	local info = Following and Following:Get()
+	return type(info) == 'table' and info or nil
+end
+
+-- The quest to mark as the one being followed: the one Routes says. Without its word: the one you
+-- chose; with none chosen and no guide leading, the one the game's arrow is on. With your quests as
+-- the focus, that one even while a guide runs; with a guide as the focus (My Route among them), none.
 function ns.Marked()
+	local said = ns.FollowingNow()
+	if said then return said.kind == 'quest' and said.quest or nil end
 	local pick = ns.Base.Choice:Get()
 	if pick then return pick.kind == 'quest' and pick.id or nil end
 	if ns.Base.Gather:Has() and ns.Base.Gather:State() then return nil end       -- (a gathering run is)
 	local focus = ns.Focused()
 	if focus == 'quests' then return Followed() end
 	if focus ~= 'auto' then return nil end
-	if ns.GuideNow and ns.GuideNow() then return nil end
+	if ns.GuideNow() then return nil end
 	return Followed()
 end
 
@@ -194,12 +249,10 @@ function ns.QuestClick(quest, button, block)
 			{ ns.Base.Choice:Is('quest', id) and 'Stop Routing To Quest' or 'Route To Quest', function() ns.Follow(id) end },
 			{ 'Quest Details', function() ns.OpenQuest(id) end },
 		}
-		if ns.RouteHasQuest then
-			if ns.RouteHasQuest(id) then
-				entries[#entries + 1] = { 'Remove From My Route', function() ns.RouteRemoveQuest(id) end }
-			else
-				entries[#entries + 1] = { 'Add To My Route', function() ns.RouteAddQuest(id) end }
-			end
+		if ns.RouteHasQuest(id) then
+			entries[#entries + 1] = { 'Remove From My Route', function() ns.RouteRemoveQuest(id) end }
+		else
+			entries[#entries + 1] = { 'Add To My Route', function() ns.RouteAddQuest(id) end }
 		end
 		local grouped = type(IsInGroup) == 'function' and IsInGroup()
 		if grouped and Ask(C_QuestLog.IsPushableQuest, id) then
@@ -233,12 +286,12 @@ end
 
 local function Look()
 	if not (ns.Get('on') and ns.Get('followNearest')) then
-		auto = nil
+		if auto then SetAuto(nil) end
 		return
 	end
 	local now = Followed()
 	if now and now ~= auto then return end              -- a quest you chose: left alone
-	if not now then auto = nil end
+	if not now and auto then SetAuto(nil) end
 	local focus = ns.Focused()
 	if focus ~= 'auto' and focus ~= 'quests' then return end       -- a guide is the focus (My Route among them)
 	if focus == 'auto' and ns.Base.Guides:Read(0) then return end  -- a guide is leading
@@ -248,12 +301,54 @@ local function Look()
 	-- (the arrow stays on the quest it is on until another is clearly nearer)
 	if now and yardsOf[now] and yards > yardsOf[now] * NEARER then return end
 	if PutArrow(best) then
-		auto = best
+		SetAuto(best)
 		ns.Refresh()
 	end
 end
 
 C_Timer.NewTicker(LOOK, function() ns.Try('following the nearest quest', Look) end)
+
+-- The game puts its arrow on a quest you accept when it points at nothing: that arrow is the
+-- setting's to move on, not a quest you chose. (Looked at a moment later: the game places it after
+-- this event.)
+ns.On('QUEST_ACCEPTED', function(id)
+	C_Timer.After(0, function()
+		if ns.Get('on') and ns.Get('followNearest') and id and Followed() == id and not ns.Base.Choice:Is('quest', id) then
+			SetAuto(id)
+		end
+	end)
+end)
+
+-- Ticked: an arrow already on a quest you did not choose in the tracker is the setting's to move, at once.
+ns.OnSetting(function(key, value)
+	if key ~= 'followNearest' or not value then return end
+	local now = Followed()
+	if now and not ns.Base.Choice:Is('quest', now) then SetAuto(now) end
+	ns.Try('following the nearest quest', Look)
+end)
+
+-- After a reload: the arrow the setting put on a quest is still its own.
+ns.On('PLAYER_LOGIN', function()
+	local kept = ns.Saved().auto
+	local id = type(kept) == 'table' and kept[Ask(UnitGUID, 'player') or 'player'] or nil
+	if id and Followed() == id then auto = id end
+end)
+
+-- A quest you chose and then stopped tracking in the quest log (or on the map) is let go, as when you
+-- stop tracking it here, since the tracker no longer lists it. (Untrack above lets go first, so this
+-- says nothing twice.)
+ns.On('QUEST_WATCH_LIST_CHANGED', function(id, added)
+	-- (only while the quest is still in your log: handed in or abandoned, the choice lapses by itself)
+	if added == false and id and ns.Base.Choice:Is('quest', id)
+	and (tonumber(Ask(C_QuestLog.GetLogIndexForQuestID, id)) or 0) > 0 then
+		ns.Base.Choice:Clear()
+		ns.Print('Back to your main route.')
+		ns.Refresh()
+	end
+end)
+
+-- (Routes says it follows something else: the bar moves at the next drawing)
+if ns.Base.Following then ns.Base.Following:OnChange(function() ns.Refresh() end) end
 
 -- (for the checks)
 function ns.AutoFollowed() return auto end

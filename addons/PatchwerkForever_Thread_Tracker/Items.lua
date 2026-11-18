@@ -12,9 +12,14 @@
 --     moved) is applied when the fight is over. Only a button's cooldown and count are redrawn,
 --     which the game allows at any time.
 --
--- One more button, never shown, is for a key or a gamepad button: "Use the nearest quest's item"
+-- One more button, never shown, is for a key or a gamepad button: Use Nearest Quest Item
 -- (Bindings.xml) presses it. It only ever holds a quest's item, never the guide's: a binding that
--- used your hearthstone when no quest had an item would be a bad surprise.
+-- used your hearthstone when no quest had an item would be a bad surprise. It holds the item with
+-- the strip hidden too (Show Quest Item Bar unticked), and a press with nothing to use says so in
+-- the game's red error text.
+--
+-- The strip goes on the side of the tracker its setting names, or on the other side when the screen
+-- has no room there (a tracker dragged to the screen's edge).
 local ADDON, ns = ...
 if not ns.linked then return end
 
@@ -77,6 +82,9 @@ local function Dress(b)
 	b.count:SetPoint('BOTTOMRIGHT', b, 'BOTTOMRIGHT', -1, 1)
 	ns.Font(b.count, 11)
 	b.count:SetTextColor(1, 1, 1)
+	-- (the game's own look for a button pointed at and pressed)
+	b:SetHighlightTexture('Interface\\Buttons\\ButtonHilight-Square', 'ADD')
+	b:SetPushedTexture('Interface\\Buttons\\UI-Quickslot-Depress')
 	local ok, cool = pcall(CreateFrame, 'Cooldown', nil, b, 'CooldownFrameTemplate')
 	if ok and cool then
 		cool:SetAllPoints(b)
@@ -94,13 +102,23 @@ for i = 1, MOST do
 	Dress(buttons[i])
 end
 nearest = Button('PatchwerkForeverTrackerNearestItem')
+-- (a press with no quest item to use: said where the game says it cannot do something. PostClick is
+-- a script of our own, not an attribute, so it may be set like this; it runs at the press and the
+-- release both, and says it once.)
+nearest:SetScript('PostClick', function(self, _, down)
+	if down or self.item then return end
+	local errors = rawget(_G, 'UIErrorsFrame')
+	if type(errors) == 'table' and errors.AddMessage then errors:AddMessage('No quest item to use.', 1, 0.1, 0.1, 1) end
+end)
 
 ---------------------------------------------------------------------------
 -- Which items
 ---------------------------------------------------------------------------
+-- The items, the nearest quest's first, then the guide step's. With the strip unticked, the quests'
+-- items only: they are still wanted for the key binding.
 local function Wanted()
 	local list, has = {}, {}
-	if not (ns.Get('on') and ns.Get('items')) then return list end
+	if not ns.Get('on') then return list end
 	local special = rawget(_G, 'GetQuestLogSpecialItemInfo')
 	for i = 1, Ask(C_QuestLog.GetNumQuestWatches) or 0 do
 		local quest = Ask(C_QuestLog.GetQuestIDForQuestWatchIndex, i)
@@ -123,7 +141,7 @@ local function Wanted()
 		end
 		return a.watch < b.watch
 	end)
-	local guide = ns.Get('guide') and ns.Get('guideItems') and ns.GuideNow and ns.GuideNow()
+	local guide = ns.Get('items') and ns.Get('guide') and ns.Get('guideItems') and ns.GuideNow()
 	for _, id in ipairs(guide and guide.items or {}) do
 		if not has[id] and Count(id) > 0 then
 			has[id] = true
@@ -164,7 +182,7 @@ local function Layout()
 	local frame = lastFrame
 	local size = ns.Get('itemSize') or 32
 	local x, top
-	if frame and #list > 0 then
+	if frame and #list > 0 and ns.Get('items') then
 		local left, right, up = frame:GetLeft(), frame.GetRight and frame:GetRight(), frame:GetTop()
 		if not (left and right and up) then
 			-- (the game has not placed the tracker yet: asked again in a moment)
@@ -172,11 +190,19 @@ local function Layout()
 			return
 		end
 		local scale = frame:GetEffectiveScale() / UIParent:GetEffectiveScale()
-		x = ns.Get('itemSide') == 'right' and (right * scale + GAP) or (left * scale - GAP - size)
+		local onLeft, onRight = left * scale - GAP - size, right * scale + GAP
+		local wide = UIParent:GetWidth()
+		local function Fits(at) return at >= 0 and (not wide or at + size <= wide) end
+		x = ns.Get('itemSide') == 'right' and onRight or onLeft
+		-- (no room on the side asked for: the other side, when there is room there)
+		if not Fits(x) then
+			local other = x == onRight and onLeft or onRight
+			if Fits(other) then x = other end
+		end
 		top = up * scale
 		x, top = math.floor(x + 0.5), math.floor(top + 0.5)
 	end
-	local parts = { tostring(x), tostring(top), tostring(size) }
+	local parts = { tostring(x), tostring(top), tostring(size), tostring(ns.Get('items')) }
 	for _, item in ipairs(list) do parts[#parts + 1] = tostring(item.id) end
 	local now = table.concat(parts, ' ')
 	if now == signature then return Cooling() end
@@ -189,6 +215,7 @@ local function Layout()
 			b:SetAttribute('type', 'item')
 			b:SetAttribute('item', 'item:' .. item.id)
 			b:SetSize(size, size)
+			ns.Font(b.count, math.max(9, math.floor(size * 0.34 + 0.5)))
 			b:ClearAllPoints()
 			b:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', x, top - (i - 1) * (size + GAP))
 			b.icon:SetTexture(item.icon)

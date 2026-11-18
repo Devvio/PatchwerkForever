@@ -1,5 +1,12 @@
 # Patchwerk Forever: Stitch (MelloUI Route)
 
+## 2.1.0
+
+- **Keep To City Streets is now off until you enable it.** It deletes the points MelloUI Route learned inside the capitals from MelloUI Route's own saved paths, which no one should get just by installing this addon. **If you used it without ever changing it, enable it once** under Options → AddOns → Patchwerk Forever → Stitch: MelloUI Route to keep it; nothing is deleted or put back by this change itself.
+- **The five actions can be bound in the game's Key Bindings**, under **Patchwerk Forever**, as well as in Console Port's binding list. They keep their names there even while MelloUI's Route is not running.
+- Chat lines read "Patchwerk MelloUI Route: ..."; `/patchwerk route set` answers a wrong value with a usage line; `/patchwerk` shows the fix as "on" with its blocked spots.
+- With a Patchwerk Forever too old for it, it now names itself and the version it needs.
+
 ## 2.0.1
 
 - Its options page opens with its picture and a line from Patchwerk, on Patchwerk Forever 2.2.0. Nothing changes in what it does.

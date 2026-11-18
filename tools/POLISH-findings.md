@@ -4,7 +4,8 @@ The detail behind `POLISH.md` (repository root). Written 2026-11-14 by an audit 
 one reader for each angle below reported what looked rough, and a second reader, told to doubt
 it, checked every report against the code and against the Forever client's own UI source
 (`forever-src` in the notes). What survived is here, as checked; what was dropped is listed
-with the reason. Nothing in this file has been built, and nothing was tried in the game.
+with the reason. When written nothing in it was built; pass A (2026-11-14) and passes B to J
+(2026-11-18) were built from it since, as `POLISH.md` records, so the code no longer reads as quoted.
 
 Each finding: where it is, **Now** (the code or text as it stood on 2026-11-13, uncommitted
 Routes 0.16.0 included), **Change** (what to do), **Checked** (what the second reader

@@ -1,7 +1,7 @@
 -- Thread (Routes): choosing the focus.
 --
 -- The focus (kept by the base: its Focus.lua) is what the route follows by itself: Auto (your guide or
--- your quests, by the Priority setting), one guide's list (RestedXP, the Dungeon Journal, My Route) or
+-- your quests, by Route Priority), one guide's list (RestedXP, the Dungeon Journal, My Route) or
 -- your tracked quests only. How it is followed is Sources.lua's; here it is chosen: /thread focus, the
 -- key bindings (Bindings.xml, named in Core.lua) and the world map's focus button (MapRoute.lua).
 local ADDON, ns = ...
@@ -41,9 +41,12 @@ function ns.FocusList()
 	return ok and type(list) == 'table' and list or { { id = 'auto', name = 'Auto' } }
 end
 
+-- The focus in use: 'auto', 'quests' or a guide reader's id (Sources.lua asks at every look).
 function ns.FocusGet()
 	local focus = Focus()
-	return focus and focus:Get() or 'auto'
+	if not focus then return 'auto' end
+	local ok, id = pcall(focus.Get, focus)
+	return ok and type(id) == 'string' and id or 'auto'
 end
 
 local function Available(id)

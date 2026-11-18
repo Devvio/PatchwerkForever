@@ -1,7 +1,7 @@
 -- Thread (Immersive Plainsrunning): its settings, the slash command and the key bindings.
 --
--- Asked for on 2026-11-16: "as Plainsrunning stacks toward 30, slowly fade all of the UI until it is
--- completely hidden, then overlay speed streaks across the screen". Tauren in Forever have the passive
+-- Asked for on 2026-11-16: as Plainsrunning stacks toward 30, fade the whole interface slowly away
+-- until it is gone, then lay speed streaks over the screen. Tauren in Forever have the passive
 -- Plainsrunning (spell 1259918): the longer they keep moving, the more stacks of a speed buff they get
 -- (spell 1299038, "Movement speed increased by $w1%", an aura of increased speed). Both numbers were read
 -- out of Forever's own data (its hotfix cache) on 2026-11-16, and 1299038 was seen on the buff in the game.
@@ -33,8 +33,8 @@ ns.settings = {
 		desc = 'The interface begins to fade at this many stacks of Plainsrunning.' },
 	{ key = 'fadeFull', default = 30, min = 1, max = 40, step = 1, name = 'Fully Hidden At', parent = 'enabled',
 		desc = 'The interface is gone at this many stacks (Plainsrunning goes up to 30). Between the two it fades a little with every stack.' },
-	{ key = 'fadeLeft', default = 0, min = 0, max = 60, step = 5, name = 'Hidden Interface Opacity', parent = 'enabled',
-		desc = 'How much of the interface is left when it is fully faded, in percent. 0 hides it completely.' },
+	{ key = 'fadeLeft', default = 0, min = 0, max = 60, step = 5, name = 'Hidden Interface Opacity', parent = 'enabled', percent = true,
+		desc = 'How much of the interface is left when it is fully faded. 0% hides it completely.' },
 
 	{ header = true, name = 'Bring The Interface Back' },
 	{ key = 'combatShow', default = true, name = 'In Combat',
@@ -70,24 +70,24 @@ ns.settings = {
 		desc = 'The effects below come in at this many stacks of Plainsrunning, once the interface is gone (and only while it is not brought back for a fight or a window).' },
 	{ page = E, key = 'streakFollow', default = true, name = 'Match My Speed',
 		desc = 'The effects move faster the faster you run, and fade when you slow down or stop.' },
-	{ page = E, key = 'streakUp', default = 5, min = -40, max = 40, step = 1, name = 'Vertical Offset',
+	{ page = E, key = 'streakUp', default = 5, min = -40, max = 40, step = 1, name = 'Vertical Offset', percent = true,
 		desc = 'Move the point the streaks, dust and rings rush out from up (positive) or down, in percent of the screen height. It should sit on the horizon ahead of you.' },
-	{ page = E, key = 'streakClear', default = 30, min = 0, max = 70, step = 5, name = 'Clear Middle',
-		desc = 'How much of the middle of the screen is kept free of streaks and dust, so you can see your character and the way ahead, in percent.' },
+	{ page = E, key = 'streakClear', default = 30, min = 0, max = 70, step = 5, name = 'Clear Middle', percent = true,
+		desc = 'How much of the middle of the screen is kept free of streaks and dust, so you can see your character and the way ahead.' },
 
 	{ page = E, header = true, name = 'Speed Streaks' },
 	{ page = E, key = 'streaks', default = true, name = 'Show Speed Streaks',
 		desc = 'Lines of light rush outward from the horizon ahead of you.' },
 	{ page = E, key = 'streakCount', default = 40, min = 10, max = 120, step = 5, name = 'Number Of Streaks', parent = 'streaks',
 		desc = 'How many streaks are on the screen at once.' },
-	{ page = E, key = 'streakLength', default = 100, min = 30, max = 250, step = 10, name = 'Length', parent = 'streaks',
-		desc = 'Length of the streaks, in percent.' },
-	{ page = E, key = 'streakThick', default = 100, min = 30, max = 300, step = 10, name = 'Thickness', parent = 'streaks',
-		desc = 'Thickness of the streaks, in percent.' },
-	{ page = E, key = 'streakBright', default = 60, min = 10, max = 100, step = 5, name = 'Brightness', parent = 'streaks',
-		desc = 'Brightness of the streaks, in percent.' },
-	{ page = E, key = 'streakSpeed', default = 100, min = 25, max = 300, step = 25, name = 'Speed', parent = 'streaks',
-		desc = 'How fast the streaks fly past, in percent.' },
+	{ page = E, key = 'streakLength', default = 100, min = 30, max = 250, step = 10, name = 'Length', parent = 'streaks', percent = true,
+		desc = 'Length of the streaks.' },
+	{ page = E, key = 'streakThick', default = 100, min = 30, max = 300, step = 10, name = 'Thickness', parent = 'streaks', percent = true,
+		desc = 'Thickness of the streaks.' },
+	{ page = E, key = 'streakBright', default = 60, min = 10, max = 100, step = 5, name = 'Brightness', parent = 'streaks', percent = true,
+		desc = 'Brightness of the streaks.' },
+	{ page = E, key = 'streakSpeed', default = 100, min = 25, max = 300, step = 25, name = 'Speed', parent = 'streaks', percent = true,
+		desc = 'How fast the streaks fly past.' },
 	{ page = E, key = 'streakColour', colour = true, default = 'ffeaf4ff', name = 'Color', parent = 'streaks',
 		desc = 'Color of the streaks.' },
 
@@ -96,8 +96,8 @@ ns.settings = {
 		desc = 'Long, thin ribbons of wind ripple sideways across the lower half of the screen, like wind running through tall grass.' },
 	{ page = E, key = 'windCount', default = 10, min = 2, max = 30, step = 1, name = 'Number Of Gusts', parent = 'wind',
 		desc = 'How many gusts are on the screen at once.' },
-	{ page = E, key = 'windBright', default = 45, min = 10, max = 100, step = 5, name = 'Brightness', parent = 'wind',
-		desc = 'Brightness of the gusts, in percent.' },
+	{ page = E, key = 'windBright', default = 45, min = 10, max = 100, step = 5, name = 'Brightness', parent = 'wind', percent = true,
+		desc = 'Brightness of the gusts.' },
 	{ page = E, key = 'windColour', colour = true, default = 'ffe6f0d8', name = 'Color', parent = 'wind',
 		desc = 'Color of the gusts.' },
 
@@ -106,10 +106,10 @@ ns.settings = {
 		desc = 'Specks of dust and grass seeds fly past you toward the edges of the screen, most of them low, near the ground.' },
 	{ page = E, key = 'dustCount', default = 50, min = 10, max = 200, step = 10, name = 'Amount', parent = 'dust',
 		desc = 'How many specks and seeds are on the screen at once.' },
-	{ page = E, key = 'dustSize', default = 100, min = 30, max = 300, step = 10, name = 'Size', parent = 'dust',
-		desc = 'Size of the specks and seeds, in percent.' },
-	{ page = E, key = 'dustBright', default = 70, min = 10, max = 100, step = 5, name = 'Brightness', parent = 'dust',
-		desc = 'Brightness of the specks and seeds, in percent.' },
+	{ page = E, key = 'dustSize', default = 100, min = 30, max = 300, step = 10, name = 'Size', parent = 'dust', percent = true,
+		desc = 'Size of the specks and seeds.' },
+	{ page = E, key = 'dustBright', default = 70, min = 10, max = 100, step = 5, name = 'Brightness', parent = 'dust', percent = true,
+		desc = 'Brightness of the specks and seeds.' },
 	{ page = E, key = 'dustColour', colour = true, default = 'fff0e2bc', name = 'Color', parent = 'dust',
 		desc = 'Color of the dust. The seeds take a warmer shade of it.' },
 
@@ -118,16 +118,16 @@ ns.settings = {
 		desc = 'Faint rings swell outward from the horizon ahead of you and pass beyond the edges of the screen.' },
 	{ page = E, key = 'ringCount', default = 4, min = 1, max = 10, step = 1, name = 'Number Of Rings', parent = 'rings',
 		desc = 'How many rings are on the screen at once.' },
-	{ page = E, key = 'ringBright', default = 35, min = 10, max = 100, step = 5, name = 'Brightness', parent = 'rings',
-		desc = 'Brightness of the rings, in percent.' },
+	{ page = E, key = 'ringBright', default = 35, min = 10, max = 100, step = 5, name = 'Brightness', parent = 'rings', percent = true,
+		desc = 'Brightness of the rings.' },
 	{ page = E, key = 'ringColour', colour = true, default = 'ffcfe6ff', name = 'Color', parent = 'rings',
 		desc = 'Color of the rings.' },
 
 	{ page = E, header = true, name = 'Edge Glow' },
 	{ page = E, key = 'glow', default = false, name = 'Show Edge Glow',
 		desc = 'A glow along the edges of the screen.' },
-	{ page = E, key = 'glowBright', default = 50, min = 10, max = 100, step = 5, name = 'Brightness', parent = 'glow',
-		desc = 'Brightness of the glow, in percent.' },
+	{ page = E, key = 'glowBright', default = 50, min = 10, max = 100, step = 5, name = 'Brightness', parent = 'glow', percent = true,
+		desc = 'Brightness of the glow.' },
 	{ page = E, key = 'glowPulse', default = true, name = 'Pulse With Your Stride', parent = 'glow',
 		desc = 'The glow beats in time with your hooves: faster the faster you run.' },
 	{ page = E, key = 'glowColour', colour = true, default = 'ffffc040', name = 'Color', parent = 'glow',
@@ -136,8 +136,8 @@ ns.settings = {
 	{ page = E, header = true, name = 'Darken The Edges' },
 	{ page = E, key = 'vignette', default = true, name = 'Darken The Edges',
 		desc = 'Darken the edges of the screen while the effects show, for a sense of tunnel vision at speed.' },
-	{ page = E, key = 'vignetteDark', default = 45, min = 10, max = 100, step = 5, name = 'Darkness', parent = 'vignette',
-		desc = 'How dark the edges get, in percent.' },
+	{ page = E, key = 'vignetteDark', default = 45, min = 10, max = 100, step = 5, name = 'Darkness', parent = 'vignette', percent = true,
+		desc = 'How dark the edges get.' },
 
 	{ page = E, header = true, name = 'Camera' },
 	{ page = E, key = 'camera', default = true, name = 'Pull The Camera Back',
@@ -154,17 +154,21 @@ ns.settings = {
 -- /plains
 ---------------------------------------------------------------------------
 local function Help()
-	ns.Print('Plainsrunning commands:')
-	ns.Print('  /plains: what speed mode is doing now')
-	ns.Print('  /plains on | off: turn speed mode on or off;  /plains test: pretend to run for fifteen seconds')
-	ns.Print('  /plains show: bring the interface back until this run ends;  /plains config: open the options')
-	ns.Print('  /plains records: your run records;  /plains records reset: forget them')
+	ns.Print('Speed mode commands (/plains or /pfplains):')
+	ns.Print('  /plains status: what speed mode is doing now')
+	ns.Print('  /plains on, /plains off: turn speed mode on or off')
+	ns.Print('  /plains show: bring the interface back until this run ends')
+	ns.Print('  /plains test: pretend to run for fifteen seconds')
+	ns.Print('  /plains records: list your run records')
+	ns.Print('  /plains records reset: forget your run records')
+	ns.Print('  /plains config: open the options')
 end
 
 SLASH_PATCHWERKFOREVER_PLAINS1 = '/plains'
 SLASH_PATCHWERKFOREVER_PLAINS2 = '/pfplains'
 SlashCmdList.PATCHWERKFOREVER_PLAINS = function(text)
 	local word = (text or ''):match('^%s*(%S*)'):lower()
+	-- (the command alone says what speed mode is doing, as it always has; help lists the commands)
 	if word == '' or word == 'status' then
 		ns.Try('speed mode', ns.Say)
 	elseif word == 'on' or word == 'off' or word == 'toggle' then
@@ -183,14 +187,16 @@ SlashCmdList.PATCHWERKFOREVER_PLAINS = function(text)
 		ns.Try('speed mode', ns.ShowForThisRun)
 	elseif word == 'config' or word == 'settings' or word == 'options' then
 		if not ns.OpenSettings() then
-			ns.Print('Options are under Options > AddOns > Patchwerk Forever > Thread: Immersive Plainsrunning.')
+			ns.Print(InCombatLockdown() and 'Options cannot be opened in combat.'
+				or 'Options are under Options > AddOns > Patchwerk Forever > Thread: Immersive Plainsrunning.')
 		end
 	else
 		Help()
 	end
 end
 
--- For key and gamepad bindings (Bindings.xml).
+-- For key and gamepad bindings (Bindings.xml), in the family's own section of the Key Bindings page
+-- (its name, BINDING_CATEGORY_PatchwerkForever, is the base's).
 BINDING_HEADER_PATCHWERKFOREVER_PLAINS = ns.TITLE
 BINDING_NAME_PATCHWERKFOREVER_PLAINS_PEEK = 'Show Interface While Held'
 BINDING_NAME_PATCHWERKFOREVER_PLAINS_TOGGLE = 'Turn Speed Mode On Or Off'

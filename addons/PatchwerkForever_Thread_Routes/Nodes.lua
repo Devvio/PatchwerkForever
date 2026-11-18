@@ -22,7 +22,7 @@ local SAME = 12               -- yards within which two spots of one name are on
 local FORGET = 15             -- yards round you that /thread nodes forget clears
 local BUCKET = 250            -- yards a side of the squares the spots are sorted into
 local TRADE, HERB, STONE = 7, 9, 7     -- the item class Trade Goods, and in it Herb, and Metal & Stone
-local MINI_SIZE, MINI_MOST, MINI_EVERY = 14, 60, 0.05
+local MINI_SIZE, MINI_MOST = 14, 60
 local MAP_SIZE, MAP_MOST = 14, 500
 
 local db
@@ -81,7 +81,7 @@ end
 -- Noticing a spot
 ---------------------------------------------------------------------------
 local pending
-local Watch                   -- (below) starts or stops the minimap's redraws
+local Watch                   -- (below) starts or stops the minimap's redraws, and has it drawn anew
 
 local function Remember(p, kind, icon)
 	if not db.nodeKinds[p.name] then
@@ -207,16 +207,16 @@ local function MiniDraw()
 	return true
 end
 
-local ticker
+-- (drawn again when something it shows may have changed, as the trail is: Minimap.lua)
+local redraws = ns.MinimapRedraws('the minimap spots', function()
+	if not MiniDraw() and mini then mini:Hide() end
+end)
 function Watch()
 	local want = db and next(db.nodes) ~= nil and ns.Get('nodesMinimap')
-	if want and not ticker then
-		ticker = C_Timer.NewTicker(MINI_EVERY, function()
-			if not ns.Try('the minimap spots', MiniDraw) and mini then mini:Hide() end
-		end)
-	elseif not want and ticker then
-		ticker:Cancel()
-		ticker = nil
+	nearMap = nil                     -- (the nodes near you are looked up again: one may have been added)
+	redraws.Dirty()
+	redraws.On(want)
+	if not want then
 		for i = 1, miniShown do miniIcons[i]:Hide() end
 		miniShown = 0
 		if mini then mini:Hide() end
@@ -284,11 +284,10 @@ function ns.NodesForget()
 	end
 	if gone > 0 then
 		SortAll()
-		nearMap = nil
 		Watch()
 		if ns.RedrawWorldMap then ns.RedrawWorldMap() end
 	end
-	ns.Print(('%d node(s) within %d yards deleted.'):format(gone, FORGET))
+	ns.Print(('%d %s within %d yards deleted.'):format(gone, gone == 1 and 'node' or 'nodes', FORGET))
 end
 
 ns.On('ADDON_LOADED', function(name)

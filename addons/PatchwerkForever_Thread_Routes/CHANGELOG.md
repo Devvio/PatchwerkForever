@@ -1,3 +1,44 @@
+# Patchwerk Forever: Thread (Routes)
+
+## 1.2.0
+
+Polish. Needs Patchwerk Forever 2.6.0 or later, as before; the three map data addons are 1.2.0 too.
+
+- **The way there, in words, for My Route**: once a route is found, Thread (Tracker) is told where to fly from and to, what boat or zeppelin to take, and how long it takes in all, and shows it at the top of My Route.
+### Key bindings
+- The bindings have a section of their own, **Patchwerk Forever**, on the Key Bindings page, shared with the family's other addons. Keys you had bound are kept.
+- **Route To Pin, Guide Step Or Quest** is now called **Start Routing**.
+- New: **Show Step Text Again**, and **Toggle Gathering Run** (starts a run to the nearest herb or ore node; pressed again, ends it).
+- With a Patchwerk Forever too old for this addon, a bound key does nothing instead of giving a Lua error, and the chat line names the addon, its version and the Patchwerk Forever version it needs.
+
+### What is followed
+- **Thread (Tracker) marks what the route really follows**: Routes now tells it (with a Patchwerk Forever that passes it on), so the mark is right for a map pin, for a quest followed ahead of the guide, and after Stop Routing.
+- Selecting a quest that has no location on the map, or one on a continent the route cannot reach from here, says so once in chat; your main route goes on. Selecting one while your map pin or coordinates stand says that those come first.
+- **Start Routing** during a gathering run ends the run first.
+- A gathering run that cannot start keeps the quest you had selected.
+- A character with no gathering profession gets no gathering runs and no Gathering list: what you can gather is now asked the way the game's own profession book asks. Where the book lists no professions at all, both kinds of node are offered, as before.
+- `/thread quest` reports what is followed in the order the route decides it (a gathering run, your pin or coordinates, a selection, the focus, then Route Priority), and names continents instead of numbering them.
+
+### The trail
+- **On a square minimap** the trail reaches into the corners, as the node icons already did.
+- The upcoming steps of a list you selected (the Dungeon Journal's) are drawn in the Selected Route Color, like the step you are on.
+- While the way to a new destination is being searched for, the trail before it stays in its own color, fainter, instead of taking on the new one's color.
+- Dotted and dashed lines no longer run together into a solid line at wider line widths: the spacing grows with the width.
+- The minimap trail and node icons are drawn again when something has changed rather than twenty times a second, and every frame while the minimap turns (Rotate Minimap), so they no longer step behind it.
+- Searches for the upcoming steps take a smaller share of each frame than your own route, and both take half in combat.
+
+### Words
+- Chat lines begin **Routes:** instead of Thread: (the command stays `/thread`).
+- **Follow RestedXP Guide** is now **Follow Guide**, and **Priority** is **Route Priority**, whose tooltip says what always comes before it; its choices read **Guide First** and **Tracked Quest First**. **Quest Selection**'s choices are in Title Case. The **Line Style** heading is now **Line**. **Animation Speed** shows a percent sign (with a Patchwerk Forever that shows one).
+- The **Print Route In Chat** tooltip says what is printed.
+- **Preview Step Text**: while the options are open, the sample follows the Step Text sliders as you move them, and is drawn above the options window.
+- Opening the flight map on a continent for the first time is confirmed: "Flight map read: 14 flight points known on this continent." A flight point you find says "Flight point discovered".
+- `/thread flights` loads the map data first (it answered "0 known, 0 not" before any route had loaded it), says when a map has no flight points, and when Use Flight Paths is disabled. A flight point found before any route was planned is now remembered.
+- **Boat and zeppelin stops are named**: "zeppelin Thunder Bluff > Zephras Isle" and "boat near Gadgetzan > Powderfuse Port", instead of "a landing".
+- `/thread to` shows the coordinates on screen ("To 45.2, 61.8"); `/thread where` names the continent.
+- Reworded: standing where the planner knows no ground, a route that cannot be found, map data that could not be loaded (now by its title, with the game's own reason), and the gathering run lines.
+- The addon list note says "nodes", as the options do. The map data addons are titled **Thread (Routes) Map: ...**.
+
 ## 1.1.0
 
 Needs Patchwerk Forever with API 5 (the focus and My Route).
@@ -48,6 +89,21 @@ Polish: the things you meet every session.
 - A map pin that is already on the map is picked up only when you log in or reload, not after every loading screen.
 - With Patchwerk Forever 2.5.0, the Dungeon Journal list is routed along only once you select it.
 
+## 0.16.0 (beta)
+
+### Flight points you know
+- **Your flight points are read from the flight map** whenever you open it at a flight master, and remembered for that character. This is now the main source; the game's world map is used only until you have opened a flight map on that continent, and is no longer trusted once it is caught saying you have a point you do not.
+- **A flight point is also learned the moment you discover it** (the game's "new flight path discovered" message).
+- **With nothing known yet on a continent, routes there go on foot** instead of using every flight point of your faction. You are told once, with what to do: open the flight map at a flight master.
+- **A guide step that says "fly" to a point you do not have** no longer leads you to the flight master. The route goes by another way to where the guide sends you after the flight, and says so on screen.
+- `/thread flights` lists the flight points you know and do not know on your continent, and where that knowledge comes from.
+- Needs **Patchwerk Forever 2.4.1** or later for the guide part.
+
+## 0.15.0 (beta)
+
+- **A second guide's list can be selected as a side route**, as a quest can: the route follows it step after step in the selected-route colour, with its next steps drawn fainter, until it has no more or you go back to your main guide. This is what leads you through the Dungeon Journal's quests (with Patchwerk Forever: Stitch (Dungeon Journal)).
+- Needs **Patchwerk Forever 2.4.0** or later.
+
 ## 0.14.0 (beta)
 
 ### The main track, and a path you choose
@@ -64,21 +120,6 @@ Polish: the things you meet every session.
 - Only spots your character can gather are gone to. While a run is on, your guide and quests are not followed; a pin of your own still comes first.
 - The spots show where things grow, not whether one is there now.
 - With Thread (Tracker) installed, the runs are listed and started from its Gathering section.
-
-## 0.16.0 (beta)
-
-### Flight points you know
-- **Your flight points are read from the flight map** whenever you open it at a flight master, and remembered for that character. This is now the main source; the game's world map is used only until you have opened a flight map on that continent, and is no longer trusted once it is caught saying you have a point you do not.
-- **A flight point is also learned the moment you discover it** (the game's "new flight path discovered" message).
-- **With nothing known yet on a continent, routes there go on foot** instead of using every flight point of your faction. You are told once, with what to do: open the flight map at a flight master.
-- **A guide step that says "fly" to a point you do not have** no longer leads you to the flight master. The route goes by another way to where the guide sends you after the flight, and says so on screen.
-- `/thread flights` lists the flight points you know and do not know on your continent, and where that knowledge comes from.
-- Needs **Patchwerk Forever 2.4.1** or later for the guide part.
-
-## 0.15.0 (beta)
-
-- **A second guide's list can be selected as a side route**, as a quest can: the route follows it step after step in the selected-route colour, with its next steps drawn fainter, until it has no more or you go back to your main guide. This is what leads you through the Dungeon Journal's quests (with Patchwerk Forever: Stitch (Dungeon Journal)).
-- Needs **Patchwerk Forever 2.4.0** or later.
 
 ## 0.13.0 (beta)
 

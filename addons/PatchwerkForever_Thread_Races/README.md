@@ -14,9 +14,9 @@ Patchwerk wants a rematch! Patchwerk always wants a rematch!
 
 Race courses of your own for **World of Warcraft: Forever**. Place checkpoints as you ride a course, then race it against the clock: a ring and a beam of light mark the next checkpoint in the world, and each checkpoint says your time and how far ahead of or behind your best run you are. Send a course to your party and race the same one.
 
-One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the settings pages, and nothing else.
+One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the options pages, and nothing else.
 
-**This is a beta.** It passes its checks outside the game but has not been raced in the game yet. Please report what goes wrong.
+**This is a beta.** It passes its checks outside the game but has not been raced in the game yet. Please report what goes wrong, as a comment on the addon's CurseForge page.
 
 ## Making a course
 
@@ -44,13 +44,13 @@ An addon cannot draw in the world itself. It can draw on the screen, and the gam
 
 When the checkpoint is off screen the game holds its marker at the edge and shows an arrow there; the ring is not drawn then.
 
-Settings on **Races: Marker**: size, a vertical offset to set the ring on the ground, the beam, the words, a color for the start, the checkpoints and the finish, and **Hide Game Waypoint Icon During Races** (off to begin with). **Preview Marker** shows it in the middle of the screen.
+Options on **Races: Marker**: size, a vertical offset to set the ring on the ground, the beam, the words, a color for the start, the checkpoints and the finish, and **Hide Game Waypoint Icon During Races** (off to begin with). **Preview Marker** shows it in the middle of the screen.
 
 ## Sharing a course
 
 `/race share <name>` sends a course to your party or raid; `/race share <name> <player>` to one player. They need Thread (Races) too. They are told who sent which course, and `/race accept` keeps it. Only the checkpoints and the size are sent; best runs are not.
 
-## Settings
+## Options
 
 **Options → AddOns → Patchwerk Forever → Thread: Races**, or `/race config`. Checkpoint Size, Countdown At The Start, Show Split Times, Play Sounds, Restore Map Pin After A Race and Split Times In Chat are on the first page; the marker has the page **Races: Marker**.
 
@@ -58,16 +58,17 @@ Settings on **Races: Marker**: size, a vertical offset to set the ring on the gr
 
 | Command | Does |
 |---|---|
-| `/race new <name>` | starts a course where you stand (`/pfr` is the same as `/race`) |
+| `/race` | lists the commands; during a race, says where you are in it (`/pfr` is the same) |
+| `/race new <name>` | starts a course where you stand |
 | `/race mark` / `undo` | places a checkpoint where you stand; takes the last one back |
 | `/race save` / `cancel` | keeps the course; throws it away |
 | `/race start [name]` / `stop` | races a course (the last one without a name); stops |
 | `/race list` / `best [name]` | lists your courses; shows a best run |
 | `/race delete <name>` / `reset <name>` | deletes a course; forgets its best run |
 | `/race share [name] [player]` / `accept` | sends a course; keeps one you were sent |
-| `/race config` | opens the settings |
+| `/race config` | opens the options |
 
-Three actions can be bound to a key or a gamepad button (Options → Keybindings → AddOns, or Console Port's binding list): Place Checkpoint, Start Last Race and Stop Race.
+Bind these under Options → Keybindings → Patchwerk Forever, or in Console Port's binding list: **Place Checkpoint**, **Start Last Race** and **Stop Race**.
 
 ## Credits
 

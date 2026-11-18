@@ -29,7 +29,7 @@ local P = ns.P;
 --     PatchwerkForever.MyRoute:Order()            a short order: nearest first, each next nearest the one before
 --     PatchwerkForever.MyRoute:Clear()
 --     PatchwerkForever.MyRoute:OnChange(fn)       fn() whenever the list changes
---     PatchwerkForever.MyRoute:Kind(id, { Name = fn(stop), Place = fn(stop) -> map, x, y, label })
+--     PatchwerkForever.MyRoute:Kind(id, { Name = fn(stop), Place = fn(stop) -> map, x, y, label, zone })
 --                                                 for a part that knows quests the game does not
 -- Kept in PatchwerkForeverDB.characters[<character's GUID>].route.
 
@@ -39,10 +39,10 @@ P.MyRoute = MyRoute;
 local SOURCE = 'route';
 local REACHED = 10;                       -- yards from a map spot that count as there
 local listeners = {};
--- this session only, as with the other lists: the stops skipped (and in what order), and where to
--- follow on from (Lead): that stop's key, and its place in the list (kept when it leaves the list,
--- so the route goes on with the stop after it)
-local skipped, skipOrder = {}, {};
+-- this session only, as with the other lists: the stops skipped, and where to follow on from
+-- (Lead): that stop's key, and its place in the list (kept when it leaves the list, so the route
+-- goes on with the stop after it)
+local skipped = {};
 local startKey, startAt;
 local last = { index = 0, order = {} };
 local cache = { at = -1 };                -- the stops as last worked out (Entries), for a moment
@@ -50,8 +50,8 @@ local reaching = {};                      -- map spots reached, to be taken off 
 
 local function Ask(fn, ...)
 	if ( type(fn) ~= 'function' ) then return nil end;
-	local ok, a, b, c, d = pcall(fn, ...);
-	if ok then return a, b, c, d end;
+	local ok, a, b, c, d, e = pcall(fn, ...);
+	if ok then return a, b, c, d, e end;
 	return nil;
 end
 
@@ -102,7 +102,7 @@ local function Key(stop)
 	return ('%s:%s'):format(tostring(stop.kind), tostring(stop.id));
 end
 
--- A stop as shown and followed: { kind, id, name, state, map, x, y, label, key }.
+-- A stop as shown and followed: { kind, id, name, state, map, x, y, label, zone, key }.
 --   state: 'todo' (a quest under way), 'done' (finished: to hand in), 'pickup' (to be picked up),
 --          'spot' (a place), 'nowhere' (no place known now)
 local function Resolve(stop)
@@ -110,17 +110,19 @@ local function Resolve(stop)
 	if ( stop.kind == 'spot' ) then
 		out.name = type(stop.label) == 'string' and stop.label or 'Map point';
 		out.state, out.map, out.x, out.y = 'spot', stop.map, stop.x, stop.y;
+		out.zone = type(stop.zone) == 'string' and stop.zone or nil;
 		return out;
 	end
 	if ( stop.kind == 'quest' ) then
 		out.name = Ask(C_QuestLog.GetTitleForQuestID, stop.id) or stop.name or ( 'Quest ' .. tostring(stop.id) );
 		out.state = Finished(stop.id) and 'done' or 'todo';
 		out.map, out.x, out.y = P.Guides.QuestPlace(stop.id);
+		out.zone = P.Guides.QuestZone(stop.id);
 	else
 		local kind = MyRoute.kinds[stop.kind];
 		out.name = kind and Ask(kind.Name, stop) or stop.name or ( 'Quest ' .. tostring(stop.id) );
 		out.state = 'pickup';
-		if kind then out.map, out.x, out.y, out.label = Ask(kind.Place, stop) end;
+		if kind then out.map, out.x, out.y, out.label, out.zone = Ask(kind.Place, stop) end;
 	end
 	if not out.map then out.state = out.state == 'pickup' and 'nowhere' or out.state end;
 	return out;
@@ -213,7 +215,7 @@ function MyRoute:Clear()
 	local list = List();
 	if not ( list and #list > 0 ) then return false end;
 	P:Character().route = {};
-	skipped, skipOrder, startKey, startAt = {}, {}, nil, nil;
+	skipped, startKey, startAt = {}, nil, nil;
 	Changed()
 	return true;
 end
@@ -328,7 +330,7 @@ local function Step(one, index)
 	local lines = { { text = ( WORDS[one.state] and ( WORDS[one.state] .. ': ' ) or '' ) .. one.name, done = false, kind = KINDS[one.state] or 'text' } };
 	if one.label then lines[2] = { text = one.label, done = false } end;
 	return { index = index, kind = KINDS[one.state] or 'text', lines = lines, map = one.map, x = one.x, y = one.y,
-		quest = ( one.kind ~= 'spot' ) and one.id or nil, route = one.index };
+		quest = ( one.kind ~= 'spot' ) and one.id or nil, route = one.index, zone = one.zone };
 end
 
 -- The stops in the order they are followed: from the one you asked to go on from (Lead) to the end,
@@ -394,16 +396,13 @@ function MyRoute:Lead(index)
 	local one = MyRoute:Entries()[tonumber(index) or 0];
 	if not one then return false end;
 	skipped[one.key] = nil;
-	for i = #skipOrder, 1, -1 do
-		if ( skipOrder[i] == one.key ) then table.remove(skipOrder, i) end;
-	end
 	startKey, startAt = one.key, one.index;
 	Changed()
 	return true;
 end
 
 -- Guides:Go, by list index: the stop followed next after the one you are on skips that one (for this
--- session); any other goes first, and the route follows on from it.
+-- session); any other goes first, and the route follows on from it (no longer skipped, if it was).
 local function Go(index)
 	local target = MyRoute:Entries()[tonumber(index) or 0];
 	if not ( target and last.order[1] ) then return false end;
@@ -411,7 +410,6 @@ local function Go(index)
 	if ( target.key == last.order[2] ) then
 		local key = last.order[1];
 		skipped[key] = true;
-		skipOrder[#skipOrder + 1] = key;
 		if ( startKey == key ) then startKey = nil end;
 		Changed()
 		return true;

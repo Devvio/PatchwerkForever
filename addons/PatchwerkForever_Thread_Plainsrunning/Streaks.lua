@@ -73,7 +73,7 @@ local function HideFrom(first)
 	end
 end
 
-local function DrawStreaks(elapsed, pace, w, h, reach, cx, cy, inner)
+local function DrawStreaks(elapsed, pace, reach, cx, cy, inner)
 	local count = ns.Get('streakCount')
 	local long = reach * 0.22 * ns.Get('streakLength') / 100
 	local thick = 2 * ns.Get('streakThick') / 100
@@ -153,7 +153,7 @@ function ns.StreaksStep(elapsed, on, ratio)
 	local inner = reach * ns.Get('streakClear') / 100
 
 	if ns.Get('streaks') then
-		DrawStreaks(elapsed, pace, w, h, reach, cx, cy, inner)
+		DrawStreaks(elapsed, pace, reach, cx, cy, inner)
 	else
 		HideFrom(1)
 	end

@@ -54,8 +54,8 @@ local function Restore()
 	if InCombatLockdown() then
 		return Watcher:RegisterEvent('PLAYER_REGEN_ENABLED')
 	end
-	RestoreMicroMenu()
-	RestoreBagsBar()
+	if RestoreMicroMenu() then env.Applied['Micro menu'] = true end;
+	if RestoreBagsBar() then env.Applied['Bag bar'] = true end;
 end
 
 -- After the toolbar has taken what it shows at login.

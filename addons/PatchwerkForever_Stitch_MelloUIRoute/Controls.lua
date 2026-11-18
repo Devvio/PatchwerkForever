@@ -5,7 +5,8 @@ if not R then return end;
 -- Route: buttons, bindings and /patchwerk route
 ---------------------------------------------------------------
 -- Each action is a button a key can click, so it can be bound in
--- Console Port (its binding list and its rings) or put in a macro
+-- the game's Key Bindings (Bindings.xml, under Patchwerk Forever),
+-- in Console Port (its binding list and its rings) or put in a macro
 -- (/click PatchwerkRouteQuestRun). The shortcut's own button is
 -- secure and made with its suggestion (Travel.lua).
 
@@ -31,7 +32,7 @@ local function Why()
 	if not lines then
 		return R:Print(why or 'Nothing to say about the trail here.');
 	end
-	R:Print('the trail ahead of you:')
+	R:Print('The trail ahead of you:')
 	for _, line in ipairs(lines) do
 		print('  ' .. line)
 	end
@@ -75,12 +76,15 @@ local actions = {
 	};
 };
 
+-- (the game's Key Bindings list names a CLICK binding by this global)
+BINDING_HEADER_PATCHWERKFOREVER_MELLOUIROUTE = 'Patchwerk Forever: Stitch (MelloUI Route)';
 for _, action in ipairs(actions) do
 	if ( action.run and not _G[action.button] ) then
 		local button = CreateFrame('Button', action.button, UIParent);
 		button:SetScript('OnClick', function() R.Try(action.name, action.run) end)
 		action.made = true;
 	end
+	_G['BINDING_NAME_CLICK ' .. action.button .. ':LeftButton'] = action.name;
 end
 
 -- Console Port's binding list, when Console Port is here. (Its
@@ -113,7 +117,7 @@ local function OnOff(value)
 end
 
 local function Status()
-	R:Print('settings (/patchwerk config, or /patchwerk route set <name> on|off):')
+	R:Print('Options (/patchwerk config, or /patchwerk route set <name> on|off):')
 	local keys = {};
 	for key in pairs(R.Defaults) do
 		keys[#keys + 1] = key;
@@ -172,7 +176,7 @@ local function Command(args)
 			end
 		end
 		if not name then
-			return R:Print('No such setting. /patchwerk route lists them.');
+			return R:Print('No such option. /patchwerk route lists them.');
 		end
 		if ( type(R.Defaults[name]) == 'number' ) then
 			value = tonumber(value);
@@ -182,7 +186,7 @@ local function Command(args)
 			value = nil;
 		end
 		if ( value == nil ) then
-			return R:Print('Give on or off (a number for previewSteps).');
+			return R:Print(('Usage: /patchwerk route set %s %s'):format(name, type(R.Defaults[name]) == 'number' and '<number>' or 'on|off'));
 		end
 		R:Set(name, value)
 		R:Print(('%s: %s'):format(name, OnOff(R:Get(name))))
@@ -196,6 +200,6 @@ ns:RegisterFix('route', {
 	addon   = 'MelloUI_Route';
 	command = function(args) R.Try('/patchwerk route', Command, args) end;
 	status  = function()
-		return ('%d blocked spots; /patchwerk route for settings and commands'):format(R.Blocks and R.Blocks:Count() or 0);
+		return ('on: %d blocked spots'):format(R.Blocks and R.Blocks:Count() or 0);
 	end;
 })

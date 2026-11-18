@@ -1,6 +1,8 @@
 """Boats and zeppelins, from the game's own tables.
 
     python crossings.py         writes world/crossings.bin and prints what it found
+    python crossings.py names   names the stops of world/crossings.bin again (from world/flights.bin and
+                                NAMES below), without reading the game; then: python pack.py crossings
 
 A boat or a zeppelin follows a line kept in TaxiPathNode like a flight's, round and round. The points
 where it stops are flagged (2) and say how long it waits. A line can change map on the way: that is the
@@ -10,6 +12,9 @@ What the tables do not say, and is guessed here:
   how fast it goes       SPEED yards a second
   when it comes          taken as half its round trip, the wait on average
   which side may use it  the side of the flight point nearest each stop
+  what a stop is called  the town of the flight point nearest it ("Ratchet"), "near" a town a little
+                         further off ("near Gadgetzan"), or else the continent ("Zephras Isle"); a name
+                         seen in the game goes in NAMES and comes first
   where you board        the nearest walkable ground to the stop (a dock and a tower are buildings, which
                          the planner does not walk on), with the walk along the dock or the climb up the
                          tower allowed for
@@ -40,6 +45,9 @@ JUMP = 1000.0                    # yards between two points of a line that it do
 # 436 is Naxxramas, 312 and 314 the flights into Alterac Valley
 LEFT_OUT = {295, 436, 312, 314}
 MAPS = (0, 1, 2991)
+MAP_NAMES = {0: "Eastern Kingdoms", 1: "Kalimdor", 2991: "Zephras Isle"}
+# stops named by hand, once their real names have been seen in the game: {(line id, stop index): "name"}
+NAMES = {}
 
 
 def _f(v):
@@ -98,6 +106,19 @@ def parts(ground, coarse):
     return part
 
 
+def stop_name(pid, index, s, flights):
+    """What a stop is called in the route summary (see the top of this file)."""
+    if (pid, index) in NAMES:
+        return NAMES[(pid, index)]
+    near = sorted((math.hypot(n["x"] - s["x"], n["y"] - s["y"]), n["name"])
+                  for n in flights["nodes"].values() if n["map"] == s["map"])
+    if near and near[0][0] <= NAMED:
+        return near[0][1].split(",")[0]
+    if near and near[0][0] <= NEAR:
+        return "near " + near[0][1].split(",")[0]
+    return MAP_NAMES.get(s["map"], "a landing")
+
+
 def build(all_lines, grounds, coarses, flights):
     out, notes = [], []
     part = {m: parts(grounds[m], coarses[m]) for m in grounds}
@@ -116,7 +137,7 @@ def build(all_lines, grounds, coarses, flights):
         if len(stops) < 2:
             continue
         sides, usable = None, True
-        for s in stops:
+        for index, s in enumerate(stops):
             ground = grounds.get(s["map"])
             if not ground:
                 usable = False
@@ -143,9 +164,7 @@ def build(all_lines, grounds, coarses, flights):
                     if d <= near[0][0] + BESIDE:
                         here |= theirs
                 sides = here if sides is None else sides & here
-                s["name"] = near[0][1].split(",")[0] if near[0][0] <= NAMED else "a landing near " + near[0][1].split(",")[0]
-            else:
-                s["name"] = "a landing"
+            s["name"] = stop_name(pid, index, s, flights)
         if not usable:
             continue
         if sides is None:
@@ -198,7 +217,21 @@ def load(path="world/crossings.bin"):
         return pickle.load(f)
 
 
+def rename():
+    """The stops of world/crossings.bin named again, as build() names them, without the game's files."""
+    import flights as flight_data
+    found, flights = load(), flight_data.load()
+    for t in found:
+        for index, s in enumerate(t["stops"]):
+            was, s["name"] = s["name"], stop_name(t["id"], index, s, flights)
+            print("line %5d stop %d: %-28s%s" % (t["id"], index, s["name"], "" if was == s["name"] else "  (was %s)" % was))
+    with open("world/crossings.bin", "wb") as f:
+        pickle.dump(found, f, protocol=4)
+
+
 def main():
+    if sys.argv[1:] == ["names"]:
+        return rename()
     from casc import Storage
     import flights as flight_data
     store = Storage(r"G:/Games/World of Warcraft", "wowf")

@@ -21,7 +21,7 @@
 -- Dungeon Journal's do) has Add To My Route in its right-click menu.
 --
 -- Moving a guide to another step is done by its own reader, through the base (Guides:Go), and only
--- because you clicked. Each such click is said in chat. /tracker back, or the key bound to it, goes
+-- because you clicked. Each such click is said in chat. /tracker back, or Undo Skipped Guide Step, goes
 -- to the step you were on before the last such click, unless another guide has been loaded since.
 -- (A list whose step number does not move when it is moved has no step to go back to by number:
 -- see Go below.)
@@ -45,9 +45,15 @@ local read = { at = -1, infos = {} }
 local function Go(info, index, from)
 	if not ns.Get('guideSkip') then return end
 	if ns.Base.Guides:Go(info, index) then
-		before = { source = info.source, index = from, guide = info.guide, to = index }
 		local now = ns.Base.Guides:Read(0, info.source)
 		local moved = now and now.index and now.index ~= from
+		-- (a step back on a list whose number does not move is itself the list's own undo of the last
+		-- skip: nothing is left for /tracker back to take back, or it would take back one more)
+		if index < from and not moved then
+			before = nil
+		else
+			before = { source = info.source, index = from, guide = info.guide, to = index }
+		end
 		if index == from + 1 then
 			ns.Print(moved and ('Skipped step %d. Use the Undo Skipped Guide Step key binding or type /tracker back to undo.'):format(from)
 				or 'Step skipped.')
@@ -75,8 +81,14 @@ function ns.GuideBack()
 	local index, to = before.index, before.to
 	before = nil
 	if ns.Base.Guides:Go(info, index) then
+		-- (read again, as Go does: on a list whose number does not move, the Dungeon Journal's, the
+		-- last skip or jump was taken back, so the step it leads with changed, but its number did not
+		-- and there is none to name)
+		local now = ns.Base.Guides:Read(0, info.source)
+		if now and now.index == info.index and now.key ~= info.key then
+			ns.Print('Skip taken back.')
 		-- (the guide has moved on since the click: said, so that going back many steps is no surprise)
-		if info.index and info.index ~= to and info.index ~= index then
+		elseif info.index and info.index ~= to and info.index ~= index then
 			ns.Print(('Back to step %d (from step %d).'):format(index, info.index))
 		else
 			ns.Print(('Back to step %d.'):format(index))
@@ -87,7 +99,7 @@ function ns.GuideBack()
 	ns.Refresh()
 end
 
--- The first words of a step, for a step listed on one line.
+-- The first words of a step, for a step listed on one line (cut short with an ellipsis: Frame.lua).
 local function First(lines)
 	for _, line in ipairs(lines or {}) do
 		if not line.done and type(line.text) == 'string' and line.text ~= '' then return line.text end
@@ -128,7 +140,7 @@ end
 -- The menu entry that adds a step's quest to My Route, or takes it out; nothing for a step that names none.
 local function RouteEntry(info, quest, lines)
 	local stop = StopOf(info, quest)
-	if not (stop and ns.RouteAdd) then return nil end
+	if not stop then return nil end
 	local MyRoute = ns.Base.MyRoute
 	if MyRoute:Has(stop.kind, stop.id) then
 		return { 'Remove From My Route', function() ns.RouteRemoveQuest(quest) end }
@@ -206,16 +218,28 @@ local function Section(n)
 				end
 			end
 		end
-		-- (marked while it is the track being followed: the main guide with nothing chosen and no
-		-- gathering run on; a side list while it is the one chosen)
-		-- (with a focus, the guide focused is the one followed: the main guide only on Auto)
-		local followed = chosen
-		if not chosen and not Choice:Get() and not (ns.Base.Gather:Has() and ns.Base.Gather:State()) then
-			local focus = ns.Focused()
-			if main then followed = focus == 'auto' or focus == info.source else followed = focus == info.source end
+		-- (marked while it is the track being followed. Thread (Routes) says which that is, through the
+		-- base; without it: the main guide with nothing chosen and no gathering run on, and only on Auto
+		-- or as the focus; a side list while it is the one chosen or the focus)
+		local followed
+		local said = ns.FollowingNow()
+		if said then
+			followed = said.kind == 'guide' and said.source == info.source
+		else
+			followed = chosen
+			if not chosen and not Choice:Get() and not (ns.Base.Gather:Has() and ns.Base.Gather:State()) then
+				local focus = ns.Focused()
+				if main then followed = focus == 'auto' or focus == info.source else followed = focus == info.source end
+			end
+		end
+		local tip
+		if main then
+			tip = skip and { 'Click to skip this step.', 'Right-click for more options.' } or nil
+		else
+			tip = { chosen and 'Click to stop routing along this list.' or 'Click to route along this list.', 'Right-click for more options.' }
 		end
 		local blocks = { { key = 'step', title = ('Step %d'):format(info.index), r = gr, g = gg, b = gb, lines = lines,
-			mark = followed and true or false, click = click } }
+			mark = followed and true or false, click = click, tip = tip } }
 		for i, step in ipairs(info.after or {}) do
 			if i > most then break end
 			local index = step.index
@@ -225,7 +249,10 @@ local function Section(n)
 			end
 			-- (a later step that names its quest has a menu too: go to it, or add it to My Route)
 			local click = skip and GoThere or nil
+			local tip = skip and { 'Click to go to this step.' } or nil
 			if StopOf(info, step.quest) then
+				tip = tip or {}
+				tip[#tip + 1] = 'Right-click for more options.'
 				click = function(button, block)
 					if button ~= 'RightButton' then
 						if skip then GoThere() end
@@ -238,9 +265,9 @@ local function Section(n)
 				end
 			end
 			blocks[#blocks + 1] = {
-				key = 'after' .. i, small = true, r = gr * 0.6, g = gg * 0.6, b = gb * 0.6,
+				key = 'after' .. i, small = true, oneLine = true, r = gr * 0.6, g = gg * 0.6, b = gb * 0.6,
 				title = ('%d. %s'):format(index, First(step.lines) or '...'),
-				click = click,
+				click = click, tip = tip,
 			}
 		end
 		local note, bar

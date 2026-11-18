@@ -183,7 +183,7 @@ local function Kept(now)
 	Moving(now)
 	if not ( ns.Get('enabled') or test ) then return 'speed mode is disabled' end
 	if peek then return 'the Show Interface key is held' end
-	if held then return '/plains show' end
+	if held then return 'you typed /plains show' end
 	if ns.Get('combatShow') and InFight() then return 'you are in combat' end
 	if ns.Get('deadShow') and ( ( rawget(_G, 'UnitIsDeadOrGhost') and UnitIsDeadOrGhost('player') )
 		or ( rawget(_G, 'UnitOnTaxi') and UnitOnTaxi('player') ) ) then
@@ -375,7 +375,7 @@ driver:SetScript('OnUpdate', function(_, elapsed)
 		broken = true
 		driver:Hide()
 		Restore()
-		ns.Print('a problem in speed mode, so it has stopped and your interface is back (until /reload): ' .. tostring(problem))
+		ns.Print('Speed mode stopped after a problem, and your interface is back. /reload starts it again. The problem: ' .. tostring(problem))
 	end
 end)
 
@@ -420,7 +420,7 @@ ns.OnSetting(function() Wake() end)
 ---------------------------------------------------------------------------
 function ns.TestRun()
 	if broken then
-		ns.Print('Speed mode stopped after a problem; /reload to start it again.')
+		ns.Print('Speed mode stopped after a problem. /reload starts it again.')
 		return
 	end
 	test = GetTime()

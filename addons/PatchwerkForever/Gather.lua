@@ -34,14 +34,14 @@ function Gather:Has()
 	return provider ~= nil;
 end
 
-local reported = false;
+local reported = {};   -- (once for each of Near, Start, Stop and State: a failed Start is still said after a failed Near)
 local function Ask(what, ...)
 	if not provider then return nil end;
 	local ok, a = pcall(provider[what], ...);
 	if ok then return a end;
-	if not reported then
-		reported = true;
-		P:Print('Gathering failed and was skipped: ' .. tostring(a))
+	if not reported[what] then
+		reported[what] = true;
+		ns.Say('Gathering failed and was skipped: ' .. tostring(a))
 	end
 	return nil;
 end

@@ -64,7 +64,7 @@ local function Blank(m)
 	m.glow:Hide(); m.ring:Hide(); m.pulse:Hide(); m.beam:Hide(); m.text:Hide()
 end
 
--- The colour of the marker for this kind of checkpoint ('start', 'checkpoint', 'finish').
+-- The color of the marker for this kind of checkpoint ('start', 'checkpoint', 'finish').
 local function Colour(kind)
 	local key = kind == 'start' and 'startColour' or kind == 'finish' and 'finishColour' or 'markerColour'
 	return ns.RGB(ns.Get(key))
@@ -210,7 +210,7 @@ local function Banner()
 	return banner
 end
 
--- Shows big words, and smaller under them, for `seconds`, in a colour ('ffRRGGBB').
+-- Shows big words, and smaller under them, for `seconds`, in a color ('ffRRGGBB').
 function ns.Say(big, small, colour, seconds)
 	local b = Banner()
 	b.big:SetText(big or '')

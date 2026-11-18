@@ -230,8 +230,8 @@ function ns.RaceStart(name)
 	Aim(1)
 	Looker():Show()
 	local far = ns.Distance(course.points[1])
-	ns.Print(('Racing "%s": %d checkpoints%s. Go to the start%s; the clock starts there. /race stop to stop.')
-		:format(named, #course.points - 1, course.best and (', best ' .. ns.Clock(course.best.time)) or '',
+	ns.Print(('Racing "%s": %s%s. Go to the start%s; the clock starts there. /race stop to stop.')
+		:format(named, ns.Checkpoints(#course.points - 1), course.best and (', best ' .. ns.Clock(course.best.time)) or '',
 			far and (' (%d yards away)'):format(far) or ''))
 end
 

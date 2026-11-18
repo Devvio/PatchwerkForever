@@ -33,6 +33,7 @@ end
 
 local targets = {
 	{ name = 'ObjectiveTrackerFrame', wanted = function()
+		if ns.questsBroken then return false end              -- (ours cannot list the quests: Frame.lua)
 		if not (ns.Get('on') and ns.Get('quiet')) then return false end
 		if ns.Get('quietInstance') and InInstance() then return false end
 		return true
@@ -120,9 +121,17 @@ function ns.Quiet(name)
 	return false
 end
 
-for _, event in ipairs({ 'PLAYER_ENTERING_WORLD', 'ZONE_CHANGED_NEW_AREA', 'QUEST_WATCH_LIST_CHANGED', 'QUEST_LOG_UPDATE',
+for _, event in ipairs({ 'ZONE_CHANGED_NEW_AREA', 'QUEST_WATCH_LIST_CHANGED', 'QUEST_LOG_UPDATE',
 	'QUEST_ACCEPTED', 'QUEST_REMOVED', 'PLAYER_REGEN_ENABLED' }) do
 	ns.Try('listening for ' .. event, ns.On, event, Soon)
+end
+-- At login and after each loading screen: at once, so the game's tracker is not seen beside ours for
+-- the half second Soon waits, and again after it for the pieces the game lays out later.
+for _, event in ipairs({ 'PLAYER_LOGIN', 'PLAYER_ENTERING_WORLD' }) do
+	ns.Try('listening for ' .. event, ns.On, event, function()
+		ns.Try('quietening', Apply)
+		Soon()
+	end)
 end
 ns.OnSetting(function(key)
 	if key == 'on' or key == 'quiet' or key == 'quietInstance' or key == 'guide' or key == 'guideHide' or key == 'hideInstance' then

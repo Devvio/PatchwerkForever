@@ -9,9 +9,14 @@ local addonName, ns = ...;
 -- files after this one find them. Without a base new enough,
 -- ns.linked stays unset and those files do nothing.
 
-local API = 4;   -- the base's API this part was written for (4: more than one guide at a time)
+-- the base's API this part was written for (4: more than one guide at a time), and the first base version that has it
+local API, NEEDS = 4, '2.4.0';
 
 local Base = rawget(_G, 'PatchwerkForever');
 if not ( type(Base) == 'table' and type(Base.Link) == 'function' and Base:Link(addonName, ns, API) ) then
-	print(('|cffd6a35bPatchwerk|r %s needs a newer Patchwerk Forever (the base addon). It is not running.'):format(addonName))
+	-- (said with the addon's title, as the addon list shows it, rather than its folder)
+	local meta = C_AddOns and C_AddOns.GetAddOnMetadata;
+	local ok, title = pcall(meta, addonName, 'Title');
+	title = ok and type(title) == 'string' and title or addonName;
+	print(('|cffd6a35b%s|r needs Patchwerk Forever %s or later and is not running. Update Patchwerk Forever.'):format(title, NEEDS))
 end

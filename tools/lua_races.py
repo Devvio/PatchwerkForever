@@ -110,7 +110,7 @@ def main():
         said[0] += len(new)
         for text in new:
             print("      chat: " + text.replace("|cff4dd2ff", "").replace("|cffffe680", "").replace("|r", ""))
-        problems = [t for t in new if "a problem in" in t or "error" in t.lower()]
+        problems = [t for t in new if "a problem" in t.lower() or "error" in t.lower()]
         assert not problems, problems
         return " / ".join(new)
 
@@ -131,6 +131,9 @@ def main():
     on = lambda page: [s for s in stub.settings.values() if s.page == page]
     assert len(on("Thread: Races")) == 6 and len(on("Races: Marker")) == 9 and len(on("Sparkle: Loot Wisps")) == 8, \
         (len(on("Thread: Races")), len(on("Races: Marker")), len(on("Sparkle: Loot Wisps")))
+    # the key bindings in the family's own section of the Key Bindings page
+    bindings = open(os.path.join(ADDONS, RACES, "Bindings.xml"), encoding="utf-8").read()
+    assert bindings.count('category="BINDING_CATEGORY_PatchwerkForever"') == 3 and "ADDONS" not in bindings
 
     # ------------------------------------------------------------------ the loot wisp
     step("an item from a loot window flies from the window to its bag, and the bag glows")
@@ -217,7 +220,7 @@ def main():
     walk(0, -80)
     race("mark")
     race("save")
-    assert "a start, 2 checkpoint(s) and the finish" in chat()
+    assert "a start, 2 checkpoints and the finish." in chat()
     db = G.PatchwerkForever_Thread_RacesDB
     assert len(db.courses["Crossroads Loop"].points) == 4
     race("list")
@@ -342,6 +345,7 @@ def main():
     run(0.1)
     text = chat()
     assert "deleted" in text and "forgotten" in text, text
+    assert "  /race accept: keep a course you were sent" in text, "the help is not one command to a line"
     print("all steps ran")
 
 

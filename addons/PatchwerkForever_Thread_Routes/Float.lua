@@ -10,7 +10,8 @@
 -- Nothing is said when the way is only found anew after a wrong turn, nor when a step that has been
 -- said gets a new place (Sources.lua). Where it stands, how large it is and how long it stays are
 -- settings; /thread step says the last one again. A change of focus is said as "Following: <its name>",
--- above the words of the step it leads to (Sources.lua).
+-- above the words of the step it leads to (Sources.lua). While the options are open, the sample of
+-- Preview Step Text follows those settings as they are changed, drawn above the options window.
 local ADDON, ns = ...
 if not ns.linked then return end
 
@@ -23,12 +24,15 @@ local shown = { at = 0, hold = 0 }        -- when the words on screen began, and
 local last                                -- { lines, route, failed }: what was said last
 local ROUTE, FAILED = { 0.62, 0.85, 1 }, { 1, 0.5, 0.45 }     -- the smaller line's colour: a route, and none found
 
+-- The game's own font at another size (the world map's marks use it too: MapRoute.lua).
 local function Font(fs, size, flags)
 	local path = GameFontNormal and GameFontNormal.GetFont and GameFontNormal:GetFont()
 	if not (path and fs:SetFont(path, size, flags)) then
 		fs:SetFont('Fonts\\FRIZQT__.TTF', size, flags)
 	end
 end
+
+ns.Font = Font
 
 local function Make()
 	frame = CreateFrame('Frame', nil, UIParent)
@@ -69,9 +73,12 @@ local function Make()
 end
 
 -- lines: what to say, a list of strings (three at most are shown). route: the smaller line under them, or nil.
--- failed: that line says no route was found, not what the route is.
-local function Show(lines, route, failed)
+-- failed: that line says no route was found, not what the route is. sample: the options page's preview,
+-- drawn above the options window; steady: it is on screen already and stays put (a slider moved), with
+-- no new fade in.
+local function Show(lines, route, failed, sample, steady)
 	if not frame then Make() end
+	frame:SetFrameStrata(sample and 'FULLSCREEN_DIALOG' or 'HIGH')
 	local size = ns.Get('floatSize') or 20
 	Font(big, size, 'OUTLINE')
 	Font(small, math.max(9, math.floor(size * 0.68 + 0.5)), 'OUTLINE')
@@ -87,8 +94,13 @@ local function Show(lines, route, failed)
 	small:SetText(route or '')
 	local colour = failed and FAILED or ROUTE
 	small:SetTextColor(colour[1], colour[2], colour[3])
-	shown.at, shown.hold = GetTime(), ns.Get('floatHold') or 5
-	frame:SetAlpha(0)
+	shown.hold = ns.Get('floatHold') or 5
+	if steady and frame:IsShown() then
+		shown.at = GetTime() - IN
+	else
+		shown.at = GetTime()
+		frame:SetAlpha(0)
+	end
 	frame:Show()
 end
 
@@ -108,7 +120,7 @@ function ns.FloatStep(lines, route, failed, quiet)
 	Show(lines, Under(route, failed), failed)
 end
 
-local OWN = { pin = { 'To your map pin' }, spot = { 'To the spot you gave' } }
+local OWN = { pin = { 'To your map pin' }, spot = { 'To your coordinates' } }
 
 -- Says a destination that has just been given, once its route is known (Route.lua). route: nil when
 -- none could be made; note: what to say in its place, where no way was found at all.
@@ -140,10 +152,19 @@ function ns.FloatAgain()
 	Show(last.lines, Under(last.route, last.failed), last.failed)
 end
 
--- The button on the options page.
-function ns.FloatTest()
-	Show({ 'Turn in The Forgotten Pools', 'Accept The Stagnant Oasis' }, '3 min: walk 640 yd')
+-- The button on the options page. steady: shown again as a setting changes, without fading in anew.
+function ns.FloatTest(steady)
+	Show({ 'Turn in The Forgotten Pools', 'Accept The Stagnant Oasis' }, Under('3 min: walk 640 yd'), nil, true, steady)
 end
+
+-- While the options are open, the sample follows the settings of the step text as they change.
+local LOOKS = { floatSize = true, floatDown = true, floatAcross = true, floatRoute = true, floatHold = true }
+ns.OnSetting(function(key)
+	local panel = rawget(_G, 'SettingsPanel')
+	if LOOKS[key] and type(panel) == 'table' and panel.IsShown and panel:IsShown() then
+		ns.FloatTest(true)
+	end
+end)
 
 -- (for the checks: what is on screen now, and the smaller line itself, for its colour)
 function ns.FloatShown()

@@ -5,7 +5,8 @@
 --            one waits (see NoWay) }
 -- ns.route   the route found: { map =, points = { { x, y, how }, ... }, seconds =, yards =, swum =,
 --            flown = { { name, name, ... }, ... }, at = the point the character has reached,
---            loose = true while it is not to be joined to the character (see Aloft) }
+--            loose = true while it is not to be joined to the character (see Aloft),
+--            dest = the destination it was found for, which is ns.dest except while a new one is searched for }
 -- x and y are the game's world coordinates (x north, y west), `how` is "walk", "link" or "fly".
 local ADDON, ns = ...
 if not ns.linked then return end
@@ -17,12 +18,20 @@ local DATA = {
 	[2991] = 'PatchwerkForever_Thread_Routes_ZephrasIsle',
 }
 local CONTINENT_MAP = { [0] = 1415, [1] = 1414 }     -- the world-map ids of the two continents
+ns.CONTINENT_MAP = CONTINENT_MAP
+local CONTINENT_NAME = { [0] = 'Eastern Kingdoms', [1] = 'Kalimdor', [2991] = 'Zephras Isle' }
+
+-- A continent (the game's map number) by name, for chat lines.
+function ns.ContinentName(map)
+	return CONTINENT_NAME[map] or ('map ' .. tostring(map))
+end
 
 local ARRIVED = 12        -- yards from the destination that count as there
 local STRAYED = 35        -- yards from the trail before a new route is found
 local AGAIN = 3           -- seconds between two searches, at least
 local RETRY = 10          -- seconds before a route that could not be made is tried for again
 local WAIT, WAIT_MOST = 20, 120   -- the same where a whole search found no way: doubled each time, up to the most
+local BEHIND = 1.5        -- milliseconds a frame for the searches that can wait (your own route has the planner's 4)
 local MOVED = 300         -- yards from where that search began that bring the next one at once
 local NO_WAY = 'No route found'   -- said under the step on screen (Float.lua)
 ns.NO_WAY = NO_WAY                -- (Sources.lua says it too, under a new step at a place there is still no way to)
@@ -37,6 +46,11 @@ function ns.OnRoute(fn) listeners[#listeners + 1] = fn end
 local function Changed()
 	for _, fn in ipairs(listeners) do
 		ns.Try('drawing', fn)
+	end
+	-- (how the way goes, for the other tools: Thread (Tracker) shows it at the top of My Route)
+	local Following = ns.Base.Following
+	if Following and Following.SetTravel and ns.Travel then
+		ns.Try('telling the way', Following.SetTravel, Following, ns.route and ns.Travel(ns.route) or nil)
 	end
 end
 
@@ -58,27 +72,34 @@ local function Once(key, text, again)
 	end
 end
 
--- say: you asked for the route yourself, so why there is no map data is said even when it has been
--- said before. Otherwise it is said once.
+-- Loads a continent's map data (an addon of its own, loaded on demand). say: you asked for the route
+-- yourself, so why there is none is said even when it has been said before. Otherwise it is said once.
 local function Data(map, say)
 	if P.Use(map) then return true end
 	local name = DATA[map]
 	if not name then
-		Once('map' .. tostring(map), 'No map data for this area (map ' .. tostring(map) .. ').', say)
+		Once('map' .. tostring(map), 'No map data for this area (map ' .. tostring(map)
+			.. '). Routes cover Kalimdor, the Eastern Kingdoms and Zephras Isle.', say)
 		return false
 	end
 	local load = C_AddOns and C_AddOns.LoadAddOn or LoadAddOn
 	local ok, reason = load(name)
 	if P.Use(map) then return true end
-	Once('data' .. name, 'Map data "' .. name .. '" could not be loaded (' .. tostring(reason or ok)
-		.. '). It is a separate addon: check it is installed and ticked in the addon list.', say)
+	-- (named by its title, and the reason in the game's own words, as its addon list gives them)
+	local title = C_AddOns and ns.Ask(C_AddOns.GetAddOnMetadata, name, 'Title')
+	local why = reason and (rawget(_G, 'ADDON_' .. tostring(reason)) or tostring(reason)) or 'unknown reason'
+	Once('data' .. name, ('The map data addon "%s" could not be loaded (%s). Check that it is installed and enabled in the AddOns list.')
+		:format(type(title) == 'string' and title or name, tostring(why)), say)
 	return false
 end
+ns.Data = Data
 
+-- Your faction as the map data writes it: 'A', 'H', or nil.
 local function Side()
 	local side = UnitFactionGroup('player')
 	return side == 'Alliance' and 'A' or side == 'Horde' and 'H' or nil
 end
+ns.Side = Side
 
 -- The flight points this character has found: { [id] = true }, or nil for "all of them" (the
 -- setting off). How they are learned is in Flights.lua. With nothing known of a continent yet, none
@@ -99,15 +120,21 @@ end
 ---------------------------------------------------------------------------
 -- job: the search for the route you are on. It comes first. Behind it, one at a time and only while
 -- there is no job, run the searches that can wait (ns.SearchLater: the ways between the guide's next
--- steps, Ahead.lua). A job that starts while one of those is under way puts it back to wait.
+-- steps, Ahead.lua). A job that starts while one of those is under way puts it back to wait. Those
+-- get a smaller share of each frame than your own route, and in combat both get half.
 local job, lastPlan = nil, 0
 local waiting, behind, behindAsk = {}, nil, nil
 local Search, Threw
+local function Budget(ms)
+	if InCombatLockdown and InCombatLockdown() then ms = ms / 2 end
+	return debugprofilestop() + ms
+end
+
 local runner = CreateFrame('Frame')
 runner:Hide()
 runner:SetScript('OnUpdate', function()
 	if job then
-		P.deadline = debugprofilestop() + P.budget
+		P.deadline = Budget(P.budget)
 		local ok, err = coroutine.resume(job)
 		if not ok then
 			job = nil
@@ -133,7 +160,7 @@ runner:SetScript('OnUpdate', function()
 			ask.done(route)
 		end)
 	end
-	P.deadline = debugprofilestop() + P.budget
+	P.deadline = Budget(BEHIND)
 	local ok, err = coroutine.resume(behind)
 	if not ok then
 		behind, behindAsk = nil, nil
@@ -169,6 +196,24 @@ local function Summary(route)
 	return Duration(route.seconds) .. ': ' .. table.concat(parts, ', ')
 end
 ns.Summary = Summary
+
+-- A route as something to do, for a list: where to fly from and to, what to ride, how long in all.
+--   "Fly from Crossroads to Thunder Bluff, then take the zeppelin from Orgrimmar to Grom'gol (12 min in all)"
+--   "Walk 450 yd (1 min)"
+local function Travel(route)
+	local legs = {}
+	for _, flight in ipairs(route.flown or {}) do
+		if #flight >= 2 then legs[#legs + 1] = ('Fly from %s to %s'):format(flight[1], flight[#flight]) end
+	end
+	for _, ride in ipairs(route.rides or {}) do
+		legs[#legs + 1] = ('Take the %s from %s to %s'):format(ride.kind, ride.from, ride.to)
+	end
+	if #legs == 0 then return ('Walk %d yd (%s)'):format(route.yards, Duration(route.seconds)) end
+	-- (only the first leg starts with a capital)
+	for i = 2, #legs do legs[i] = legs[i]:gsub('^%u', string.lower) end
+	return ('%s (%s in all)'):format(table.concat(legs, ', then '), Duration(route.seconds))
+end
+ns.Travel = Travel
 
 local function Say(route)
 	local text = Summary(route) .. '.'
@@ -242,7 +287,7 @@ Search = function(from, to, opts)
 	local sx, sy = P.CellOf(map, from.x, from.y)
 	sx, sy = P.Nearest(map, sx, sy, 12)
 	if not sx then
-		return nil, 'you are not standing on ground the planner knows (inside a building, on a boat, or on one?).'
+		return nil, 'You are not standing on ground the route planner knows. You may be inside a building, or on a boat or lift.'
 	end
 	local gx, gy = P.CellOf(to.map, to.x, to.y)
 	local tx, ty = gx, gy
@@ -266,7 +311,7 @@ Search = function(from, to, opts)
 		if map ~= to.map then
 			return nil, 'No route found to that continent: no boat or zeppelin available to your faction goes there, or the location is unreachable.', true
 		end
-		return nil, 'No route found. The location may be unreachable by something the planner does not know: a lift, a boat or a locked gate.', true
+		return nil, 'No route found. The location may only be reachable by a lift, boat or portal the planner does not know.', true
 	end
 	local line = P.JourneyLine(journey)
 	P.Forget()
@@ -345,6 +390,7 @@ function ns.Plan(announce)
 			-- place of the note, and are not shown again)
 			if dest.wait then dest.fresh, dest.quiet = true, true end
 			dest.wait = nil
+			route.dest = dest
 			ns.route = route
 			Changed()
 			if announce and ns.Get('notify') then Say(route) end
@@ -501,11 +547,15 @@ function ns.SetDestination(map, x, y, pin, announce, source, more)
 	ns.dest = dest
 	ns.stopped = nil
 	Watch(true)
+	-- (the trail of the destination before stays up, fainter, until the way to this one is known: the maps
+	-- tell them apart by route.dest)
+	Changed()
 	-- the way to a guide's next step may have been found already, while you were on the step before
 	local ready = ns.Ahead and ns.Ahead.Take(dest)
 	if ready then
 		job = nil
 		lastPlan = GetTime()
+		ready.dest = dest
 		ns.route = ready
 		Changed()
 		if announce and ns.Get('notify') then Say(ready) end
@@ -562,7 +612,7 @@ function ns.GoToMapSpot(xPercent, yPercent)
 		return
 	end
 	local x, y = world:GetXY()
-	ns.SetDestination(map, x, y, false, true)
+	ns.SetDestination(map, x, y, false, true, nil, { lines = { ('To %.1f, %.1f'):format(xPercent, yPercent) } })
 end
 
 local KINDS = { [0] = 'not walkable', 'walkable ground', 'shallow water', 'deep water' }
@@ -572,7 +622,7 @@ function ns.SayWhere()
 		ns.Print('Your position is not available here.')
 		return
 	end
-	ns.Print(('Map %d, world %.1f, %.1f.'):format(map, x, y))
+	ns.Print(('%s (map %d), world position %.1f, %.1f.'):format(ns.ContinentName(map), map, x, y))
 	if not Data(map) then return end
 	local cx, cy = P.CellOf(map, x, y)
 	ns.Print(('Cell %d, %d: %s.'):format(cx, cy, KINDS[P.KindAt(map, cx, cy)] or '?'))

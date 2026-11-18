@@ -1,5 +1,12 @@
 # Patchwerk Forever: Stitch (Console Port)
 
+## 2.2.0
+
+- **Open Game Menu Directly says so** when it turns off the game's automatic gamepad cursor, and when it puts it back. It stays on by default.
+- **The binding-change lines** (Report Binding Changes) are said through Patchwerk, as "Patchwerk Console Port: ...", like every other line of this addon, instead of through Console Port's own log.
+- **`/patchwerk consoleport` lists which fixes took hold and which did not** (not needed here, or Console Port has changed), and `/patchwerk` shows how many are applied.
+- With a Patchwerk Forever too old for it, it now names itself and the version it needs.
+
 ## 2.1.0
 
 - **Keep The Menu Ring** (on at first): since Console Port 3.3.14 its large game menu ring opens only while its Game Menu setting is on and the game's own gamepad interface is off, so a ring bound to a button stopped opening. It opens from its binding again, as up to 3.3.13. Console Port's game menu itself is left as Console Port has it. Turn it off to have Console Port's own behaviour.

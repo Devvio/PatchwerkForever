@@ -1,6 +1,6 @@
 -- Thread (Races): its settings, the slash command and the key bindings.
 --
--- Race courses of your own (asked for on 2026-11-16: "custom race courses with markers"). You ride the
+-- Race courses of your own, with markers (asked for on 2026-11-16). You ride the
 -- course once and place a checkpoint at each turn (Courses.lua); then you race it: the next checkpoint is
 -- put on the map as your map pin and tracked, so the game shows its own marker for it in the world, and a
 -- ring and a beam of light are drawn on that marker (Marker.lua). Reaching a checkpoint lights the next;
@@ -56,12 +56,20 @@ ns.settings = {
 -- /race
 ---------------------------------------------------------------------------
 local function Help()
-	ns.Print('Race commands:')
-	ns.Print('  /race new <name>: start a new course where you stand; then /race mark at each checkpoint, /race undo to take the last one back')
-	ns.Print('  /race save: keep the course (the last checkpoint is the finish);  /race cancel: throw it away')
-	ns.Print('  /race start [name]: race a course (the last one, without a name);  /race stop: stop racing')
-	ns.Print('  /race list;  /race best [name];  /race delete <name>;  /race reset <name>: forget its best run')
-	ns.Print('  /race share [name] [player]: send a course to your party, or to one player;  /race accept: keep one you were sent')
+	ns.Print('Race commands (/race or /pfr):')
+	ns.Print('  /race start [name]: race a course (the last one, without a name)')
+	ns.Print('  /race stop: stop racing')
+	ns.Print('  /race new <name>: start a new course where you stand')
+	ns.Print('  /race mark: place a checkpoint where you stand')
+	ns.Print('  /race undo: take the last checkpoint back')
+	ns.Print('  /race save: keep the new course (the last checkpoint is the finish)')
+	ns.Print('  /race cancel: throw the new course away')
+	ns.Print('  /race list: list your courses')
+	ns.Print('  /race best [name]: show the best run on a course')
+	ns.Print('  /race delete <name>: delete a course')
+	ns.Print('  /race reset <name>: forget the best run on a course')
+	ns.Print('  /race share [name] [player]: send a course to your party, or to one player')
+	ns.Print('  /race accept: keep a course you were sent')
 	ns.Print('  /race config: open the options')
 end
 
@@ -98,7 +106,8 @@ SlashCmdList.PATCHWERKFOREVER_RACES = function(text)
 		ns.Try('a course you were sent', ns.CourseAccept)
 	elseif word == 'config' or word == 'settings' or word == 'options' then
 		if not ns.OpenSettings() then
-			ns.Print('Options are under Options > AddOns > Patchwerk Forever > Thread: Races.')
+			ns.Print(InCombatLockdown() and 'Options cannot be opened in combat.'
+				or 'Options are under Options > AddOns > Patchwerk Forever > Thread: Races.')
 		end
 	elseif word == '' and ns.racing then
 		ns.Try('the race', ns.RaceSay)
@@ -107,7 +116,8 @@ SlashCmdList.PATCHWERKFOREVER_RACES = function(text)
 	end
 end
 
--- For key and gamepad bindings (Bindings.xml).
+-- For key and gamepad bindings (Bindings.xml), in the family's own section of the Key Bindings page
+-- (its name, BINDING_CATEGORY_PatchwerkForever, is the base's).
 BINDING_HEADER_PATCHWERKFOREVER_RACES = ns.TITLE
 BINDING_NAME_PATCHWERKFOREVER_RACES_MARK = 'Place Checkpoint'
 BINDING_NAME_PATCHWERKFOREVER_RACES_START = 'Start Last Race'

@@ -1,8 +1,8 @@
 <Bindings>
-	<Binding name="PATCHWERKFOREVER_PLAINS_PEEK" header="PATCHWERKFOREVER_PLAINS" category="ADDONS" runOnUp="true">
-		PatchwerkForever_Thread_Plainsrunning_Peek(keystate)
+	<Binding name="PATCHWERKFOREVER_PLAINS_PEEK" header="PATCHWERKFOREVER_PLAINS" category="BINDING_CATEGORY_PatchwerkForever" runOnUp="true">
+		if PatchwerkForever_Thread_Plainsrunning_Peek then PatchwerkForever_Thread_Plainsrunning_Peek(keystate) end
 	</Binding>
-	<Binding name="PATCHWERKFOREVER_PLAINS_TOGGLE" category="ADDONS">
-		PatchwerkForever_Thread_Plainsrunning_Toggle()
+	<Binding name="PATCHWERKFOREVER_PLAINS_TOGGLE" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Plainsrunning_Toggle then PatchwerkForever_Thread_Plainsrunning_Toggle() end
 	</Binding>
 </Bindings>

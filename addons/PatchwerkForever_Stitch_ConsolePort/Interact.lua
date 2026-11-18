@@ -16,6 +16,7 @@ if not env.NativeContext then return end;
 local INTERACT = db.Bindings.Custom.Interact;
 local target = type(INTERACT) == 'string' and INTERACT:match('^CLICK (.+):LeftButton$');
 if not target then return end;
+env.Applied['Interact (tap)'] = true;
 
 local Tap = CreateFrame('Button', 'PatchwerkInteractTap', UIParent, 'SecureActionButtonTemplate')
 Tap:RegisterForClicks('AnyUp')

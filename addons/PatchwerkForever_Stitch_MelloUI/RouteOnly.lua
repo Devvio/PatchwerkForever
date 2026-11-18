@@ -5,13 +5,13 @@ if not ( ns.linked and MelloUI and MelloUI.RegisterModule and MelloUI.SetModuleE
 -- MelloUI: Route and guides only
 ---------------------------------------------------------------
 -- Keeps MelloUI's Route (the way to your waypoint along roads) and
--- its Quest Tracker, and switches every other MelloUI module off.
+-- its Quest Tracker, and disables every other MelloUI module.
 -- Route's guide reader (MelloUI_Route/Guides.lua) hands RestedXP's
 -- current steps to the Quest Tracker, which shows them in a section
 -- of their own. MelloUI's core stays, since both are built on it and
 -- Route's boat and zeppelin data live there, as do MelloUI_Route and
 -- MelloUI_Companion (the road network, loaded on demand). The other
--- MelloUI addons are unticked in the addon list, so they stop
+-- MelloUI addons are disabled in the addon list, so they stop
 -- loading from the next login.
 --
 -- The switches are flipped a few seconds after login, once MelloUI
@@ -20,13 +20,13 @@ if not ( ns.linked and MelloUI and MelloUI.RegisterModule and MelloUI.SetModuleE
 -- game (chat colours, game settings it borrowed). A reload then
 -- clears what was drawn. From then on the switches are already set,
 -- so nothing more happens. The kept modules' settings are left alone.
--- Turning this fix off stops it from trimming; it does not switch
--- anything back on (use /mello and the addon list for that).
+-- Turning this fix off stops it from trimming; it does not enable
+-- anything again (use /mello and the addon list for that).
 --
--- Each module and addon is trimmed once. What the player switches
--- back on in MelloUI afterwards stays on: at later logins only what
--- has not been seen before (a module a MelloUI update added) is
--- switched off. Switching the setting off and on starts over.
+-- Each module and addon is trimmed once. What the player enables
+-- again in MelloUI afterwards stays enabled: at later logins only
+-- what has not been seen before (a module a MelloUI update added)
+-- is disabled. Disabling the setting and enabling it starts over.
 --
 -- PatchwerkForeverDB.MelloUI = {
 --     seenIn     = { [profile] = { [module] = true } }, -- trimmed or kept once already, in that MelloUI profile
@@ -35,7 +35,7 @@ if not ( ns.linked and MelloUI and MelloUI.RegisterModule and MelloUI.SetModuleE
 -- }
 --
 -- Off until asked for (its setting, or /patchwerk mello on). It
--- switches off most of another addon, which no one should get by
+-- disables most of another addon, which no one should get by
 -- installing this one.
 
 local KEEP_MODULES = {
@@ -56,8 +56,8 @@ ns:AddSetting({
 	default = false;
 	section = 'MelloUI';
 	name    = 'Only Route And The Quest Tracker';
-	desc    = "Switches every other MelloUI module off and unticks MelloUI's other addons, for using its Route beside another interface addon. It does this once for each character's MelloUI profile: anything you switch back on in MelloUI afterwards stays on.";
-	note    = 'Turning this off does not switch anything back on (use /mello and the addon list for that). Turning it off and on again trims everything once more.';
+	desc    = "Disables every other MelloUI module and MelloUI's other addons, for using its Route beside another interface addon. It does this once for each character's MelloUI profile: anything you enable again in MelloUI afterwards stays enabled.";
+	note    = 'Disabling this does not enable anything again (use /mello and the addon list for that). Disabling it and enabling it again trims everything once more.';
 })
 
 local function Wanted()
@@ -78,7 +78,7 @@ end
 -- MelloUI 2.1.46 each character has a profile of its own. So what
 -- has been trimmed once is kept for each profile: a character
 -- whose profile was never trimmed is trimmed at its first login,
--- and what the player switched back on in one profile stays on
+-- and what the player enabled again in one profile stays enabled
 -- there. Before 2.1.46 (no MelloUI:CharacterProfile) there is one
 -- list for the account, as there was.
 --
@@ -115,7 +115,7 @@ local function StartOver()
 end
 
 local function Print(...)
-	ns:Print('|cff9b8cffMelloUI|r', ...)
+	ns:Print('|cff9b8cffMelloUI:|r', ...)
 end
 
 -- Modules with a switch of their own, as MelloUI's Everything Off
@@ -134,8 +134,8 @@ local function IsAddOnEnabled(name)
 	return state ~= nil and state > 0;
 end
 
--- @return off : list of module titles switched off
--- @return on  : list of kept module titles switched on
+-- @return off : list of module titles disabled
+-- @return on  : list of kept module titles enabled
 local function TrimModules()
 	local off, on, seen = {}, {}, SeenModules();
 	for name, module in MelloUI:IterateModules() do
@@ -164,7 +164,7 @@ local function TrimModules()
 	return off, on;
 end
 
--- @return disabled : list of addons unticked
+-- @return disabled : list of addons disabled
 local function TrimAddOns()
 	-- (the addon list is each character's own)
 	local disabled, all, character = {}, Seen('seenAddOns'), GetCharacter() or '';
@@ -188,7 +188,7 @@ local function TrimAddOns()
 end
 
 StaticPopupDialogs.PATCHWERK_MELLOUI_RELOAD = {
-	text         = 'Patchwerk switched MelloUI down to Route and the Quest Tracker. Reload to finish?';
+	text         = 'MelloUI was trimmed to Route and the Quest Tracker. Reload the UI to finish?';
 	button1      = RELOADUI;
 	button2      = LATER;
 	OnAccept     = ReloadUI;
@@ -211,15 +211,15 @@ local function RouteOnly()
 	local addons  = TrimAddOns();
 	if ( #off > 0 ) then
 		table.sort(off)
-		Print('Switched off:', table.concat(off, ', '))
+		Print('Disabled:', table.concat(off, ', '))
 	end
 	if ( #on > 0 ) then
 		table.sort(on)
-		Print('Switched on:', table.concat(on, ', '))
+		Print('Enabled:', table.concat(on, ', '))
 	end
 	if ( #addons > 0 ) then
 		table.sort(addons)
-		Print('Unticked in the addon list from the next login:', table.concat(addons, ', '))
+		Print('Disabled in the addon list from the next login:', table.concat(addons, ', '))
 	end
 	-- A module switched live may leave what it drew, or miss its
 	-- login setup, until a reload.
@@ -251,7 +251,7 @@ local function ListRunning()
 end
 
 ns:RegisterFix('mello', {
-	name    = 'MelloUI Route and guides only';
+	name    = 'MelloUI: only Route and the Quest Tracker';
 	addon   = 'MelloUI';
 	status  = function()
 		return Wanted() and 'on' or 'off';
@@ -271,10 +271,10 @@ ns:RegisterFix('mello', {
 ns:OnSetting(SETTING, function(on, initial)
 	if initial then return end;
 	if on then
-		Print('Trimming to Route and the Quest Tracker is on. What you switch back on in MelloUI afterwards stays on.')
+		Print('Trimming to Route and the Quest Tracker is on. What you enable again in MelloUI afterwards stays enabled.')
 		StartOver()
 		RouteOnly()
 	else
-		Print('Trimming is off. Nothing was switched back on: use /mello and the addon list.')
+		Print('Trimming is off. Nothing was enabled again: use /mello and the addon list.')
 	end
 end)

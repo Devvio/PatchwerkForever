@@ -9,7 +9,8 @@ ns.TITLE = 'Patchwerk Forever: Thread (Tracker)'
 ---------------------------------------------------------------------------
 -- One entry a setting, in the order they are shown. The base makes the pages from this list and
 -- says what each kind of entry becomes (its Tools.lua). page: the page it is on (none: the first,
--- "Thread: Tracker"). parent: greyed out while that tick box is off.
+-- "Thread: Tracker"). parent: grayed out while that tick box is off. percent: the slider's value is
+-- shown as a percentage (a base that does not know it shows the bare number).
 --
 -- What starts unticked: anything that changes something of the game's or of another addon's by
 -- itself (moving the game's arrow, hiding RestedXP's window), the three ways of stepping back, and
@@ -20,7 +21,7 @@ ns.settings = {
 	{ header = true, name = 'General' },
 	{ key = 'on', default = true, name = 'Enable Tracker',
 		desc = 'Show the Patchwerk quest tracker. When disabled, the default quest tracker is used.' },
-	{ key = 'quiet', default = true, name = 'Hide Default Quest Tracker', parent = 'on',
+	{ key = 'quiet', default = true, name = 'Hide Default Tracker', parent = 'on',
 		desc = 'Hide the default quest tracker while this one is shown, so quests are not listed twice. Disabling this option brings it back.' },
 	{ key = 'quietInstance', default = true, name = 'Keep Default Tracker In Instances', parent = 'quiet',
 		desc = 'In dungeons, raids and battlegrounds, show the default tracker in place of this one. It displays stage objectives, timers and scores there.' },
@@ -31,16 +32,16 @@ ns.settings = {
 		desc = 'Maximum height of the tracker. A longer list scrolls with the mouse wheel or the Scroll Tracker Up and Scroll Tracker Down key bindings.' },
 	{ header = true, name = 'Position' },
 	{ button = 'Unlock', name = 'Unlock Position', click = function() ns.Unlock() end,
-		desc = 'Show a drag bar above the tracker so you can move it. Click again, or type /tracker lock, to lock it in place.' },
+		desc = 'Show a drag bar above the tracker so you can move it. Right-click the bar, or click this button again, to lock it in place.' },
 	{ button = 'Reset', name = 'Reset Position', click = function() ns.ResetPlace() end,
 		desc = 'Move the tracker back to its default position under the minimap.' },
-	{ header = true, name = 'Fading' },
+	{ header = true, name = 'Visibility' },
 	{ key = 'fadeCombat', default = false, name = 'Fade In Combat',
 		desc = 'Fade the tracker while you are in combat.' },
 	{ key = 'fadeIdle', default = false, name = 'Fade When Not Hovered',
 		desc = 'Fade the tracker unless the mouse is over it or something in it has just changed.' },
-	{ key = 'fadeTo', default = 35, min = 10, max = 90, step = 5, name = 'Faded Opacity',
-		desc = 'Opacity of the tracker while it is faded, in percent.' },
+	{ key = 'fadeTo', default = 35, min = 10, max = 90, step = 5, percent = true, name = 'Faded Opacity',
+		desc = 'Opacity of the tracker while it is faded.' },
 	{ key = 'hideInstance', default = false, name = 'Hide In Instances',
 		desc = 'Hide the tracker in dungeons, raids and battlegrounds, even when the default tracker is not kept there.' },
 
@@ -50,11 +51,11 @@ ns.settings = {
 	{ page = QUESTS, key = 'quests', default = true, name = 'Show Quests',
 		desc = 'List your tracked quests and their objectives.' },
 	{ page = QUESTS, key = 'order', default = 'zone', name = 'Sort Order',
-		choices = { { 'zone', 'By zone (current zone first)' }, { 'near', 'By distance' },
-			{ 'ready', 'Completed first, then by zone' }, { 'short', 'Shortest Trip' }, { 'game', 'Default order' } },
+		choices = { { 'zone', 'By Zone (Current Zone First)' }, { 'near', 'By Distance' },
+			{ 'ready', 'Completed First, Then By Zone' }, { 'short', 'Shortest Trip' }, { 'game', 'Default Order' } },
 		desc = 'How quests are sorted. Shortest Trip lists them in a short path: the nearest first, then each next quest nearest to the one before. It is worked out again when a quest is added, removed or completed. Route To Next Quest and Route To Previous Quest follow the order shown.' },
 	{ page = QUESTS, key = 'readyGroup', default = true, name = 'Group Completed Quests',
-		desc = 'Move quests that are ready to turn in to a separate group at the bottom of the list. Your tracked quests are not changed.' },
+		desc = 'Move quests that are ready to turn in to a separate group at the bottom of the list, or at the top when Sort Order is Completed First, Then By Zone. Your tracked quests are not changed.' },
 	{ page = QUESTS, header = true, name = 'Quest Details' },
 	{ page = QUESTS, key = 'levels', default = true, name = 'Show Quest Level',
 		desc = 'Show the quest level before its name.' },
@@ -74,7 +75,7 @@ ns.settings = {
 	{ page = QUESTS, key = 'partyShare', default = true, name = 'Share Progress With Party', parent = 'party',
 		desc = 'Send your quest progress (quest and percent complete) to party members who also use this addon, and show theirs. The game does not provide party progress, so this only works between players running the addon.' },
 	{ page = QUESTS, header = true, name = 'Automation' },
-	{ page = QUESTS, key = 'followNearest', default = false, name = 'Auto-Track Nearest Quest',
+	{ page = QUESTS, key = 'followNearest', default = false, name = 'Quest Arrow On Nearest Quest',
 		desc = 'When no guide is active and you have not selected a quest or a list, automatically put the quest arrow on your nearest tracked quest.' },
 
 	-- the guide
@@ -82,15 +83,15 @@ ns.settings = {
 	{ page = GUIDE, header = true, name = 'Guide Steps' },
 	{ page = GUIDE, key = 'guide', default = true, name = 'Show Guide Steps',
 		desc = 'Show the current step of your guide addon (RestedXP) above your quests, with the guide name and your progress.' },
-	{ page = GUIDE, key = 'guideAhead', default = 3, min = 0, max = 8, step = 1, name = 'Upcoming Steps',
-		desc = 'Number of upcoming steps shown below the current one.' },
-	{ page = GUIDE, key = 'guideDone', default = false, name = 'Show Completed Lines',
+	{ page = GUIDE, key = 'guideAhead', default = 3, min = 0, max = 8, step = 1, name = 'Upcoming Steps Shown', parent = 'guide',
+		desc = 'Number of upcoming steps shown below the current one, one line each.' },
+	{ page = GUIDE, key = 'guideDone', default = false, name = 'Show Completed Lines', parent = 'guide',
 		desc = 'Keep completed lines of the current step in the list, dimmed.' },
-	{ page = GUIDE, key = 'guideSkip', default = true, name = 'Click To Skip Steps',
+	{ page = GUIDE, key = 'guideSkip', default = true, name = 'Click To Skip Steps', parent = 'guide',
 		desc = 'Click the current step to skip it, or an upcoming step to jump to it. /tracker back, or the Undo Skipped Guide Step key binding, undoes the last skip.' },
-	{ page = GUIDE, key = 'guideItems', default = true, name = 'Show Guide Item Buttons',
+	{ page = GUIDE, key = 'guideItems', default = true, name = 'Show Guide Item Buttons', parent = 'guide',
 		desc = 'Add buttons for items the current step uses (such as your hearthstone) to the quest item bar.' },
-	{ page = GUIDE, key = 'guideHide', default = false, name = 'Hide RestedXP Window',
+	{ page = GUIDE, key = 'guideHide', default = false, name = 'Hide RestedXP Window', parent = 'guide',
 		desc = 'Hide the RestedXP guide window while the tracker shows the guide. RestedXP settings are not changed, and its arrow and item buttons stay visible.' },
 
 	{ page = GUIDE, header = true, name = 'Focus' },
@@ -104,11 +105,11 @@ ns.settings = {
 	{ page = MORE, voice = 'Pockets, pots and flowers. All the small jobs.' },
 	{ page = MORE, header = true, name = 'Quest Item Bar' },
 	{ page = MORE, key = 'items', default = true, name = 'Show Quest Item Bar',
-		desc = 'Show a bar of buttons for usable quest items next to the tracker, nearest quest first. You can bind a key to the first button. The bar does not update during combat.' },
+		desc = 'Show a bar of buttons for usable quest items next to the tracker, nearest quest first. The bar does not update during combat. The Use Nearest Quest Item key binding uses the first one, and works with the bar hidden too.' },
 	{ page = MORE, key = 'itemSize', default = 32, min = 20, max = 56, step = 2, name = 'Button Size', parent = 'items',
 		desc = 'Size of the item buttons.' },
-	{ page = MORE, key = 'itemSide', default = 'left', name = 'Position', choices = { { 'left', 'Left of the tracker' }, { 'right', 'Right of the tracker' } },
-		desc = 'Which side of the tracker the item bar is on.' },
+	{ page = MORE, key = 'itemSide', default = 'left', name = 'Position', parent = 'items', choices = { { 'left', 'Left' }, { 'right', 'Right' } },
+		desc = 'Which side of the tracker the item bar is on. The bar moves to the other side when there is no room on the screen.' },
 	{ page = MORE, header = true, name = 'Recipes' },
 	{ page = MORE, key = 'recipes', default = true, name = 'Show Tracked Recipes',
 		desc = 'List tracked profession recipes with their reagents and how many you have.' },
@@ -122,17 +123,15 @@ ns.settings = {
 		desc = 'Show the current stage and objectives of a dungeon or scenario. Not yet tested in a dungeon. This tracker is shown in instances only while Keep Default Tracker In Instances is disabled.' },
 
 	-- how it looks
-	{ page = LOOK, voice = 'Patchwerk picked the colours himself. You can pick again.' },
-	{ page = LOOK, header = true, name = 'Size' },
-	{ page = LOOK, key = 'scale', default = 100, min = 60, max = 160, step = 5, name = 'Scale',
-		desc = 'Scale of the tracker, in percent.' },
+	{ page = LOOK, voice = 'Patchwerk picked the colors himself. You can pick again.' },
+	{ page = LOOK, header = true, name = 'Scale And Font' },
+	{ page = LOOK, key = 'scale', default = 100, min = 60, max = 160, step = 5, percent = true, name = 'Scale',
+		desc = 'Scale of the tracker.' },
 	{ page = LOOK, key = 'fontSize', default = 12, min = 9, max = 20, step = 1, name = 'Font Size',
 		desc = 'Font size of the tracker text.' },
-	{ page = LOOK, key = 'back', default = 25, min = 0, max = 90, step = 5, name = 'Background Opacity',
-		desc = 'Opacity of the tracker background, in percent. 0 hides it.' },
 	{ page = LOOK, header = true, name = 'Colors' },
 	{ page = LOOK, key = 'titleByLevel', default = true, name = 'Color Quests By Difficulty',
-		desc = 'Color quest names by difficulty (grey, green, yellow, orange, red). When disabled, all names use the color below.' },
+		desc = 'Color quest names by difficulty (gray, green, yellow, orange, red). When disabled, all names use the color below.' },
 	{ page = LOOK, key = 'lookTitle', colour = true, default = 'ffffd200', name = 'Quest Name Color',
 		desc = 'Color of quest names when they are not colored by difficulty.' },
 	{ page = LOOK, key = 'lookHeader', colour = true, default = 'ffd6a35b', name = 'Header Color',
@@ -143,6 +142,8 @@ ns.settings = {
 		desc = 'Color of objectives that are not yet complete.' },
 	{ page = LOOK, key = 'lookDone', colour = true, default = 'ff6fbf73', name = 'Completed Color',
 		desc = 'Color of completed objectives and of quests that are ready to turn in.' },
+	{ page = LOOK, key = 'back', default = 25, min = 0, max = 90, step = 5, percent = true, name = 'Background Opacity',
+		desc = 'Opacity of the tracker background. 0% hides it.' },
 }
 
 ---------------------------------------------------------------------------
@@ -192,8 +193,12 @@ SlashCmdList.PATCHWERKFOREVER_TRACKER = function(text)
 	end
 end
 
--- For key and gamepad bindings (Bindings.xml). The second is a click on a button of the item strip
--- (Items.lua): using an item is something only a button of the game's secure kind may do.
+-- For key and gamepad bindings (Bindings.xml), in the family's own section of the Key Bindings page
+-- (category="BINDING_CATEGORY_PatchwerkForever", a name the base defines as "Patchwerk Forever"). Use Nearest Quest Item is a click on a
+-- button of the item strip (Items.lua): using an item is something only a button of the game's
+-- secure kind may do.
+-- (named here too for a base older than the one that names it, so the section never shows a code name)
+BINDING_CATEGORY_PatchwerkForever = rawget(_G, 'BINDING_CATEGORY_PatchwerkForever') or 'Patchwerk Forever'
 BINDING_HEADER_PATCHWERKFOREVER_TRACKER = ns.TITLE
 BINDING_NAME_PATCHWERKFOREVER_TRACKER_FOLD = 'Collapse / Expand Tracker'
 _G['BINDING_NAME_CLICK PatchwerkForeverTrackerNearestItem:LeftButton'] = 'Use Nearest Quest Item'

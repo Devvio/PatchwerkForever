@@ -1,11 +1,11 @@
 <Bindings>
-	<Binding name="PATCHWERKFOREVER_RACES_MARK" header="PATCHWERKFOREVER_RACES" category="ADDONS">
-		PatchwerkForever_Thread_Races_Mark()
+	<Binding name="PATCHWERKFOREVER_RACES_MARK" header="PATCHWERKFOREVER_RACES" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Races_Mark then PatchwerkForever_Thread_Races_Mark() end
 	</Binding>
-	<Binding name="PATCHWERKFOREVER_RACES_START" category="ADDONS">
-		PatchwerkForever_Thread_Races_Start()
+	<Binding name="PATCHWERKFOREVER_RACES_START" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Races_Start then PatchwerkForever_Thread_Races_Start() end
 	</Binding>
-	<Binding name="PATCHWERKFOREVER_RACES_STOP" category="ADDONS">
-		PatchwerkForever_Thread_Races_Stop()
+	<Binding name="PATCHWERKFOREVER_RACES_STOP" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Races_Stop then PatchwerkForever_Thread_Races_Stop() end
 	</Binding>
 </Bindings>

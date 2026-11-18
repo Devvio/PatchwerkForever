@@ -22,7 +22,7 @@ Nothing in Console Port's own files is changed: the fixes hook it while the game
 
 ## What it fixes
 
-- **Open Game Menu works.** On Forever the game menu button only switched the gamepad cursor on and off. This turns off the game's automatic gamepad cursor (`GamePadCursorAutoEnable`), which is what gets in the way; your old value is put back if you turn the fix off.
+- **Open Game Menu works.** On Forever the game menu button only switched the gamepad cursor on and off. This turns off the game's automatic gamepad cursor (`GamePadCursorAutoEnable`), which is what gets in the way, and says so in chat; your old value is put back (and said) if you disable the option.
 - **Forever's own gamepad buttons no longer override yours.** Switch to Cursor, the radial menu, ping and the targeting modifiers are cleared from any button you bind in Console Port, and can be bound from Console Port's binding list instead.
 - **Extra Action Button can be bound** (Forever has the button but no binding for it).
 - **Item menu equips into the right slot**: robes, held off-hand items, bows, guns, wands, thrown weapons and relics.
@@ -36,11 +36,13 @@ Nothing in Console Port's own files is changed: the fixes hook it while the game
 
 The page **Stitch: Console Port**, under **Options → AddOns → Patchwerk Forever** (`/patchwerk config` opens the page above it). Nothing is added to Console Port's own settings.
 
-`/patchwerk consoleport` prints gamepad binding diagnostics.
+`/patchwerk consoleport` lists which fixes took hold and which did not, and prints gamepad binding diagnostics. With **Report Binding Changes** on, each binding this addon clears, restores or replaces is said in chat.
 
 ## Fixes are meant to be temporary
 
 When Console Port fixes one of these itself, the matching fix is removed here in the next update. If you notice one that a Console Port update has made unnecessary, please report it. If something misbehaves, the chat line it prints is what to report.
+
+**Reporting a problem:** please leave a comment on the addon's CurseForge page.
 
 ## Credits
 
