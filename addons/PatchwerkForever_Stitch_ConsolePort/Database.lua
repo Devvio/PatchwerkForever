@@ -171,6 +171,11 @@ for _, def in ipairs({
 		desc = "Console Port's action bars hide the game's own bag bar and micro menu for good. With this on, each is put back while Console Port's toolbar is not showing its buttons.";
 		note = 'Takes effect after a reload.';
 	};
+	{	key  = 'foreverKeepMenuRing';
+		name = 'Keep The Menu Ring';
+		desc = "Since Console Port 3.3.14 its large game menu ring opens only while its Game Menu setting is on and the game's own gamepad interface is off. With this on, the ring opens from its binding as it did before.";
+		note = "Console Port's game menu itself is left as Console Port has it.";
+	};
 }) do
 	def.default, def.section = true, SECTION;
 	env:AddSetting(def)

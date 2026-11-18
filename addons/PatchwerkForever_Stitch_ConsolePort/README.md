@@ -28,6 +28,7 @@ Nothing in Console Port's own files is changed: the fixes hook it while the game
 - **Item menu equips into the right slot**: robes, held off-hand items, bows, guns, wands, thrown weapons and relics.
 - **Interact works from a ring** ("Interact (tap)").
 - **Target Friendly / Target Hostile** hold buttons no longer raise a blocked-action error.
+- **Console Port's menu ring works again**: since Console Port 3.3.14 it stayed shut while Console Port's Game Menu setting was off or the game's own gamepad interface was on (Keep The Menu Ring, its own switch), and opened without its buttons, because its setup calls a function Forever lacks.
 - **The game's bag bar and micro menu come back** when Console Port's toolbar isn't using their buttons (Console Port hides them for good on Forever). Has its own switch.
 - Smaller repairs: tooltips for the game's action buttons under the interface cursor, the key ring slot on characters without one, an error when dragging the on-screen keyboard, and switching between gamepad and mouse-and-keyboard interface mid-session.
 

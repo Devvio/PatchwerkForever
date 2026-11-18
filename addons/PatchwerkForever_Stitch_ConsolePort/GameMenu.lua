@@ -71,6 +71,15 @@ local function PrintDiagnostics()
 		'| native context active:', tostring(C_KeyBindings.IsBindingContextActive
 			and C_KeyBindings.IsBindingContextActive(env.NativeContext)))
 
+	if env.MenuRingState then
+		local loaded, hooked, enabled = env:MenuRingState();
+		Print('Menu ring:', loaded and ( 'loaded, ' .. ( enabled and 'opens' or 'kept closed by Console Port' ) ) or 'not loaded yet',
+			'| Keep The Menu Ring:', tostring(env:GetSetting('foreverKeepMenuRing')), hooked and '(watching)' or '')
+		if env.MenuRingDetails then
+			for _, line in ipairs(env:MenuRingDetails()) do Print('  ' .. line) end
+		end
+	end
+
 	local keys = { GetBindingKey('TOGGLEGAMEMENU', false, env.RegularContext) };
 	Print('Game menu keys:', #keys > 0 and table.concat(keys, ', ') or 'none')
 	for _, keyChord in ipairs(keys) do

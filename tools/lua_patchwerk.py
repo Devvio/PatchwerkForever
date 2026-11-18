@@ -330,10 +330,10 @@ def main():
     s.login()
     assert s.chat() == []
     assert env.NativeContext == 5 and env.db is not None
-    assert len(s.stub.settings) == 9, len(s.stub.settings)
+    assert len(s.stub.settings) == 10, len(s.stub.settings)
     assert list(s.stub.headers.values()) == []
     assert list(s.stub.pages.keys()) == ["Stitch: Console Port"], list(s.stub.pages.keys())
-    assert sum(1 for x in s.stub.settings.values() if x.page == "Stitch: Console Port") == 9
+    assert sum(1 for x in s.stub.settings.values() if x.page == "Stitch: Console Port") == 10
     # the Stitch's page opens with its name, its picture and what Patchwerk says of it (its TOC)
     intro = list(s.stub.intros.values())[0]
     assert intro.name == "Stitch: Console Port" and intro.icon.endswith("Stitch_ConsolePort\\Media\\icon"), (intro.name, intro.icon)
@@ -341,6 +341,73 @@ def main():
     assert s.stub.Rows() == 1
     assert env.GetSetting(env, "foreverNotify") is False and env.GetSetting(env, "foreverClearPing") is True
     assert env.GetConsolePortSaved(env).cleared.X, "the part does not see what 1.x saved"
+
+    step("Console Port's menu ring (3.3.14): its setup stopped on Forever's missing RunAttribute, finished; kept open")
+    s = Session(saved="{ settings = { foreverNotify = false } }", running=["ConsolePort"], console_port=True)
+    s.lua.execute(r"""
+        function hooksecurefunc(t, name, after)
+            local before = t[name]
+            t[name] = function(...) local r = { before(...) } after(...) return unpack(r) end
+        end
+        CPAPI.BurnAfterReading = {}
+        CPAPI.EventMixin = { ADDON_LOADED = function(self, ...)
+            if self.UnregisterEvent then self:UnregisterEvent('ADDON_LOADED') end
+            if self.OnDataLoaded and self:OnDataLoaded(...) == CPAPI.BurnAfterReading then self.OnDataLoaded = nil end
+        end }
+        STUB.cpGameMenu, STUB.nativeUI, STUB.snippets = false, false, {}
+        -- as ConsolePort_Menu 3.3.14 on Forever: a secure frame with Execute but no RunAttribute
+        local ring = { attributes = {} }
+        ConsolePortMenuRing = ring
+        function ring:SetAttribute(k, v)
+            assert(not STUB.combat, 'the ring changed in a fight')
+            self.attributes[k] = v
+        end
+        function ring:GetAttribute(k) return self.attributes[k] end
+        function ring:UnregisterEvent() end
+        function ring:Execute(body)
+            assert(not STUB.combat, 'Execute in a fight')
+            STUB.snippets[#STUB.snippets + 1] = body
+        end
+        function ring:OnEnabledChanged()
+            local enabled = STUB.cpGameMenu and not STUB.nativeUI
+            self:SetAttribute('enabled', enabled)
+            if not enabled then self:RunAttribute('ClearAndHide', true) end
+        end
+        function ring:OnDataLoaded()
+            assert(not self.ObjectPool, 'Object pool already exists.')
+            self.ObjectPool = {}
+            self:OnEnabledChanged()
+            for i = 1, 3 do self:SetAttribute('numbuttons', i) end
+            return CPAPI.BurnAfterReading
+        end
+        -- Console Port's callbacks hold its own function, not the frame's field
+        local original = ring.OnEnabledChanged
+        function STUB.CPCallback() original(ring) end
+        -- loaded with the core, before the Stitch: the setup stops, as in the game
+        STUB.loadError = select(2, pcall(CPAPI.EventMixin.ADDON_LOADED, ring, 'ConsolePort_Menu'))
+    """)
+    ring = s.g.ConsolePortMenuRing
+    assert "attempt to call" in str(s.stub.loadError) and not ring.attributes.numbuttons, s.stub.loadError
+    s.addon(BASE)
+    env = s.addon("PatchwerkForever_Stitch_ConsolePort", only=["Link.lua", "Database.lua", "MenuRing.lua"])
+    s.login()
+    assert ring.attributes.numbuttons == 3, "the ring's buttons were not added"
+    assert ring.OnDataLoaded is None, "the setup was not finished"
+    assert any("self:RunAttribute(\"ClearAndHide\", true)" in b for b in s.stub.snippets.values()), list(s.stub.snippets.values())
+    assert ring.attributes.enabled is True, "the ring is still shut"
+    s.lua.execute("STUB.nativeUI = true; STUB.CPCallback()")
+    assert ring.attributes.enabled is True, "shut again by Console Port's callback"
+    s.lua.execute("STUB.combat = true")
+    s.stub.Fire("ADDON_LOADED", "ConsolePort_Menu")
+    s.lua.execute("STUB.combat = false")
+    s.stub.Fire("PLAYER_REGEN_ENABLED")
+    assert ring.attributes.enabled is True
+    env.SetSetting(env, "foreverKeepMenuRing", False)
+    assert ring.attributes.enabled is False, "Console Port's own answer not given back"
+    env.SetSetting(env, "foreverKeepMenuRing", True)
+    assert ring.attributes.enabled is True
+    assert ring.attributes.numbuttons == 3
+    assert s.chat() == [], s.chat()
 
     step("a part with no base, and with a base too old for it: one line of chat, no error")
     link = open(os.path.join(ADDONS, PARTS[0], "Link.lua"), encoding="utf-8").read()
