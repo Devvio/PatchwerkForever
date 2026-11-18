@@ -27,8 +27,10 @@ Nothing in DungeonJournal's own files is changed, and none of its data is in thi
 - **Click that section** and **Thread (Routes)** leads you along the list in its selected-route colour, nearest stop first, moving on as you accept or turn in each quest. Click it again to go back to your guide.
 - **A quest that needs another done first** sends you to that one.
 - **A quest you hold and have not finished** has no stop: its work is inside the dungeon.
-- **Point the journal's own map arrow at something** and that spot comes first.
+- **Point the journal's own map arrow at something** and that spot comes first. An arrow to where a quest is turned in counts only once that quest is complete.
 - **Skip a stop** from the right-click menu in the tracker; skips last until you log out or reload.
+- **Make the journal your focus** with the Dungeon Journal button above Thread (Tracker) or on the world map, and the route follows the list until you choose another focus.
+- **Put its quests in My Route**: right-click a stop in the tracker and choose **Add To My Route**. A quest you have not picked up yet is routed to where it starts; once you take it, it is a quest in your log like any other. Quests of the other faction are never routed to.
 
 ## Settings and commands
 

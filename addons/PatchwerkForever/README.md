@@ -41,6 +41,9 @@ Tools made here, needing nothing but this base.
 |---|---|
 | **Patchwerk Forever: Thread (Routes)** | A route planner with its own map data: the way to your map pin, tracked quest or RestedXP step, over ground, by flight path, boat and zeppelin. Remembers herb and ore spots. |
 | **Patchwerk Forever: Thread (Sparkle)** | A sparkle and a name on the herb, vein, chest or quest object you are coming up to. |
+| **Patchwerk Forever: Thread (Tracker)** | A quest tracker: your quests by zone with distances, your guide's steps, quest item buttons, recipes and a gathering list, the focus buttons and My Route. |
+| **Patchwerk Forever: Thread (Immersive Plainsrunning)** | For Tauren: as Plainsrunning stacks up, the interface fades away and speed effects rush past; it all comes back when the run ends, a fight starts or you open a window. |
+| **Patchwerk Forever: Thread (Races)** | Race courses of your own: checkpoints placed as you ride, a marker on the next one, split times and best runs, courses shared with your party. A beta. |
 
 ## Settings
 
@@ -63,7 +66,7 @@ The base tells you once, in chat, when Console Port or MelloUI is running and th
 | `/patchwerk set <name> on/off` | changes a Stitch setting; `/patchwerk set` lists them |
 | `/patchwerk <fix> ...` | a fix's own commands, listed in its addon's description |
 
-The Thread tools have commands of their own (`/thread`, `/sparkle`).
+The Thread tools have commands of their own (`/thread`, `/sparkle`, `/tracker`, `/plains`, `/race`).
 
 **Reporting a problem:** if something misbehaves, the chat line it prints ("… failed and was skipped", "a problem in …") is what to report.
 
