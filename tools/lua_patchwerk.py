@@ -734,12 +734,24 @@ def main():
     info = G.Read(G, 9, "fdj")
     assert (info.index, info.total) == (2, 5) and info.lines[1].text == "Accept: Horde Job", (info.index, info.lines[1].text)
     # the journal's own map arrow comes first, and cannot be skipped from here
-    s.lua.execute("STUB.arrow = STUB.spot(-2000, -2000); STUB.arrow.questTitle = 'The Unsent Letter'; STUB.arrow.turnIn = true")
+    s.lua.execute("STUB.arrow = STUB.spot(-2000, -2000); STUB.arrow.questTitle = 'The Unsent Letter'")
     info = G.Read(G, 1, "fdj")
-    assert info.kind == "place" and info.lines[1].text == "Turn in: The Unsent Letter" and round(info.x) == -2000
+    assert info.kind == "place" and info.lines[1].text == "Go to: The Unsent Letter" and round(info.x) == -2000
     assert info.after[1].lines[1].text == "Accept: Horde Job"
     assert G.Go(G, info, info.index + 1) is False
-    s.lua.execute("STUB.arrow = nil")
+    # ... but not to a hand-in before the quest is finished (the journal points there as soon as it is in your
+    # log: Wailing Caverns, 2026-11-18), nor to a hand-in of a quest it cannot tell
+    s.lua.execute("STUB.arrow = STUB.spot(-2000, -2000); STUB.arrow.questTitle = 'Second Job'; STUB.arrow.turnIn = true")
+    info = G.Read(G, 1, "fdj")
+    assert info.lines[1].text == "Accept: Horde Job", "sent to a hand-in before the quest was finished"
+    s.lua.execute("STUB.complete[5003] = true")
+    info = G.Read(G, 1, "fdj")
+    assert info.kind == "place" and info.lines[1].text == "Turn in: Second Job", info.lines[1].text
+    s.lua.execute("STUB.arrow.questTitle = 'The Unsent Letter'")
+    assert G.Read(G, 1, "fdj").lines[1].text == "Accept: Horde Job", "a hand-in of a quest it cannot tell"
+    s.lua.execute("STUB.arrow = STUB.spot(-2000, -2000); STUB.arrow.turnIn = true; STUB.arrow.fdjAutoQuest = 5003")
+    assert G.Read(G, 1, "fdj").lines[1].text == "Turn in: Dungeon Journal map point", "a pin opened for a finished quest"
+    s.lua.execute("STUB.arrow = nil; STUB.complete[5003] = nil")
     # its page, its two settings, and the binding: the list chosen as a side path, and let go again
     assert list(s.stub.pages.keys()) == ["Stitch: Dungeon Journal"], list(s.stub.pages.keys())
     intro = list(s.stub.intros.values())[0]

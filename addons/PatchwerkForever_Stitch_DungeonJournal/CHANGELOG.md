@@ -1,5 +1,9 @@
 # Patchwerk Forever: Stitch (Dungeon Journal)
 
+## 1.0.2
+
+- **No more trips to a hand-in before the quest is done.** The Dungeon Journal points its own map arrow at a quest's hand-in as soon as the quest is in your log, and the list followed that arrow first. An arrow to a hand-in is now followed only once that quest is finished (seen with the Wailing Caverns quests). Its other points, and the list's own stops, are as before.
+
 ## 1.0.1
 
 - With no RestedXP guide loaded, the Dungeon Journal list no longer becomes the main route by itself. It is followed only while you select it, unless Dungeon Journal Before RestedXP is enabled. Needs **Patchwerk Forever 2.5.0**; with an older one it behaves as before.

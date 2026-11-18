@@ -32,6 +32,12 @@ if not ns.linked then return end;
 -- not finished has no stop: its work is inside the dungeon. The
 -- stops are put in a short order, the nearest first and each next
 -- one nearest the one before.
+--
+-- The journal's own map arrow comes first, with one exception: the
+-- journal points it at a quest's hand-in as soon as the quest is in
+-- your log, finished or not. An arrow to a hand-in is followed only
+-- once that quest is finished (seen 2026-11-18: Wailing Caverns
+-- quests sent you to Nalpak and Ebru before their work was done).
 
 local P = ns.Base;
 local Guides = P.Guides;
@@ -130,6 +136,33 @@ local function StopFor(journal, quest)
 	return place and Stop(id, 'accept', 'Accept: ' .. name, place) or nil;
 end
 
+-- The quest the journal's arrow is for: the one a pin was opened for, else the quest of that title,
+-- in your log first, then in the journal. nil when it cannot be told.
+local function ArrowQuest(journal, spot)
+	local id = tonumber(spot.fdjAutoQuest);
+	if id then return id end;
+	local title = spot.questTitle;
+	if ( type(title) ~= 'string' ) then return nil end;
+	local found;
+	for _, dungeon in pairs(journal.DB) do
+		for _, quest in ipairs(type(dungeon) == 'table' and type(dungeon.quests) == 'table' and dungeon.quests or {}) do
+			if ( type(quest) == 'table' and type(quest.id) == 'number'
+			and ( quest.name == title or quest.arrowName == title ) ) then
+				if Held(quest.id) then return quest.id end;
+				found = found or quest.id;
+			end
+		end
+	end
+	return found;
+end
+
+-- Whether to follow the journal's arrow: anywhere but a hand-in, and a hand-in once its quest is finished.
+local function FollowArrow(journal, spot)
+	if not spot.turnIn then return true end;
+	local id = ArrowQuest(journal, spot);
+	return id ~= nil and Held(id) and Finished(id);
+end
+
 -- Every stop of the dungeons you track, how many quests there are in all, and how many are handed in.
 local function Stops(journal)
 	local stops, total, done = {}, 0, 0;
@@ -195,7 +228,7 @@ local function Read(count)
 	-- the spot the journal's own map arrow is on comes first: you asked it to point there
 	local spot = Ask(journal.WaypointArrowTarget);
 	local place = Place(spot);
-	if place then
+	if ( place and FollowArrow(journal, spot) ) then
 		local words = type(spot.questTitle) == 'string' and spot.questTitle or place.label or 'Dungeon Journal map point';
 		table.insert(stops, 1, { kind = 'place', map = place.map, x = place.x, y = place.y,
 			lines = { { text = ( spot.turnIn and 'Turn in: ' or 'Go to: ' ) .. words, done = false, kind = 'place' } } });
