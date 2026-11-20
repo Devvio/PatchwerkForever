@@ -62,6 +62,10 @@
     "plains": {
       "id": 1812782,
       "slug": "patchwerk-forever-thread-immersive-plainsrunning"
+    },
+    "globe": {
+      "id": 0,
+      "slug": ""
     }
   }
 }

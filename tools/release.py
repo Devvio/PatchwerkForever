@@ -47,7 +47,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.normpath(os.path.join(HERE, ".."))
 ADDONS = os.path.join(REPO, "addons")
 OUT = os.path.join(REPO, "release", "%s")
-KEEP = (".lua", ".toc", ".xml", ".tga", ".md")            # and the file called LICENSE
+KEEP = (".lua", ".toc", ".xml", ".tga", ".blp", ".md")    # and the file called LICENSE
 TEXT = (".lua", ".toc", ".xml", ".md")
 # words that must not be in anything shipped: names an addon used to have, and private ones (an
 # account's folder, a character) listed one a line in private_words.txt, a file git does not keep
@@ -139,6 +139,15 @@ PROJECTS = {
         "summary": "Race courses of your own on WoW Forever: place checkpoints as you ride, then race them against "
                    "the clock with a marker on each checkpoint, split times and your best run. Share them with "
                    "your party. Needs Patchwerk Forever.",
+    },
+    "globe": {
+        "main": "PatchwerkForever_Thread_Globe",
+        "more": [],
+        "requires": ["PatchwerkForever"],
+        "stale": PRIVATE + ("wayfinder", "pathfinder", "wayfarer"),
+        "needs": ("README.md", "CHANGELOG.md", "LICENSE", "Media/icon.tga", "Link.lua"),
+        "summary": "The world of WoW Forever on a globe you can spin and zoom, drawn from the game's own minimap "
+                   "pictures. A prototype. Needs Patchwerk Forever.",
     },
     "plains": {
         "main": "PatchwerkForever_Thread_Plainsrunning",
@@ -441,8 +450,8 @@ def listing(main, out):
 TAGS = {"patchwerk": "patchwerk-forever", "consoleport": "stitch-consoleport", "melloui": "stitch-melloui",
         "melloroute": "stitch-melloroute", "routes": "thread-routes", "sparkle": "thread-sparkle",
         "tracker": "thread-tracker", "dungeonjournal": "stitch-dungeonjournal", "races": "thread-races",
-        "plains": "thread-plainsrunning"}
-ORDER = ["consoleport", "melloui", "melloroute", "dungeonjournal", "routes", "sparkle", "tracker", "races", "plains", "patchwerk"]
+        "plains": "thread-plainsrunning", "globe": "thread-globe"}
+ORDER = ["consoleport", "melloui", "melloroute", "dungeonjournal", "routes", "sparkle", "tracker", "races", "plains", "globe", "patchwerk"]
 
 
 def checklist():

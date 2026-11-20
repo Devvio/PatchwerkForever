@@ -91,3 +91,49 @@ Hand-painted stylised fantasy game icon. A ragged square patch of warm tan parch
 - **It wrote letters:** add "absolutely no writing or runes".
 - **The patch became a shield or a badge:** add "a soft, floppy, torn piece of hide, not metal, not a shield".
 - **The whole family should match:** make them all in one sitting with the same reference picture, and keep the first good one as the reference for the rest.
+
+---
+
+# Thread (Globe): the globe's own art
+
+Not icons: the pieces the globe's world picture is made of, laid over the land and sea that `tools/globe_art.py` draws from the game's terrain. The look is the **world map on parchment**, not the icons' look: an old hand-drawn map, warm parchment, sepia and dark-brown ink. Until a piece is there, the tool draws a plain stand-in.
+
+Save each as `art/PatchwerkForever_Thread_Globe/<name>.png`, then run `python globe_art.py world` in `tools/`.
+
+## How each is used
+
+- **Ink pieces** (the compass rose, the serpent, the ship) are laid on the sea by **multiplying**: white disappears, the ink stays. So they must be dark ink on **pure white**, with no paper colour, shading or vignette of their own.
+- **The paper** is laid over the whole world as its grain and stains. It must **tile**: its left edge must continue into its right and its top into its bottom.
+- **The ring and stand** sit round the ball in the window, on **flat magenta (#FF00FF)**, which the tool cuts away.
+
+## The prompts
+
+### Paper: `art/PatchwerkForever_Thread_Globe/paper.png`
+
+```text
+Seamless tileable texture of old parchment paper, seen flat from straight above, filling the whole frame. Warm cream and pale tan, with soft uneven blotches, faint stains, fine fibres and grain, very subtle darker mottling. Even lighting, no shadows, no vignette, no edges, no folds, no creases, no writing, no drawings. The left edge continues seamlessly into the right edge and the top into the bottom. Square 1:1, 2048 x 2048 if possible.
+```
+
+### Compass rose: `art/PatchwerkForever_Thread_Globe/compass.png`
+
+```text
+An ornate compass rose drawn in dark brown ink, in the style of an old hand-drawn fantasy world map: a sixteen-point star with long thin points, fine hatched shading on one side of each point, a thin double ring round it with small tick marks, and a fleur-de-lis on the north point. Pen-and-ink line art only, on a pure white background. No paper texture, no colour, no letters, no shadow, no border. Centred, filling most of a square 1:1 frame.
+```
+
+### Sea serpent: `art/PatchwerkForever_Thread_Globe/serpent.png`
+
+```text
+A sea serpent rising out of waves, drawn in dark brown ink in the style of the sea monsters on old hand-drawn maps: three coils of its long scaled body arching above stylised curling waves, a finned head with an open toothy mouth, fine hatching for shading. Pen-and-ink line art only, on a pure white background. No paper texture, no colour, no letters, no shadow, no border. Seen from the side, centred, square 1:1.
+```
+
+### Ship: `art/PatchwerkForever_Thread_Globe/ship.png`
+
+```text
+A small three-masted sailing ship on stylised curling waves, drawn in dark brown ink in the style of the ships on old hand-drawn maps: full billowing sails, a pennant on the main mast, fine hatching for shading. Pen-and-ink line art only, on a pure white background. No paper texture, no colour, no letters, no shadow, no border. Seen from the side, centred, square 1:1.
+```
+
+### Brass ring and stand: `art/PatchwerkForever_Thread_Globe/ring.png`
+
+```text
+The brass meridian ring and wooden stand of an antique desk globe, but with no globe in it: a thick polished brass ring standing upright, engraved with fine degree markings, held at its top and bottom by small brass pins, on a carved dark wooden stand with a round base below it. Seen straight from the front. The inside of the ring is completely empty and filled with flat magenta (#FF00FF), and so is the whole background. The ring is a perfect circle centred left to right, its centre a little above the middle of the picture; its inner edge is about 70 percent of the picture's width across. Warm lamplight from the upper left, hand-painted fantasy game art. Square 1:1, 2048 x 2048 if possible. No text, no shadow on the background.
+```
