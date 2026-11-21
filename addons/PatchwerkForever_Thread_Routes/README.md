@@ -167,7 +167,7 @@ Bind these under Options → Keybindings → Patchwerk Forever, or in Console Po
 
 - **Docks and towers.** The trail ends on the ground beside a dock or a zeppelin tower, and a straight line stands in for the walk along the dock or the climb.
 - **Boats that may not run.** The boat and zeppelin lines come from the game's files, which do not say which of them are in service. If the trail leads you to one that never comes, disable Use Boats And Zeppelins and report it.
-- **Portals, the Deeprun Tram and hearthstones** are not used.
+- **Portals and hearthstones** are not used.
 - **Inside buildings.** A place on an upper floor or inside a city's buildings (Booty Bay, parts of the capitals) is routed to the nearest ground outside.
 - **Some lifts and flight masters.** The Undercity's lifts are not known: they lead to floors inside the city, which the planner does not know. Flights are not started or ended at Ironforge or the Undercity.
 - **Locked doors** count as open.
