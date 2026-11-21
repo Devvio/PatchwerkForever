@@ -1,5 +1,5 @@
 -- Made by pack.py from the game's own files (the tools' crossings.py). Do not edit: run pack.py again.
--- Boats and zeppelins. Each: id, kind, sides (A, H), wait (seconds, on average, before one comes),
+-- Boats, zeppelins and the tram. Each: id, kind, sides (A, H), wait (seconds, on average, before one comes),
 --   stops = { { map, name, world x, world y, cell x, cell y, seconds to board } },
 --   rides = { { from stop, to stop, seconds, { map, world x, world y, ... } } }
 -- In a ride's line a map of -1 is a jump: the next point is not sailed to.
@@ -130,4 +130,23 @@ ns.Crossings = {
 		{ 2, 1, 57, { 0,-8654,1344, 0,-8612,1373, 0,-8579,1424, 0,-8545,1494, 0,-8496,1605, 0,-8444,1724, 1,7058,1488, 1,6993,1253, 1,6871,1083, 1,6768,996, 1,6672,943, 1,6604,932, 1,6548,942 } },
 	},
 },
+{ id = 369, kind = "tram", sides = "A", wait = 30,
+	stops = {
+		{ 0, "Stormwind", -8346.5, 514.0, 3988, 6202, 90 },
+		{ 0, "Ironforge", -4840.3, -1330.5, 4295, 5300, 109 },
+	},
+	rides = {
+		{ 1, 2, 90, { 0,-8346,514, 0,-7996,330, 0,-7645,145, 0,-7295,-39, 0,-6944,-224, 0,-6593,-408, 0,-6243,-593, 0,-5892,-777, 0,-5541,-962, 0,-5191,-1146, 0,-4840,-1330 } },
+		{ 2, 1, 90, { 0,-4840,-1330, 0,-5191,-1146, 0,-5541,-962, 0,-5892,-777, 0,-6243,-593, 0,-6593,-408, 0,-6944,-224, 0,-7295,-39, 0,-7645,145, 0,-7996,330, 0,-8346,514 } },
+	},
+},
+}
+-- Lifts (the tools' hand_links.txt), for showing: { map, world x, world y, name or "" }
+ns.Lifts = {
+	{ 1, -4652, -1846, "The Great Lift" },
+	{ 1, -5398, -2479, "Freewind Post" },
+	{ 1, -1308, 167, "" },
+	{ 1, -1277, 181, "" },
+	{ 1, -1054, -54, "" },
+	{ 1, -1033, -12, "" },
 }

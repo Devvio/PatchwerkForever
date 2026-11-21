@@ -108,9 +108,10 @@ Where the words stand, how large they are and how long they stay are on the page
 ## What a route knows
 
 - **The ground.** Slopes too steep to walk are avoided. Shallow water is waded, deep water is swum only when that is clearly quicker, and a route with a long swim says so.
-- **Tunnels, bridges and gates** found in the game's buildings, the lifts of Thunder Bluff, and a few safe drops.
+- **Tunnels, bridges and gates** found in the game's buildings, the lifts of Thunder Bluff, the Great Lift and the lift of Freewind Post, and a few safe drops.
 - **Flight paths.** It flies when that is quicker than walking, using only your faction's flight points and, unless you say otherwise, only the ones your character has found.
 - **Boats and zeppelins.** It takes one where that is quicker, and to reach another continent: the trail leads to the dock or the tower, shows the course across, and carries on from where you land. Only the ones your side can use. How long you wait for one is not known, so the time given allows for half its round trip.
+- **The Deeprun Tram.** For the Alliance, a route between Stormwind and Ironforge takes the tram where that is quicker: "Take the tram from Stormwind to Ironforge". The trail leads to the city, since the planner does not know a city's floors; the walk to the station and the ride are counted in the time. It is part of Use Boats And Zeppelins.
 - **A wrong turn.** Stray from the trail and a new route is found from where you are.
 - **On a flight path** the trail runs from you to where you land, and on from there.
 - **A new destination.** Until its way is found, the trail before it stays, fainter, in its own color.
@@ -167,7 +168,7 @@ Bind these under Options → Keybindings → Patchwerk Forever, or in Console Po
 - **Boats that may not run.** The boat and zeppelin lines come from the game's files, which do not say which of them are in service. If the trail leads you to one that never comes, disable Use Boats And Zeppelins and report it.
 - **Portals, the Deeprun Tram and hearthstones** are not used.
 - **Inside buildings.** A place on an upper floor or inside a city's buildings (Booty Bay, parts of the capitals) is routed to the nearest ground outside.
-- **Some lifts and flight masters.** The Great Lift and the Undercity's lifts are not known. Flights are not started or ended at Ironforge or the Undercity.
+- **Some lifts and flight masters.** The Undercity's lifts are not known: they lead to floors inside the city, which the planner does not know. Flights are not started or ended at Ironforge or the Undercity.
 - **Locked doors** count as open.
 - **Flight times** are estimates.
 - **English only.**

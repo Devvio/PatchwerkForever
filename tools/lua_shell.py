@@ -315,7 +315,8 @@ def main():
     frames()
     mine = taxi()
     assert mine.known[30] is True and mine.known[23] is False and mine.known[77] is False
-    assert any("fly Crossroads > Freewind Post > Gadgetzan" in t for t in go_again("short list")), "the listed points were not flown between"
+    # (from here, in the southern Barrens, the walk down the Great Lift to Freewind Post beats going back to Crossroads)
+    assert any("fly Freewind Post > Gadgetzan" in t for t in go_again("short list")), "the listed points were not flown between"
     stub.flightMapShort = None
     # a flight point found as you walk up to it (the game's own message): known from then on
     stub.flightMap = lua.table_from({40: 1})

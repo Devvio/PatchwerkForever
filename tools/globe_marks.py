@@ -114,6 +114,33 @@ def zeppelin():
     return img
 
 
+def tram():
+    img, d = canvas()
+    disc(d, 0.86, (204, 140, 112, 255))
+    d.rounded_rectangle([at(-0.40, 0.50), at(0.40, -0.24)], radius=int(0.12 * BIG), fill=INK)      # the car, from its end
+    d.rectangle([at(-0.28, 0.38), at(-0.04, 0.10)], fill=(204, 140, 112, 255))                   # its two windows
+    d.rectangle([at(0.04, 0.38), at(0.28, 0.10)], fill=(204, 140, 112, 255))
+    d.ellipse([at(-0.30, -0.02), at(-0.16, -0.16)], fill=PALE)                                   # its lamps
+    d.ellipse([at(0.16, -0.02), at(0.30, -0.16)], fill=PALE)
+    line(d, [(-0.56, -0.44), (0.56, -0.44)], 0.10)                                               # the rail
+    line(d, [(-0.22, -0.24), (-0.30, -0.44)], 0.08)
+    line(d, [(0.22, -0.24), (0.30, -0.44)], 0.08)
+    return img
+
+
+def lift():
+    wood = (196, 164, 112, 255)
+    img, d = canvas()
+    disc(d, 0.86, wood)
+    line(d, [(-0.50, 0.50), (0.50, 0.50)], 0.10)                                                 # the beam it hangs from
+    line(d, [(-0.30, 0.50), (-0.30, -0.22)], 0.06)                                               # its two ropes
+    line(d, [(0.30, 0.50), (0.30, -0.22)], 0.06)
+    d.rectangle([at(-0.46, -0.20), at(0.46, -0.40)], fill=INK)                                   # the platform
+    d.polygon([at(0.0, 0.40), at(-0.17, 0.16), at(0.17, 0.16)], fill=INK)                        # up
+    d.polygon([at(0.0, -0.12), at(-0.17, 0.10), at(0.17, 0.10)], fill=INK)                       # and down
+    return img
+
+
 def flight(colour):
     img, d = canvas()
     disc(d, 0.86, colour)
@@ -186,6 +213,8 @@ MARKS = {
     "pinoff": lambda: pin((150, 146, 140, 255)),
     "boat": boat,
     "zeppelin": zeppelin,
+    "tram": tram,
+    "lift": lift,
     "flight": lambda: flight((118, 190, 96, 255)),
     "flightoff": lambda: flight((160, 158, 150, 255)),
     "bang": bang,

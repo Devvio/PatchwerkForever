@@ -2,6 +2,8 @@
 --
 --   places       the towns and landmarks of the zone at the middle of the picture, and its dungeon and
 --                raid entrances, with the game's own icons and names, from zone level in
+--   directions   the flag the game puts on the map when a city guard tells you the way
+--   battlegrounds  on a battleground's own flat map: its places, flags and vehicles
 --   your death   while you are dead: your corpse, and the spirit healer the game would send you to.
 --                (The game's own map marks the corpse only.)
 --   your group   the members of your party or raid, each in their class's colour, grey when dead
@@ -69,36 +71,117 @@ local function Picture(m, info, ours)
 	return m
 end
 
+-- Where a mark goes, given a place on one of the game's maps (0 to 1 across and down): its place in
+-- the globe's world; or, for a map that is no part of that world (a battleground's), its place on that
+-- map itself, shown while the map is up flat. Neither: the mark has nowhere to be and is not shown.
+local function At(m, ui, u, v)
+	local map, wx, wy = Guides.WorldOf(ui, u, v)
+	if map and G.continents[map] then
+		m.map, m.x, m.y = map, wx, wy
+	elseif ns.FlatMap and ns.FlatMap() == ui then
+		m.on, m.u, m.v = ui, u, v
+	end
+	return m
+end
+
 Marks.Source('places', {
 	order = 25,
 	every = 60,
 	Shown = function() return ns.Get('globePlaces') end,
 	Key = function(r) return r >= ZONE_FROM and (Marks.ZoneMap()) or 'far' end,
 	Fill = function(mark)
-		if G.look.r < ZONE_FROM then return end
+		if Marks.Zoom() < ZONE_FROM then return end
 		local zone = Marks.ZoneMap()
 		if not zone then return end
-		for _, id in ipairs(Ask(poi.GetAreaPOIForMap, zone) or {}) do
-			local info = Ask(poi.GetAreaPOIInfo, zone, id)
-			local x, y = XY(type(info) == 'table' and info.position)
-			if x and type(info.name) == 'string' and info.name ~= '' then
-				local map, wx, wy = Guides.WorldOf(zone, x, y)
-				local words = type(info.description) == 'string' and info.description ~= '' and { info.description } or nil
-				mark(Picture({ map = map, x = wx, y = wy, size = 18, rank = 24, from = ZONE_FROM, name = info.name, lines = words }, info, 'place'))
+		-- (the places that are always there, and those of an event going on now)
+		local seen = {}
+		for _, list in ipairs({ Ask(poi.GetAreaPOIForMap, zone) or {}, Ask(poi.GetEventsForMap, zone) or {} }) do
+			for _, id in ipairs(type(list) == 'table' and list or {}) do
+				local info = not seen[id] and Ask(poi.GetAreaPOIInfo, zone, id)
+				seen[id] = true
+				local x, y = XY(type(info) == 'table' and info.position)
+				if x and type(info.name) == 'string' and info.name ~= '' then
+					local words = type(info.description) == 'string' and info.description ~= '' and { info.description } or nil
+					mark(Picture(At({ size = 18, rank = 24, from = ZONE_FROM, name = info.name, lines = words }, zone, x, y), info, 'place'))
+				end
 			end
 		end
 		for _, info in ipairs(Ask(journal.GetDungeonEntrancesForMap, zone) or {}) do
 			local x, y = XY(type(info) == 'table' and info.position)
 			if x and type(info.name) == 'string' and info.name ~= '' then
-				local map, wx, wy = Guides.WorldOf(zone, x, y)
 				local raid = info.atlasName == 'Raid'
-				mark(Picture({ map = map, x = wx, y = wy, size = 20, rank = 28, from = ZONE_FROM, name = info.name,
-					lines = { raid and Word('RAID', 'Raid') or Word('DUNGEON', 'Dungeon') } }, info, 'place'))
+				mark(Picture(At({ size = 20, rank = 28, from = ZONE_FROM, name = info.name,
+					lines = { raid and Word('RAID', 'Raid') or Word('DUNGEON', 'Dungeon') } }, zone, x, y), info, 'place'))
 			end
 		end
 	end,
 })
 Marks.On('AREA_POIS_UPDATED', function() Marks.Changed('places') end)
+
+---------------------------------------------------------------------------
+-- A guard's directions
+---------------------------------------------------------------------------
+-- Ask a city guard the way and the game puts a flag on the map at the place. It is asked for on the
+-- map at the middle of the picture (the flat map, when one is up) and on the map you are on.
+local gossip = rawget(_G, 'C_GossipInfo') or {}
+
+Marks.Source('directions', {
+	order = 70,
+	every = 10,
+	Shown = function() return ns.Get('globePlaces') end,
+	Fill = function(mark)
+		local asked = {}
+		for _, ui in ipairs({ (Marks.ZoneMap()) or false, Ask(C_Map.GetBestMapForUnit, 'player') or false }) do
+			if Plain(ui) and type(ui) == 'number' and not asked[ui] then
+				asked[ui] = true
+				local id = Ask(gossip.GetPoiForUiMapID, ui)
+				local info = Plain(id) and type(id) == 'number' and Ask(gossip.GetPoiInfo, ui, id)
+				local x, y = XY(type(info) == 'table' and info.position)
+				if x then
+					local name = type(info.name) == 'string' and info.name ~= '' and info.name or 'Directions'
+					mark(Picture(At({ size = 22, rank = 65, keep = true, name = name }, ui, x, y), info, 'place'))
+					return
+				end
+			end
+		end
+	end,
+})
+Marks.On('DYNAMIC_GOSSIP_POI_UPDATED', function() Marks.Changed('directions') end)
+
+---------------------------------------------------------------------------
+-- A battleground's flags and vehicles
+---------------------------------------------------------------------------
+-- On the battleground's own flat map, where the game says they are. (Its graveyards, towers and the
+-- like are places, above.) Asked once a second while a flat map is up; out of a battleground the game
+-- has none to give.
+local pvp = rawget(_G, 'C_PvP') or {}
+local MOST_FLAGS = 8
+
+Marks.Source('field', {
+	order = 78,
+	every = 1,
+	Shown = function() return ns.Get('globePlaces') and ns.FlatMap ~= nil and ns.FlatMap() ~= nil end,
+	Fill = function(mark)
+		local ui = ns.FlatMap()
+		if not ui then return end
+		local count = Ask(rawget(_G, 'GetNumBattlefieldFlagPositions'))
+		for i = 1, Plain(count) and type(count) == 'number' and math.min(count, MOST_FLAGS) or 0 do
+			local x, y, picture = Ask(pvp.GetBattlefieldFlagPosition, i, ui)
+			if Plain(x) and Plain(y) and type(x) == 'number' and type(y) == 'number' and (x ~= 0 or y ~= 0) then
+				local own = Plain(picture) and (type(picture) == 'number' or type(picture) == 'string') and picture ~= 0 and picture ~= ''
+				mark(At({ size = 24, rank = 82, keep = true, name = 'Flag', icon = own and picture or Marks.Icon('place') }, ui, x, y))
+			end
+		end
+		for _, v in ipairs(Ask(pvp.GetBattlefieldVehicles, ui) or {}) do
+			if type(v) == 'table' and Plain(v.x) and Plain(v.y) and type(v.x) == 'number' and type(v.y) == 'number' then
+				mark(At({ size = 22, rank = 76, keep = true, icon = Marks.Icon('place'),
+					name = Plain(v.name) and type(v.name) == 'string' and v.name ~= '' and v.name or nil,
+					atlas = Plain(v.atlas) and type(v.atlas) == 'string' and v.atlas ~= '' and v.atlas or nil,
+					tint = v.isAlive == false and GREY or nil }, ui, v.x, v.y))
+			end
+		end
+	end,
+})
 
 ---------------------------------------------------------------------------
 -- Your death

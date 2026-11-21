@@ -92,11 +92,20 @@ local function Crossings()
 	return crossings
 end
 
+-- The lifts the planner knows (Crossings.lua has them once more, for showing).
+local lifts
+local function Lifts()
+	if lifts then return lifts end
+	lifts = {}
+	for i, l in ipairs(ns.Lifts or {}) do lifts[i] = { map = l[1], x = l[2], y = l[3], name = l[4] ~= '' and l[4] or nil } end
+	return lifts
+end
+
 local function NodesAround(map, x, y, reach, fn)
 	ns.NodesAround(map, x, y, reach, function(spot)
 		fn(spot[1], spot[2], spot[3], ns.NodeIcon(spot[3]), ns.NodeKind(spot[3]))
 	end)
 end
 
-Trails:Offer({ List = List, Crossings = Crossings, NodesAround = NodesAround })
+Trails:Offer({ List = List, Crossings = Crossings, Lifts = Lifts, NodesAround = NodesAround })
 ns.OnRoute(function() Trails:Changed() end)

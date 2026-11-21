@@ -1,5 +1,34 @@
 # Patchwerk Forever: Thread (Globe)
 
+## 0.10.0
+
+Everything the world map does. To be played with before it goes out as 1.0.
+
+- **Land you have not discovered** is blank paper, as on the world map: the coast is there, the rest is not. It fills in as you discover it, while the window is open too. A zone you have seen nothing of is one blank sheet while you are zoomed out. **Leave Unexplored Land Blank** turns it off. Parchment style only.
+- **Rares, treasures and events**: what the game marks on the minimap while they are near you, with the game's own icon; a dead one is grey (**Show Rares And Treasures**).
+- **The Show menu** (a **Show** button, and a Show Menu key): each kind of mark, the names, the coordinates, the blank paper, and the light and movement, turned off and on where you look at them. They are the settings of the options page.
+- **Other addons' pins**: the pins other addons put on the world map through the pin library they share (HereBeDragons) are on the globe too, once you zoom in: quest helpers, guides, rare finders. Each keeps its own picture, tooltip and click (**Show Other Addons' Pins**). An addon that draws on the world map in a way of its own is not seen.
+- **City maps**: a city's own map, flat in the globe's window, with the same marks on it. It opens when you open the globe or press Where I Am inside a city (**City Maps** turns that off), from Go To, or by a click on a city that already fills the picture. A right-click, Step Out, zooming out or the **Globe** button goes back to the globe, turned to the city. With keys, Next Mark moves the cross from mark to mark.
+- **Battleground maps**, the same way: you and your group, the battleground's places (graveyards, towers and the like) and its flags.
+- **A guard's directions**: the flag the game puts on the map when a city guard tells you the way, on the globe and on the city's map (with **Show Places**).
+- **The map key** (**The Map Key Opens The Globe**, off as it comes): the key that opens the world map opens the globe, and a map link in chat or a "show on map" turns the globe to the place. The key can only be handed over outside combat.
+- **From one to the other**: a **World Map** button on the globe (and in Go To) opens the world map; a **Globe** button on the world map opens the globe at the map you were looking at.
+- **Light and movement**, each with a setting:
+  - **Candlelight**: the corners of the picture darken as by a candle, flickering a little, and more at night by the game clock. A soft shine lies on the ball while the whole globe is in view.
+  - **Moving Sea And Sky**: the Maelstrom turns in its place, and cloud shadows drift over the globe while it is zoomed out.
+  - **Animate Opening**: the window fades in and the globe turns into place.
+  - **Pulse Where You Are**: a ring spreads from your place every few seconds.
+  - **Map Sounds**: the world map's sounds when the globe opens and closes.
+- Places that belong to an event going on now are shown with the others.
+- The options page is in groups: The Map, Marks, Light And Movement, Controls, Other.
+- The buttons along the top of the window are narrower, to fit the smallest window.
+
+## 0.5.1
+
+- **The Deeprun Tram**: for the Alliance, a tram mark at Stormwind and at Ironforge ("Tram to Ironforge", and the wait), with a dashed line between them where it runs under the ground. It comes from Thread (Routes) 1.3.0, which now knows the tram, and is shown with the boats and zeppelins (**Show Boats And Zeppelins**).
+- **Lifts**: a lift mark where each lift Thread (Routes) knows stands: the Great Lift, the lift of Freewind Post and those of Thunder Bluff. They show as you zoom in, with the flight points, and go with **Show Boats And Zeppelins**.
+- **The Maelstrom**: a great whirlpool in ink at the middle of the Great Sea, between Kalimdor and the Eastern Kingdoms, with its name under it. The sea's own name has moved south of it.
+
 ## 0.5.0
 
 Places, people and words.

@@ -102,7 +102,7 @@ Save each as `art/PatchwerkForever_Thread_Globe/globe/<name>.png`, then run `pyt
 
 ## How each is used
 
-- **Ink pieces** (the compass rose, the serpent, the ship) become pictures of their own on the open sea: the darker the drawing, the more ink shows, and **white is clear**. So they must be dark ink on **pure white**, with no paper colour, shading or vignette of their own.
+- **Ink pieces** (the compass rose, the serpent, the ship, the Maelstrom) become pictures of their own on the open sea: the darker the drawing, the more ink shows, and **white is clear**. So they must be dark ink on **pure white**, with no paper colour, shading or vignette of their own.
 - **The paper** is laid over the whole world as its grain and stains: mostly its light and dark, with a little of its colour. It should **tile**: its left edge continuing into its right and its top into its bottom (the tool blends the edges to hide what join is left).
 - **The ring and stand** sit round the ball in the window, on **flat magenta (#FF00FF)**, which the tool cuts away. The tool finds the ring's hole and makes it a true circle.
 
@@ -124,6 +124,14 @@ An ornate compass rose drawn in dark brown ink, in the style of an old hand-draw
 
 ```text
 A sea serpent rising out of waves, drawn in dark brown ink in the style of the sea monsters on old hand-drawn maps: three coils of its long scaled body arching above stylised curling waves, a finned head with an open toothy mouth, fine hatching for shading. Pen-and-ink line art only, on a pure white background. No paper texture, no colour, no letters, no shadow, no border. Seen from the side, centred, square 1:1.
+```
+
+### The Maelstrom: `art/PatchwerkForever_Thread_Globe/globe/maelstrom.png` (optional)
+
+The tool draws a plain ink whirlpool itself, in the middle of the Great Sea. A picture saved under this name is used in its place.
+
+```text
+A great ocean whirlpool seen from straight above, drawn in dark brown ink in the style of an old hand-drawn sea chart: long curling arms of water winding in to a small dark eye at the centre, heavy pen strokes with finer broken strokes and flecks of foam between them, short curling waves flung off round its rim. Pen-and-ink line art only, on a pure white background. No paper texture, no colour, no letters, no ships, no shadow, no border. Round, centred, filling most of a square 1:1 frame.
 ```
 
 ### Ship: `art/PatchwerkForever_Thread_Globe/globe/ship.png`

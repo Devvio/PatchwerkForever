@@ -2,7 +2,7 @@
 
 ## 2.8.0
 
-- For addon authors: `PatchwerkForever.Trails` passes a route planner's drawing to tools that do not know it. Thread (Routes) offers its own there (`Offer`); a tool that draws a map of its own asks `Has`, `List()` (the trail being followed and the ones after it, in pieces with their colours), `Crossings()` (the boats and zeppelins, with their stops and the way they go), `NodesAround(map, x, y, reach, fn)` (the recorded herb and ore nodes near a place) and `OnChange`.
+- For addon authors: `PatchwerkForever.Trails` passes a route planner's drawing to tools that do not know it. Thread (Routes) offers its own there (`Offer`); a tool that draws a map of its own asks `Has`, `List()` (the trail being followed and the ones after it, in pieces with their colours), `Crossings()` (the boats and zeppelins, with their stops and the way they go), `Lifts()` (where the lifts it knows stand), `NodesAround(map, x, y, reach, fn)` (the recorded herb and ore nodes near a place) and `OnChange`.
 
 ## 2.7.1
 

@@ -6,11 +6,20 @@ ns.TITLE = 'Patchwerk Forever: Thread (Globe)'
 
 -- One entry a setting, in the order they are shown (the base makes the page from this list).
 ns.settings = {
+	{ header = true, name = 'The Map' },
 	{ key = 'globeStyle', default = 'parchment', name = 'Map Style',
 		choices = { { 'parchment', 'Parchment' }, { 'minimap', 'Minimap Pictures' } },
 		desc = 'Parchment: the painted world map of each continent, as the world map shows it. Minimap Pictures: the land as the minimap shows it, from above.' },
 	{ key = 'globeNames', default = true, name = 'Show Names',
 		desc = 'Show the names of the continents when the whole globe is in view, and of the zones as you zoom in.' },
+	{ key = 'globeCoords', default = true, name = 'Show Coordinates',
+		desc = 'Show your coordinates, and those of the place under the pointer, at the lower edge of the picture.' },
+	{ key = 'globeExplore', default = true, name = 'Leave Unexplored Land Blank',
+		desc = 'Leave the land you have not discovered as blank paper, as the world map does. It fills in as you explore. Parchment style only.' },
+	{ key = 'globeFlat', default = true, name = 'City Maps',
+		desc = 'When the globe is opened, or Where I Am is pressed, while you are in a city or a battleground, show that place\'s own map in the window. A right-click, Step Out or zooming out goes back to the globe. Off: such a map is opened from Go To, or by a click on a city that already fills the picture.' },
+
+	{ header = true, name = 'Marks' },
 	{ key = 'globeRoute', default = true, name = 'Show Your Route',
 		desc = 'Show the trail Thread (Routes) leads you along, and the numbered stops of My Route. Click a stop for what can be done with it.' },
 	{ key = 'globeQuests', default = true, name = 'Show Quests',
@@ -18,23 +27,43 @@ ns.settings = {
 	{ key = 'globeTracker', default = true, name = 'Tracker Beside The Globe',
 		desc = 'While the globe is open, put the list of Thread (Tracker) beside it. It goes back where you keep it when the globe closes. Needs Thread (Tracker).' },
 	{ key = 'globePlaces', default = true, name = 'Show Places',
-		desc = 'Show towns, landmarks, and dungeon and raid entrances as you zoom in, and while you are dead your corpse and the spirit healer.' },
+		desc = 'Show towns, landmarks, and dungeon and raid entrances as you zoom in; the place a city guard points you to; while you are dead, your corpse and the spirit healer; and on a battleground\'s map its places and flags.' },
 	{ key = 'globePeople', default = true, name = 'Show Your Group',
 		desc = 'Show the members of your party or raid, each in the colour of their class.' },
-	{ key = 'globeCoords', default = true, name = 'Show Coordinates',
-		desc = 'Show your coordinates, and those of the place under the pointer, at the lower edge of the picture.' },
 	{ key = 'globeFlights', default = true, name = 'Show Flight Points',
 		desc = 'Show the flight points of your side as you zoom in. Those you have not discovered are grey.' },
 	{ key = 'globeCrossings', default = true, name = 'Show Boats And Zeppelins',
-		desc = 'Show where the boats and zeppelins you can take put in, and the way they go. Needs Thread (Routes).' },
+		desc = 'Show where the boats and zeppelins you can take put in, and the way they go; the Deeprun Tram; and, as you zoom in, the lifts. Needs Thread (Routes).' },
 	{ key = 'globeNodes', default = true, name = 'Show Herb And Ore Nodes',
 		desc = 'Show the herb and ore nodes Thread (Routes) has recorded, when you zoom right in. Needs Thread (Routes).' },
+	{ key = 'globeRares', default = true, name = 'Show Rares And Treasures',
+		desc = 'Show the rare creatures, treasures and events the game marks on the minimap while they are near you.' },
+	{ key = 'globePins', default = true, name = "Show Other Addons' Pins",
+		desc = 'Show the pins other addons put on the world map through the pin library they share (HereBeDragons): quest helpers, guides, rare finders. A pin keeps its own tooltip and click where its addon made those work off the world map.' },
+
+	{ header = true, name = 'Light And Movement' },
 	{ key = 'globeLight', default = true, name = 'Shade The Globe',
 		desc = 'Darken the globe a little toward its edge, as a ball is.' },
-	{ key = 'globeStats', default = true, name = 'Show Drawing Numbers',
-		desc = 'Show under the globe how many map pieces are drawn and how long drawing them takes. For trying the prototype.' },
+	{ key = 'globeFxLight', default = true, name = 'Candlelight',
+		desc = 'Darken the corners of the picture as a candle would, flickering a little, and more at night by the game clock. A soft shine lies on the ball while the whole globe is in view.' },
+	{ key = 'globeFxMove', default = true, name = 'Moving Sea And Sky',
+		desc = 'The Maelstrom turns in its place, and cloud shadows drift over the globe while it is zoomed out. Parchment style only.' },
+	{ key = 'globeFxOpen', default = true, name = 'Animate Opening',
+		desc = 'The window fades in and the globe turns into place when it is opened.' },
+	{ key = 'globeFxPing', default = true, name = 'Pulse Where You Are',
+		desc = 'A ring spreads from your place on the globe every few seconds, so it is found at a glance.' },
+	{ key = 'globeFxSound', default = true, name = 'Map Sounds',
+		desc = 'Play the sounds of the world map when the globe opens and closes.' },
+
+	{ header = true, name = 'Controls' },
 	{ key = 'globePad', default = true, name = 'Gamepad Turns The Globe',
 		desc = 'While the globe is open and you are not in combat, a gamepad turns it with the left stick and zooms with the right stick or the triggers. Its four face buttons press what is at the middle of the picture (or fit the zone there), step out (and close from the whole globe), go to the next mark, and set or clear the map pin. Your character does not move by the left stick meanwhile. Off: the gamepad is left alone, and the keys under Key Bindings can be given to its buttons.' },
+	{ key = 'globeMapKey', default = false, name = 'The Map Key Opens The Globe',
+		desc = 'The key that opens the world map opens the globe instead, and a map link in chat or a "show on map" turns the globe to that place. The World Map button on the globe (and in Go To) still opens the world map, and a Globe button on that map comes back. The key is taken over outside combat only: turned on or off in a fight, it changes when the fight ends.' },
+
+	{ header = true, name = 'Other' },
+	{ key = 'globeStats', default = true, name = 'Show Drawing Numbers',
+		desc = 'Show under the globe how many map pieces are drawn and how long drawing them takes. For trying the globe out.' },
 	{ button = 'Open', name = 'Open The Globe', click = function() ns.Toggle(true) end,
 		desc = 'Open the globe window. /globe does the same.' },
 }
@@ -88,6 +117,7 @@ BINDING_NAME_PATCHWERKFOREVER_GLOBE_OUT = 'Zoom Out'
 BINDING_NAME_PATCHWERKFOREVER_GLOBE_PIN = 'Set Or Clear The Map Pin At The Middle'
 BINDING_NAME_PATCHWERKFOREVER_GLOBE_NEXT = 'Next Mark'
 BINDING_NAME_PATCHWERKFOREVER_GLOBE_ROUTE = 'Route Menu'
+BINDING_NAME_PATCHWERKFOREVER_GLOBE_SHOW = 'Show Menu'
 function PatchwerkForever_Thread_Globe_Key(what, down)
 	if what == 'toggle' then
 		ns.Try('the globe', ns.Toggle)

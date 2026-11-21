@@ -154,7 +154,7 @@ Marks.Source('offers', {
 	Shown = function() return ns.Get('globeQuests') and lines.GetAvailableQuestLines ~= nil end,
 	Key = function(r) return r >= ZONE_FROM and ZoneMap() or 'far' end,
 	Fill = function(mark)
-		if G.look.r < ZONE_FROM then return end
+		if Marks.Zoom() < ZONE_FROM then return end
 		local zone = ZoneMap()
 		if not zone then return end
 		if asked ~= zone then
@@ -297,8 +297,8 @@ ns.GlobeOn('show', function()
 	local window = ns.GlobeWindow()
 	if not button then
 		button = CreateFrame('Button', nil, window, 'UIPanelButtonTemplate')
-		button:SetSize(72, 22)
-		button:SetPoint('TOPLEFT', window, 'TOPLEFT', 84, -4)
+		button:SetSize(64, 22)
+		button:SetPoint('TOPLEFT', window, 'TOPLEFT', 76, -4)
 		button:SetText('Route')
 		button:SetScript('OnClick', function(self) ns.Try('the globe', RouteMenu, self) end)
 	end

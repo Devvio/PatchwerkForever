@@ -529,9 +529,10 @@ Milestone 2 showed the key links are needed for the first version, not after it.
   `/reload` in the game.
 
 Still wrong or missing after 5a:
-- **Lifts**: the Great Lift, if this world has it (Crossroads to Gadgetzan goes round through
-  Dustwallow and swims 300 yards, marked doubtful), any other Thunder Bluff lifts, the Undercity.
-  They need marking in-game (see marks.py), or learning in-game (5b).
+- **Lifts**: the Undercity's (floors the planner does not know), any other Thunder Bluff lifts.
+  They need marking in-game (see marks.py), or learning in-game (5b). The Great Lift and Freewind
+  Post's lift were found from their tower's model on 2026-11-21 (lifts.py): Crossroads to Gadgetzan
+  is 20.0 min by the lift, was 24.5 round through Dustwallow; their 30 s is a guess, not timed.
 - trips.py shows a trip's minutes from its length; a lift's ride time is in the route's cost but not
   in the minutes shown.
 - **Places that are floor, not ground**: Booty Bay, and the insides of Stormwind, Ironforge, the

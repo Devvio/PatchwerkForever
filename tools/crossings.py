@@ -1,6 +1,9 @@
-"""Boats and zeppelins, from the game's own tables.
+"""Boats, zeppelins and the tram, from the game's own tables.
 
     python crossings.py         writes world/crossings.bin and prints what it found
+    python crossings.py hand    only the ways told by hand (BY_HAND: the Deeprun Tram) are made again in
+                                world/crossings.bin, the boats and zeppelins left as they are; then:
+                                python pack.py crossings
     python crossings.py names   names the stops of world/crossings.bin again (from world/flights.bin and
                                 NAMES below), without reading the game; then: python pack.py crossings
 
@@ -20,6 +23,13 @@ What the tables do not say, and is guessed here:
                          tower allowed for
   whether it runs        the tables hold lines the game no longer uses; the ones left out are in LEFT_OUT
 
+A way through a map of its own (the Deeprun Tram, under the ground between Stormwind and Ironforge) is in
+no line of that table: you walk in at a door, and the door is one of the game's area triggers. Which
+trigger leads where is the server's to know, so those are told by hand in BY_HAND; where each trigger
+is comes from the game's table. (The map table agrees for one end: the tram map's own "way back in" is
+at its Stormwind door.) Guessed for them: how long the ride and the wait are, and the walk through the
+city, whose floors the planner does not know, from the nearest ground it does.
+
 world/crossings.bin (a pickle): [{"id", "kind", "sides", "wait",
     "stops": [{"map", "x", "y", "z", "name", "cell", "board"}],
     "rides": {(from stop, to stop): {"seconds", "line": [(map, x, y), ...]}}}]
@@ -34,6 +44,7 @@ from nav import BLOCK, CELL, CLIMB_RUN, SPEED as RUN, Coarse, Ground, _spread, c
 from world import WALK
 
 POINTS = 1000437                 # TaxiPathNode
+TRIGGERS = 1354401               # AreaTrigger
 SPEED = 30.0                     # yards a second, a guess
 LOADING = 15.0                   # seconds for the loading screen between continents
 REACH = 60                       # cells searched for ground to board from: 250 yards
@@ -48,6 +59,21 @@ MAPS = (0, 1, 2991)
 MAP_NAMES = {0: "Eastern Kingdoms", 1: "Kalimdor", 2991: "Zephras Isle"}
 # stops named by hand, once their real names have been seen in the game: {(line id, stop index): "name"}
 NAMES = {}
+# Ways the taxi table does not hold, each through a map of its own (its id here is that map's number).
+#   trigger   the game's area trigger that is the way in at that end
+#   ground    (optional) where on the planner's ground the walk to it begins; else the nearest there is.
+#             Ironforge's is its gate: the nearest ground to the door is a mountainside outside the city.
+#   wait, seconds   guesses: a car comes about once a minute, the ride takes about a minute, and there is
+#             a loading screen at each end
+BY_HAND = [
+    {"id": 369, "kind": "tram", "sides": {"alliance"}, "wait": 30.0, "seconds": 60.0 + 2 * LOADING,
+     "stops": [{"map": 0, "name": "Stormwind", "trigger": 2173},
+               {"map": 0, "name": "Ironforge", "trigger": 2175, "ground": (-5017.0, -830.0)}]},
+]
+HAND_REACH = 120                 # cells searched for the planner's ground from a door inside a city: 500 yards
+STREETS = 1.3                    # a walk through a city is this much longer than straight there
+PLATFORM = 10.0                  # seconds from the door to where the car stops
+PIECE = 400.0                    # a straight way is given a point this often, so no stretch of it reads as a jump
 
 
 def _f(v):
@@ -212,6 +238,71 @@ def build(all_lines, grounds, coarses, flights):
     return out, notes
 
 
+def triggers(store):
+    """{id: (map, x, y, z)} of the game's area triggers."""
+    from db2 import Table
+    out = {}
+    for rid, f in Table(store.read_fdid(TRIGGERS)).rows():
+        x, y, z = (_f(v) for v in f[0])
+        out[rid] = (f[2], x, y, z)
+    return out
+
+
+def by_hand(where, grounds, coarses):
+    """The ways of BY_HAND, as build() gives a line: (found, notes)."""
+    out, notes = [], []
+    part = {m: parts(grounds[m], coarses[m]) for m in grounds}
+    for way in BY_HAND:
+        stops = []
+        for spec in way["stops"]:
+            m, x, y, z = where[spec["trigger"]]
+            assert m == spec["map"], "trigger %d is on map %d, not %d" % (spec["trigger"], m, spec["map"])
+            ground = grounds.get(m)
+            if not ground:
+                notes.append("%s %d left out: map %d is not one the planner has" % (way["kind"], way["id"], m))
+                break
+            gx, gy = cell_of(x, y)
+            if "ground" in spec:
+                cell = nearest_walk(ground, *cell_of(*spec["ground"]), part[m], 3)
+            else:
+                cell = nearest_walk(ground, gx, gy, part[m], HAND_REACH)
+            if not cell or part[m](*cell) != 0:
+                notes.append("%s %d left out: no ground of the map's main part near its door at %s" % (
+                    way["kind"], way["id"], spec["name"]))
+                break
+            heights = ground.heights[(cell[0] >> 7, cell[1] >> 7)]
+            walk = math.hypot(cell[0] - gx, cell[1] - gy) * CELL * STREETS
+            stops.append({"map": m, "x": x, "y": y, "z": z, "name": spec["name"], "cell": cell,
+                          "board": walk / RUN + PLATFORM, "walk": walk,
+                          "up": z - heights[(cell[1] & 127) * 128 + (cell[0] & 127)] / 10.0})
+        if len(stops) < len(way["stops"]):
+            continue
+        rides = {}
+        for a, sa in enumerate(stops):
+            for b, sb in enumerate(stops):
+                if a != b and sa["map"] == sb["map"]:
+                    n = max(1, math.ceil(math.hypot(sb["x"] - sa["x"], sb["y"] - sa["y"]) / PIECE))
+                    rides[(a, b)] = {"seconds": way["seconds"], "line": [
+                        (sa["map"], sa["x"] + (sb["x"] - sa["x"]) * i / n, sa["y"] + (sb["y"] - sa["y"]) * i / n)
+                        for i in range(n + 1)]}
+        out.append({"id": way["id"], "kind": way["kind"], "sides": set(way["sides"]), "wait": way["wait"],
+                    "period": 2 * way["wait"], "hand": True, "stops": stops, "rides": rides})
+    return out, notes
+
+
+def report(found, notes):
+    for t in found:
+        print("line %5d  %-8s %-15s round trip %3.0f s (wait %3.0f s)" % (
+            t["id"], t["kind"], "+".join(sorted(t["sides"])), t["period"], t["wait"]))
+        for i, s in enumerate(t["stops"]):
+            print("      stop %d: map %4d (%6.0f, %6.0f, %4.0f) %-28s board from %3.0f yd off, %3.0f yd %s: %3.0f s" % (
+                i, s["map"], s["x"], s["y"], s["z"], s["name"], s["walk"], abs(s["up"]), "up" if s["up"] > 0 else "down", s["board"]))
+        for (a, b), ride in sorted(t["rides"].items()):
+            print("      ride %d to %d: %3.0f s, %d points" % (a, b, ride["seconds"], len(ride["line"])))
+    for note in notes:
+        print(note)
+
+
 def load(path="world/crossings.bin"):
     with open(path, "rb") as f:
         return pickle.load(f)
@@ -222,6 +313,8 @@ def rename():
     import flights as flight_data
     found, flights = load(), flight_data.load()
     for t in found:
+        if t.get("hand"):
+            continue                                        # (named where they are told)
         for index, s in enumerate(t["stops"]):
             was, s["name"] = s["name"], stop_name(t["id"], index, s, flights)
             print("line %5d stop %d: %-28s%s" % (t["id"], index, s["name"], "" if was == s["name"] else "  (was %s)" % was))
@@ -237,19 +330,18 @@ def main():
     store = Storage(r"G:/Games/World of Warcraft", "wowf")
     grounds = {m: Ground("world/map_%d.bin" % m) for m in MAPS if os.path.exists("world/map_%d.bin" % m)}
     coarses = {m: Coarse.open("world/nav_%d_linked.bin" % m) for m in grounds}
-    found, notes = build(lines(store), grounds, coarses, flight_data.load())
+    hand, hand_notes = by_hand(triggers(store), grounds, coarses)
+    if sys.argv[1:] == ["hand"]:
+        found, notes = [t for t in load() if not t.get("hand")], []
+    else:
+        all_lines = lines(store)
+        clash = [t["id"] for t in hand if t["id"] in all_lines]
+        assert not clash, "a way told by hand has the number of a line of the table: %s" % clash
+        found, notes = build(all_lines, grounds, coarses, flight_data.load())
+    found, notes = found + hand, notes + hand_notes
     with open("world/crossings.bin", "wb") as f:
         pickle.dump(found, f, protocol=4)
-    for t in found:
-        print("line %5d  %-8s %-15s round trip %3.0f s (wait %3.0f s)" % (
-            t["id"], t["kind"], "+".join(sorted(t["sides"])), t["period"], t["wait"]))
-        for i, s in enumerate(t["stops"]):
-            print("      stop %d: map %4d (%6.0f, %6.0f, %4.0f) %-28s board from %3.0f yd off, %3.0f yd %s: %3.0f s" % (
-                i, s["map"], s["x"], s["y"], s["z"], s["name"], s["walk"], abs(s["up"]), "up" if s["up"] > 0 else "down", s["board"]))
-        for (a, b), ride in sorted(t["rides"].items()):
-            print("      ride %d to %d: %3.0f s, %d points" % (a, b, ride["seconds"], len(ride["line"])))
-    for note in notes:
-        print(note)
+    report(hand if sys.argv[1:] == ["hand"] else found, notes)
 
 
 if __name__ == "__main__":

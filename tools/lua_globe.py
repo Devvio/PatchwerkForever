@@ -16,7 +16,12 @@ marks (a gamepad taken and given back; boats and zeppelins, the trail, flight po
 Route's stops and the map pin, with what Thread (Routes) offers made up here; quests, quests on offer, a guide's
 steps, Next Mark, the Route button and the tracker beside the globe), the hand-made pieces (the ink pieces on the
 sea, the whole ring and stand in the picture when zoomed right out, the globe lifted to make room for it and
-the pointer still true), and Minimap Pictures. How it looks, and how fast, only the game can say.
+the pointer still true), rares and treasures, the Show menu, other addons' pins (through the pin library, a
+newer copy of it, and Questie's own), unexplored land (blank paper, clearing as it is discovered), light and
+movement (candlelight by the game clock, the Maelstrom turning, cloud shadows, the ring from your place, the
+opening and its sounds), a city's and a battleground's own flat map with the marks on them, a guard's
+directions, the map key (laid over the game's keys out of combat, a button on each map to the other, the game's
+map asked for at a place), and Minimap Pictures. How it looks, and how fast, only the game can say.
 """
 import math
 import os
@@ -57,7 +62,23 @@ local function Bendable(t)
     function t:AddMaskTexture(m) assert(m and m.mask) end
     function t:SetDrawLayer(layer, sub) assert((layer == 'ARTWORK' or layer == 'OVERLAY') and sub >= -8 and sub <= 7) end
     function t:SetAtlas(name) assert(type(name) == 'string') self.atlas, self.icon = name, nil end
-    function t:SetTexCoord(a, b, c, d) assert(a and b and c and d and a < b and c < d, 'a part of no size') end
+    function t:SetTexCoord(a, b, c, d, e, f, g, h)
+        if e ~= nil then
+            -- (eight figures: each corner's own place in the picture, as a turned picture has)
+            assert(a == a and b == b and c == c and d == d and e == e and f == f and g == g and h == h, 'a corner not a number')
+            self.corners = { a, b, c, d, e, f, g, h }
+        else
+            assert(a and b and c and d and a < b and c < d, 'a part of no size')
+            self.corners, self.part = nil, { a, b, c, d }
+        end
+    end
+    local setTexture = t.SetTexture
+    function t:SetTexture(file, wrapH, wrapV)
+        assert(wrapH == nil or (wrapH == 'REPEAT' and wrapV == 'REPEAT'), 'a wrap this game lacks')
+        self.wrap = wrapH
+        setTexture(self, file)
+    end
+    function t:SetAlpha(alpha) assert(alpha >= 0 and alpha <= 1, 'alpha out of range') self.alpha = alpha end
     function t:SetRotation(angle) assert(angle == angle) self.rotation = angle end
     function t:SetVertexColor(r, g, b, a)
         assert(r and g and b and (a == nil or (a >= 0 and a <= 1)), 'a colour out of range') self.gradient = nil
@@ -247,6 +268,21 @@ C_AreaPoiInfo = {
     end,
     GetAreaPOIInfo = function(id, poi) return STUB.pois[id] and STUB.pois[id][poi] end,
 }
+-- a guard's directions, and a battleground's flags and vehicles
+STUB.gossip, STUB.flags, STUB.vehicles = {}, {}, {}
+C_GossipInfo = {
+    GetPoiForUiMapID = function(id) return STUB.gossip[id] and 7 or nil end,
+    GetPoiInfo = function(id, poi) return poi == 7 and STUB.gossip[id] or nil end,
+}
+function GetNumBattlefieldFlagPositions() return #STUB.flags end
+C_PvP = {
+    GetBattlefieldFlagPosition = function(i, id)
+        local f = STUB.flags[i]
+        if f and f[1] == id then return f[2], f[3], f[4] end
+        return nil, nil, 0
+    end,
+    GetBattlefieldVehicles = function(id) return STUB.vehicles[id] or {} end,
+}
 function STUB.PoiAt(zone, id, name, wx, wy, textureIndex, atlas, description)
     local x, y = STUB.ToMap(zone, wx, wy)
     STUB.pois[zone] = STUB.pois[zone] or {}
@@ -303,9 +339,100 @@ function GetQuestDifficultyColor(level)
 end
 C_Map.GetMapLevels = function(id) if id == 1413 then return 10, 25, 0, 0 end return 0, 0, 0, 0 end
 C_Map.GetPlayerMapPosition = function(id, unit)
-    assert(unit == 'player')
-    return CreateVector2D(STUB.ToMap(id, STUB.player.x, STUB.player.y))
+    local who = unit == 'player' and STUB.player or STUB.group[unit]
+    assert(who, 'no such unit')
+    if not (who.x and WORLD_MAPS[id] and WORLD_MAPS[id][1] == who.map) then return nil end
+    return CreateVector2D(STUB.ToMap(id, who.x, who.y))
 end
+-- a city's own map (Orgrimmar) and a battleground's (Warsong Gulch, a world of its own), 12 pictures each
+WORLD_MAPS[1454] = { 1, -3680.6, -5083.2, 2273.3, 1338.5 }
+WORLD_MAPS[1460] = { 489, 2041.7, 895.8, 2087.5, 1323.6 }
+NAMES[1454], NAMES[1460] = 'Orgrimmar', 'Warsong Gulch'
+local layers, pictures = C_Map.GetMapArtLayers, C_Map.GetMapArtLayerTextures
+C_Map.GetMapArtLayers = function(id)
+    if id == 1454 or id == 1460 then return { { layerWidth = 1002, layerHeight = 668, tileWidth = 256, tileHeight = 256 } } end
+    return layers(id)
+end
+C_Map.GetMapArtLayerTextures = function(id, layer)
+    if id == 1454 or id == 1460 then
+        local out = {}
+        for i = 1, 12 do out[i] = (id == 1454 and 9200 or 9300) + i end
+        return out
+    end
+    if id ~= 1414 and id ~= 1415 then return {} end
+    return pictures(id, layer)
+end
+C_Map.GetWorldPosFromMapPos = function(id, pos)
+    local m = WORLD_MAPS[id]
+    if not m then error('no such map ' .. tostring(id)) end
+    return m[1], CreateVector2D(m[4] - pos.y * (m[4] - m[5]), m[2] - pos.x * (m[2] - m[3]))
+end
+local best = C_Map.GetBestMapForUnit
+C_Map.GetBestMapForUnit = function(unit) return STUB.bestMap or best(unit) end
+C_Map.IsCityMap = function(id) return id == 1454 end
+-- what you have discovered: by a zone's map, the pieces of its picture (where each lies on it)
+STUB.explored, STUB.artOf = nil, {}
+C_Map.GetMapArtID = function(id) return STUB.artOf[id] end
+C_MapExplorationInfo = { GetExploredMapTextures = function(id)
+    assert(type(id) == 'number')
+    if not STUB.explored then return nil end
+    local out = {}
+    for _, at in ipairs(STUB.explored[id] or {}) do out[#out + 1] = { offsetX = at[1], offsetY = at[2], fileDataIDs = {} } end
+    return out
+end }
+-- what the game marks only while it is near (rare creatures, treasures)
+STUB.vignettes = {}
+C_VignetteInfo = {
+    GetVignettes = function()
+        local out = {}
+        for guid in pairs(STUB.vignettes) do out[#out + 1] = guid end
+        table.sort(out)
+        return out
+    end,
+    GetVignetteInfo = function(guid) return STUB.vignettes[guid] and STUB.vignettes[guid].info end,
+    GetVignettePosition = function(guid, id)
+        local v = STUB.vignettes[guid]
+        if not (v and WORLD_MAPS[id] and WORLD_MAPS[id][1] == v.map) then return nil end
+        return CreateVector2D(STUB.ToMap(id, v.x, v.y))
+    end,
+}
+-- the game's clock, sounds counted, another addon's tooltip
+STUB.hour, STUB.sounds = 12, 0
+function GetGameTime() return STUB.hour, 0 end
+function PlaySound(kit) assert(kit) STUB.sounds = STUB.sounds + 1 end
+local setOwner = GameTooltip.SetOwner
+GameTooltip.SetOwner = function(self, owner, anchor) setOwner(self, owner, anchor) STUB.tip.owner = owner end
+GameTooltip.IsOwned = function(self, owner) return STUB.tip.owner == owner end
+GameTooltip.SetAnchorType = function(self, anchor) assert(type(anchor) == 'string') STUB.tip.anchor = anchor end
+GameTooltip.ClearAllPoints = function() end
+GameTooltip.SetPoint = function(self, point, to) assert(to) STUB.tip.at = to end
+-- following a function that is someone else's
+hooksecurefunc = hooksecurefunc or function(a, b, c)
+    local t, name, fn = _G, a, b
+    if type(a) == 'table' then t, name, fn = a, b, c end
+    local was = t[name]
+    assert(type(was) == 'function' and type(fn) == 'function', 'nothing to follow: ' .. tostring(name))
+    t[name] = function(...)
+        local out = { was(...) }
+        fn(...)
+        return unpack(out)
+    end
+end
+-- the game's own world map, and the keys bound to it
+STUB.overrides, STUB.bound = {}, { 'M', 'PADBACK' }
+function GetBindingKey(what) assert(what == 'TOGGLEWORLDMAP') return unpack(STUB.bound) end
+function SetOverrideBindingClick(owner, priority, key, button)
+    assert(owner and priority == true and type(key) == 'string' and _G[button], 'not a binding the game would take')
+    assert(not InCombatLockdown(), 'a binding set in combat')
+    STUB.overrides[key] = button
+end
+function ClearOverrideBindings(owner) assert(owner and not InCombatLockdown(), 'bindings cleared in combat') STUB.overrides = {} end
+WorldMapFrame:Hide()
+WorldMapFrame.BorderFrame = CreateFrame('Frame')
+function WorldMapFrame:GetObjectType() return 'Frame' end
+function ToggleWorldMap() if WorldMapFrame.shown then WorldMapFrame:Hide() else WorldMapFrame:Show() end end
+function OpenWorldMap(id) WorldMapFrame.mapID = id; WorldMapFrame:Show() end
+function HideUIPanel(frame) frame:Hide() end
 """
 
 
@@ -327,7 +454,15 @@ STUB.crossings = {
         rides = { { from = 1, to = 2, secs = 96, legs = { { map = 0, points = { { -12464, 232 }, { -12603, 1010 } } },
                 { map = 1, points = { { 1132, -5493 }, { 1361, -4631 } } } } },
             { from = 2, to = 1, secs = 69, legs = {} } } },
+    { id = 11616, kind = 'boat', sides = 'A', wait = 150,
+        stops = { { map = 1, name = 'Auberdine', x = 6548, y = 942 }, { map = 0, name = 'Stormwind', x = -8654, y = 1344 } },
+        rides = { { from = 1, to = 2, secs = 200, legs = {} }, { from = 2, to = 1, secs = 200, legs = {} } } },
+    { id = 369, kind = 'tram', sides = 'A', wait = 30,
+        stops = { { map = 0, name = 'Stormwind', x = -8346.5, y = 514 }, { map = 0, name = 'Ironforge', x = -4840.3, y = -1330.5 } },
+        rides = { { from = 1, to = 2, secs = 90, legs = { { map = 0, points = { { -8346, 514 }, { -6593, -408 }, { -4840, -1330 } } } } },
+            { from = 2, to = 1, secs = 90, legs = {} } } },
 }
+STUB.lifts = { { map = 1, x = -4652, y = -1846, name = 'The Great Lift' }, { map = 1, x = -1308, y = 167 } }
 STUB.trailList = {}
 STUB.nodes = { { 1, -600, -2750, 'Peacebloom', 133939, 'h' }, { 1, -470, -2500, 'Copper Vein', 134566, 'o' },
     { 1, -3000, -3000, 'Far Herb', 133939, 'h' } }
@@ -335,6 +470,7 @@ STUB.nodeAsks = 0
 PatchwerkForever.Trails:Offer({
     List = function() return STUB.trailList end,
     Crossings = function() return STUB.crossings end,
+    Lifts = function() return STUB.lifts end,
     NodesAround = function(map, x, y, reach, fn)
         STUB.nodeAsks = STUB.nodeAsks + 1
         for _, n in ipairs(STUB.nodes) do
@@ -499,6 +635,11 @@ def main():
     on = [s for s in stub.settings.values() if s.page == "Thread: Globe"]
     assert len(on) >= 5, len(on)                  # (its settings are on its page; the button is not one)
     slash = G.SlashCmdList.PATCHWERKFOREVER_GLOBE
+    LATER = ("globeFxOpen", "globeFxMove", "globeFxPing", "globeFxLight", "globeFxSound", "globeExplore", "globeFlat")
+    for key in LATER:
+        assert ns.Get(key) is True, (key, "is not on as it comes")
+        ns.Set(key, False)
+    assert ns.Get("globeMapKey") is False, "the map key is taken as it comes"
 
     step("/globe opens it: our own world picture (no game maps, no ground yet), continents' and seas' names")
     slash("")
@@ -529,6 +670,17 @@ def main():
     assert st.lift > 40 and st.lift + look.r * LIMB < 300, ("the ball is not lifted clear of the stand", st.lift)
     inked = [d for d in drawn if d["layer"] == "decor"]
     assert inked and "decor_compass" in inked[0]["fdid"], "the compass rose is not on the sea"
+    # the Maelstrom at the middle of the Great Sea: its picture, its name under it, the sea's name under that
+    swirl = [pt for d in inked if "decor_maelstrom" in d["fdid"] for pt in d["pts"]]
+    assert swirl, "the Maelstrom is not on the sea"
+    mx = (min(x for x, _y in swirl) + max(x for x, _y in swirl)) / 2
+    top, bottom = max(y for _x, y in swirl), min(y for _x, y in swirl)
+    name, sea = labels["The Maelstrom"], labels["The Great Sea"]
+    assert name.shown and abs(name.x - mx) < 6 and bottom - 14 < name.y < (top + bottom) / 2, ("the Maelstrom's name is not under it", name.y, top, bottom)
+    assert sea.y < name.y - 12, "the sea's name is written over the Maelstrom's"
+    west, _y, _z = ns.GlobeWhere(1, 0, -6000)      # (off Kalimdor's east coast, and off the Eastern Kingdoms' west)
+    east, _y, _z = ns.GlobeWhere(0, 0, 4500)
+    assert west < min(x for x, _y in swirl) and max(x for x, _y in swirl) < east, "the Maelstrom lies over land"
 
     step("a continent at the globe's edge: cut into smaller pieces, none folded over the edge")
     look.lon = -1.05 + math.pi / 2 - 0.15          # (Kalimdor's middle near the globe's left edge)
@@ -1004,6 +1156,36 @@ def main():
     assert sorted(m.name for m in marks("crossings")) == ["Ratchet", "Theramore"], "the other side's zeppelin, or not your own boat"
     stub.player.side = "Horde"
     ns.Marks.Changed("crossings")
+    # the lifts, for either side, from zone level in: the named one by its name, another as "Lift"
+    go(-4652, -1846, 700 * 1.5, 1)
+    lifts = [m for m in marks("crossings") if m.icon.endswith("mark_lift")]
+    assert sorted(m.name for m in lifts) == ["Lift", "The Great Lift"], [(m.name, m.icon) for m in marks("crossings")]
+    great, plain = named(lifts, "The Great Lift"), named(lifts, "Lift")
+    at(great, -4652, -1846)
+    assert list(great.mark.lines.values()) == ["Lift"], list(great.mark.lines.values())
+    assert not list(plain.mark.lines.values()), "a lift with no name says Lift twice"
+    go(-4652, -1846, 700, 1)
+    assert not [m for m in marks("crossings") if m.icon.endswith("mark_lift")], "lifts shown from far out"
+    # the tram, for the Alliance: a station at each end, apart from Stormwind's dock, and a dashed line between
+    stub.player.side = "Alliance"
+    ns.Marks.Changed("crossings")
+    go(-6600, -400, 700, 0)
+    ms = marks("crossings")
+    trams = [m for m in ms if m.icon.endswith("mark_tram")]
+    assert sorted(m.name for m in trams) == ["Ironforge", "Stormwind"], [(m.name, m.icon) for m in ms]
+    station = [m for m in trams if m.name == "Stormwind"][0]
+    at(station, -8346.5, 514, 0, 0)
+    assert list(station.mark.lines.values()) == ["Tram to Ironforge", "Wait: about 1 min"], list(station.mark.lines.values())
+    docks = [m for m in ms if m.name == "Stormwind" and m.icon.endswith("mark_boat")]
+    assert len(docks) == 1 and list(docks[0].mark.lines.values())[0] == "Boat to Auberdine", "Stormwind's dock and its tram station were made one stop"
+    sx, sy, _z = ns.GlobeWhere(0, -8346, 514)
+    ix, iy, _z = ns.GlobeWhere(0, -4840, -1330)
+    rail = [t for t in strokes("crossings") if min(sx, ix) - 2 <= t[0] <= max(sx, ix) + 2 and min(sy, iy) - 2 <= t[1] <= max(sy, iy) + 2]
+    assert len(rail) > 6 and max(math.hypot(t[2] - t[0], t[3] - t[1]) for t in rail) < 9.5, "no dashed line where the tram runs"
+    stub.player.side = "Horde"
+    ns.Marks.Changed("crossings")
+    assert not [m for m in marks("crossings") if m.icon.endswith("mark_tram")], "the tram shown to the Horde"
+    go(-1005.6, -3841.6, 700)
     ns.Set("globeCrossings", False)
     assert not marks("crossings") and not strokes("crossings"), "switched off, they stayed"
     ns.Set("globeCrossings", True)
@@ -1499,6 +1681,542 @@ def main():
     go(-1200, -2800, 600)
     point_at(*CROSSROADS)
     assert words().startswith("The Barrens") and ns.PlacesState().area is None, "a smaller place named from further out than a zone"
+    step("rares and treasures: what the game marks near you, with its icon and name; a dead one grey")
+    assert not marks("rares")
+    lua.execute("""
+        STUB.atlases.VignetteKill = true
+        STUB.vignettes = {
+            a = { map = 1, x = -600, y = -2900, info = { name = 'Dishu', atlasName = 'VignetteKill', onMinimap = true, onWorldMap = false, isDead = false } },
+            b = { map = 1, x = -900, y = -2500, info = { name = 'Battered Chest', atlasName = 'a-picture-this-game-lacks', onMinimap = true, isDead = false } },
+            c = { map = 1, x = -1100, y = -3100, info = { name = 'Sister Rathtalon', atlasName = 'VignetteKill', onWorldMap = true, isDead = true } },
+            d = { map = 1, x = -700, y = -2600, info = { name = 'Hidden Thing', atlasName = 'VignetteKill', onMinimap = false, onWorldMap = false } },
+            e = { map = 0, x = -9000, y = -100, info = { name = 'Far Rare', atlasName = 'VignetteKill', onMinimap = true } },
+        }
+    """)
+    stub.Fire("VIGNETTES_UPDATED")
+    go(-800, -2800, 900)
+    ms = marks("rares")
+    assert sorted(m.name for m in ms) == ["Battered Chest", "Dishu", "Sister Rathtalon"], [m.name for m in ms]
+    rare, chest, gone = named(ms, "Dishu"), named(ms, "Battered Chest"), named(ms, "Sister Rathtalon")
+    at(rare, -600, -2900)
+    assert rare.atlas and rare.icon == "VignetteKill" and rare.mark.tint is None, "not the game's own picture, untinted"
+    assert chest.icon.endswith("mark_place") and chest.mark.tint is not None, "a picture this game lacks was not replaced by ours"
+    assert list(gone.mark.lines.values()) == ["Dead"] and [round(v, 2) for v in gone.mark.tint.values()] == [0.6, 0.6, 0.6]
+    go(-9000, -100, 900, 0)
+    assert [m.name for m in marks("rares")] == ["Far Rare"], "one on the other continent is not where it is"
+    go(-800, -2800, 900)
+    ns.Set("globeRares", False)
+    assert not marks("rares"), "switched off, the rares stayed"
+    ns.Set("globeRares", True)
+    lua.execute("STUB.vignettes = {}")
+    stub.Fire("VIGNETTES_UPDATED")
+    assert not marks("rares"), "a rare that is gone stayed"
+
+    step("the Show menu, by its button or its key: every kind of mark, and the light and movement, ticked on and off")
+    ns.GlobeKey("show")
+    assert stub.menu.title == "Show"
+    boxes = {k.text: k for k in stub.menu.kids.values()}
+    for text in ("Your Route", "Quests", "Places", "Your Group", "Flight Points", "Boats And Zeppelins", "Herb And Ore Nodes",
+                 "Rares And Treasures", "Other Addons' Pins", "Names", "Coordinates", "Unexplored Land Left Blank"):
+        assert text in boxes and boxes[text].selected, (text, "is not in the menu as a tick box")
+    assert boxes["Rares And Treasures"].selected() is True and boxes["Unexplored Land Left Blank"].selected() is False
+    boxes["Rares And Treasures"].click()
+    assert ns.Get("globeRares") is False and boxes["Rares And Treasures"].selected() is False, "a tick did not turn the setting off"
+    boxes["Rares And Treasures"].click()
+    assert ns.Get("globeRares") is True
+    light = [k.text for k in boxes["Light And Movement"].kids.values()]
+    assert light == ["Candlelight", "Moving Sea And Sky", "Animate Opening", "Pulse Where You Are", "Map Sounds", "Shade The Globe"], light
+    show_button = [f for f in stub.frames.values() if f.text == "Show"]
+    assert len(show_button) == 1 and show_button[0].scripts["OnClick"], "no Show button on the window"
+    lua.execute("STUB.menu = nil")
+    show_button[0].scripts["OnClick"](show_button[0])
+    assert stub.menu and stub.menu.title == "Show", "the button did not open the menu"
+
+    step("other addons' pins: followed through the pin library, drawn with their own picture, tooltip and click")
+    view.scripts["OnMouseDown"](view, "RightButton")     # (the mouse takes the pointer back from the Show key)
+    assert not marks("pins") and not ns.PinsState().library
+    lua.execute("""
+        local lib = { AddWorldMapIconWorld = function() end, AddWorldMapIconMap = function() end,
+            RemoveWorldMapIcon = function() end, RemoveAllWorldMapIcons = function() end }
+        STUB.hbd = lib
+        LibStub = setmetatable({}, { __call = function(_, name, silent)
+            assert(silent == true, 'asked for loudly: an error where the library is missing')
+            if name == 'HereBeDragons-Pins-2.0' then return lib end
+        end })
+        local function Pin(file, r, g, b, a)
+            local pin = { scripts = {}, alpha = 1 }
+            function pin:GetScript(name) return self.scripts[name] end
+            function pin:GetAlpha() return self.alpha end
+            function pin:GetWidth() return 20 end
+            pin.texture = { GetTexture = function() return file end, GetAtlas = function() return nil end,
+                GetVertexColor = function() return r, g, b, a end,
+                GetTexCoord = function() return 0.1, 0.2, 0.1, 0.8, 0.9, 0.2, 0.9, 0.8 end }
+            pin.scripts.OnEnter = function(self)
+                GameTooltip:SetOwner(self, 'ANCHOR_RIGHT')
+                GameTooltip:SetText('A Quest Giver')
+                GameTooltip:Show()
+            end
+            pin.scripts.OnLeave = function() GameTooltip:Hide() end
+            pin.scripts.OnClick = function(self, button) STUB.pinClicked = button end
+            return pin
+        end
+        STUB.pinA, STUB.pinB, STUB.pinC = Pin('a-quest-picture', 1, 0.5, 0.25, 1), Pin(134400, 1, 1, 1, 1), Pin('hidden', 1, 1, 1, 0)
+    """)
+    stub.Fire("ADDON_LOADED", "Questie")
+    assert ns.PinsState().library, "the library was not found once its addon had loaded"
+    ax, ay = to_map(1413, -800, -2900)
+    lua.execute("""
+        local ax, ay = ...
+        STUB.hbd:AddWorldMapIconMap('Questie', STUB.pinA, 1413, ax, ay)
+        STUB.hbd:AddWorldMapIconWorld('Rares', STUB.pinB, 1, -2700, -1400)      -- (the library's x is the game's y)
+        STUB.hbd:AddWorldMapIconWorld('Rares', STUB.pinC, 1, -3300, -700)
+        STUB.hbd:AddWorldMapIconWorld('Rares', {}, 489, 1000, 1000)             -- (a world the globe does not have)
+    """, ax, ay)
+    assert ns.PinsState().count == 4
+    ms = marks("pins")
+    assert len(ms) == 2, ("a pin missing, or one shown that its addon hides", len(ms))
+    quest = [m for m in ms if m.icon == "a-quest-picture"][0]
+    other = [m for m in ms if m.icon == 134400][0]
+    at(quest, -800, -2900)
+    at(other, -1400, -2700)
+    assert quest.size == 20 and [round(v, 2) for v in quest.mark.tint.values()] == [1, 0.5, 0.25], "not as its own frame shows it"
+    assert [round(v, 2) for v in quest.mark.coords.values()] == [0.1, 0.9, 0.2, 0.8], list(quest.mark.coords.values())
+    stub.cursor[1], stub.cursor[2] = quest.x, quest.y + ns.GlobeState().lift
+    frames(2)
+    assert stub.tip.title == "A Quest Giver" and stub.tip.anchor == "ANCHOR_CURSOR", "not its own tooltip, moved to the pointer"
+    click()
+    assert stub.pinClicked == "LeftButton", "the click did not reach the pin's own addon"
+    stub.cursor[1], stub.cursor[2] = quest.x + 120, quest.y + ns.GlobeState().lift + 90
+    frames(2)
+    assert stub.tip.title is None, "its tooltip stayed after the pointer left"
+    go(-800, -2800, 600)
+    assert not marks("pins"), "pins shown from further out than a zone"
+    go(-800, -2800, 900)
+    ns.Set("globePins", False)
+    assert not marks("pins"), "switched off, the pins stayed"
+    ns.Set("globePins", True)
+    lua.execute("STUB.hbd:RemoveWorldMapIcon('Questie', STUB.pinA)")
+    assert len(marks("pins")) == 1, "a pin its addon took off stayed"
+    lua.execute("STUB.hbd:RemoveAllWorldMapIcons('Rares')")
+    assert not marks("pins") and ns.PinsState().count == 0
+    # (a newer copy of the library replaces its calls: they are followed again)
+    lua.execute("STUB.hbd.AddWorldMapIconWorld = function() end")
+    stub.Fire("ADDON_LOADED", "RareScanner")
+    lua.execute("STUB.hbd:AddWorldMapIconWorld('Rares', STUB.pinB, 1, -2700, -1000)")
+    assert len(marks("pins")) == 1, "a newer library's pins are not followed"
+    lua.execute("STUB.hbd:RemoveAllWorldMapIcons('Rares')")
+    # (Questie keeps a copy of the library to itself, as a part under its own loader)
+    lua.execute("""
+        local own = { AddWorldMapIconWorld = function() end, AddWorldMapIconMap = function() end,
+            RemoveWorldMapIcon = function() end, RemoveAllWorldMapIcons = function() end }
+        STUB.questie = own
+        QuestieLoader = { ImportModule = function(self, name) assert(self == QuestieLoader) if name == 'HBDPins' then return own end return {} end }
+    """)
+    stub.Fire("ADDON_LOADED", "Questie")
+    lua.execute("STUB.questie:AddWorldMapIconMap('Questie', STUB.pinA, 1413, ...)", ax, ay)
+    ms = marks("pins")
+    assert len(ms) == 1 and ms[0].icon == "a-quest-picture", "Questie's own copy of the library is not followed"
+    at(ms[0], -800, -2900)
+    lua.execute("STUB.questie:RemoveAllWorldMapIcons('Questie')")
+    assert not marks("pins")
+
+    step("unexplored land: blank paper over what you have not discovered, clearing as you discover it")
+    assert not [d for d in state()[1] if d["layer"] == "cover"]
+    ns.Set("globeExplore", True)
+    frames(80)
+    assert not [d for d in state()[1] if d["layer"] == "cover"], "land covered though the game says nothing of what is discovered"
+    lua.eval("function(ns) for art, e in pairs(ns.COVERS) do STUB.artOf[e.ui] = art end end")(ns)
+    covers = {e.ui: (art, e) for art, e in ns.COVERS.items()}
+    barrens_art, barrens = covers[1413]
+    keys = sorted(barrens.pieces.keys())
+    lua.execute("STUB.explored = {}")
+    stub.Fire("MAP_EXPLORATION_UPDATED")
+    go(-1500, -3000, 700)
+    frames(80)
+    look, drawn, labels = state()
+    es = ns.ExploreState()
+    assert es.zones == len(covers) and es.known == es.zones, (es.zones, es.known)
+    assert es.shown == es.zones, ("an undiscovered zone is not under one sheet", es.shown)
+    assert holding(drawn, 0, 0, layer="cover", fdid="Interface\\AddOns\\" + GLOBE + "\\Art\\Covers\\cover_1413"), "no paper over the Barrens"
+    within_globe(look, [d for d in drawn if d["layer"] == "cover"])
+    go(-1500, -3000, 2400)                       # (closer in, the sheet gives way to the zone's own pieces)
+    assert ns.ExploreState().shown > es.zones, "zoomed in, still one sheet a zone"
+    go(-1500, -3000, 700)
+    found = [(k // 4096, k % 4096) for k in keys[:3]]
+    lua.execute("STUB.explored[1413] = {}")
+    for x, y in found:
+        lua.execute("table.insert(STUB.explored[1413], { ... })", x, y)
+    stub.Fire("MAP_EXPLORATION_UPDATED")
+    frames(70)                                   # (read again at most once a second)
+    es2 = ns.ExploreState()
+    assert es2.clearing == 3, ("the pieces just discovered are not fading", es2.clearing)
+    assert es2.shown == es.zones - 1 + len(keys), es2.shown     # (the Barrens' pieces, three of them fading)
+    fading = [d for d in state()[1] if d["layer"] == "cover" and d["fdid"].endswith("cover_1413")]
+    assert len(fading) >= len(keys)
+    frames(120)
+    es3 = ns.ExploreState()
+    assert es3.clearing == 0 and es3.shown == es.zones - 1 + len(keys) - 3, (es3.clearing, es3.shown)
+    lua.execute("STUB.artOf[1413] = 1")          # (another picture of the zone than the paper was cut for: left alone)
+    stub.Fire("MAP_EXPLORATION_UPDATED")
+    frames(70)
+    assert ns.ExploreState().known == es.zones - 1
+    assert not [d for d in state()[1] if d["layer"] == "cover" and d["fdid"].endswith("cover_1413")], "paper of the wrong picture"
+    lua.execute("STUB.artOf[1413] = ...", barrens_art)
+    ns.Set("globeExplore", False)
+    frames(5)
+    assert not [d for d in state()[1] if d["layer"] == "cover"], "switched off, the paper stayed"
+
+    step("light and movement: candlelight, more at night; the Maelstrom turning; cloud shadows; a ring from your place")
+    fx = ns.EffectsState
+    for _ in range(40):
+        view.scripts["OnMouseWheel"](view, -1)
+    frames(80)
+    assert fx().light is None and not fx().sheen and not fx().ping and not fx().moving
+    assert not [d for d in state()[1] if d["layer"] == "sky"]
+    ns.Set("globeFxLight", True)
+    frames(5)
+    day = fx().light
+    assert 0.25 < day < 0.45 and fx().sheen, ("no candlelight, or no shine on the whole ball", day)
+    stub.hour = 1
+    frames(5)
+    assert fx().light > day + 0.2, "the night is no darker"
+    stub.hour = 12
+    ns.Set("globeFxMove", True)
+    frames(30)
+    sky = [d for d in state()[1] if d["layer"] == "sky"]
+    assert sky and fx().sky == 6 and fx().drift > 0, "no cloud shadows over the whole globe"
+    within_globe(state()[0], sky)
+    cloud = [t for t in stub.allTextures.values() if t.shown and t.wrap == "REPEAT"]
+    assert cloud and all(str(t.icon).endswith("clouds") for t in cloud), "the clouds' picture does not repeat"
+    before = [list(t.part.values()) for t in cloud]
+    frames(30)
+    assert [list(t.part.values()) for t in cloud] != before, "the clouds do not drift"
+    lua.eval("function(G) G.GlideTo({ math.cos(0.05), 0, math.sin(0.05) }, 900) end")(ns.G)     # (the Maelstrom)
+    frames(90)
+    assert fx().maelstrom and fx().moving and fx().turn > 0
+    pool = [t for t in stub.allTextures.values() if t.shown and str(t.icon).endswith("decor_maelstrom")]
+    assert pool and all(t.corners for t in pool), "the Maelstrom's pieces are not turned"
+    was = [list(t.corners.values()) for t in pool]
+    frames(20)
+    assert [list(t.corners.values()) for t in pool] != was, "the Maelstrom does not turn"
+    assert not fx().sheen, "the shine stayed, zoomed in"
+    go(-1500, -3000, 3000)
+    assert not [d for d in state()[1] if d["layer"] == "sky"], "clouds over the land, zoomed in"
+    ns.Set("globeFxMove", False)
+    lua.eval("function(G) G.GlideTo({ math.cos(0.05), 0, math.sin(0.05) }, 900) end")(ns.G)
+    frames(90)
+    pool = [t for t in stub.allTextures.values() if t.shown and str(t.icon).endswith("decor_maelstrom")]
+    assert pool and not fx().moving, "switched off, the Maelstrom still turns"
+    for t in pool:
+        c = list(t.corners.values()) if t.corners else None
+        p = list(t.part.values()) if t.part else None
+        assert c is None or all(abs(a - b) < 1e-9 for a, b in zip(c, (p[0], p[2], p[0], p[3], p[1], p[2], p[1], p[3]))), "left turned"
+    ns.Set("globeFxPing", True)
+    ns.CenterOnMe()
+    frames(90)
+    seen = False
+    for _ in range(200):
+        frames(1)
+        seen = seen or fx().ping
+    assert seen, "no ring from your place"
+    ns.Set("globeFxPing", False)
+    frames(2)
+    assert not fx().ping
+
+    step("opening: the window fades in and the globe turns into place; the map's sounds")
+    go(-1500, -3000, 900)
+    lat, lon, r = look_now = (ns.G.look.lat, ns.G.look.lon, ns.G.look.r)
+    ns.Set("globeFxOpen", True)
+    ns.Set("globeFxSound", True)
+    sounds = stub.sounds
+    ns.Toggle()
+    assert not window.shown and stub.sounds == sounds + 1, "no sound on closing"
+    ns.Toggle()
+    assert window.shown and stub.sounds == sounds + 2 and window.alpha == 0 and fx().fading, "the window did not start clear"
+    assert abs(ns.G.look.lon - lon) > 0.2 and ns.G.look.r < r, "the globe does not start turned aside"
+    frames(4)
+    assert 0 < window.alpha < 1
+    frames(120)
+    assert window.alpha == 1 and not fx().fading
+    assert abs(ns.G.look.lat - lat) < 1e-6 and abs(ns.G.look.lon - lon) < 1e-6 and abs(ns.G.look.r / r - 1) < 1e-6, "not back where it was left"
+    ns.Set("globeFxOpen", False)
+    ns.Set("globeFxSound", False)
+    ns.Set("globeFxLight", False)
+    ns.Toggle()
+    ns.Toggle()
+    assert stub.sounds == sounds + 2 and window.alpha == 1
+
+    step("a city's own map: opened where you are in one, flat, with the marks on it; a right-click goes back to the globe")
+    flat = ns.FlatState
+    assert flat() is None
+    ns.Set("globeFlights", True)
+    lua.execute("""
+        STUB.PoiAt(1454, 700, 'Valley of Strength', 1630, -4400, 5)
+        STUB.PoiAt(1454, 701, 'The Drag', 1800, -4500, 6)
+        STUB.TaxiAt(1414, 23, 'Orgrimmar, Durotar', 1677, -4315, 1)
+        STUB.bestMap = 1454
+    """)
+    stub.Fire("AREA_POIS_UPDATED")
+    stub.player.x, stub.player.y = 1600.0, -4400.0
+    ns.Set("globeFlat", True)
+    ns.Toggle()
+    ns.Toggle()
+    frames(5)
+    st = flat()
+    assert st and st.ui == 1454 and st.name == "Orgrimmar" and st.auto and st.map == 1, "the city's map did not open"
+    assert st.tiles == 12 and abs(st.w / st.h - 1002 / 668) < 1e-6 and st.w <= 600 and st.h <= 600 and max(st.w / 600, st.h / 600) > 0.9
+    assert st.back, "no button back to the globe"
+    assert not state()[1], "the globe is still drawn under the flat map"
+    assert zone_text.text == "Orgrimmar" and zone_text.shown
+
+    def on_flat(wx, wy, ui=1454):
+        u, v = to_map(ui, wx, wy)
+        st = flat()
+        return (u - 0.5) * st.w, (0.5 - v) * st.h
+
+    mx, my = on_flat(1600, -4400)
+    assert st.me and abs(st.me[1] - mx) < 0.01 and abs(st.me[2] - my) < 0.01, "you are not where you stand on the city's map"
+    ms = marks("places")
+    assert sorted(m.name for m in ms) == ["The Drag", "Valley of Strength"], [m.name for m in ms]
+    valley = named(ms, "Valley of Strength")
+    vx, vy = on_flat(1630, -4400)
+    assert abs(valley.x - vx) < 0.01 and abs(valley.y - vy) < 0.01, "a place is not where it is on the city's map"
+    fly = named(marks("flights"), "Orgrimmar, Durotar")
+    fx_, fy_ = on_flat(1677, -4315)
+    assert abs(fly.x - fx_) < 0.01 and abs(fly.y - fy_) < 0.01
+    stub.cursor[1], stub.cursor[2] = valley.x, valley.y
+    frames(2)
+    assert stub.tip.title == "Valley of Strength"
+    text, numbers = coords()
+    u, v = to_map(1454, 1630, -4400)
+    assert abs(numbers[2] - u * 100) < 0.11 and abs(numbers[3] - v * 100) < 0.11, ("not the city map's coordinates", text)
+    # (the globe is not turned or zoomed under it)
+    before = (ns.G.look.lat, ns.G.look.lon, ns.G.look.r)
+    view.scripts["OnMouseWheel"](view, 1)
+    ns.GlobeKey("left", True)
+    frames(20)
+    ns.GlobeKey("left", False)
+    assert (ns.G.look.lat, ns.G.look.lon, ns.G.look.r) == before and flat(), "the globe moved under the flat map"
+    # (with keys, Next Mark puts the cross on each mark in turn, and Fit presses it)
+    ns.GlobeKey("next")
+    frames(2)
+    first = stub.tip.title
+    ns.GlobeKey("next")
+    frames(2)
+    second = stub.tip.title
+    ns.GlobeKey("next")
+    frames(2)
+    third = stub.tip.title
+    assert {first, second, third} == {"Valley of Strength", "The Drag", "Orgrimmar, Durotar"}, (first, second, third)
+    view.scripts["OnMouseDown"](view, "LeftButton")      # (the mouse takes the pointer back)
+    view.scripts["OnMouseUp"](view, "LeftButton")
+    stub.cursor[1], stub.cursor[2] = 250, -180
+    frames(3)
+    # (a pin set on it lands where the pointer is in the world)
+    stub.ctrl = True
+    stub.cursor[1], stub.cursor[2] = on_flat(1700, -4450)
+    click()
+    stub.ctrl = False
+    assert stub.pin, "no pin set on the city's map"
+    px_, py_ = stub.pin.position.GetXY(stub.pin.position)
+    wantx, wanty = to_map(stub.pin.uiMapID, 1700, -4450)
+    assert abs(px_ - wantx) < 1e-6 and abs(py_ - wanty) < 1e-6, "the pin is not under the pointer"
+    lua.execute("C_Map.ClearUserWaypoint()")
+    click("RightButton")
+    assert flat() is None, "a right-click did not go back to the globe"
+    frames(90)
+    x, y, z = ns.GlobeWhere(1, 1600, -4400)
+    assert z > 0.9 and abs(x) < 120 and abs(y) < 120 and state()[1], "the globe is not turned to the city"
+    assert not [t for t in stub.allTextures.values() if t.shown and t.icon in range(9201, 9213)], "the city's pictures stayed"
+    ns.Toggle(True)
+    frames(3)
+    assert flat() is None, "stepped out of, it came back by itself"
+    ns.CenterOnMe()
+    frames(3)
+    assert flat() and flat().ui == 1454, "Where I Am did not open the map of the city you are in"
+    # (walking out of the city closes it)
+    lua.execute("STUB.bestMap = nil")
+    stub.Fire("ZONE_CHANGED_NEW_AREA")
+    frames(3)
+    assert flat() is None, "out of the city, its map stayed"
+    # (Go To lists it; Step Out, by key, leaves it)
+    ns.GlobeKey("goto")
+    cities = [k for k in stub.menu.kids.values() if k.text == "City Maps"]
+    assert cities and [k.text for k in cities[0].kids.values()] == ["Orgrimmar"], "the city is not in Go To"
+    fields = [k for k in stub.menu.kids.values() if k.text == "Battleground Maps"]
+    assert fields and [k.text for k in fields[0].kids.values()] == ["Warsong Gulch"]
+    cities[0].kids[1].click()
+    frames(3)
+    assert flat() and not flat().auto
+    stub.Fire("ZONE_CHANGED")
+    assert flat(), "opened by hand, it closed because you are elsewhere"
+    ns.GlobeKey("back")
+    frames(3)
+    assert flat() is None, "Step Out did not leave the city's map"
+    # (a click on the city on the globe, once it fills the picture)
+    frames(90)
+    go(1600, -4400, 20000)
+    point_at(1600, -4400)
+    frames(3)
+    zone, lines = zone_state()
+    if zone and zone.name == "Orgrimmar":
+        click()
+        assert flat() and flat().ui == 1454, "a click on the city, close in, did not open its map"
+        ns.GlobeKey("out", True)                 # (zooming out by key leaves it too)
+        frames(3)
+        ns.GlobeKey("out", False)
+        assert flat() is None
+    else:
+        print("      (Orgrimmar is no zone of its own on the globe: the click was not tried)")
+    ns.Set("globeFlat", False)
+    lua.execute("STUB.bestMap = 1454")
+    ns.Toggle()
+    ns.Toggle()
+    frames(3)
+    assert flat() is None, "switched off, the city's map opened by itself"
+    ns.Set("globeFlat", True)
+
+    step("a battleground's own map: you, your group, its own places, flags and vehicles, and nothing of the world outside")
+    lua.execute("""
+        STUB.bestMap = 1460
+        STUB.raid = true
+        STUB.group = { raid1 = { name = 'Tessa', class = 'MAGE', className = 'Mage', x = 1500, y = 1450, map = 489 },
+            raid2 = { name = 'Away', class = 'MAGE', className = 'Mage' } }
+    """)
+    stub.player.x, stub.player.y, stub.player.map = 1540.0, 1480.0, 489
+    stub.Fire("GROUP_ROSTER_UPDATE")
+    ns.CenterOnMe()
+    frames(40)
+    st = flat()
+    assert st and st.ui == 1460 and st.map is None and st.tiles == 12 and st.auto, "the battleground's map did not open"
+    mx, my = on_flat(1540, 1480, 1460)
+    assert st.me and abs(st.me[1] - mx) < 0.01 and abs(st.me[2] - my) < 0.01
+    assert st.people == 1, ("your group is not on the battleground's map", st.people)
+    assert not marks(), "marks of the world outside on a battleground's map"
+    assert chat() == "", "something was said"
+    # (what the game says is on the battleground's map itself: a graveyard, a flag, a vehicle)
+    lua.execute("""
+        STUB.PoiAt(1460, 71, 'Silverwing Hold', 1520, 1470, 6)
+        local fx, fy = STUB.ToMap(1460, 1700, 1300)
+        STUB.flags = { { 1460, fx, fy, 4411 }, { 1459, 0.5, 0.5, 4412 } }
+        local vx, vy = STUB.ToMap(1460, 1900, 1100)
+        STUB.vehicles[1460] = { { x = vx, y = vy, name = 'Demolisher', atlas = 'no-such-atlas', isAlive = true } }
+    """)
+    stub.Fire("AREA_POIS_UPDATED")
+    frames(80)
+    ms = marks()
+    assert sorted(m.name for m in ms) == ["Demolisher", "Flag", "Silverwing Hold"], [m.name for m in ms]
+    for name, wx, wy in (("Silverwing Hold", 1520, 1470), ("Flag", 1700, 1300), ("Demolisher", 1900, 1100)):
+        m = named(ms, name)
+        mx, my = on_flat(wx, wy, 1460)
+        assert abs(m.x - mx) < 0.01 and abs(m.y - my) < 0.01, (name, "is not at its place on the battleground's map")
+    assert named(ms, "Flag").icon == 4411, "the flag has not the game's own picture"
+    assert named(ms, "Silverwing Hold").icon.endswith("POIIcons")
+    lua.execute("STUB.pois[1460], STUB.flags, STUB.vehicles = nil, {}, {}")
+    assert chat() == "", "something was said"
+    stub.player.x, stub.player.y, stub.player.map = -442.0, -2598.0, 1
+    lua.execute("STUB.bestMap, STUB.group, STUB.raid = nil, {}, false")
+    stub.Fire("GROUP_ROSTER_UPDATE")
+    stub.Fire("PLAYER_ENTERING_WORLD", False, False)
+    frames(3)
+    assert flat() is None, "back in the world, the battleground's map stayed"
+    stub.Fire("AREA_POIS_UPDATED")
+
+    step("a guard's directions: the flag the game puts on the map, on the globe and on the city's own map")
+    go(1700, -4450, 2400)
+    assert not marks("directions")
+    lua.execute("""
+        local x, y = STUB.ToMap(1454, 1700, -4450)
+        STUB.gossip[1454] = { name = 'Bank', textureIndex = 6, position = CreateVector2D(x, y), inBattleMap = false }
+        STUB.bestMap = 1454
+    """)
+    stub.Fire("DYNAMIC_GOSSIP_POI_UPDATED")
+    m = named(marks("directions"), "Bank")
+    at(m, 1700, -4450)
+    assert m.icon.endswith("POIIcons"), "the directions have not the game's own picture"
+    ns.CenterOnMe()
+    frames(3)
+    assert flat() and flat().ui == 1454
+    m = named(marks("directions"), "Bank")
+    mx, my = on_flat(1700, -4450)
+    assert abs(m.x - mx) < 0.01 and abs(m.y - my) < 0.01, "the directions are out of place on the city's map"
+    lua.execute("STUB.gossip[1454], STUB.bestMap = nil, nil")
+    stub.Fire("DYNAMIC_GOSSIP_POI_UPDATED")
+    assert not marks("directions"), "the directions stayed once the game took them down"
+    stub.Fire("ZONE_CHANGED_NEW_AREA")
+    frames(3)
+    assert flat() is None
+    assert chat() == "", "something was said"
+
+    step("the map key: by option, the keys of the game's map open the globe; a button on each goes to the other")
+    mk = ns.MapKeyState
+    key_button = G.PatchwerkForever_Thread_GlobeMapKey
+    assert not list(stub.overrides.keys()) and mk().followed and mk().globe
+    world = [f for f in stub.frames.values() if f.text == "World Map"]
+    assert len(world) == 1
+    size(900, 700)
+    frames(2)
+    assert mk().world, "no World Map button on a wide window"
+    size(400, 500)
+    frames(2)
+    assert not mk().world, "the World Map button crowds a narrow window"
+    size(900, 700)
+    frames(2)
+    world_map = G.WorldMapFrame
+    world[0].scripts["OnClick"](world[0])
+    assert world_map.shown and not window.shown, "the button did not swap the globe for the game's map"
+    globe_button = [f for f in stub.frames.values() if f.text == "Globe" and f.height == 20]     # (the one on the game's map)
+    assert len(globe_button) == 1
+    world_map.mapID = 1413
+    globe_button[0].scripts["OnClick"](globe_button[0])
+    frames(90)
+    assert window.shown and not world_map.shown, "the map's button did not swap it for the globe"
+    x, y, z = ns.GlobeWhere(1, -1500, -3000)
+    assert z > 0.95 and abs(x) < 150 and abs(y) < 150 and ns.G.look.r > 700, "the globe is not turned to the map that was up"
+    ns.GlobeKey("goto")
+    [k for k in stub.menu.kids.values() if k.text == "The Game's World Map"][0].click()
+    assert world_map.shown and not window.shown
+    world_map.Hide(world_map)
+    # (the game's map opened at a place: left alone while the option is off)
+    G.OpenWorldMap(1413)
+    assert world_map.shown and not window.shown, "without the option, the globe took the game's map"
+    world_map.Hide(world_map)
+    ns.Set("globeMapKey", True)
+    assert dict(stub.overrides) == {"M": "PatchwerkForever_Thread_GlobeMapKey", "PADBACK": "PatchwerkForever_Thread_GlobeMapKey"}, dict(stub.overrides)
+    key_button.scripts["OnClick"](key_button)
+    assert window.shown, "the map key did not open the globe"
+    key_button.scripts["OnClick"](key_button)
+    assert not window.shown, "the map key did not close the globe"
+    lua.execute("STUB.bound = { 'N' }")
+    stub.Fire("UPDATE_BINDINGS")
+    assert list(stub.overrides.keys()) == ["N"], "a changed binding was not followed"
+    G.OpenWorldMap(1415)
+    frames(90)
+    assert window.shown and not world_map.shown, "with the option, the game's map was not swapped for the globe"
+    x, y, z = ns.GlobeWhere(0, -9000, -100)
+    assert z > 0.8, "the globe is not turned to the continent asked for"
+    G.OpenWorldMap(1454)
+    frames(3)
+    assert flat() and flat().ui == 1454 and not world_map.shown, "a city asked for did not open flat"
+    G.OpenWorldMap(947)
+    frames(90)
+    assert flat() is None and abs(ns.G.look.r / ns.GlobeState().rmin - 1) < 0.01, "the world's map asked for: not the whole globe"
+    world[0].scripts["OnClick"](world[0])        # (asked for from the globe, the game's map is left alone)
+    assert world_map.shown and not window.shown
+    world_map.Hide(world_map)
+    stub.combat = True
+    ns.Set("globeMapKey", False)
+    assert list(stub.overrides.keys()) == ["N"] and mk().waiting, "a binding was touched in combat"
+    G.OpenWorldMap(1413)
+    assert world_map.shown and not window.shown, "in combat the game's map is not left to do it"
+    world_map.Hide(world_map)
+    stub.combat = False
+    stub.Fire("PLAYER_REGEN_ENABLED")
+    assert not list(stub.overrides.keys()) and not mk().waiting, "after the fight the key was not given back"
+    ns.Toggle(True)
+    size(600 + 20, 600 + 64)
+    frames(3)
+    assert chat() == "", "something was said"
     for key in ("globeFlights", "globeCrossings", "globeNodes"):
         ns.Set(key, True)
 

@@ -1,8 +1,8 @@
 ## Interface: 16001
 ## Title: Patchwerk Forever: Thread (Globe)
-## Notes: The world on a globe you can spin and zoom, painted like the world map on parchment, with your route, quests, flight points and places on it. Still being built. Needs Patchwerk Forever. Type /globe.
+## Notes: The world on a globe you can spin and zoom, painted like the world map on parchment, with everything the world map shows on it: your route, quests, places, unexplored land and other addons' pins. Not released yet. Needs Patchwerk Forever. Type /globe.
 ## Author: Tyrone
-## Version: 0.5.0
+## Version: 0.10.0
 ## Group: PatchwerkForever
 ## X-Category: Map
 ## X-License: MIT
@@ -23,3 +23,11 @@ Marks.lua
 Travel.lua
 Quests.lua
 Places.lua
+Rares.lua
+Pins.lua
+Covers.lua
+Explore.lua
+Flat.lua
+Effects.lua
+Show.lua
+MapKey.lua

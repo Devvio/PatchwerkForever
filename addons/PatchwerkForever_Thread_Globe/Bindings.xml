@@ -44,4 +44,7 @@
 	<Binding name="PATCHWERKFOREVER_GLOBE_ROUTE" category="BINDING_CATEGORY_PatchwerkForever">
 		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('route') end
 	</Binding>
+	<Binding name="PATCHWERKFOREVER_GLOBE_SHOW" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('show') end
+	</Binding>
 </Bindings>

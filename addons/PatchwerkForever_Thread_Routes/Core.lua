@@ -47,7 +47,7 @@ ns.settings = {
 	{ key = 'knownOnly', default = true, name = 'Known Flight Points Only', parent = 'flights',
 		desc = 'Only fly between flight points this character has discovered. They are read from the flight map when you open it at a flight master, and remembered. Until one has been opened on a continent, routes there go on foot.' },
 	{ key = 'rides', default = true, name = 'Use Boats And Zeppelins',
-		desc = 'Use boats and zeppelins when they are faster, and to reach other continents. Only those available to your faction. Waiting time is unknown, so the estimate allows half a round trip.' },
+		desc = 'Use boats, zeppelins and the Deeprun Tram when they are faster, and to reach other continents. Only those available to your faction. Waiting time is unknown, so the estimate allows half a round trip.' },
 	{ header = true, name = 'Chat' },
 	{ key = 'notify', default = true, name = 'Print Route In Chat',
 		desc = 'Print the time, distance and flights in chat when you route to a map pin or coordinates or use Start Routing, and a line when you arrive or discover a flight point. Routes followed from your guide or quests are shown on screen instead.' },
@@ -87,7 +87,7 @@ ns.settings = {
 	{ page = 'Routes: Trail', key = 'trailFly', colour = true, default = 'ff73d9ff', name = 'Flight Color',
 		desc = 'Color of flights.' },
 	{ page = 'Routes: Trail', key = 'trailRide', colour = true, default = 'ff66e6c8', name = 'Boat And Zeppelin Color',
-		desc = 'Color of boat and zeppelin crossings.' },
+		desc = 'Color of boat, zeppelin and tram crossings.' },
 	{ page = 'Routes: Trail', key = 'trailChosen', colour = true, default = 'ffff8c42', name = 'Selected Route Color',
 		desc = 'Color of walking sections on a route you selected yourself: a quest or list selected in the tracker, or a gathering run. Your main route (guide or tracked quests) uses the walking color.' },
 

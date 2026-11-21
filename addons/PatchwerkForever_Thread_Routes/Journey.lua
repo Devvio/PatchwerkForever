@@ -1,4 +1,4 @@
--- Thread (Routes): journeys. A route that may take boats and zeppelins, on one map or from one to another.
+-- Thread (Routes): journeys. A route that may take boats, zeppelins and the tram, on one map or from one to another.
 --
 -- The planner (Planner.lua) finds the way between two places on one map. A journey is walks found
 -- by it, joined by rides: from the start to where a boat is boarded, the ride, and on from where it

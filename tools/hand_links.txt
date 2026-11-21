@@ -14,12 +14,19 @@
 # By hand: /run print(UnitPosition("player")) prints X, Y, height, map.
 # seconds   how long the ride takes, with an average wait.
 #
+# A lift that rides in a tower of its own (the Great Lift, Freewind Post's) is found from the tower's
+# model by lifts.py, which writes its lines here too: python lifts.py write
+#
 # Known to be missing still:
-#   the Great Lift between the Barrens and Thousand Needles (Kalimdor), the Undercity's lifts
-#   (Eastern Kingdoms). Thunder Bluff's four are below.
+#   the Undercity's lifts (Eastern Kingdoms): they lead to floors inside the city, which the planner
+#   does not know. Thunder Bluff's four are below.
 #
 # Example (not real coordinates):
 #   1   -1234.5 100.0    -1260.0 95.0    25   Thunder Bluff, north lift
+
+# --- lifts found from their towers (written by lifts.py; the lines down to the next marker are replaced) ---
+1   -4631.2 -1852.1   -4672.9 -1839.6   30   lift, the Great Lift (134 yd up or down; the time is a guess)
+1   -5418.8 -2460.4   -5377.1 -2497.9   30   lift, Freewind Post (134 yd up or down; the time is a guess)
 
 # --- from marks made in-game (written by marks.py; anything below this line is replaced) ---
 1   -1435.4 -139.6   -1452.1 -156.2   7   oneway   drop, marks 9 to 10 (48 yd down)

@@ -53,8 +53,8 @@ local NEAR = 14                       -- with keys, the mark this near the middl
 local Marks = {}
 ns.Marks = Marks
 
--- One of our own pictures: badge, pin, pinoff, boat, zeppelin, flight, flightoff, bang, ask, person,
--- grave, place, ring, dot.
+-- One of our own pictures: badge, pin, pinoff, boat, zeppelin, tram, lift, flight, flightoff, bang, ask,
+-- person, grave, place, ring, dot.
 function Marks.Icon(name) return MEDIA .. name end
 
 local sources, order = {}, {}
@@ -64,6 +64,8 @@ local marksUsed, linesUsed = 0, 0
 local counts = {}                     -- lines drawn for each source at the last drawing
 local hot                             -- the mark under the pointer
 local tipUp = false
+local pickedKey, crossMoved           -- on a flat map, by keys: the mark stepped to, and the cross put on it
+local Picked
 
 function Marks.Source(name, spec)
 	spec.name, spec.order, spec.stale = name, spec.order or 50, true
@@ -94,6 +96,16 @@ function Marks.Changed(name)
 	if s then s.stale = true end
 	G.Changed()
 end
+
+-- Every list is made again (the map under the marks is another: a flat map came up, or went).
+function Marks.AllChanged()
+	for _, s in ipairs(order) do s.stale = true end
+	pickedKey = nil
+	G.Changed()
+end
+
+-- The zoom the marks are shown for: the globe's radius (points), or what a flat map counts as.
+function Marks.Zoom() return ns.FlatOn and ns.FlatOn() or G.look.r end
 
 -- A place in the world (a continent's map number, world x, y) as a direction on the sphere; nil for a
 -- continent the globe does not have.
@@ -144,6 +156,14 @@ local function ZoneMapAt(p)
 	return zone, continent, map, wx, wy
 end
 function Marks.ZoneMap(p)
+	local flat = ns.FlatMap and ns.FlatMap()
+	if flat then
+		-- (a flat map is up: it is the zone's map, everywhere on it)
+		p = p or G.Under(0, 0)
+		local map, wx, wy
+		if p then map, wx, wy = Marks.Place(p) end
+		return flat, map and G.UiMap(map) or nil, map, wx, wy
+	end
 	if p then return ZoneMapAt(p) end
 	local look, lift = G.look, G.Lift()
 	if midAt[1] ~= look.lat or midAt[2] ~= look.lon or midAt[3] ~= look.r or midAt[4] ~= lift then
@@ -209,7 +229,13 @@ local function Refresh(s)
 	s.key = s.Key and ns.Try('the globe', s.Key, G.look.r) or nil
 	local marks, lines = {}, {}
 	local function mark(m)
-		m.p = m.p or Marks.Where(m.map, m.x, m.y)
+		if m.on then
+			-- (a place on one of the game's flat maps itself, on = the map and u, v across and down it: shown
+			-- only while that map is up, Flat.lua. A battleground's marks: it is no part of the globe's world.)
+			m.p = { m.u, m.v, m.on }
+		else
+			m.p = m.p or Marks.Where(m.map, m.x, m.y)
+		end
 		if m.p then
 			m.source = s.name
 			marks[#marks + 1] = m
@@ -304,6 +330,26 @@ local function PaintLine(l, r, b)
 	end
 end
 
+-- A line on a flat map: its points laid by the map (Flat.lua), a stretch broken off where one of them
+-- is not on the map's continent.
+local function PaintFlat(l, Project)
+	l.phase = 0
+	local px, py
+	local ps = l.ps
+	local n = #ps
+	for i = 1, n do
+		local x, y = Project(ps[i])
+		if not x then
+			px = nil
+		elseif not px then
+			px, py = x, y
+		elseif i == n or abs(x - px) + abs(y - py) >= STEP then
+			Stroke(l, px, py, x, y)
+			px, py = x, y
+		end
+	end
+end
+
 local function Widget(i)
 	local w = widgets[i]
 	if not w then
@@ -334,7 +380,8 @@ end
 local cand, taken = {}, {}
 local function Paint(r)
 	local b = G.Basis()
-	if not b then return end
+	local Project = ns.FlatOn and ns.FlatOn() and ns.FlatProject or nil
+	if not (b or Project) then return end
 	xMost, yLow, yHigh = G.Edges()
 	local now = GetTime()
 	local beforeLines, beforeMarks = linesUsed, marksUsed
@@ -352,14 +399,26 @@ local function Paint(r)
 			for _, l in ipairs(s.lines) do
 				if r >= (l.from or 0) and r <= (l.upto or math.huge) then
 					l.source = s.name
-					PaintLine(l, r, b)
+					if Project then PaintFlat(l, Project) else PaintLine(l, r, b) end
 				end
 			end
 			for _, m in ipairs(s.marks) do
 				if r >= (m.from or 0) and r <= (m.upto or math.huge) then
 					local p = m.p
-					local z = p[1] * b[1] + p[2] * b[2] + p[3] * b[3]
-					if z > SEEN + 0.02 then
+					local z = not Project and p[1] * b[1] + p[2] * b[2] + p[3] * b[3]
+					if Project then
+						local x, y, on
+						if m.on then
+							if m.on == ns.FlatMap() then x, y = ns.FlatPoints(m.u, m.v) end
+							on = x ~= nil
+						else
+							x, y, on = Project(p)
+						end
+						if on then
+							m.sx, m.sy, m.sz = x, y + (m.dy or 0), 1
+							cand[#cand + 1] = m
+						end
+					elseif not m.on and z > SEEN + 0.02 then
 						local x, y = G.Seen(p, r)
 						if abs(x) < xMost + 8 and y > yLow - 8 and y < yHigh + 8 then
 							m.sx, m.sy, m.sz = x, y + (m.dy or 0), z
@@ -453,9 +512,20 @@ function Marks.At(x, y, reach)
 	return best
 end
 
-local function Tip()
+-- The tooltip of the mark pointed at (was: the one pointed at before). A mark may put up one of its
+-- own (tip: a function told the mark and whether the pointer came or went), as another addon's pin does.
+local function Tip(was)
 	local tip = rawget(_G, 'GameTooltip')
 	if type(tip) ~= 'table' then return end
+	if was and was.tip then ns.Try('the globe', was.tip, was, false) end
+	if hot and hot.tip then
+		if tipUp then
+			tip:Hide()
+			tipUp = false
+		end
+		ns.Try('the globe', hot.tip, hot, true)
+		return
+	end
 	if not (hot and hot.name) then
 		if tipUp then
 			tip:Hide()
@@ -484,6 +554,7 @@ ns.GlobeOn('paint', Paint)
 -- With keys or a gamepad the pointer is the middle of the picture (the cross); zoomed right out, where
 -- the globe sits above that, a mark the globe was turned to is at the globe's own middle.
 local function AtCross()
+	if ns.FlatOn and ns.FlatOn() then return Picked() end      -- (a flat map does not turn: the mark stepped to)
 	local lift = G.Lift()
 	return Marks.At(0, -lift, NEAR) or (lift ~= 0 and Marks.At(0, 0, NEAR)) or nil
 end
@@ -512,18 +583,35 @@ ns.GlobeOn('frame', function(elapsed)
 			m = Marks.At(x, y)
 		end
 	end
+	-- (on a flat map, with keys, the cross sits on the mark stepped to)
+	local at = G.ByKeys() and ns.FlatOn and ns.FlatOn() and Picked() or nil
+	if at or crossMoved then
+		local _, _, canvas, cross = G.Frames()
+		cross:ClearAllPoints()
+		if at then
+			cross:SetPoint('CENTER', canvas, 'CENTER', at.sx, at.sy)
+		else
+			cross:SetPoint('CENTER', view, 'CENTER', 0, 0)
+		end
+		crossMoved = at ~= nil
+	end
 	if m ~= hot then
+		local was = hot
 		hot = m
-		Tip()
+		Tip(was)
 	end
 end)
 
 ns.GlobeOn('hide', function()
-	hot = nil
-	Tip()
+	local was = hot
+	hot, pickedKey = nil, nil
+	Tip(was)
 end)
 
 ns.GlobeOn('press', function(button, x, y, byKey)
+	local flat = ns.FlatOn and ns.FlatOn()
+	-- (a right-click, or its like by key, wheel or stick, takes a flat map down)
+	if flat and button == 'RightButton' then return ns.FlatPress(button) end
 	local m
 	if byKey then m = AtCross() else m = Marks.At(x, y) end
 	if m and m.click and button == 'LeftButton' then
@@ -534,7 +622,7 @@ ns.GlobeOn('press', function(button, x, y, byKey)
 		local s = order[i]
 		if s.Press and (not s.Shown or s.Shown()) and ns.Try('the globe', s.Press, button, x, y, byKey) then return true end
 	end
-	return false
+	return flat and true or false       -- (nothing of the globe is under a flat map to take the press)
 end)
 
 -- Next Mark, by key or gamepad: the globe turns to the named mark nearest the middle of the picture
@@ -543,8 +631,36 @@ local stepped, steppedAt = {}, 0
 local function StepKey(m)
 	return ('%s:%s:%d:%d:%d'):format(m.source, tostring(m.name), floor(m.p[1] * 2e4), floor(m.p[2] * 2e4), floor(m.p[3] * 2e4))
 end
+function Picked()
+	if not pickedKey then return nil end
+	for _, m in ipairs(placed) do
+		if not m.under and StepKey(m) == pickedKey then return m end
+	end
+	return nil
+end
+
 ns.GlobeOn('key', function(what)
 	if what ~= 'next' then return false end
+	if ns.FlatOn and ns.FlatOn() then
+		-- (a flat map does not turn: the cross goes from mark to mark, left to right and down the map)
+		local list = {}
+		for _, m in ipairs(placed) do
+			if not m.under and (m.name or m.tip) then list[#list + 1] = m end
+		end
+		table.sort(list, function(a, c)
+			if a.sy ~= c.sy then return a.sy > c.sy end
+			return a.sx < c.sx
+		end)
+		local pick = list[1]
+		for i, m in ipairs(list) do
+			if StepKey(m) == pickedKey then
+				pick = list[i % #list + 1]
+				break
+			end
+		end
+		pickedKey = pick and StepKey(pick) or nil
+		return true
+	end
 	local now = GetTime()
 	if now - steppedAt > 10 then stepped = {} end
 	steppedAt = now

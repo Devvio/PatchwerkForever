@@ -1,7 +1,7 @@
 """Pack the maps for the game: the data addons of Patchwerk Forever: Thread (Routes).
 
-    python pack.py              packs maps 0, 1 and 2991, and the boats and zeppelins
-    python pack.py crossings    only the boats and zeppelins (Crossings.lua, in the addon's own folder)
+    python pack.py              packs maps 0, 1 and 2991, and the boats, zeppelins and the tram
+    python pack.py crossings    only the boats, zeppelins and the tram (Crossings.lua, in the addon's own folder)
 
 For each map, a folder beside the addon (loaded only when the character is on that map):
 
@@ -209,12 +209,29 @@ def routes_version():
     raise SystemExit("no version in %s.toc" % main)
 
 
+def lifts(path=None):
+    """The lifts of hand_links.txt, for a map to show: [(map, world x, world y, name or "")], each at the middle
+    of its two ends. A lift told by marks made in the game has no name."""
+    out = []
+    path = path or os.path.join(os.path.dirname(os.path.abspath(__file__)), "hand_links.txt")
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            part = line.split("#")[0].split()
+            if len(part) < 7 or part[6] != "lift,":
+                continue
+            ax, ay, bx, by = (float(v) for v in part[1:5])
+            name = " ".join(part[7:]).split(" (")[0]
+            name = "" if name.startswith("marks ") else name[:1].upper() + name[1:]
+            out.append((int(part[0]), (ax + bx) / 2, (ay + by) / 2, name))
+    return out
+
+
 def pack_crossings():
-    """The boats and zeppelins (crossings.py) as a file of the addon itself: Crossings.lua."""
+    """The boats, zeppelins and the tram (crossings.py) as a file of the addon itself: Crossings.lua."""
     import crossings
     found = crossings.load()
     out = ["-- Made by pack.py from the game's own files (the tools' crossings.py). Do not edit: run pack.py again.\n",
-           "-- Boats and zeppelins. Each: id, kind, sides (A, H), wait (seconds, on average, before one comes),\n",
+           "-- Boats, zeppelins and the tram. Each: id, kind, sides (A, H), wait (seconds, on average, before one comes),\n",
            "--   stops = { { map, name, world x, world y, cell x, cell y, seconds to board } },\n",
            "--   rides = { { from stop, to stop, seconds, { map, world x, world y, ... } } }\n",
            "-- In a ride's line a map of -1 is a jump: the next point is not sailed to.\n",
@@ -236,11 +253,17 @@ def pack_crossings():
             out.append("\t\t{ %d, %d, %.0f, { %s } },\n" % (a + 1, b + 1, ride["seconds"], ", ".join(flat)))
         out.append("\t},\n},\n")
     out.append("}\n")
+    # (the planner has the lifts in each map's own data, as links; this list is for a map that shows them)
+    out.append("-- Lifts (the tools' hand_links.txt), for showing: { map, world x, world y, name or \"\" }\nns.Lifts = {\n")
+    shown = lifts()
+    for m, x, y, name in shown:
+        out.append('\t{ %d, %.0f, %.0f, "%s" },\n' % (m, x, y, name.replace('"', "'")))
+    out.append("}\n")
     path = os.path.join(ADDONS, "PatchwerkForever_Thread_Routes", "Crossings.lua")
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         f.write("".join(out))
-    print("crossings -> Crossings.lua: %d lines, %d rides, %.1f KB" % (
-        len(found), sum(len(t["rides"]) for t in found), os.path.getsize(path) / 1e3))
+    print("crossings -> Crossings.lua: %d lines, %d rides, %d lifts to show, %.1f KB" % (
+        len(found), sum(len(t["rides"]) for t in found), len(shown), os.path.getsize(path) / 1e3))
 
 
 if __name__ == "__main__":

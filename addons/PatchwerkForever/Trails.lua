@@ -22,6 +22,7 @@ local P = ns.P;
 --         { { id =, kind = 'boat' or 'zeppelin', sides = 'A', 'H' or 'AH', wait = seconds,
 --             stops = { { map =, name =, x =, y = }, ... },
 --             rides = { { from = stop, to = stop, secs =, legs = { { map =, points = { { x, y }, ... } }, ... } }, ... } }, ... }
+--     PatchwerkForever.Trails:Lifts()             the lifts the planner knows: { { map =, x =, y =, name = or nil }, ... }
 --     PatchwerkForever.Trails:NodesAround(map, x, y, reach, fn)
 --                                                 fn(x, y, name, icon, kind) for each remembered herb ('h') or
 --                                                 ore ('o') spot within `reach` yards of a place
@@ -73,6 +74,10 @@ end
 
 function Trails:List() return Ask('List') or {} end
 function Trails:Crossings() return Ask('Crossings') or {} end
+function Trails:Lifts()
+	-- (a provider need not have them)
+	return provider and type(provider.Lifts) == 'function' and Ask('Lifts') or {}
+end
 function Trails:NodesAround(map, x, y, reach, fn)
 	if ( type(fn) == 'function' and map and x and y ) then Ask('NodesAround', map, x, y, tonumber(reach) or 500, fn) end
 end

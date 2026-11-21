@@ -85,6 +85,24 @@ class Table:
                 out.append(None)
         return out
 
+    def relations(self):
+        """{record id: the id of the record in another table it belongs to}, for a table that has such a column
+        (kept apart from the fields, after each section's records). Tables whose records are all of one size."""
+        data, out = self.data, {}
+        for (key, file_offset, count, strings, records_end, id_list_size,
+             relationship_size, offset_map_count, copy_count) in self.sections:
+            if not relationship_size or self.flags & 1:
+                continue
+            pos = file_offset + count * self.record_size + strings
+            ids = struct.unpack_from("<%dI" % (id_list_size // 4), data, pos)
+            pos += id_list_size + copy_count * 8 + offset_map_count * 6
+            entries, _low, _high = struct.unpack_from("<3I", data, pos)
+            for k in range(entries):
+                foreign, index = struct.unpack_from("<II", data, pos + 12 + k * 8)
+                if index < len(ids):
+                    out[ids[index]] = foreign
+        return out
+
     def rows(self):
         """(record id, fields) for every readable record; encrypted sections are skipped."""
         data = self.data

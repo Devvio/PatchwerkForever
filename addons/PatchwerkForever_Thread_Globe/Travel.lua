@@ -3,7 +3,8 @@
 --   your route        the trail Thread (Routes) leads you along, in its own colours (a flight is a
 --                     dashed arc, a boat or zeppelin a dashed line over the sea), and the numbered
 --                     stops of My Route; a click on a stop lists what can be done with it
---   boats, zeppelins  where each puts in and the way it sails (what Thread (Routes) knows of them)
+--   boats, zeppelins  where each puts in and the way it sails (what Thread (Routes) knows of them);
+--                     the tram likewise, and the lifts it knows, from zone level in
 --   flight points     those the game shows your side, from zone level in; grey ones you have not found
 --   herb and ore      the spots Thread (Routes) remembers, close in
 --   the map pin       the game's own: Ctrl-click sets it; a click on it has it tracked or not,
@@ -24,7 +25,12 @@ local FLIGHTS_FROM = VIEW * 1.4       -- flight points are shown from this zoom 
 local NODES_FROM = VIEW * 5           -- and herb and ore spots from this
 local NEAR = 14                       -- with keys, the pin this near the middle of the picture is the one meant
 local STOP_TINT = { 0.56, 0.80, 1.0 }
-local BOAT, ZEPPELIN = { 0.42, 0.68, 0.90, 0.9 }, { 0.84, 0.64, 0.36, 0.9 }
+-- how each kind of crossing looks and reads (one this file does not know looks like a boat)
+local KINDS = {
+	boat = { icon = 'boat', colour = { 0.42, 0.68, 0.90, 0.9 }, words = 'Boat to %s' },
+	zeppelin = { icon = 'zeppelin', colour = { 0.84, 0.64, 0.36, 0.9 }, words = 'Zeppelin to %s' },
+	tram = { icon = 'tram', colour = { 0.82, 0.52, 0.40, 0.9 }, words = 'Tram to %s' },
+}
 local SIDES = { Alliance = 'A', Horde = 'H' }
 
 local function World(uiMap, x, y)
@@ -45,7 +51,7 @@ end
 local function HasTrails() return type(Trails) == 'table' and Trails.Has and Trails:Has() end
 
 ---------------------------------------------------------------------------
--- Boats and zeppelins
+-- Boats, zeppelins and the tram
 ---------------------------------------------------------------------------
 Marks.Source('crossings', {
 	order = 20,
@@ -55,14 +61,15 @@ Marks.Source('crossings', {
 		local stops, list = {}, {}
 		for _, c in ipairs(Trails:Crossings()) do
 			if not side or type(c.sides) ~= 'string' or c.sides:find(side, 1, true) then
-				local air = c.kind == 'zeppelin'
+				local look = KINDS[c.kind] or KINDS.boat
 				for _, ride in ipairs(c.rides or {}) do
 					local from, to = c.stops[ride.from], c.stops[ride.to]
 					if from and to then
-						local key = from.map .. ':' .. from.name
+						-- (a town's dock and its tram station are two stops, though both have the town's name)
+						local key = from.map .. ':' .. tostring(c.kind) .. ':' .. from.name
 						local stop = stops[key]
 						if not stop then
-							stop = { map = from.map, x = from.x, y = from.y, name = from.name, air = air, to = {}, seen = {}, wait = c.wait }
+							stop = { map = from.map, x = from.x, y = from.y, name = from.name, look = look, to = {}, seen = {}, wait = c.wait }
 							stops[key] = stop
 							list[#list + 1] = stop
 						end
@@ -82,17 +89,21 @@ Marks.Source('crossings', {
 							if w then at[#at + 1] = w end
 						end
 					end
-					line({ at = at, colour = air and ZEPPELIN or BOAT, width = 3, dashed = true })
+					line({ at = at, colour = look.colour, width = 3, dashed = true })
 				end
 			end
 		end
+		for _, lift in ipairs(Trails.Lifts and Trails:Lifts() or {}) do
+			mark({ map = lift.map, x = lift.x, y = lift.y, icon = Marks.Icon('lift'), size = 16, rank = 32, from = FLIGHTS_FROM,
+				name = lift.name or 'Lift', lines = lift.name and { 'Lift' } or {} })
+		end
 		for _, stop in ipairs(list) do
 			table.sort(stop.to)
-			local lines = { (stop.air and 'Zeppelin to %s' or 'Boat to %s'):format(table.concat(stop.to, ', ')) }
+			local lines = { stop.look.words:format(table.concat(stop.to, ', ')) }
 			if type(stop.wait) == 'number' and stop.wait > 0 then
 				lines[2] = ('Wait: about %d min'):format(ceil(stop.wait / 60))
 			end
-			mark({ map = stop.map, x = stop.x, y = stop.y, icon = Marks.Icon(stop.air and 'zeppelin' or 'boat'), size = 18, rank = 40,
+			mark({ map = stop.map, x = stop.x, y = stop.y, icon = Marks.Icon(stop.look.icon), size = 18, rank = 40,
 				name = stop.name, lines = lines })
 		end
 	end,
@@ -159,7 +170,7 @@ Marks.Source('nodes', {
 		return ('%d:%d:%d:%d'):format(map, floor(x / reach * 2), floor(y / reach * 2), floor(reach))
 	end,
 	Fill = function(mark)
-		local r = G.look.r
+		local r = Marks.Zoom()
 		if r < NODES_FROM then return end
 		local map, x, y = Middle()
 		if not map then return end

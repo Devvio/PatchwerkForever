@@ -145,7 +145,7 @@ The list is taken from the world map's own code on Forever (`Blizzard_WorldMap.l
 | The map key; the gamepad | A key binding and gamepad controls for every action, from G6 on; the map key itself by option | G6, G14 |
 | The zone's name; the name of the place under the pointer | The zone's name (built); the smaller place's name under it | G4, G9 |
 | The zone's level range; your coordinates and the pointer's | The same, in the window's edge | G9 |
-| Floors of a dungeon, a city's own map, a cave's | That place's flat map in the globe's window, with the same marks | G12 |
+| Floors of a dungeon, a city's own map, a cave's | That place's flat map in the globe's window, with the same marks. (Forever has maps of its own only for the cities and the battlegrounds: no dungeons, caves or floors) | G12 |
 | Which marks show (the tracking menu) | A Show menu with the same choices, plus ours | G11 |
 | The quest log at its side | Thread (Tracker)'s list beside the globe | G8 |
 
@@ -161,23 +161,23 @@ The list is taken from the world map's own code on Forever (`Blizzard_WorldMap.l
 | Party and raid members; your corpse | The same | G9 |
 | Unexplored land left blank | The parchment blank where you have not been | G10 |
 | Rare creatures, treasures, events | The same marks | G11 |
-| The rest of the game's list (battlefield flags, vehicles, scenarios, dig sites, world quests, invasions and so on) | Each checked on Forever: drawn if the game ever shows it here, struck off if it never does | G14 |
+| The rest of the game's list (battlefield flags, vehicles, scenarios, dig sites, world quests, invasions and so on) | Each gone through in the audit below: drawn, or struck off with the reason | G14 |
 
 **Marks our addons draw on the map**
 
 | Addon | On the map today | Milestone |
 |---|---|---|
 | Thread (Routes) | The trail in its own colours (walking, tunnel, bridge, lift, drop, flight); boats and zeppelins; My Route's numbered stops with their menu; the focus button; Add Map Pin To My Route; recorded herb and ore nodes | G7 |
-| Stitch (MelloUI Route) | The numbered stops of a trip (guide steps ahead, a quest run) | G7 |
+| Stitch (MelloUI Route) | The numbered stops of a trip (guide steps ahead, a quest run) | Struck off 2026-11-21: nothing new is built on MelloUI |
 | Thread (Tracker) | Its list and My Route's editor, opened beside the map | G8 |
 | Stitch (Dungeon Journal) | Its quest list, led by Routes and listed by Tracker | G8 |
 | Immersive Plainsrunning | Counts the map as an open window (the interface comes back) | G6 |
 
-**Other addons' pins** (HandyNotes, TomTom and the like): shown through the shared pin library they register with (HereBeDragons), G13.
+**Other addons' pins** (quest helpers, guides, rare finders): shown through the shared pin library they register with (HereBeDragons), G13. An addon that draws on the game's map by a provider of its own (as HandyNotes does) is not seen.
 
 ### The milestones from here
 
-Each one is built, checked offline (`tools/lua_globe.py`), then tried in the game, as before. **Keys and gamepad come with each milestone:** nothing new is mouse-only. Each milestone is a version: G5 is 0.1, G6 is 0.2, and so on up to G13 at 0.9; G14 is 1.0.
+Each one is built, checked offline (`tools/lua_globe.py`), then tried in the game, as before. **Keys and gamepad come with each milestone:** nothing new is mouse-only. Each milestone is a version: G5 is 0.1, G6 is 0.2, and so on up to G13 at 0.9; G14 is 1.0. (G10 to G14 were built in one run on 2026-11-21 and are 0.10.0 together. 1.0.0 is the same code once it has been played with: the release tool holds the globe back below 1.0.)
 
 **G4, to finish.** The zones and the hand-made art are in the game but not yet looked at. Fix what the look shows (where the ink pieces sit, the paper, the outline, the smaller opening view), then commit.
 
@@ -224,27 +224,27 @@ Each one is built, checked offline (`tools/lua_globe.py`), then tried in the gam
   - the zone's level range by its name; your coordinates and the pointer's
 - **Done when:** the globe reads as a plain map: you can find a town, an entrance, your friends and your body on it.
 
-**G10. Unexplored land** (0.6)
+**G10. Unexplored land** (0.6; built 2026-11-21 in 0.10.0, not yet tried in the game: `Explore.lua`, with `Covers.lua` and `Art/Covers/` written by `tools/globe_explore.py`. The game says what is discovered by picture: `C_MapExplorationInfo.GetExploredMapTextures` lists the pieces of a zone's map you have, each by where it lies on that map. The tool works out which of our 33-yard terrain chunks each piece of each zone's map stands for (by the piece's areas, then its rectangle on the map, then the nearest piece) and makes a soft patch of paper of that shape: 44 zones, one file each, 2.3 MB. The globe lays the patches of the pieces you have not found over its own land, on a layer of their own, so nothing is masked or cut. A piece you find fades away over 1.6 seconds; a zone with nothing found is one patch while zoomed out. A zone whose picture on this client is not the one the patches were made from (`C_Map.GetMapArtID`) is left uncovered rather than covered wrongly. To look at in the game: that the paper matches the map's paper, that on a real character the right land is clear, and the edge between a found piece and one not found.)
 - **Build:** land you have not discovered left as blank paper, filling in as you explore, with an option to show everything.
 - **Done when:** a new character's globe is mostly blank paper with coasts, and walking into a new place fills it in without reopening the window.
 - This is the least certain milestone (two unknowns below: how the game tells us, and how to blank part of a bent picture).
 
-**G11. Rares, treasures and the Show menu** (0.7)
+**G11. Rares, treasures and the Show menu** (0.7; built 2026-11-21 in 0.10.0, not yet tried in the game: `Rares.lua` draws the game's vignettes (`C_VignetteInfo`: what the minimap marks near you) with the game's icon by name, grey when dead. `Show.lua` is the Show menu: checkboxes over the same settings as the options page, behind a button and a key (Show Menu). To look at in the game: whether Forever has any vignettes at all.)
 - **Build:** the game's marks for rare creatures, treasures and events; a Show menu choosing which kinds of mark are drawn (the game's choices, plus the trail, My Route, nodes and other addons' pins).
 - **Done when:** every kind of mark can be turned off and on, and the choice is remembered.
 
-**G12. Indoors** (0.8)
+**G12. Indoors** (0.8; built 2026-11-21 in 0.10.0, not yet tried in the game: `Flat.lua`. Forever has no maps of dungeons or caves and no floors. The only maps of their own that the globe did not already draw are the six cities (1453 to 1458) and the three battlegrounds (1459 to 1461), so there is no floor list and an entrance's mark opens nothing. A city's or battleground's map is the game's pictures by number (`C_Map.GetMapArtLayerTextures`), flat in the globe's picture. The marks layer lays its marks through the map's rectangle in the world, so every kind of mark shows on a city's map. A battleground is no part of the globe's world: there you, your group, its places, flags and vehicles are put on the map itself (`ns.FlatPoints`). It opens where you are in one (the City Maps setting), from Go To, or by a click on a city that fills the picture; a right-click, Step Out, zooming out or the Globe button goes back to the globe at that place. With keys, Next Mark moves the cross from mark to mark. To look at in the game: a city's map against the marks on it, and a battleground.)
 - **Build:**
   - a flat view in the same window, for places with a map of their own (a dungeon's floors, a cave, a city's map): the game's picture by number, the same marks layer, a floor list
   - going in switches to it when you are inside one; stepping out returns to the globe at the entrance
   - an entrance's mark on the globe opens its flat map
 - **Done when:** you never need the game's map to see where you are indoors.
 
-**G13. Other addons' pins** (0.9)
+**G13. Other addons' pins** (0.9; built 2026-11-21 in 0.10.0, not yet tried in the game: `Pins.lua`. Of the addons installed here, RareScanner and RXPGuides bring HereBeDragons-Pins-2.0 through LibStub, and Questie keeps a copy to itself (`QuestieLoader:ImportModule('HBDPins')`). Both are followed with `hooksecurefunc` on the library's four world-map calls; nothing inside it is touched, and a newer copy that replaces the calls is followed again. A pin is drawn with its own frame's picture, colour and size. Its tooltip is its own OnEnter, moved to the pointer; a click is its own OnClick. To look at in the game: each of those three addons' pins, tooltips and clicks, which were made for the game's map and may not all work off it.)
 - **Build:** pins that addons register through HereBeDragons show on the globe (and on the flat view), with their own tooltips and clicks where the library gives them; a Show menu entry for them.
 - **Done when:** the pin addons you run show the same pins on the globe as on the game's map.
 
-**G14. Parity, the map key and 1.0**
+**G14. Parity, the map key and 1.0** (built 2026-11-21 in 0.10.0, not yet tried in the game, except what is listed as left. The audit is the section below. The map key is `MapKey.lua`: a binding of ours laid over the keys of the game's Toggle World Map (`SetOverrideBindingClick`, outside combat), a World Map button on the globe and a Globe button on the game's map, and `OpenWorldMap` followed so that a map link or "show on map" turns the globe. The options page is in groups. **Struck off:** detail pictures in load-on-demand addons (see the decisions of the run to parity). **Left for after the test:** the base README's list, the CurseForge project, the version 1.0.0 and the release. To look at in the game: the key with Console Port's own bindings, whether closing the game's map from the hook is clean, and where the Globe button sits on the game's map.)
 - **Build:**
   - **the audit:** every entry of the world map's list on Forever checked off against the tables above, drawn or struck off with the reason
   - **the map key:** an option, off by default, that makes the map key open the globe; a button on each takes you to the other; the game's "show on map" and links in chat turn the globe when the option is on
@@ -253,11 +253,52 @@ Each one is built, checked offline (`tools/lua_globe.py`), then tried in the gam
   - the CurseForge project (which you make), and the release
 - **Done when:** you can play a week with the option on and never open the game's map for want of something.
 
+### The audit (G14, 2026-11-21)
+
+Every entry of the world map's own list (`WorldMapMixin:AddStandardDataProviders` and `AddOverlayFrames` in `Blizzard_WorldMap.lua`, the `forever` branch) against the globe. It was done from the game's code and the globe's, not by play: Forever's client carries the code of the game's other versions, so that an entry is in the list does not say Forever's world has anything for it.
+
+**What the map draws**
+
+| The world map's entry | On the globe |
+|---|---|
+| MapExploration | Drawn: blank paper over what is not discovered (G10) |
+| MapHighlight, AreaLabel | Drawn: the zone under the pointer outlined; its name, its levels, the smaller place (G4, G9) |
+| GroupMembers | Drawn (G9) |
+| Quest, QuestOffer | Drawn (G8) |
+| QuestBlob | Another way: a soft ring round the place. The game's area shape is a frame of its own that belongs to the game's map |
+| DeathMap | Drawn: your corpse and the spirit healer (G9) |
+| FlightPoint | Drawn (G7) |
+| WaypointLocation, SuperTrackWaypoint | Drawn: the map pin, tracked or not (G7) |
+| AreaPOI, DungeonEntrance | Drawn (G9) |
+| AreaPOIEvent | Drawn, added with the audit: an event's places are listed with the others (`C_AreaPoiInfo.GetEventsForMap`) |
+| Vignette | Drawn (G11) |
+| Gossip | Drawn, added with the audit: the flag a city guard's directions put on the map (`C_GossipInfo.GetPoiForUiMapID`) |
+| BattlefieldFlag, Vehicle | Drawn, added with the audit, on a battleground's flat map (`C_PvP.GetBattlefieldFlagPosition`, `GetBattlefieldVehicles`) |
+| MapLink | Not needed: a mark on one map that opens another. The globe is one world |
+| SelectableGraveyard | Not drawn: choosing where to rise from a battleground's map. Its graveyards show as places; the choosing is not built |
+| EncounterJournal | Struck off: boss marks on a dungeon's map, and Forever has no dungeon maps |
+| EventOverlay, BonusObjective, Scenario, ContentTracking, Invasion, PetTamer, DigSite, GarrisonPlot, DelveEntrance, Banner, ContributionCollector, QuestSession, DragonridingRace, NeighborhoodMap, FogOfWar, WorldQuest | Struck off: each belongs to a part of the game's other versions (pet battles, archaeology, garrisons, invasions, world quests, delves, housing and so on) that Forever's world does not have, as far as its maps and our play show. Should one ever show on the game's map here, it is a mark to add |
+| PlunderstormCircle, WoWLabsArea, Debug | Struck off: other games' rules, and the game masters' client |
+
+**What sits over the map**
+
+| The world map's frame | On the globe |
+|---|---|
+| The row of places (NavBar) | Go To (G6) |
+| The tracking options button | The Show menu (G11) |
+| The map pin button | Ctrl-click, or Set Or Clear The Map Pin At The Middle by key or gamepad (G7) |
+| The coordinates panel | Coordinates at the lower edge (G9) |
+| The side panel toggle (the quest log) | Thread (Tracker)'s list beside the globe (G8) |
+| The floor list | Struck off: Forever has no floors |
+| The bounty board, the action button, the zone timer, the threat frame, the activity tracker | Struck off: parts of the game's other versions |
+
+**What a click does that the globe does not:** a click on a quest's mark does not open that quest in the game's quest log (it sets what the route follows, as a click in Thread (Tracker) does).
+
 ### Not needed for parity
 
 Left out on purpose; each can be asked for later.
 - Race courses' checkpoints on the globe (Thread (Races) puts nothing on the world map today).
-- Relief you can tilt, a night side, clouds, or anything else a real globe program has and the world map has not.
+- Relief you can tilt, a night side, or anything else a real globe program has and the world map has not. (Cloud shadows, candlelight and the turning Maelstrom came in with 0.10.0, when light and movement were asked for.)
 - Land the game does not have.
 
 ## Decisions taken (2026-11-19)
@@ -284,6 +325,17 @@ Left out on purpose; each can be asked for later.
 10. **First release:** only at parity, as 1.0. Nothing goes out before.
 11. **Keys and gamepad:** with each milestone, not in one pass at the end.
 
+## Decisions taken (2026-11-21, the run to parity)
+
+Taken while building G10 to G14 in one run, at "finish off the remaining work before the next test … everything else up to" setting the CurseForge project up, with "any immersion like visual effects we could apply to the map view".
+
+1. **One version for the run:** 0.10.0. The version 1.0.0, the base README's list, the CurseForge project and the release wait for the test.
+2. **Detail pictures stay in the addon.** They were to go into a load-on-demand addon for each continent, as Routes' map data is. That data is Lua tables, which cost memory once loaded; a picture is read from its file when a piece first shows it, so the pictures of a continent you do not look at are not loaded wherever their files lie. A split would move files and gain nothing. The addon is 14.4 MB, under the 15 MB agreed.
+3. **A Stitch (MelloUI Route) trip's stops are struck off.** Nothing new is built on MelloUI.
+4. **Indoors is the cities and the battlegrounds.** Forever has no other maps of places.
+5. **Light and movement** (asked for as immersion): candlelight that follows the game clock, a shine on the ball, the Maelstrom turning, cloud shadows, the opening, a ring from your place, the map's sounds. Each has a setting and is on as it comes. All are our own pictures (`tools/globe_fx.py`) or the game's sounds by name.
+6. **The Map Key Opens The Globe is off as it comes**, as decided in the interview. Everything else new is on.
+
 ## Unknowns to try first (cheap, before the art)
 
 - **BLP:** a BLP written by our own `blp.py` loads in the game (DXT1 and DXT5).
@@ -302,13 +354,20 @@ None of these has been tried on Forever. The function names are where to look fi
 - **Quests on offer (G8).** What Forever's map shows for them, and from which function.
 - **Others' positions (G9).** `UnitPosition` for party and raid members outdoors, and whether it comes back secret in a fight (secret values exist on Forever: anything read must go through `issecretvalue` first). Built so that a secret or missing place shows no mark; still to be seen in a fight.
 - **G6 to G9 in the game.** All four were built in one run on 2026-11-21 and checked only offline (`tools/lua_globe.py`). Each milestone's note above lists what to look at first.
-- **What is explored (G10).** How the game says a place is discovered (`C_MapExplorationInfo`: by picture, or by area at a position), and whether that can be matched to our terrain chunks' areas.
-- **Blanking land on a bent picture (G10).** Masks probably do not follow bent pictures. Two ways to try: plain paper pieces laid over blocks of unexplored chunks (cheap, blocky edges), or one small see-through picture per place (smooth, several MB).
-- **Rares and treasures (G11).** Whether Forever shows any on its map, and `C_VignetteInfo` for their places.
-- **Flat maps by number (G12).** `C_Map.GetMapArtLayerTextures` for a dungeon's or city's pictures, drawn in our window.
-- **The pin library (G13).** Which pin addons exist on Forever and whether they use HereBeDragons; whether its add and remove calls can be followed without touching its insides; what of a pin (icon, tooltip, click) can be shown in a second place.
-- **The map key (G14).** Giving the key to the globe without the game's "action blocked" errors (a binding of our own set over the key, outside a fight), and following the game's own "show on map" calls.
-- **Memory (G14).** With 15 MB of pictures and detail loaded on demand.
+- **G10 to G14 in the game.** The same: built in one run on 2026-11-21 (0.10.0), checked only offline. What was found out for each unknown below is in its milestone's note; whether it holds in the game is still to be seen.
+
+## Added after the first look (2026-11-21, 0.5.1)
+
+- **The Deeprun Tram.** Thread (Routes) knew only the boats and zeppelins of the game's taxi table. The tram runs through a map of its own (369), entered at a door in each city, and each door is one of the game's area triggers: 2173 in Stormwind, 2175 in Ironforge, their places read from the game's `AreaTrigger` table by `tools/crossings.py` (`BY_HAND`; which trigger leads where is told by hand, since only the server knows). It is a crossing of kind `tram` in `Crossings.lua`, for the Alliance, so the planner takes it ("Take the tram from Stormwind to Ironforge") and the globe marks both stations with a dashed line between. Guessed: a minute's ride, half a minute's wait, and the walk through each city from the nearest ground the planner knows. **Others like it** go in the same list once we know which they are: the game's files do not say where a door leads, so each needs naming (and, for a lift, marking in the game with `tools/marks.py`).
+- **Lifts.** Asked for as "others like the tram". A lift's platform is moved by the server, so no file says a lift runs somewhere; but the Great Lift and the lift of Freewind Post ride in a tower that is a building model (file 112647, placed twice on Kalimdor), with a deck at the top and one at the bottom. `tools/lifts.py` finds each placing of a model named in its `TOWERS`, takes the two largest flat floors as the decks and the walkable ground nearest each as the ends, and writes the lines into a part of its own in `tools/hand_links.txt` (`python lifts.py write`, then `links.py 1`, `pack.py 1`). The 30 seconds for wait and ride are a guess. With them Freewind Post is reached at all (it was not), and Crossroads to Gadgetzan is 20.0 minutes, was 24.5. For showing, `pack.py crossings` lists every lift of `hand_links.txt` in `Crossings.lua` (`ns.Lifts`: these two by name, Thunder Bluff's four with none), Routes offers them through the base's new `Trails:Lifts()`, and the globe marks them (`mark_lift`) from the zoom flight points show at. The Undercity's lifts are still unknown: they lead to floors inside the city, which the planner does not have.
+- **The Maelstrom.** An ink whirlpool at the middle of the Great Sea (latitude 0.05, longitude 0, 0.40 across), one more ink piece of the world (`Art/decor_maelstrom.blp`). `tools/globe_art.py` draws it itself (`maelstrom_drawing`); a hand-made `art/PatchwerkForever_Thread_Globe/globe/maelstrom.png` is used in its place when there is one (the prompt is in `art/PROMPTS.md`). Its name is under it, and The Great Sea's name moved south.
+- **What is explored (G10).** How the game says a place is discovered (`C_MapExplorationInfo`: by picture, or by area at a position), and whether that can be matched to our terrain chunks' areas. *Found:* by picture, and each picture's areas and rectangle are in the game's tables, so it can be matched.
+- **Blanking land on a bent picture (G10).** Masks probably do not follow bent pictures. Two ways to try: plain paper pieces laid over blocks of unexplored chunks (cheap, blocky edges), or one small see-through picture per place (smooth, several MB). *Taken:* the second, 2.3 MB.
+- **Rares and treasures (G11).** Whether Forever shows any on its map, and `C_VignetteInfo` for their places. *Found:* the functions are there; whether the world has any is for the game to show.
+- **Flat maps by number (G12).** `C_Map.GetMapArtLayerTextures` for a dungeon's or city's pictures, drawn in our window. *Found:* cities and battlegrounds only.
+- **The pin library (G13).** Which pin addons exist on Forever and whether they use HereBeDragons; whether its add and remove calls can be followed without touching its insides; what of a pin (icon, tooltip, click) can be shown in a second place. *Found:* RareScanner, RXPGuides and Questie (a copy of its own) use it; its calls can be followed; a pin's picture, tooltip and click are its frame's own.
+- **The map key (G14).** Giving the key to the globe without the game's "action blocked" errors (a binding of our own set over the key, outside a fight), and following the game's own "show on map" calls. *Built that way; untried.*
+- **Memory (G14).** With 15 MB of pictures and detail loaded on demand. *Decided:* no split (decision 2 of the run to parity); the game's memory figure for the addon is still to be read.
 
 ## Rules this keeps
 

@@ -4,7 +4,9 @@
 
 Works with Patchwerk Forever 2.6.0 or later, as before; what is new here needs 2.8.0. The three map data addons are 1.3.0 too (the data itself is unchanged).
 
-- For addon authors: the trail, the boats and zeppelins and the recorded herb and ore nodes are offered through the base's `PatchwerkForever.Trails`, so a tool with a map of its own can draw them as Routes draws them on the world map. Nothing changes on the world map or the minimap.
+- **The Deeprun Tram.** For the Alliance, routes between Stormwind and Ironforge take the tram where that is quicker: "Take the tram from Stormwind to Ironforge". Its two doors are read from the game's files; the ride (about a minute), the wait (about half a minute) and the walk through each city are estimates. Use Boats And Zeppelins turns it off with them.
+- **The Great Lift and the lift of Freewind Post.** Routes between the Barrens and Thousand Needles go down the Great Lift instead of round through Dustwallow Marsh (Crossroads to Gadgetzan: about 20 minutes, was 24), and Freewind Post, which no route reached, is reached by its lift. Where each lift stands is read from the game's files; the half minute allowed for the wait and the ride is an estimate. This is in the Kalimdor map data.
+- For addon authors: the trail, the boats, zeppelins and tram, the lifts, and the recorded herb and ore nodes are offered through the base's `PatchwerkForever.Trails`, so a tool with a map of its own can draw them as Routes draws them on the world map.
 
 ## 1.2.0
 

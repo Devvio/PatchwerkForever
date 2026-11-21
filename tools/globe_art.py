@@ -194,7 +194,9 @@ ART_IN = os.path.join(HERE, "..", "art", "PatchwerkForever_Thread_Globe", "globe
 # the ink pieces on the open sea, each a picture of its own on the globe (so it stays sharp as you zoom in):
 # (name, latitude, longitude, how far across in radians)
 DECOR = [("compass", 0.62, 0.0, 0.46), ("serpent", -0.30, 2.45, 0.52), ("ship", -0.40, -2.35, 0.43),
-         ("serpent", 0.35, 3.05, 0.46), ("ship", -0.15, 0.55, 0.34)]
+         ("serpent", 0.35, 3.05, 0.46), ("ship", -0.15, 0.55, 0.34),
+         # the Maelstrom, in the middle of the Great Sea between Kalimdor and the Eastern Kingdoms
+         ("maelstrom", 0.05, 0.0, 0.40)]
 PAPER = 1.3                   # how strongly the paper's stains and grain show (1: as in its picture)
 PAPER_COLOUR = 0.25           # how much of the paper's own colour shows in its stains (0: only light and dark)
 PAPER_FINE = 8                # the paper laid again this many times smaller on the detail pictures, for its grain
@@ -425,15 +427,57 @@ def detail_paper(tile, shape, tx0, ty0, place):
     return out
 
 
+def maelstrom_drawing(size=960):
+    """The Maelstrom in ink, drawn here until there is a hand-made maelstrom.png: a whirlpool of spiral arms
+    winding in to a dark eye, heavy strokes with finer broken ones between them. Dark ink on white."""
+    y, x = np.mgrid[0:size, 0:size].astype(np.float32)
+    u, v = (x - size / 2) / (size / 2), (size / 2 - y) / (size / 2)
+    th = np.arctan2(v, u)
+    r = np.hypot(u, v) * (1 + 0.035 * np.sin(3 * th + 0.7) + 0.02 * np.sin(7 * th + 2.1)) + 1e-6     # (not quite round, as drawn by hand)
+    twist = 2.3                                           # how tightly the arms wind
+    phase = th + twist * np.log(r)                        # the same all along an arm
+    soft = 1.6 / (size / 2)                               # an edge's softness: about a pixel and a half
+
+    def strokes(n, offset, width):
+        """Ink for n arms, each `width` across (in parts of the half picture, by the distance from the middle)."""
+        at = (phase * n / (2 * np.pi) + offset) % 1.0
+        off = np.minimum(at, 1 - at) * (2 * np.pi / n) * r / np.sqrt(1 + twist * twist)
+        return np.clip((width / 2 - off) / soft, 0, 1)
+
+    swell = np.clip(np.sin(np.pi * np.clip((r - 0.07) / 0.88, 0, 1)), 0, 1) ** 0.75      # strokes thin toward the eye and the rim
+    along = np.log(r)                                                         # how far along an arm
+    ink = strokes(5, 0.0, 0.070 * swell * (0.75 + 0.25 * np.sin(5 * along + 2 * th)))
+    ink = np.maximum(ink, strokes(5, 0.5, 0.026 * swell) * (np.sin(11 * along + 1.0) > -0.55))
+    ink = np.maximum(ink, strokes(10, 0.25, 0.012 * swell) * (np.sin(23 * along + 3 * th) > 0.15) * (r > 0.22))
+    # foam flung off the rim: short strokes that carry the arms on, further and further apart
+    ink = np.maximum(ink, strokes(15, 0.1, 0.012) * (np.sin(40 * along + 5 * th) > 0.55) * (r > 0.80) * (r < 0.99))
+    # the eye: dark, with a pale ring round it
+    ink = np.where(r < 0.085, 0.0, ink)
+    ink = np.maximum(ink, np.clip((0.050 - r) / soft, 0, 1))
+    ink = np.maximum(ink, np.clip((0.006 - np.abs(r - 0.078)) / soft, 0, 1))
+    ink = ink * np.clip((0.995 - r) / 0.02, 0, 1)
+    colour = np.array([52, 36, 22], np.float32)
+    rgb = 255 - ink[..., None] * (255 - colour)
+    return Image.fromarray(rgb.astype(np.uint8), "RGB")
+
+
+# ink pieces drawn here where no hand-made picture of that name is in art/
+DRAWN = {"maelstrom": maelstrom_drawing}
+
+
 def decor_pictures(art_dir, written):
     """The hand-made ink pieces as pictures of their own: the ink's colour, showing as much as the drawing is
     dark there (so the white is clear). Returns the names made."""
     made = set()
     for name in sorted({d[0] for d in DECOR}):
         path = os.path.join(ART_IN, name + ".png")
-        if not os.path.exists(path):
+        if os.path.exists(path):
+            drawing = Image.open(path).convert("RGB")
+        elif name in DRAWN:
+            drawing = DRAWN[name]()
+        else:
             continue
-        a = np.asarray(Image.open(path).convert("RGB").resize((480, 480), Image.LANCZOS), dtype=np.float32)
+        a = np.asarray(drawing.resize((480, 480), Image.LANCZOS), dtype=np.float32)
         light = a.mean(axis=2)
         darkest = light < np.percentile(light, 5)
         ink, floor = a[darkest].mean(axis=0), float(light[darkest].mean())

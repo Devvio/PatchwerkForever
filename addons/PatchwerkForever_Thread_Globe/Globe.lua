@@ -91,12 +91,12 @@ local GLIDE = 1.1                     -- seconds Where I Am takes to turn the gl
 -- a picture is split this deep at most (each step halves it)
 local CURVE = 1.5
 local EDGE_PIECE = 10                 -- a piece crossing the globe's edge this small (points) is dropped: the sea disc shows there
-local DEEPEST = { art = 4, ours = 8, detail = 5, decor = 4, ground = 2 }
+local DEEPEST = { art = 4, ours = 8, detail = 5, decor = 4, ground = 2, cover = 4, sky = 5 }
 -- a ground tile that fades out toward a corner is cut smaller, since a piece can fade only straight
 -- across or straight down: as deep as this at most, and no smaller than this on the screen (points)
 local FADE_DEEPEST, FADE_PIECE = 4, 48
 local NEAR_MOST = 10                  -- the ground is picked by place while the picture shows fewer tiles than this from its middle
-local SUBLEVEL = { art = 0, ours = 1, detail = 2, decor = 3, ground = 4 }    -- which is drawn over which
+local SUBLEVEL = { art = 0, ours = 1, detail = 2, decor = 3, ground = 4, cover = 5, sky = 6 }    -- which is drawn over which
 -- zooming in: our detail pictures (8 yards a pixel) fade in over the world picture (58 yards a pixel) as
 -- its pixels would start to show, then the ground (the minimap's pictures, 2 yards a pixel) over the
 -- detail as its pixels would (by the globe's radius in points)
@@ -114,9 +114,11 @@ local NAMES = {
 		font = 'Fonts\\MORPHEUS.TTF', size = 15, colour = { 0.24, 0.17, 0.10 }, plain = true },
 }
 -- the seas' names, where they lie on the globe's own layout (latitude, longitude)
+-- (the Maelstrom is drawn at the middle of the Great Sea, tools/globe_art.py: its name is under it, and
+-- the sea's own name south of that)
 local SEAS_NAMED = {
-	{ 'The Great Sea', 0.08, 0.0 }, { 'The Veiled Sea', 0.15, -2.35 }, { 'The Forbidding Sea', 0.30, 2.25 },
-	{ 'The South Seas', -0.95, -1.2 },
+	{ 'The Great Sea', -0.42, 0.0 }, { 'The Veiled Sea', 0.15, -2.35 }, { 'The Forbidding Sea', 0.30, 2.25 },
+	{ 'The South Seas', -0.95, -1.2 }, { 'The Maelstrom', -0.20, 0.0 },
 }
 -- zones (Zones.lua, made by tools/globe_art.py from the area of each terrain chunk)
 local ZONES = ns.ZONES or {}
@@ -371,8 +373,11 @@ local window, view, canvas, ocean, halo, dot, arrow, statsText, zoneText, ring, 
 -- (elapsed: each frame the window is shown), 'press' (button, x, y, byKey: a click on the picture, in
 -- points from the globe's middle; a function returning true has dealt with it, and the globe does
 -- nothing more), 'key' (what: a key the globe itself has no use for), 'show', 'hide', 'place' (the
--- window was put somewhere: full screen or back).
-local hooks = { paint = {}, frame = {}, press = {}, key = {}, show = {}, hide = {}, place = {} }
+-- window was put somewhere: full screen or back), 'pictures' (r, shade, style: more pictures to lay on
+-- the globe at this drawing, each with G.Draw).
+-- A place with a flat map of its own (a city, a battleground) is shown by Flat.lua in the same picture:
+-- while it is (ns.FlatOn), the globe draws nothing of its own and is not turned or zoomed.
+local hooks = { paint = {}, frame = {}, press = {}, key = {}, show = {}, hide = {}, place = {}, pictures = {} }
 function ns.GlobeOn(what, fn) hooks[what][#hooks[what] + 1] = fn end
 local function Fire(what, ...)
 	for _, fn in ipairs(hooks[what]) do
@@ -645,9 +650,10 @@ local function Show(p, x1, y1, x2, y2, x3, y3, x4, y4, lit, alpha)
 		p.tex = t
 		owned[p] = true
 		local c, pic = p.pic.coords, p.pic
-		t:SetTexture(pic.fdid)
+		if pic.wrap then t:SetTexture(pic.fdid, pic.wrap, pic.wrap) else t:SetTexture(pic.fdid) end
 		local du, dv = c[2] - c[1], c[4] - c[3]
 		t:SetTexCoord(c[1] + du * p.fu0, c[1] + du * p.fu1, c[3] + dv * p.fv0, c[3] + dv * p.fv1)
+		if pic.Moved then pic.Moved(p, t) end      -- (a picture that turns or slides in its place: Effects.lua)
 	end
 	-- each corner moved from where it rests (the picture's corners) to where it is seen
 	t:SetVertexOffset(1, x1 + half, y1 - half)
@@ -814,7 +820,7 @@ end
 local function PaintMe()
 	arrow:Hide()
 	dot:Hide()
-	if not basis then return end
+	if not basis or (ns.FlatOn and ns.FlatOn()) then return end
 	local c, me, wx, wy = MyPlace()
 	if not me then return end
 	local x, y, z = Seen(me, look.r)
@@ -915,6 +921,39 @@ local function Paint()
 	local style = ns.Get('globeStyle') == 'minimap' and 'minimap' or 'parchment'
 	local shade = ns.Get('globeLight')
 	local sea = SEAS[style]
+	if ns.FlatOn and ns.FlatOn() then
+		-- (a flat map is up: nothing of the globe is drawn; the marks are laid on the flat map)
+		for i = #drawnNow, 1, -1 do
+			local p = drawnNow[i]
+			if p.shown then
+				p.tex:Hide()
+				p.shown = false
+			end
+			drawnNow[i] = nil
+		end
+		ocean:Hide()
+		halo:Hide()
+		if ring then ring:Hide() end
+		for _, label in ipairs(labels or {}) do
+			label.fs:Hide()
+			label.shown = false
+		end
+		for i = 1, linesUsed do lineTex[i]:Hide() end
+		linesUsed = 0
+		zoneText:Hide()
+		if lift ~= 0 then
+			lift = 0
+			canvas:SetPoint('CENTER', view, 'CENTER', 0, 0)
+		end
+		xMost, yLow, yHigh = viewW / 2, -viewH / 2, viewH / 2
+		Fire('paint', ns.FlatOn())
+		PaintMe()
+		last.drawn, last.map, last.ms, last.names = 0, 0, debugprofilestop() - started, 0
+		Stats()
+		return
+	end
+	ocean:Show()
+	halo:Show()
 	ocean:SetColorTexture(sea.sea[1], sea.sea[2], sea.sea[3], 1)
 	halo:SetColorTexture(sea.rim[1], sea.rim[2], sea.rim[3], sea.rim[4])
 	ocean:SetSize(2 * r * LIMB, 2 * r * LIMB)
@@ -997,6 +1036,7 @@ local function Paint()
 		end
 	end
 	last.asked = asked
+	Fire('pictures', r, shade, style)
 	for _, p in ipairs(drawnBefore) do
 		if p.frame ~= frame and p.shown then
 			p.tex:Hide()
@@ -1029,6 +1069,7 @@ local function Changed() dirty = true end
 
 -- Turn and zoom the globe, eased, until the point p is in the middle at radius r: the short way round.
 local function GlideTo(p, r)
+	if ns.FlatLeave then ns.FlatLeave() end        -- (a flat map that is up gives way: the globe is being turned)
 	local lat = max(-1.45, min(1.45, asin(max(-1, min(1, p[3])))))
 	local lon = atan2(p[2], p[1])
 	local dlon = (lon - look.lon + math.pi) % (2 * math.pi) - math.pi
@@ -1090,6 +1131,11 @@ local function MouseDown(_, button)
 	local x, y = Pointer()
 	local now = GetTime()
 	local second = false
+	if ns.FlatOn and ns.FlatOn() then
+		-- (a flat map does not turn: a press on it is only ever a click)
+		drag = { x = x, y = y, vlat = 0, vlon = 0, moved = 0, t = now, second = false, flat = true }
+		return
+	end
 	if lastDown and now - lastDown.t < 0.35 and abs(x - lastDown.x) + abs(y - lastDown.y) < 6 then
 		local p = Under(x, y)
 		if p then aim.r, aim.p, aim.x, aim.y = min(RMAX, look.r * 2), p, x, y + lift end
@@ -1120,6 +1166,11 @@ end
 local function MouseWheel(_, delta)
 	glide, coast = nil, nil
 	byKeys = false
+	if ns.FlatOn and ns.FlatOn() then
+		-- (the wheel turned back steps out of a flat map, as a right-click does)
+		if delta < 0 then Fire('press', 'RightButton', 0, 0) end
+		return
+	end
 	local x, y = Pointer()
 	aim.r = max(RMIN, min(RMAX, aim.r * (delta > 0 and 1.3 or 1 / 1.3)))
 	aim.p, aim.x, aim.y = Under(x, y), x, y + lift
@@ -1129,7 +1180,12 @@ end
 local since, tidied = 0, 0
 local function Update(_, elapsed)
 	elapsed = min(elapsed, 0.1)
-	if drag then
+	local flat = ns.FlatOn and ns.FlatOn()
+	if drag and drag.flat then
+		local x, y = Pointer()
+		drag.moved = drag.moved + abs(x - drag.x) + abs(y - drag.y)
+		drag.x, drag.y = x, y
+	elseif drag then
 		local x, y = Pointer()
 		local dx, dy = x - drag.x, y - drag.y
 		local lat0, lon0 = look.lat, look.lon
@@ -1151,6 +1207,11 @@ local function Update(_, elapsed)
 		Changed()
 	end
 	local tx, ty, tz = max(-1, min(1, held.x + pad.x)), max(-1, min(1, held.y + pad.y)), max(-1, min(1, held.z + pad.z))
+	if flat then
+		-- (zooming out with a key or a stick steps out of the flat map)
+		if tz < -0.5 then Fire('press', 'RightButton', 0, 0, true) end
+		tx, ty, tz = 0, 0, 0
+	end
 	if tx ~= 0 or ty ~= 0 then
 		glide, coast = nil, nil
 		Turn(-tx * KEY_TURN * elapsed, -ty * KEY_TURN * elapsed)
@@ -1181,7 +1242,7 @@ local function Update(_, elapsed)
 	if cross:IsShown() ~= byKeys then cross:SetShown(byKeys) end
 	if not drag then
 		local c, zone, area
-		if basis and (byKeys or view:IsMouseOver()) then
+		if basis and not flat and (byKeys or view:IsMouseOver()) then
 			local p
 			if byKeys then p = Under(0, -lift) else p = Under(Pointer()) end
 			if p then c, zone, area = ZoneAt(p) end
@@ -1307,6 +1368,8 @@ local function GoTo(owner)
 				end)
 			end
 		end
+		if ns.FlatMenu then ns.FlatMenu(root) end      -- (the cities' and battlegrounds' own maps: Flat.lua)
+		if ns.MapMenu then ns.MapMenu(root) end        -- (the game's own world map: MapKey.lua)
 	end)
 end
 
@@ -1354,7 +1417,7 @@ function ns.GlobeKey(what, down)
 			aim.r, aim.p = min(RMAX, aim.r * 1.6), nil
 		end
 	elseif what == 'back' then
-		StepOut()
+		if not (ns.FlatOn and ns.FlatOn() and Fire('press', 'RightButton', 0, 0, true)) then StepOut() end
 	elseif what == 'full' then
 		Full()
 	elseif what == 'goto' then
@@ -1424,7 +1487,7 @@ local function Build()
 	fullButton:SetText('Full Screen')
 	fullButton:SetScript('OnClick', function() Full() end)
 	local go = CreateFrame('Button', nil, window, 'UIPanelButtonTemplate')
-	go:SetSize(72, 22)
+	go:SetSize(64, 22)                -- (Route and Show stand beside it: Quests.lua, Show.lua)
 	go:SetPoint('TOPLEFT', window, 'TOPLEFT', 8, -4)
 	go:SetText('Go To')
 	go:SetScript('OnClick', function(self) GoTo(self) end)
@@ -1527,6 +1590,11 @@ end
 
 function ns.CenterOnMe()
 	if not Build() then return end
+	-- (in a city or a battleground, its own map: Flat.lua)
+	if ns.FlatFollow and ns.FlatFollow(true) then
+		Changed()
+		return
+	end
 	local _, me = MyPlace()
 	if not me then
 		ns.Print('Your place is not on the globe here (inside a dungeon, or on a map the globe does not have).')
@@ -1549,20 +1617,34 @@ ns.G = {
 	continents = continents,          -- by the game's map number, once the window is built
 	look = look,                      -- lat, lon, r
 	Seen = Seen,                      -- (p, r): x, y from the globe's middle (points), depth
-	Under = Under,                    -- (x, y): the point of the sphere seen there, or nil
+	Under = function(x, y)            -- (x, y): the point of the sphere seen there, or nil (on a flat map: the place there)
+		if ns.FlatOn and ns.FlatOn() then return ns.FlatUnder(x, y) end
+		return Under(x, y)
+	end,
 	OnGlobe = OnGlobe,                -- (c, column, row): a direction
 	WorldOnGlobe = WorldOnGlobe,      -- (c, world x, world y): { direction }
 	FromGlobe = FromGlobe,            -- (c, p): column, row
 	Pointer = Pointer,                -- the pointer, from the globe's middle
 	Smooth = Smooth, Dot = Dot, Changed = Changed, GlideTo = GlideTo, FitRadius = FitRadius, Menu = Menu,
 	ZoneAt = ZoneAt, ZoneName = ZoneName, MyPlace = MyPlace, PrepareArt = PrepareArt,
+	Outline = Outline,                -- (c, zone): its outlines; the zone then has its middle (mid) and reach
+	pictures = pictures,              -- the globe's own pictures, by layer
+	-- lay one more picture on the globe at this drawing (from a 'pictures' hook): { fdid, layer ('cover',
+	-- 'sky'), coords, At, Fade, wrap, Moved }
+	Draw = function(pic, r, alpha, shade)
+		pic.root = pic.root or Piece(pic, 0, 1, 0, 1, 0)
+		Visit(pic.root, r, alpha, shade)
+	end,
+	Least = function() return RMIN end,   -- the globe's radius with the whole of it in the picture
 	Basis = function() return basis end,
 	Lift = function() return lift end,
 	Edges = function() return xMost, yLow, yHigh end,
 	Frames = function() return window, view, canvas, cross end,
 	ByKeys = function() return byKeys end,
 	Turning = function() return drag ~= nil end,
-	Whole = function() return not glide and look.r <= RMIN * 1.02 end,     -- the whole globe is in view
+	Whole = function()                -- the whole globe is in view
+		return not glide and look.r <= RMIN * 1.02 and not (ns.FlatOn and ns.FlatOn())
+	end,
 	Hover = function() return hover end,  -- the zone pointed at: { c, zone, area }
 	ZoneText = function() return zoneText end,
 	Size = function() return viewW, viewH end,

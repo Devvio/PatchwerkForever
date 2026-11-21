@@ -142,4 +142,10 @@ Everything here is a proposal to pick from and reorder. Sizes are rough: **S** a
   ground, the window and controls, travel and your route, quests, places and people) were built on
   2026-11-21 and checked offline; none of G6 to G9 has been tried in the game yet. For them the base
   gained its Trails service (2.8.0), Thread (Routes) offers its drawing there (1.3.0), and Thread
-  (Tracker) can sit beside another window (1.5.0). Next is G10, unexplored land.
+  (Tracker) can sit beside another window (1.5.0). After a first look at 0.5.0 came the Deeprun Tram and
+  the lifts (in the planner too) and the Maelstrom (0.5.1). G10 to G14 were then built in one run as
+  0.10.0: unexplored land left blank, rares and treasures, the Show menu, other addons' pins, city and
+  battleground maps, the map key by option with a button on each map to the other, and light and
+  movement (candlelight, the Maelstrom turning, cloud shadows). Checked offline; none of it tried in
+  the game yet. Left: the test, then 1.0.0, the base README's list, the CurseForge project and the
+  release.

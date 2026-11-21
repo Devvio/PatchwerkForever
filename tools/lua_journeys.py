@@ -33,12 +33,16 @@ JOURNEYS = [
     ("horde", (0, -20, -900), (1, -950, -3700), "Tarren Mill to Ratchet"),
     ("horde", (1, -7140, -3790), (0, -6630, -2180), "Gadgetzan to Kargath"),
     ("horde", (1, -442, -2598), (1, -7140, -3790), "Crossroads to Gadgetzan (one map)"),
+    ("horde", (1, -2380, -1880), (1, -5450, -2420), "Camp Taurajo to Freewind Post (a flight)"),
+    ("alliance", (1, -2380, -1880), (1, -5450, -2420), "Camp Taurajo to Freewind Post (on foot: the Great Lift, then Freewind Post's)"),
     ("alliance", (1, 8640, 840), (0, -5600, -480), "Rut'theran Village to Kharanos"),
     ("alliance", (0, -9460, 60), (1, -3700, -4400), "Goldshire to Theramore"),
     ("alliance", (1, 6440, 480), (0, -9460, 60), "Auberdine to Goldshire"),
     ("alliance", (1, -4400, 3300), (1, -4500, -780), "Feathermoon to Thalanaar"),
     ("alliance", (0, -850, -520), (1, 2740, -380), "Southshore to Astranaar"),
     ("alliance", (0, -9460, 60), (2991, 1900, 900), "Goldshire to Zephras Isle (no way for the Alliance)"),
+    ("alliance", (0, -9460, 60), (0, -5600, -480), "Goldshire to Kharanos (the tram, or a flight)"),
+    ("horde", (0, -9460, 60), (0, -5600, -480), "Goldshire to Kharanos (no tram for the Horde)"),
 ]
 
 
