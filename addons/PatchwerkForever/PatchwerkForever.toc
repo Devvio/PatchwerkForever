@@ -2,7 +2,7 @@
 ## Title: Patchwerk Forever
 ## Notes: The base of the Patchwerk Forever addons: their shared options pages, saved data and /patchwerk. It does nothing by itself; add the Stitch addons (fixes and additions for other addons) and the Thread addons (our own tools) you want.
 ## Author: Tyrone
-## Version: 2.7.1
+## Version: 2.8.0
 ## Group: PatchwerkForever
 ## IconTexture: Interface\AddOns\PatchwerkForever\Media\icon
 ## AddonCompartmentFunc: PatchwerkForever_OnAddonCompartmentClick
@@ -21,5 +21,6 @@ Following.lua
 Focus.lua
 MyRoute.lua
 Gather.lua
+Trails.lua
 Front.lua
 Settings.lua

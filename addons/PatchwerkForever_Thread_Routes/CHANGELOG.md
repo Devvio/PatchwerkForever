@@ -1,5 +1,11 @@
 # Patchwerk Forever: Thread (Routes)
 
+## 1.3.0
+
+Works with Patchwerk Forever 2.6.0 or later, as before; what is new here needs 2.8.0. The three map data addons are 1.3.0 too (the data itself is unchanged).
+
+- For addon authors: the trail, the boats and zeppelins and the recorded herb and ore nodes are offered through the base's `PatchwerkForever.Trails`, so a tool with a map of its own can draw them as Routes draws them on the world map. Nothing changes on the world map or the minimap.
+
 ## 1.2.0
 
 Polish. Needs Patchwerk Forever 2.6.0 or later, as before; the three map data addons are 1.2.0 too.

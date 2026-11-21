@@ -136,3 +136,10 @@ Everything here is a proposal to pick from and reorder. Sizes are rough: **S** a
   your own. Passes the checks; not yet tried in the game.
 - **2026-11-18: polish pass B to J and an unslop pass, by addon** (`POLISH.md`). Details in each
   addon's CHANGELOG.
+- **2026-11-19 to 2026-11-21: Thread (Globe)**, a new addon (`GLOBE-BLUEPRINT.md`): the world on a parchment
+  globe. Prototype 0.0.1 with its own pictures, zones and hand-made art. Its road to parity with the
+  world map (G5 to G14, 1.0 and its first release at parity) is in the blueprint. G5 to G9 (0.5.0: the
+  ground, the window and controls, travel and your route, quests, places and people) were built on
+  2026-11-21 and checked offline; none of G6 to G9 has been tried in the game yet. For them the base
+  gained its Trails service (2.8.0), Thread (Routes) offers its drawing there (1.3.0), and Thread
+  (Tracker) can sit beside another window (1.5.0). Next is G10, unexplored land.

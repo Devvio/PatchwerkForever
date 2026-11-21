@@ -1,0 +1,47 @@
+<Bindings>
+	<Binding name="PATCHWERKFOREVER_GLOBE_TOGGLE" header="PATCHWERKFOREVER_GLOBE" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('toggle') end
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_GLOBE_ME" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('me') end
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_GLOBE_FULL" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('full') end
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_GLOBE_GOTO" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('goto') end
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_GLOBE_FIT" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('fit') end
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_GLOBE_BACK" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('back') end
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_GLOBE_LEFT" category="BINDING_CATEGORY_PatchwerkForever" runOnUp="true">
+		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('left', keystate == 'down') end
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_GLOBE_RIGHT" category="BINDING_CATEGORY_PatchwerkForever" runOnUp="true">
+		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('right', keystate == 'down') end
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_GLOBE_UP" category="BINDING_CATEGORY_PatchwerkForever" runOnUp="true">
+		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('up', keystate == 'down') end
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_GLOBE_DOWN" category="BINDING_CATEGORY_PatchwerkForever" runOnUp="true">
+		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('down', keystate == 'down') end
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_GLOBE_IN" category="BINDING_CATEGORY_PatchwerkForever" runOnUp="true">
+		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('in', keystate == 'down') end
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_GLOBE_OUT" category="BINDING_CATEGORY_PatchwerkForever" runOnUp="true">
+		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('out', keystate == 'down') end
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_GLOBE_PIN" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('pin') end
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_GLOBE_NEXT" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('next') end
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_GLOBE_ROUTE" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('route') end
+	</Binding>
+</Bindings>

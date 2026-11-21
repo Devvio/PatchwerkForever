@@ -145,9 +145,12 @@ PROJECTS = {
         "more": [],
         "requires": ["PatchwerkForever"],
         "stale": PRIVATE + ("wayfinder", "pathfinder", "wayfarer"),
-        "needs": ("README.md", "CHANGELOG.md", "LICENSE", "Media/icon.tga", "Link.lua"),
-        "summary": "The world of WoW Forever on a globe you can spin and zoom, drawn from the game's own minimap "
-                   "pictures. A prototype. Needs Patchwerk Forever.",
+        "needs": ("README.md", "CHANGELOG.md", "LICENSE", "Media/icon.tga", "Link.lua", "Bindings.xml"),
+        "summary": "The world of WoW Forever on a parchment globe you can spin and zoom, from the whole world down to "
+                   "the ground. Needs Patchwerk Forever.",
+        # (held back until it can stand in for the world map, GLOBE-BLUEPRINT.md: its first release is 1.0. Until
+        # then the base's README does not name it, and it is not uploaded.)
+        "held": True,
     },
     "plains": {
         "main": "PatchwerkForever_Thread_Plainsrunning",
@@ -306,7 +309,7 @@ def family_problems():
     problems = []
     for key in sorted(PROJECTS):
         main = PROJECTS[key]["main"]
-        if main == base:
+        if main == base or PROJECTS[key].get("held"):
             continue
         title = toc(main)[0].get("Title", main)
         name = title[len(prefix):] if title.startswith(prefix) else title

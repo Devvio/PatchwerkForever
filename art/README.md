@@ -7,6 +7,7 @@ The addons' icons are drawn by `tools/art.py`. A PNG put here is used in place o
 | `art/<addon folder>/icon.png` | the addon's icon in the game's addon list (`addons/<addon folder>/Media/icon.tga`, 64 x 64) |
 | `art/<addon folder>/logo.png` | the CurseForge project's picture (`release/<addon folder>/logo.png`, 512 x 512). Without one, the icon is used. |
 | `art/<addon folder>/<name>.png` | any other picture for that addon: `addons/<addon folder>/Media/<name>.tga` |
+| `art/PatchwerkForever_Thread_Globe/globe/*` | the hand-made pieces of the globe's pictures (paper, compass rose, serpent, ship, ring and stand: `art/PROMPTS.md`). They do not go into the addon as they are: `python globe_art.py world` makes the globe's pictures from them. |
 | `art/<addon folder>/listing/*` | pictures for the CurseForge listing (screenshots, a banner): copied as they are to `release/<addon folder>/listing/` by `python release.py`. They do not go into the addon. |
 
 The addon folders are `PatchwerkForever`, `PatchwerkForever_Stitch_ConsolePort`, `PatchwerkForever_Stitch_MelloUI`, `PatchwerkForever_Stitch_MelloUIRoute`, `PatchwerkForever_Stitch_DungeonJournal`, `PatchwerkForever_Thread_Routes`, `PatchwerkForever_Thread_Sparkle`, `PatchwerkForever_Thread_Tracker`, `PatchwerkForever_Thread_Races` and `PatchwerkForever_Thread_Plainsrunning`.

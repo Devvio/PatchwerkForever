@@ -98,41 +98,41 @@ Hand-painted stylised fantasy game icon. A ragged square patch of warm tan parch
 
 Not icons: the pieces the globe's world picture is made of, laid over the land and sea that `tools/globe_art.py` draws from the game's terrain. The look is the **world map on parchment**, not the icons' look: an old hand-drawn map, warm parchment, sepia and dark-brown ink. Until a piece is there, the tool draws a plain stand-in.
 
-Save each as `art/PatchwerkForever_Thread_Globe/<name>.png`, then run `python globe_art.py world` in `tools/`.
+Save each as `art/PatchwerkForever_Thread_Globe/globe/<name>.png`, then run `python globe_art.py world` in `tools/`. They go in the `globe` folder, not beside the icon: a PNG beside the icon is made into a picture in the addon as it is, and these are only what the tool works from.
 
 ## How each is used
 
-- **Ink pieces** (the compass rose, the serpent, the ship) are laid on the sea by **multiplying**: white disappears, the ink stays. So they must be dark ink on **pure white**, with no paper colour, shading or vignette of their own.
-- **The paper** is laid over the whole world as its grain and stains. It must **tile**: its left edge must continue into its right and its top into its bottom.
-- **The ring and stand** sit round the ball in the window, on **flat magenta (#FF00FF)**, which the tool cuts away.
+- **Ink pieces** (the compass rose, the serpent, the ship) become pictures of their own on the open sea: the darker the drawing, the more ink shows, and **white is clear**. So they must be dark ink on **pure white**, with no paper colour, shading or vignette of their own.
+- **The paper** is laid over the whole world as its grain and stains: mostly its light and dark, with a little of its colour. It should **tile**: its left edge continuing into its right and its top into its bottom (the tool blends the edges to hide what join is left).
+- **The ring and stand** sit round the ball in the window, on **flat magenta (#FF00FF)**, which the tool cuts away. The tool finds the ring's hole and makes it a true circle.
 
 ## The prompts
 
-### Paper: `art/PatchwerkForever_Thread_Globe/paper.png`
+### Paper: `art/PatchwerkForever_Thread_Globe/globe/paper.png`
 
 ```text
 Seamless tileable texture of old parchment paper, seen flat from straight above, filling the whole frame. Warm cream and pale tan, with soft uneven blotches, faint stains, fine fibres and grain, very subtle darker mottling. Even lighting, no shadows, no vignette, no edges, no folds, no creases, no writing, no drawings. The left edge continues seamlessly into the right edge and the top into the bottom. Square 1:1, 2048 x 2048 if possible.
 ```
 
-### Compass rose: `art/PatchwerkForever_Thread_Globe/compass.png`
+### Compass rose: `art/PatchwerkForever_Thread_Globe/globe/compass.png`
 
 ```text
 An ornate compass rose drawn in dark brown ink, in the style of an old hand-drawn fantasy world map: a sixteen-point star with long thin points, fine hatched shading on one side of each point, a thin double ring round it with small tick marks, and a fleur-de-lis on the north point. Pen-and-ink line art only, on a pure white background. No paper texture, no colour, no letters, no shadow, no border. Centred, filling most of a square 1:1 frame.
 ```
 
-### Sea serpent: `art/PatchwerkForever_Thread_Globe/serpent.png`
+### Sea serpent: `art/PatchwerkForever_Thread_Globe/globe/serpent.png`
 
 ```text
 A sea serpent rising out of waves, drawn in dark brown ink in the style of the sea monsters on old hand-drawn maps: three coils of its long scaled body arching above stylised curling waves, a finned head with an open toothy mouth, fine hatching for shading. Pen-and-ink line art only, on a pure white background. No paper texture, no colour, no letters, no shadow, no border. Seen from the side, centred, square 1:1.
 ```
 
-### Ship: `art/PatchwerkForever_Thread_Globe/ship.png`
+### Ship: `art/PatchwerkForever_Thread_Globe/globe/ship.png`
 
 ```text
 A small three-masted sailing ship on stylised curling waves, drawn in dark brown ink in the style of the ships on old hand-drawn maps: full billowing sails, a pennant on the main mast, fine hatching for shading. Pen-and-ink line art only, on a pure white background. No paper texture, no colour, no letters, no shadow, no border. Seen from the side, centred, square 1:1.
 ```
 
-### Brass ring and stand: `art/PatchwerkForever_Thread_Globe/ring.png`
+### Brass ring and stand: `art/PatchwerkForever_Thread_Globe/globe/ring.png`
 
 ```text
 The brass meridian ring and wooden stand of an antique desk globe, but with no globe in it: a thick polished brass ring standing upright, engraved with fine degree markings, held at its top and bottom by small brass pins, on a carved dark wooden stand with a round base below it. Seen straight from the front. The inside of the ring is completely empty and filled with flat magenta (#FF00FF), and so is the whole background. The ring is a perfect circle centred left to right, its centre a little above the middle of the picture; its inner edge is about 70 percent of the picture's width across. Warm lamplight from the upper left, hand-painted fantasy game art. Square 1:1, 2048 x 2048 if possible. No text, no shadow on the background.

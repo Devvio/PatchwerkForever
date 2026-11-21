@@ -3,6 +3,8 @@ game's terrain (GLOBE-BLUEPRINT.md, milestone G2: the tools and one test picture
 
     python globe_art.py world       the whole world (G3): one picture, 2048 x 1024, longitude across and latitude
                                     down, written as 8 pieces of 512 (Art/world_<row>_<column>.blp) with Art.lua
+    python globe_art.py zones       the zones (G4): Zones.lua (each zone's outline, and which zone each 33-yard chunk
+                                    is in, for pointing at one) and Art/line.blp, the line an outline is drawn with
     python globe_art.py test        a preview only: 8 x 8 terrain tiles of Kalimdor round the Crossroads and the
                                     coast at Ratchet, 512 x 512 (about 8 yards a pixel), world/globe_test_kalimdor.png
 
@@ -17,7 +19,10 @@ What it draws, in this order:
     sea and lakes          a pale grey-green, darker near the shore, with three ripple lines along the coast
     coastline              in ink
     zone borders           thin, in a lighter ink
-    paper                  a soft grain over everything
+    paper                  the hand-made paper's stains and grain (a soft grain of our own while there is none)
+The hand-made pieces (art/PROMPTS.md) are read from art/PatchwerkForever_Thread_Globe/globe/: paper.png is laid
+over everything; compass.png, serpent.png and ship.png become pictures of their own on the open sea
+(Art/decor_<name>.blp); ring.png, cut from its magenta, becomes the ring and stand round the ball (Art/ring.blp).
 Words are never drawn: the addon writes the names in the game's own font.
 
 What it writes:
@@ -184,10 +189,16 @@ TILE = 1600 / 3
 RW = 19000                    # yards of the world to a radian of the globe (Globe.lua takes it from Art.lua)
 PLACE = {1: (0.05, -1.05), 0: (0.10, 1.05), 2991: (-0.75, 0.0)}     # each continent's middle: latitude, longitude
 WORLD_W, WORLD_H, PIECE = 2048, 1024, 512
-ART_IN = os.path.join(HERE, "..", "art", "PatchwerkForever_Thread_Globe")
-# the hand-made ink pieces on the open sea: (file, latitude, longitude, size in pixels)
-DECOR = [("compass.png", 0.62, 0.0, 150), ("serpent.png", -0.30, 2.45, 170), ("ship.png", -0.40, -2.35, 140),
-         ("serpent.png", 0.35, 3.05, 150), ("ship.png", -0.15, 0.55, 110)]
+# the hand-made pieces (art/PROMPTS.md): in a folder of their own, which the build does not make into pictures
+ART_IN = os.path.join(HERE, "..", "art", "PatchwerkForever_Thread_Globe", "globe")
+# the ink pieces on the open sea, each a picture of its own on the globe (so it stays sharp as you zoom in):
+# (name, latitude, longitude, how far across in radians)
+DECOR = [("compass", 0.62, 0.0, 0.46), ("serpent", -0.30, 2.45, 0.52), ("ship", -0.40, -2.35, 0.43),
+         ("serpent", 0.35, 3.05, 0.46), ("ship", -0.15, 0.55, 0.34)]
+PAPER = 1.3                   # how strongly the paper's stains and grain show (1: as in its picture)
+PAPER_COLOUR = 0.25           # how much of the paper's own colour shows in its stains (0: only light and dark)
+PAPER_FINE = 8                # the paper laid again this many times smaller on the detail pictures, for its grain
+RING_SIDE = 1024              # the ring and stand's picture, in pixels
 
 
 def continent_base(store, map_id, parents):
@@ -220,6 +231,31 @@ def continent_base(store, map_id, parents):
     return {"water": water, "height": height, "have": have, "zone": zone}
 
 
+def continent_areas(store, map_id):
+    """Each 33-yard chunk's own area (the smaller place it is in: a town, a camp, a pass), before it is rolled
+    up to its zone: 1024 x 1024. Kept in world/globe_areas_<id>.npz."""
+    path = os.path.join(WORLD, "globe_areas_%d.npz" % map_id)
+    if os.path.exists(path):
+        return np.load(path)["area"]
+    world = load(os.path.join(WORLD, "map_%d.bin" % map_id))
+    area = np.zeros((1024, 1024), np.uint32)
+    for (tx, ty), grid in chunk_areas(store, map_files(store)[map_id], list(world["tiles"])).items():
+        area[ty * 16:(ty + 1) * 16, tx * 16:(tx + 1) * 16] = grid
+    np.savez_compressed(path, area=area)
+    return area
+
+
+def runs_of(row):
+    """A row as runs: 'count,value,count,value,...', the last run left out when it is of 0."""
+    change = np.flatnonzero(np.diff(row)) + 1
+    starts = np.concatenate(([0], change))
+    ends = np.concatenate((change, [len(row)]))
+    runs = [(int(e - s), int(row[s])) for s, e in zip(starts, ends)]
+    if runs[-1][1] == 0:
+        runs.pop()
+    return ",".join("%d,%d" % r for r in runs)
+
+
 def main_land(have, least=12):
     """have (chunks) with clusters of fewer than `least` terrain tiles left out (stray islands far off, such as a
     test island in a continent's corner)."""
@@ -242,6 +278,74 @@ def main_land(have, least=12):
             for y, x in group:
                 keep[y, x] = True
     return have & np.kron(keep, np.ones((16, 16), dtype=bool))
+
+
+STEP = ((1, 0), (0, 1), (-1, 0), (0, -1))     # east, south, west, north (rows count downward)
+
+
+def rings_of(mask):
+    """The outlines of a mask: closed rings of corner points (x, y), going round with the mask on the right
+    (clockwise as seen), so a ring round land has a positive area and one round a hole in it a negative one.
+    Pixels touching only at a corner are kept apart."""
+    m = np.pad(mask, 1)
+    inside = m[1:-1, 1:-1]
+    ways = {}
+    for other, dx, dy, d in ((m[:-2, 1:-1], 0, 0, 0), (m[1:-1, 2:], 1, 0, 1), (m[2:, 1:-1], 1, 1, 2), (m[1:-1, :-2], 0, 1, 3)):
+        ys, xs = np.nonzero(inside & ~other)             # (an edge of the mask: it starts at this corner, going d)
+        for y, x in zip(ys.tolist(), xs.tolist()):
+            ways.setdefault((x + dx, y + dy), []).append(d)
+    rings = []
+    while ways:
+        start = at = next(iter(ways))
+        ring, d = [], None
+        while True:
+            here = ways[at]
+            go = (d + 1) % 4 if d is not None and (d + 1) % 4 in here else here[0]     # (a right turn where it can)
+            here.remove(go)
+            if not here:
+                del ways[at]
+            if go != d:
+                ring.append(at)
+            d = go
+            at = (at[0] + STEP[go][0], at[1] + STEP[go][1])
+            if at == start:
+                break
+        rings.append(ring)
+    return rings
+
+
+def area_of(ring):
+    p = np.asarray(ring, dtype=np.float64)
+    q = np.roll(p, -1, axis=0)
+    return float((p[:, 0] * q[:, 1] - q[:, 0] * p[:, 1]).sum()) / 2
+
+
+def without_slivers(land, hgt, width, length, what=""):
+    """land without its slivers: pieces of land on their own that are long (over `length` pixels), thin (under
+    `width` on average) and dead flat at a height of nought. The game's terrain has one: a rim of flat dry ground
+    along the edges of three ocean tiles off Azshara, which would be painted as a corner of land out at sea."""
+    from PIL import ImageDraw
+    out = land.copy()
+    for ring in rings_of(land):
+        a = area_of(ring)
+        p = np.asarray(ring)
+        half_round = float(np.abs(np.roll(p, -1, axis=0) - p).sum()) / 2
+        if a > 0 and half_round > length and a / half_round < width:
+            x0, y0, x1, y1 = p[:, 0].min(), p[:, 1].min(), p[:, 0].max(), p[:, 1].max()
+            # (drawn at twice the size, so each pixel's middle is asked about, not its corner)
+            img = Image.new("L", (int(x1 - x0) * 2 + 1, int(y1 - y0) * 2 + 1), 0)
+            ImageDraw.Draw(img).polygon([(int(x - x0) * 2, int(y - y0) * 2) for x, y in ring], fill=255)
+            inside = np.asarray(img)[1::2, 1::2] > 0
+            if np.abs(hgt[y0:y1, x0:x1][inside]).max() > 0.01:
+                continue
+            out[y0:y1, x0:x1] &= ~inside
+            print("  a sliver left out%s: %d pixels, columns %d to %d, rows %d to %d" % (what, int(a), x0, x1, y0, y1))
+    return out
+
+
+def dry_chunks(base):
+    """Which 33-yard chunks of a continent are land: of its main land, more dry than wet, and no sliver."""
+    return without_slivers(main_land(base["have"]) & (base["water"] < 0.5), base["height"], 1.5, 15, " (chunks)")
 
 
 def basis(lat, lon):
@@ -270,19 +374,121 @@ def distance_wrap(mask, most):
     return d
 
 
-def lay(picture, path, lat, lon, size):
-    """An ink piece (dark on white) multiplied onto the world picture, its middle at lat, lon."""
-    ink = Image.open(path).convert("L").resize((size, size), Image.LANCZOS)
-    g = np.asarray(ink, dtype=np.float32) / 255
-    h, w = picture.shape[:2]
-    cx = int((lon + np.pi) / (2 * np.pi) * w)
-    cy = int((np.pi / 2 - lat) / np.pi * h)
-    x0, y0 = cx - size // 2, cy - size // 2
-    for dy in range(size):
-        y = y0 + dy
-        if 0 <= y < h:
-            xs = (x0 + np.arange(size)) % w
-            picture[y, xs] *= g[dy][:, None]
+def paper_tile(size=1024):
+    """The hand-made paper as a square that repeats without a seam, each colour over its own mean (so 1 changes
+    nothing); None while there is no paper. Its edges are blended into each other to hide the join."""
+    path = os.path.join(ART_IN, "paper.png")
+    if not os.path.exists(path):
+        return None
+    p = np.asarray(Image.open(path).convert("RGB"), dtype=np.float32)
+    band = p.shape[1] // 16
+    t = (np.arange(band) / band)[None, :, None]
+    p = np.concatenate([p[:, :band] * t + p[:, -band:] * (1 - t), p[:, band:-band]], axis=1)
+    band = p.shape[0] // 16
+    t = (np.arange(band) / band)[:, None, None]
+    p = np.concatenate([p[:band] * t + p[-band:] * (1 - t), p[band:-band]], axis=0)
+    img = Image.fromarray(np.clip(p, 0, 255).astype(np.uint8)).resize((size, size), Image.LANCZOS)
+    p = np.asarray(img, dtype=np.float32)
+    # (mostly its light and dark, with a little of its colour: all of the colour turns the sea from blue to
+    # mustard and back)
+    light = (p.mean(axis=2) / p.mean())[..., None]
+    return light + PAPER_COLOUR * (p / p.reshape(-1, 3).mean(axis=0) - light)
+
+
+def paper_at(tile, lat, lon, times=1):
+    """The paper at places on the globe (arrays of latitude and longitude): it goes twice round the equator and
+    once from pole to pole, as in the world picture, so every picture of a place shows the same stains there."""
+    n = tile.shape[0]
+    u = ((lon + np.pi) / (2 * np.pi) * 2 * n * times - 0.5) % n
+    v = ((np.pi / 2 - lat) / np.pi * n * times - 0.5) % n
+    u0, v0 = np.floor(u).astype(np.int64), np.floor(v).astype(np.int64)
+    fu, fv = (u - u0)[..., None], (v - v0)[..., None]
+    u0, v0, u1, v1 = u0 % n, v0 % n, (u0 + 1) % n, (v0 + 1) % n
+    return (tile[v0, u0] * (1 - fu) + tile[v0, u1] * fu) * (1 - fv) + (tile[v1, u0] * (1 - fu) + tile[v1, u1] * fu) * fv
+
+
+def detail_paper(tile, shape, tx0, ty0, place):
+    """What the paper multiplies each pixel of a continent's detail by: the world's stains, and the paper again
+    much smaller for its grain. place: the continent's (latitude, longitude, middle column, middle row)."""
+    plat, plon, cx, cy = place
+    C, E, N = basis(plat, plon)
+    out = np.empty(shape + (3,), np.float32)
+    xs = (tx0 + (np.arange(shape[1]) + 0.5) / PER - cx) * TILE          # yards east of the continent's middle
+    for y0 in range(0, shape[0], 256):
+        ys = (cy - ty0 - (np.arange(y0, min(y0 + 256, shape[0])) + 0.5) / PER) * TILE     # yards north
+        e, n = np.meshgrid(xs, ys)
+        d = np.hypot(e, n) + 1e-9
+        sr = np.sin(d / RW) / d
+        P = np.cos(d / RW)[..., None] * C + (sr * e)[..., None] * E + (sr * n)[..., None] * N
+        lat, lon = np.arcsin(np.clip(P[..., 2], -1, 1)), np.arctan2(P[..., 1], P[..., 0])
+        out[y0:y0 + 256] = (1 + PAPER * (paper_at(tile, lat, lon) - 1)) * (1 + 0.6 * (paper_at(tile, lat, lon, PAPER_FINE) - 1))
+    return out
+
+
+def decor_pictures(art_dir, written):
+    """The hand-made ink pieces as pictures of their own: the ink's colour, showing as much as the drawing is
+    dark there (so the white is clear). Returns the names made."""
+    made = set()
+    for name in sorted({d[0] for d in DECOR}):
+        path = os.path.join(ART_IN, name + ".png")
+        if not os.path.exists(path):
+            continue
+        a = np.asarray(Image.open(path).convert("RGB").resize((480, 480), Image.LANCZOS), dtype=np.float32)
+        light = a.mean(axis=2)
+        darkest = light < np.percentile(light, 5)
+        ink, floor = a[darkest].mean(axis=0), float(light[darkest].mean())
+        show = np.clip((246 - light) / (246 - floor), 0, 1) ** 0.85 * 0.92
+        rgba = np.zeros((512, 512, 4), np.uint8)             # (a clear margin, so nothing smears at the edges)
+        rgba[..., :3] = ink.astype(np.uint8)
+        rgba[16:496, 16:496, 3] = (show * 255).astype(np.uint8)
+        write_blp(os.path.join(art_dir, "decor_%s.blp" % name), rgba)
+        written.add("decor_%s.blp" % name)
+        made.add(name)
+    return made
+
+
+def ring_picture(art_dir, written):
+    """The brass ring and stand, cut from its flat magenta, its hole made a true circle and put in the middle
+    across. Returns where it is in the picture, in parts of its side: the hole's middle (down), the hole's
+    radius, and the top and bottom of what is drawn; None while there is no ring."""
+    path = os.path.join(ART_IN, "ring.png")
+    if not os.path.exists(path):
+        return None
+    r = np.asarray(Image.open(path).convert("RGB"), dtype=np.float32)
+    magenta = np.minimum(r[..., 0], r[..., 2]) - r[..., 1]
+    alpha = 1 - np.clip((magenta - 40) / 100, 0, 1)
+    # (the soft edge takes its colour from the brass and wood beside it, not from the magenta)
+    solid = (alpha > 0.999).astype(np.float32)
+    near = np.maximum(soft(solid, 3), 1e-3)
+    beside = np.stack([soft(r[..., c] / 255 * solid, 3) / near for c in range(3)], axis=-1) * 255
+    rgb = np.where(solid[..., None] > 0, r, np.clip(beside, 0, 255))
+    H, W = alpha.shape
+    clear = alpha < 0.5
+
+    def run(line, at):
+        a = b = at
+        while a > 0 and line[a - 1]:
+            a -= 1
+        while b < len(line) - 1 and line[b + 1]:
+            b += 1
+        return a, b
+
+    xl, xr = run(clear[int(H * 0.36)], W // 2)
+    yt, yb = run(clear[:, (xl + xr) // 2], int(H * 0.36))
+    xl, xr = run(clear[(yt + yb) // 2], (xl + xr) // 2)
+    squeeze = (yb - yt) / (xr - xl)                          # (the hole is drawn a little wider than tall)
+    rgba = np.dstack([rgb, alpha * 255]).astype(np.uint8)
+    img = Image.fromarray(rgba, "RGBA").resize((int(round(W * squeeze)), H), Image.LANCZOS)
+    square = Image.new("RGBA", (H, H), (0, 0, 0, 0))
+    square.paste(img, (int(round(H / 2 - (xl + xr + 1) / 2 * squeeze)), 0))
+    square = square.resize((RING_SIDE, RING_SIDE), Image.LANCZOS)
+    out = np.asarray(square).copy()
+    out[..., :3][out[..., 3] == 0] = (60, 40, 20)           # (clear pixels in a brown, not black, for the edges)
+    write_blp(os.path.join(art_dir, "ring.blp"), out)
+    written.add("ring.blp")
+    rows = np.nonzero((out[..., 3] > 128).any(axis=1))[0]
+    square.save(os.path.join(WORLD, "globe_ring.png"))
+    return ((yt + yb + 1) / 2 / H, (yb - yt + 1) / 2 / H, rows.min() / RING_SIDE, (rows.max() + 1) / RING_SIDE)
 
 
 def world_picture(store):
@@ -315,9 +521,10 @@ def world_picture(store):
         ok = (rho < 1.7) & (chx >= 0) & (chx < 1024) & (chy >= 0) & (chy < 1024)
         sel = ok.copy()
         sel[ok] = main_land(base["have"])[chy[ok], chx[ok]]
+        dry = dry_chunks(base)
         gyr, gxr = np.gradient(base["height"], 33.33)
         relief = np.clip(1 + 0.45 * (-gxr * 0.7 + gyr * 0.7) / np.sqrt(1 + gxr * gxr + gyr * gyr), 0.78, 1.18)
-        land[sel] = base["water"][chy[sel], chx[sel]] < 0.5
+        land[sel] = dry[chy[sel], chx[sel]]
         zone[sel] = base["zone"][chy[sel], chx[sel]]
         shade[sel] = relief[chy[sel], chx[sel]]
         print("  %d: %d pixels of terrain" % (map_id, int(sel.sum())))
@@ -341,17 +548,10 @@ def world_picture(store):
     edge &= land
     edge = soft(edge.astype(np.float32), 0.6)[..., None]
     picture = picture * (1 - edge * 0.6) + BORDER * edge * 0.6
-    # the hand-made pieces, where they are made yet
-    for name, dlat, dlon, size in DECOR:
-        path = os.path.join(ART_IN, name)
-        if os.path.exists(path):
-            lay(picture, path, dlat, dlon, size)
-    # the paper: the hand-made one tiled over the world, else a plain grain
-    paper = os.path.join(ART_IN, "paper.png")
-    if os.path.exists(paper):
-        p = np.asarray(Image.open(paper).convert("L").resize((1024, 1024), Image.LANCZOS), dtype=np.float32)
-        p = np.tile(p / p.mean(), (H // 1024 + 1, W // 1024 + 1))[:H, :W]
-        picture = picture * (0.75 + 0.25 * p[..., None])
+    # the paper: the hand-made one twice round the world, else a plain grain
+    tile = paper_tile(H)
+    if tile is not None:
+        picture = picture * (1 + PAPER * (np.tile(tile, (1, W // H, 1)) - 1))
     else:
         rng = np.random.default_rng(7)
         grain = soft(rng.random((H, W)).astype(np.float32), 1.2)
@@ -369,9 +569,10 @@ PER = 64                      # pixels a terrain tile in the detail pictures (8.
 BLOCK = 8                     # terrain tiles a detail picture covers, each way (8 x 64 = 512 pixels)
 
 
-def style(land, zone, hgt, spacing, ripples, seed):
+def style(land, zone, hgt, spacing, ripples, seed, paper=None):
     """A region in the parchment look, as RGB bytes: land (bool), zone (ids), hgt (yards) a pixel apart by
-    `spacing` yards; ripple lines `ripples` pixels out from the coast."""
+    `spacing` yards; ripple lines `ripples` pixels out from the coast; paper: what the hand-made paper
+    multiplies each pixel by (without it, a plain grain)."""
     wet = ~land
     picture = np.zeros(land.shape + (3,), np.float32)
     for z in np.unique(zone[land]):
@@ -402,6 +603,9 @@ def style(land, zone, hgt, spacing, ripples, seed):
     picture *= 1 - edge * 0.7
     picture += BORDER * edge * 0.7
     del edge
+    if paper is not None:
+        picture *= paper
+        return np.clip(picture, 0, 255).astype(np.uint8)
     rng = np.random.default_rng(seed)
     grain = soft(rng.random(land.shape, dtype=np.float32), 1.2)
     picture *= (0.93 + 0.10 * grain)[..., None]
@@ -411,9 +615,10 @@ def style(land, zone, hgt, spacing, ripples, seed):
     return np.clip(picture, 0, 255).astype(np.uint8)
 
 
-def continent_detail(map_id, base, art_dir, written):
-    """A continent painted whole at PER pixels a tile (so no seams), cut in BLOCK x BLOCK-tile pictures; those
-    with no land within a tile of them are left out (the world picture's sea shows there)."""
+def continent_cells(map_id, base):
+    """A continent at PER pixels a tile, over the blocks of tiles its main land lies in: land (bool), heights
+    (yards), the zone of each pixel, which tiles have land, and (tx0, ty0, bx0, bx1, by0, by1): its first tile
+    and its blocks."""
     keep = main_land(base["have"])[::16, ::16]
     ys, xs = np.nonzero(keep)
     bx0, bx1 = xs.min() // BLOCK, xs.max() // BLOCK + 1
@@ -438,8 +643,21 @@ def continent_detail(map_id, base, art_dir, written):
         zone[y0:y0 + PER, x0:x0 + PER] = np.kron(base["zone"][ty * 16:(ty + 1) * 16, tx * 16:(tx + 1) * 16],
                                                  np.ones((PER // 16, PER // 16), dtype=np.uint32))
         has[ty, tx] = tile_land.any()
-    del world
-    rgb = style(land, zone, hgt, 1600 / 3 / PER, (3, 6, 9), seed=map_id + 11)
+    land = without_slivers(land, hgt, 5, 60)
+    th, tw = land.shape[0] // PER, land.shape[1] // PER
+    has = np.zeros((64, 64), bool)                           # (which tiles have land, the slivers gone)
+    has[ty0:ty0 + th, tx0:tx0 + tw] = land.reshape(th, PER, tw, PER).any(axis=(1, 3))
+    return land, hgt, zone, has, (tx0, ty0, bx0, bx1, by0, by1)
+
+
+def continent_detail(map_id, base, art_dir, written, place=None, tile=None):
+    """A continent painted whole at PER pixels a tile (so no seams), cut in BLOCK x BLOCK-tile pictures; those
+    with no land within a tile of them are left out (the world picture's sea shows there)."""
+    land, hgt, zone, has, (tx0, ty0, bx0, bx1, by0, by1) = continent_cells(map_id, base)
+    H, W = land.shape
+    paper = detail_paper(tile, land.shape, tx0, ty0, place) if tile is not None else None
+    rgb = style(land, zone, hgt, 1600 / 3 / PER, (3, 6, 9), seed=map_id + 11, paper=paper)
+    del paper
     del land, hgt, zone
     near = grown(has, 1)
     pieces = []
@@ -459,6 +677,172 @@ def continent_detail(map_id, base, art_dir, written):
     return pieces
 
 
+# ------------------------------------------------------------------ the zones (milestone G4)
+NAME = 1                      # AreaTable's column of the name shown (the Barrens: "The Barrens")
+ZONE_LEAST = 100              # a zone has at least this much land (33-yard chunks): less is a sea, or a scrap
+RING_LEAST = 150              # an island smaller than this (pixels of the detail pictures) gets no outline
+RING_WITHIN = 2.0             # an outline keeps to within this of the true one (pixels: about 17 yards)
+THIN = 0.08                   # a ring less round than this (a circle is 1) is a sliver, and left out
+NEAR_LAND = 5                 # water this near a zone's land (chunks) counts as the zone when pointing at it
+def simplified(ring, within):
+    """The ring with the points left out that lie within `within` of the line between those kept."""
+    p = np.asarray(ring, dtype=np.float64)
+    n = len(p)
+    far = int(np.argmax(((p - p[0]) ** 2).sum(axis=1)))
+    keep = np.zeros(n, bool)
+    keep[0] = keep[far] = True
+    todo = [(0, far), (far, n)]                              # (n: back at the first point)
+    while todo:
+        a, b = todo.pop()
+        if b - a < 2:
+            continue
+        A, B = p[a], p[b % n]
+        between = p[a + 1:b] - A
+        along = B - A
+        length = float(np.hypot(along[0], along[1]))
+        off = np.hypot(between[:, 0], between[:, 1]) if length == 0 else \
+            np.abs(along[0] * between[:, 1] - along[1] * between[:, 0]) / length
+        i = int(np.argmax(off))
+        if off[i] > within:
+            keep[a + 1 + i] = True
+            todo += [(a, a + 1 + i), (a + 1 + i, b)]
+    return p[keep]
+
+
+def filled(mask):
+    """The mask with its holes filled (the water wholly inside the land)."""
+    from PIL import ImageDraw
+    img = Image.fromarray(np.pad(mask, 1).astype(np.uint8) * 255)
+    ImageDraw.floodfill(img, (0, 0), 128)
+    return (np.asarray(img) != 128)[1:-1, 1:-1]
+
+
+def box(mask, pad, most):
+    ys, xs = np.nonzero(mask)
+    return (max(0, ys.min() - pad), min(most[0], ys.max() + 1 + pad), max(0, xs.min() - pad), min(most[1], xs.max() + 1 + pad))
+
+
+def line_picture(art_dir):
+    """The line a zone is outlined with: across it, clear, dark ink, a pale gold middle, dark ink, clear."""
+    n = 16
+    t = np.abs(np.arange(n) + 0.5 - n / 2) / (n / 2)         # 0 in the middle, 1 at the sides
+    alpha = np.clip((1.0 - t) / 0.4, 0, 1)
+    gold = np.clip((0.5 - t) / 0.22, 0, 1)[:, None]
+    rgb = np.array((255, 232, 160)) * gold + np.array((52, 34, 18)) * (1 - gold)
+    rgba = np.zeros((n, n, 4), np.uint8)
+    rgba[..., :3] = rgb[:, None, :].astype(np.uint8)
+    rgba[..., 3] = (alpha * alpha * (3 - 2 * alpha) * 255).astype(np.uint8)[:, None]
+    write_blp(os.path.join(art_dir, "line.blp"), rgba)
+
+
+def lua_text(text):
+    return "'" + text.replace("\\", "\\\\").replace("'", "\\'") + "'"
+
+
+def zones():
+    """Zones.lua: each continent's zones (those with land enough), their outlines for the globe to draw and,
+    by 33-yard chunk, which zone is where, for pointing at one."""
+    from db2 import texts
+    from PIL import ImageDraw
+    store = Storage(GAME, "wowf")
+    parents = area_parents(store)
+    names = texts(Table(store.read_fdid(AREA_TABLE)), NAME)
+    lines = ["-- Thread (Globe): the zones of each continent, to point at, outline and zoom to. Written by",
+             "-- tools/globe_art.py (python globe_art.py zones), from the area of each terrain chunk.",
+             "local _, ns = ...", "",
+             "-- By continent (the game's map number):",
+             "--   per     an outline's units to a terrain tile",
+             "--   middle  the middle of the continent's land (column, row, in tiles); reach: how far its land goes",
+             "--           from there (tiles)",
+             "--   zones   each: id (the game's area), name (in English: the game's own is shown where it gives one),",
+             "--           rings (each an outline, 'x,y,x,y,...', the largest first)",
+             "--   land    the terrain tiles with land on them (row * 64 + column, 'n,n,...'): the ground is drawn on",
+             "--           these, and fades out to sea over the tiles round them",
+             "--   row0    the row (in chunks, 16 to a tile) that rows begins at",
+             "--   rows    each row of chunks from column 0 on, as runs 'count,zone,count,zone,...': zone counts into",
+             "--           zones, 0 is none (the open sea, or land of no zone)",
+             "--   areas   the same rows, with the smaller place each chunk is in (a town, a camp, a pass) as the",
+             "--           game's area: 'count,area,count,area,...', 0 where the chunk is of its zone and no more",
+             "-- ns.AREAS: those areas' names in English (the game's own is shown where it gives one).",
+             "ns.ZONES = {"]
+    area_names = {}
+    points = 0
+    for map_id in PLACE:
+        base = continent_base(store, map_id, parents)
+        keep = main_land(base["have"])
+        dry = dry_chunks(base)
+        zone_c = np.where(keep, base["zone"], 0)
+        ids = [int(z) for z in np.unique(zone_c) if z and int((dry & (zone_c == z)).sum()) >= ZONE_LEAST]
+        land, _hgt, zone, has, (tx0, ty0, _bx0, _bx1, _by0, _by1) = continent_cells(map_id, base)
+        ys, xs = np.nonzero(dry)
+        mx, my = (xs.min() + xs.max() + 1) / 32, (ys.min() + ys.max() + 1) / 32
+        reach = float(np.hypot((xs + 0.5) / 16 - mx, (ys + 0.5) / 16 - my).max())
+        lines.append("\t[%d] = { per = %d, middle = { %.3f, %.3f }, reach = %.3f, zones = {" % (map_id, PER, mx, my, reach))
+        hit = np.zeros((1024, 1024), np.uint8)
+        preview = Image.open(os.path.join(WORLD, "globe_detail_%d.png" % map_id)).convert("RGB")
+        draw = ImageDraw.Draw(preview)
+        for index, z in enumerate(ids, 1):
+            mine = land & (zone == z)
+            y0, y1, x0, x1 = box(mine, 1, mine.shape)
+            rings = [r for r in rings_of(mine[y0:y1, x0:x1]) if area_of(r) >= RING_LEAST]
+            rings.sort(key=area_of, reverse=True)
+            texts_out = []
+            for ring in rings:
+                p = simplified(ring, RING_WITHIN)
+                if len(p) < 4:
+                    continue
+                # (a sliver, such as a strip of flat terrain left out at sea, is no island: far more edge than land)
+                edge = float(np.hypot(*(np.roll(p, -1, axis=0) - p).T).sum())
+                if texts_out and 4 * np.pi * area_of(p) < THIN * edge * edge:
+                    continue
+                p = p + (x0 + tx0 * PER, y0 + ty0 * PER)
+                points += len(p)
+                texts_out.append(",".join("%d,%d" % (x, y) for x, y in p.astype(int)))
+                draw.line([((x - tx0 * PER) / 8, (y - ty0 * PER) / 8) for x, y in np.vstack([p, p[:1]])], fill=(200, 30, 30))
+            lines.append("\t\t{ id = %d, name = %s, rings = {" % (z, lua_text(names.get(z) or "Zone %d" % z)))
+            lines += ["\t\t\t'%s'," % t for t in texts_out]
+            lines.append("\t\t} },")
+            # pointing: the zone's chunks on its land, on the water inside it and a little off its shores
+            mine_c = dry & (zone_c == z)
+            cy0, cy1, cx0, cx1 = box(mine_c, NEAR_LAND + 1, mine_c.shape)
+            near = grown(filled(mine_c[cy0:cy1, cx0:cx1]), NEAR_LAND)
+            part = hit[cy0:cy1, cx0:cx1]
+            part[near & (zone_c[cy0:cy1, cx0:cx1] == z)] = index
+            print("    %5d %-24s %d rings, %d points" % (z, names.get(z), len(texts_out), sum(t.count(",") + 1 for t in texts_out) // 2))
+        rows = np.nonzero(hit.any(axis=1))[0]
+        landed = ["%d" % (ty * 64 + tx) for ty, tx in zip(*np.nonzero(has))]
+        lines.append("\t}, land = '%s'," % ",".join(landed))
+        lines.append("\trow0 = %d, rows = {" % rows.min())
+        for y in range(rows.min(), rows.max() + 1):
+            lines.append("		'%s'," % runs_of(hit[y]))
+        # the smaller places: a chunk's own area where it is not its zone's, inside what a zone is pointed at by
+        own = continent_areas(store, map_id)
+        small = np.where((hit > 0) & (own != base["zone"]) & (own != 0), own, 0)
+        for a in np.unique(small):
+            if a:
+                area_names[int(a)] = names.get(int(a)) or ""
+        lines.append("	}, areas = {")
+        for y in range(rows.min(), rows.max() + 1):
+            lines.append("		'%s'," % runs_of(small[y]))
+        lines.append("	} },")
+        print("  %d: %d smaller places" % (map_id, len(np.unique(small)) - 1))
+        preview.save(os.path.join(WORLD, "globe_zones_%d.png" % map_id))
+        print("  %d: %d zones, %d tiles with land" % (map_id, len(ids), len(landed)))
+    lines.append("}")
+    lines.append("ns.AREAS = {")
+    for a in sorted(area_names):
+        if area_names[a]:
+            lines.append("	[%d] = %s," % (a, lua_text(area_names[a])))
+    lines.append("}")
+    path = os.path.join(ADDON, "Zones.lua")
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(lines) + "\n")
+    art_dir = os.path.join(ADDON, "Art")
+    line_picture(art_dir)
+    print("written Zones.lua (%d outline points, %d KB), Art/line.blp, world/globe_zones_<map>.png"
+          % (points, os.path.getsize(path) // 1024))
+
+
 def world():
     store = Storage(GAME, "wowf")
     rgba, layout, sea = world_picture(store)
@@ -467,8 +851,12 @@ def world():
     pieces, written = [], set()
     parents = area_parents(store)
     details = []
+    tile = paper_tile(WORLD_H)
+    places = {m: (plat, plon, cx, cy) for m, plat, plon, cx, cy in layout}
     for map_id in PLACE:
-        details += continent_detail(map_id, continent_base(store, map_id, parents), art_dir, written)
+        details += continent_detail(map_id, continent_base(store, map_id, parents), art_dir, written, places[map_id], tile)
+    inked = decor_pictures(art_dir, written)
+    ring = ring_picture(art_dir, written)
     for j in range(WORLD_H // PIECE):
         for i in range(WORLD_W // PIECE):
             name = "world_%d_%d" % (j, i)
@@ -477,6 +865,8 @@ def world():
             lon0 = -np.pi + i * PIECE / WORLD_W * 2 * np.pi
             lat0 = np.pi / 2 - j * PIECE / WORLD_H * np.pi
             pieces.append((name, lon0, lon0 + PIECE / WORLD_W * 2 * np.pi, lat0, lat0 - PIECE / WORLD_H * np.pi))
+    line_picture(art_dir)
+    written.add("line.blp")
     for old in os.listdir(art_dir):                          # (pictures no longer made)
         if old.endswith(".blp") and old not in written:
             os.remove(os.path.join(art_dir, old))
@@ -501,11 +891,26 @@ def world():
     for name, map_id, c0, c1, r0, r1 in details:
         lines.append("\t{ file = 'Interface\\\\AddOns\\\\' .. ADDON .. '\\\\Art\\\\%s', kind = 'detail', map = %d, columns = { %d, %d }, rows = { %d, %d } },"
                      % (name, map_id, c0, c1, r0, r1))
+    if inked:
+        lines.append("")
+        lines.append("\t-- the hand-made ink pieces on the open sea: a picture, its middle (latitude, longitude) and how far")
+        lines.append("\t-- across it is (radians)")
+        for name, dlat, dlon, size in DECOR:
+            if name in inked:
+                lines.append("\t{ file = 'Interface\\\\AddOns\\\\' .. ADDON .. '\\\\Art\\\\decor_%s', kind = 'decor', lat = %.4f, lon = %.4f, size = %.4f },"
+                             % (name, dlat, dlon, size))
     lines.append("}")
+    if ring:
+        lines += ["",
+                  "-- the brass ring and stand round the ball: in parts of the picture's side, the middle of its hole (across",
+                  "-- and down), the hole's radius, and the top and bottom of what is drawn",
+                  "ns.RING = { file = 'Interface\\\\AddOns\\\\' .. ADDON .. '\\\\Art\\\\ring', cx = 0.5, cy = %.4f, inner = %.4f, top = %.4f, bottom = %.4f }" % ring]
     with open(os.path.join(ADDON, "Art.lua"), "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(lines) + "\n")
     print("written %d world and %d detail pictures, Art.lua, world/globe_world.png; sea %s"
           % (len(pieces), len(details), tuple(round(float(c), 3) for c in sea)))
+    print("hand-made: paper %s, ink pieces %s, ring %s"
+          % ("laid in" if tile is not None else "not there", ", ".join(sorted(inked)) or "none", "made" if ring else "not there"))
 
 
 def test():
@@ -532,5 +937,7 @@ if __name__ == "__main__":
         test()
     elif sys.argv[1:] == ["world"]:
         world()
+    elif sys.argv[1:] == ["zones"]:
+        zones()
     else:
         print(__doc__)

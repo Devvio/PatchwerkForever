@@ -4,7 +4,7 @@ local ADDON, ns = ...
 
 -- rw: yards of the world to a radian of the globe; sea: its colour; each continent's middle on the
 -- globe (latitude, longitude, radians) and in its own terrain tiles (column, row)
-ns.LAYOUT = { rw = 19000, sea = { 0.539, 0.610, 0.573 }, continents = {
+ns.LAYOUT = { rw = 19000, sea = { 0.550, 0.622, 0.585 }, continents = {
 	[1] = { lat = 0.0500, lon = -1.0500, cx = 34.067814, cy = 31.814777 },
 	[0] = { lat = 0.1000, lon = 1.0500, cx = 34.161685, cy = 40.505435 },
 	[2991] = { lat = -0.7500, lon = 0.0000, cx = 29.500000, cy = 26.000000 },
@@ -29,7 +29,6 @@ ns.ART = {
 	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\1_3_2', kind = 'detail', map = 1, columns = { 24, 32 }, rows = { 16, 24 } },
 	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\1_4_2', kind = 'detail', map = 1, columns = { 32, 40 }, rows = { 16, 24 } },
 	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\1_5_2', kind = 'detail', map = 1, columns = { 40, 48 }, rows = { 16, 24 } },
-	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\1_6_2', kind = 'detail', map = 1, columns = { 48, 56 }, rows = { 16, 24 } },
 	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\1_3_3', kind = 'detail', map = 1, columns = { 24, 32 }, rows = { 24, 32 } },
 	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\1_4_3', kind = 'detail', map = 1, columns = { 32, 40 }, rows = { 24, 32 } },
 	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\1_5_3', kind = 'detail', map = 1, columns = { 40, 48 }, rows = { 24, 32 } },
@@ -62,4 +61,16 @@ ns.ART = {
 	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\2991_3_2', kind = 'detail', map = 2991, columns = { 24, 32 }, rows = { 16, 24 } },
 	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\2991_3_3', kind = 'detail', map = 2991, columns = { 24, 32 }, rows = { 24, 32 } },
 	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\2991_4_3', kind = 'detail', map = 2991, columns = { 32, 40 }, rows = { 24, 32 } },
+
+	-- the hand-made ink pieces on the open sea: a picture, its middle (latitude, longitude) and how far
+	-- across it is (radians)
+	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\decor_compass', kind = 'decor', lat = 0.6200, lon = 0.0000, size = 0.4600 },
+	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\decor_serpent', kind = 'decor', lat = -0.3000, lon = 2.4500, size = 0.5200 },
+	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\decor_ship', kind = 'decor', lat = -0.4000, lon = -2.3500, size = 0.4300 },
+	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\decor_serpent', kind = 'decor', lat = 0.3500, lon = 3.0500, size = 0.4600 },
+	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\decor_ship', kind = 'decor', lat = -0.1500, lon = 0.5500, size = 0.3400 },
 }
+
+-- the brass ring and stand round the ball: in parts of the picture's side, the middle of its hole (across
+-- and down), the hole's radius, and the top and bottom of what is drawn
+ns.RING = { file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\ring', cx = 0.5, cy = 0.3561, inner = 0.2468, top = 0.0098, bottom = 0.9834 }

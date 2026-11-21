@@ -7,10 +7,10 @@
 local ADDON, ns = ...
 
 local API = 1             -- the base's API this tool was written for
-local NEEDS = '2.0.0'     -- the first base with that API
+local NEEDS = '2.8.0'     -- the first base with all the globe asks of it (the newest: its Trails service)
 
 local Base = rawget(_G, 'PatchwerkForever')
-if not (type(Base) == 'table' and type(Base.Tool) == 'function' and Base:Tool(ADDON, ns, {
+if not (type(Base) == 'table' and type(Base.Tool) == 'function' and type(Base.Trails) == 'table' and Base:Tool(ADDON, ns, {
 	api = API,
 	name = 'Globe',
 	colour = 'ff66c2ff',

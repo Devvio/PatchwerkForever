@@ -221,3 +221,5 @@ function PatchwerkForever_Thread_Tracker_RouteAdd() ns.Try('My Route', ns.RouteA
 function PatchwerkForever_Thread_Tracker_RouteUp() ns.Try('My Route', ns.RouteNudge, -1) end
 function PatchwerkForever_Thread_Tracker_RouteDown() ns.Try('My Route', ns.RouteNudge, 1) end
 function PatchwerkForever_Thread_Tracker_RouteOpen() ns.Try('My Route', ns.OpenRoute) end
+-- For a window that wants the list beside it while it is open (Thread (Globe)): a frame, or nil to put it back.
+function PatchwerkForever_Thread_Tracker_Dock(anchor) return ns.Try('the tracker', ns.Dock, anchor) and true or false end

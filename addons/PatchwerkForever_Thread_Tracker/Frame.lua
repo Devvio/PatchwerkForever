@@ -143,10 +143,24 @@ local function Scale()
 	return (type(s) == 'number' and s > 0) and s or 1
 end
 
+local docked                  -- the window the list is put beside for now (ns.Dock), in place of where you keep it
 local function Place()
 	local place = Saved().place
 	local s = Scale()
 	frame:ClearAllPoints()
+	if docked then
+		-- to its right where the screen has room, else inside its right edge, over it
+		local right = type(docked.GetRight) == 'function' and docked:GetRight() or nil
+		local theirs = (type(docked.GetEffectiveScale) == 'function' and docked:GetEffectiveScale() or 1) / UIParent:GetEffectiveScale()
+		local wide = UIParent:GetWidth()
+		local mine = (frame:GetWidth() or 0) * s
+		if right and wide and right * theirs + mine + 12 <= wide then
+			frame:SetPoint('TOPLEFT', docked, 'TOPRIGHT', 6 / s, 0)
+		else
+			frame:SetPoint('TOPRIGHT', docked, 'TOPRIGHT', -14 / s, -64 / s)
+		end
+		return
+	end
 	if type(place) == 'table' and place[1] and place[5] then
 		frame:SetPoint(place[1], UIParent, place[2] or place[1], (place[3] or 0) / s, (place[4] or 0) / s)
 	elseif type(place) == 'table' and place[1] then
@@ -163,6 +177,7 @@ end
 -- would move its first heading each time a line came or went.
 -- Returns false while the game cannot say where the frame is.
 local function Pin()
+	if docked then return false end           -- (beside another window for now: where you keep it is not changed)
 	local s = Scale()
 	local left, right, top = frame:GetLeft(), frame:GetRight(), frame:GetTop()
 	local wide, high = UIParent:GetWidth(), UIParent:GetHeight()
@@ -776,6 +791,28 @@ function ns.Unlock(on)
 	ns.Print(unlocked and 'Unlocked. Drag the bar above the tracker to move it. Right-click the bar to lock it.' or 'Locked.')
 	Render()
 end
+
+-- Beside another window while it is open (Thread (Globe) asks): the list is put at its right, over
+-- what that window is over, and where you keep it is left as it is; nil puts the list back there.
+local levelKept
+function ns.Dock(anchor)
+	docked = type(anchor) == 'table' and anchor or nil
+	if not frame then return false end
+	if docked then
+		levelKept = levelKept or frame:GetFrameLevel()
+		frame:SetFrameStrata(type(docked.GetFrameStrata) == 'function' and docked:GetFrameStrata() or 'HIGH')
+		if type(docked.GetFrameLevel) == 'function' then frame:SetFrameLevel((docked:GetFrameLevel() or 1) + 40) end
+	else
+		frame:SetFrameStrata('LOW')
+		if levelKept then frame:SetFrameLevel(levelKept) end
+		levelKept = nil
+	end
+	Place()
+	ns.Wake()
+	ns.Refresh()
+	return docked ~= nil
+end
+function ns.Docked() return docked end
 
 function ns.ResetPlace()
 	Saved().place = nil

@@ -1,18 +1,25 @@
 ## Interface: 16001
 ## Title: Patchwerk Forever: Thread (Globe)
-## Notes: The world on a globe you can spin and zoom, drawn from the game's own minimap pictures. A prototype. Needs Patchwerk Forever. Type /globe.
+## Notes: The world on a globe you can spin and zoom, painted like the world map on parchment, with your route, quests, flight points and places on it. Still being built. Needs Patchwerk Forever. Type /globe.
 ## Author: Tyrone
-## Version: 0.0.1
+## Version: 0.5.0
 ## Group: PatchwerkForever
 ## X-Category: Map
 ## X-License: MIT
 ## IconTexture: Interface\AddOns\PatchwerkForever_Thread_Globe\Media\icon
 ## X-Patchwerk-Voice: Patchwerk was told the world is round. Patchwerk checked.
 ## Dependencies: PatchwerkForever
+## OptionalDeps: PatchwerkForever_Thread_Routes, PatchwerkForever_Thread_Tracker, ConsolePort
 ## SavedVariables: PatchwerkForever_Thread_GlobeDB
 
 Link.lua
 Core.lua
 Tiles.lua
 Art.lua
+Zones.lua
 Globe.lua
+Pad.lua
+Marks.lua
+Travel.lua
+Quests.lua
+Places.lua

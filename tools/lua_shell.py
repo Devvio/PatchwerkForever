@@ -724,6 +724,12 @@ def main():
     assert spots() == 1, "forget did not clear the spot you stand on"
     text = chat("nodes")
     assert any("1 herb nodes and 1 ore nodes" in t for t in text), text
+    # (and for a tool with a map of its own, through the base)
+    T = lua.globals().PatchwerkForever.Trails
+    got = []
+    T.NodesAround(T, 1, stub.player.x, stub.player.y, 6000, lua.eval("function(f) return function(...) f(...) end end")(
+        lambda x, y, name, icon, kind: got.append((name, icon, kind))))
+    assert got and all(n and i and k in ("h", "o") for n, i, k in got), got      # (one of the two was just deleted)
     stub.player.x, stub.player.y = -442.0, -2598.0
 
     step("gathering: to the nearest spot and on to the next at each; one kind; a round; offered through the base")
@@ -1319,6 +1325,31 @@ def main():
     route.parts[0] = rest
     world_map.mapID = 1414
     stub.provider.RefreshAllData()
+    # the same trail for a tool with a map of its own, through the base (Share.lua): from where you stand, each
+    # stretch with how it is gone and its colour, the part over the sea on its own continent
+    T = lua.globals().PatchwerkForever.Trails
+    assert T.Has(T), "Routes did not offer its trail to the base"
+    trails = list(T.List(T).values())
+    assert len(trails) >= 1 and trails[0].follow is True and trails[0].alpha == 0.95, "the trail you are on is not first"
+    pieces = list(trails[0].pieces.values())
+    here, over = [q for q in pieces if q.map == 1], [q for q in pieces if q.map == 0]
+    assert here and over and len(here) + len(over) == len(pieces), "the trail is not on the two continents it crosses"
+    assert abs(here[0].points[1][1] - stub.player.x) < 0.01 and abs(here[0].points[1][2] - stub.player.y) < 0.01,         "the trail does not start where you stand"
+    assert here[-1].how == "ride" and over[0].how == "ride" and over[-1].how == "walk", [q.how for q in pieces]
+    assert "link" in [q.how for q in here] and all(q.how != "gap" for q in pieces)
+    assert sum(len(q.points) - 1 for q in here) == len(route.points) - 1, "a stretch of the trail is lost, or doubled"
+    for a, b in zip(here, here[1:]):
+        assert a.how != b.how and tuple(a.points[len(a.points)].values()) == tuple(b.points[1].values()), "two stretches do not meet"
+    assert all(0 <= q.r <= 1 and 0 <= q.g <= 1 and 0 <= q.b <= 1 and q.alpha == 0.95 for q in pieces)
+    walk = lua.eval("function(ns) return ns.TrailColour('walk') end")(ns)
+    assert [q for q in here if q.how == "walk"][0].r == walk[0], "a walked stretch is not in the walking colour"
+    assert trails[0].last.map == 0 and abs(trails[0].last.x - BRILL[0]) < 60 and abs(trails[0].last.y - BRILL[1]) < 60, "it does not end at the pin"
+    cross = [c for c in T.Crossings(T).values() if c.kind == "zeppelin" and "Orgrimmar" in [st.name for st in c.stops.values()]]
+    assert cross and all(st.map in (0, 1) and st.x and st.y for st in cross[0].stops.values())
+    legs = list(cross[0].rides[1].legs.values())
+    assert len(legs) == 2 and legs[0].map != legs[1].map and all(len(l.points) >= 2 for l in legs), "a zeppelin's way is not cut at the jump"
+    trail_changes = []
+    T.OnChange(T, lua.eval("function(f) return function() f() end end")(lambda: trail_changes.append(1)))
     # walking to the tower and riding: no new search while you are near the trail, the zeppelin's course included
     aboard = [p for p in route.points.values() if p[3] == "ride"][2]
     stub.player.x, stub.player.y = aboard[1], aboard[2]
@@ -1340,6 +1371,7 @@ def main():
     # a quest over the sea is followed too
     stub.pin = None
     stub.Fire("USER_WAYPOINT_UPDATED")
+    assert trail_changes and not list(T.List(T).values()), "the trail's going was not told, or it is still listed"
     stub.player.x, stub.player.y, stub.player.map = -442.0, -2598.0, 1
     stub.QuestAt(873, "A Letter to Brill", 0, *BRILL)
     stub.watched, stub.focus = lua.table_from([873]), 873

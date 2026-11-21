@@ -322,3 +322,9 @@ function ns.NodeKind(name)
 	local kind = db and db.nodeKinds and db.nodeKinds[name]
 	return kind and kind.kind or nil
 end
+
+-- The icon of what was got at spots of this name.
+function ns.NodeIcon(name)
+	local kind = db and db.nodeKinds and db.nodeKinds[name]
+	return kind and kind.icon or nil
+end

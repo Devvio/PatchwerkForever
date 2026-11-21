@@ -659,6 +659,36 @@ def main():
     ok = s.lua.eval("function() return (pcall(PatchwerkForever.Gather.Offer, PatchwerkForever.Gather, { Near = function() end })) end")()
     assert ok is False, "a provider with pieces missing was taken"
 
+    step("the trails service: nothing offered, then a provider, its coming told; one that fails is said once")
+    Tr = s.g.PatchwerkForever.Trails
+    assert Tr.Has(Tr) is False and len(Tr.List(Tr)) == 0 and len(Tr.Crossings(Tr)) == 0
+    s.lua.execute("""
+        STUB.trailTold, STUB.spots = 0, {}
+        PatchwerkForever.Trails:OnChange(function() STUB.trailTold = STUB.trailTold + 1 end)
+        PatchwerkForever.Trails:OnChange(function() error('a listener of its own mind') end)
+        PatchwerkForever.Trails:NodesAround(1, 0, 0, 100, function() error('asked with nothing offered') end)
+        PatchwerkForever.Trails:Offer({
+            List = function() if STUB.breakTrails then error('its trail tangled') end return { { follow = true, pieces = {} } } end,
+            Crossings = function() return { { id = 1, kind = 'boat' } } end,
+            NodesAround = function(map, x, y, reach, fn) STUB.askedReach = reach; fn(x + 1, y + 1, 'Peacebloom', 133939, 'h') end,
+        })
+        PatchwerkForever.Trails:NodesAround(1, 10, 20, nil, function(x, y, name, icon, kind) STUB.spots[#STUB.spots + 1] = { x, y, name, icon, kind } end)
+        PatchwerkForever.Trails:NodesAround(1, 10, 20, 50, 'not a function')
+    """)
+    assert Tr.Has(Tr) is True and s.stub.trailTold == 1, "a provider's coming was not told"
+    assert Tr.List(Tr)[1].follow is True and Tr.Crossings(Tr)[1].kind == "boat"
+    assert s.stub.askedReach == 500 and tuple(s.stub.spots[1].values()) == (11, 21, "Peacebloom", 133939, "h")
+    Tr.Changed(Tr)
+    assert s.stub.trailTold == 2
+    text = s.chat_raw()
+    assert len(text) == 2 and all("A trail listener failed" in t for t in text), text
+    s.stub.breakTrails = True
+    assert len(Tr.List(Tr)) == 0 and len(Tr.List(Tr)) == 0
+    text = s.chat_raw()
+    assert len(text) == 1 and "Reading the route failed and was skipped" in text[0], text
+    ok = s.lua.eval("function() return (pcall(PatchwerkForever.Trails.Offer, PatchwerkForever.Trails, { List = function() end })) end")()
+    assert ok is False, "a provider with pieces missing was taken"
+
     step("a choice: one side path at a time; a quest that leaves the log is a choice no longer")
     Ch = s.g.PatchwerkForever.Choice
     s.stub.breakGather = False

@@ -517,6 +517,31 @@ def first_login():
     assert s.g.PatchwerkForever_Thread_TrackerDB.place is None and frame.points[1][1] == "TOPRIGHT"
     s.chat()
 
+    step("beside another window while it is open (Thread (Globe) asks): put at its right, over it, and back where you keep it")
+    s.lua.execute("""
+        STUB.other = CreateFrame('Frame', nil, UIParent)
+        STUB.other:SetSize(400, 300)
+        STUB.other:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+        STUB.other:SetFrameStrata('FULLSCREEN')
+        STUB.other:SetFrameLevel(7)
+    """)
+    level = frame.level
+    assert s.g.PatchwerkForever_Thread_Tracker_Dock(s.stub.other) is True
+    assert frame.points[1][1] == "TOPLEFT" and same(s, frame.points[1][2], s.stub.other) and frame.points[1][3] == "TOPRIGHT",         "with room at its right, the list is not put there"
+    assert frame.strata == "FULLSCREEN" and frame.level == 47, (frame.strata, frame.level)
+    s.setting("scale", 150)                        # (a new scale places it again: still beside the window)
+    s.turn()
+    assert same(s, frame.points[1][2], s.stub.other), "a new scale put the list back while it was beside the window"
+    s.setting("scale", 100)
+    s.turn()
+    s.lua.execute("STUB.other:ClearAllPoints() STUB.other:SetSize(UIParent.width, UIParent.height) STUB.other:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 0, 0)")
+    s.g.PatchwerkForever_Thread_Tracker_Dock(s.stub.other)
+    assert frame.points[1][1] == "TOPRIGHT" and frame.points[1][3] == "TOPRIGHT" and same(s, frame.points[1][2], s.stub.other),         "with no room at its right, the list is not put inside its right edge"
+    assert s.g.PatchwerkForever_Thread_Tracker_Dock(None) is False
+    assert frame.points[1][1] == "TOPRIGHT" and same(s, frame.points[1][2], s.g.UIParent) and frame.strata == "LOW" and frame.level == level,         "the list was not put back where you keep it"
+    assert s.g.PatchwerkForever_Thread_TrackerDB.place is None, "being beside the window changed where you keep the list"
+    s.chat()
+
     step("the game's tracker: let back in a dungeon, where ours steps aside for it; never touched in a fight, as it was when ours goes")
     s.stub.instance = True
     s.fire("ZONE_CHANGED_NEW_AREA")

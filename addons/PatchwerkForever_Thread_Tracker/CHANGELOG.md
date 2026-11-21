@@ -1,5 +1,9 @@
 # Patchwerk Forever: Thread (Tracker)
 
+## 1.5.0
+
+- For addon authors: `PatchwerkForever_Thread_Tracker_Dock(frame)` puts the list beside another window while that window is open (to its right where the screen has room, else inside its right edge, and above it), and `PatchwerkForever_Thread_Tracker_Dock(nil)` puts it back where the player keeps it. Its saved place is not changed.
+
 ## 1.4.0
 
 Polish: the finer details. Works with Patchwerk Forever 2.6.0; the percent signs and the marker that follows Thread (Routes) need the newer base (and Routes) released beside this.
