@@ -1,4 +1,25 @@
-# Patchwerk Forever: Thread (Globe)
+# Patchwerk Forever: Globe (Thread)
+
+## 1.0.0
+
+The first release. Needs Patchwerk Forever 2.8.0 or later.
+
+- **The world on a globe**: the world of WoW Forever on a parchment globe you can spin and zoom, from the whole world on its stand down to the ground. `/globe` opens it.
+- **Painted by this addon's own tools** from the game's terrain: each zone in a tint of its own, hills, an inked coastline, zone borders, and ink drawings on the open sea. Closer in, each continent in finer detail, then the minimap's pictures of the ground.
+- **Everything the world map shows**: where you are, your quests, the map pin, flight points, boats, zeppelins, the tram and the lifts, towns and landmarks, your group, your corpse, rares and treasures, and the pins other addons put on the world map through HereBeDragons.
+- **Land you have not discovered** is left as blank paper, as on the world map.
+- **Cities and battlegrounds** open as flat maps in the same window, with the same marks.
+- **In place of the world map**, if you want: **The Map Key Opens The Globe** (off as it comes) gives it the map key, and each map has a button to the other.
+- **With Routes (Thread)**, your route is drawn on the globe, with its boats, zeppelins and recorded herb and ore nodes. **With Tracker (Thread)**, that list can sit beside the globe.
+- **Light and movement**: candlelight, the Maelstrom turning, cloud shadows, aged paper. Each has a setting.
+- **Keys and gamepad** for everything the mouse does, and Console Port lists the globe's bindings among its own.
+
+## 0.11.0
+
+- **Now named Patchwerk Forever: Globe (Thread)**: the name comes first and what kind of addon it is after it, in brackets (it was Thread (Globe)). The options page is named the same way.
+- **Aged paper**: the globe looks its age. Water stains with their tide lines, clusters of foxing, grime round the poles and paler patches where the paper is rubbed, most along the equator where a hand turns it. Closer to, hairline cracks in the varnish, fine specks, and the seams between the twelve strips its paper is cut in. It lies over the map, the ink drawings and the blank paper alike, and fades away as you zoom in to the ground. **Aged Paper** turns it off (on the options page and in the Show menu). Parchment style only.
+- **The ink drawings** on the sea (the compass rose, the serpents, the ships, the Maelstrom) have a pale wash under their bodies, so the sea no longer shows through them as through glass, and their ink is a little faded.
+- The second ship faces the other way, as the second serpent does.
 
 ## 0.10.0
 
@@ -26,8 +47,8 @@ Everything the world map does. To be played with before it goes out as 1.0.
 
 ## 0.5.1
 
-- **The Deeprun Tram**: for the Alliance, a tram mark at Stormwind and at Ironforge ("Tram to Ironforge", and the wait), with a dashed line between them where it runs under the ground. It comes from Thread (Routes) 1.3.0, which now knows the tram, and is shown with the boats and zeppelins (**Show Boats And Zeppelins**).
-- **Lifts**: a lift mark where each lift Thread (Routes) knows stands: the Great Lift, the lift of Freewind Post and those of Thunder Bluff. They show as you zoom in, with the flight points, and go with **Show Boats And Zeppelins**.
+- **The Deeprun Tram**: for the Alliance, a tram mark at Stormwind and at Ironforge ("Tram to Ironforge", and the wait), with a dashed line between them where it runs under the ground. It comes from Routes (Thread) 1.3.0, which now knows the tram, and is shown with the boats and zeppelins (**Show Boats And Zeppelins**).
+- **Lifts**: a lift mark where each lift Routes (Thread) knows stands: the Great Lift, the lift of Freewind Post and those of Thunder Bluff. They show as you zoom in, with the flight points, and go with **Show Boats And Zeppelins**.
 - **The Maelstrom**: a great whirlpool in ink at the middle of the Great Sea, between Kalimdor and the Eastern Kingdoms, with its name under it. The sea's own name has moved south of it.
 
 ## 0.5.0
@@ -46,11 +67,11 @@ Places, people and words.
 Quests.
 
 - **Your quests**: a numbered mark where each quest's next objective is, a question mark where it is handed in once it is done. Point at one for its objectives.
-- **Click a quest** and Thread (Routes) goes there first, as a click on it in Thread (Tracker) does; click it again to go back to your main route. The quest the route follows is larger, with a soft ring round where it is done.
+- **Click a quest** and Routes (Thread) goes there first, as a click on it in Tracker (Thread) does; click it again to go back to your main route. The quest the route follows is larger, with a soft ring round where it is done.
 - **Quests on offer** in the zone at the middle of the picture: an exclamation mark where the game says one can be picked up.
-- **Your guide's steps**: where the guide you run sends you now and its next steps, numbered. A side list (the quests of Stitch (Dungeon Journal)) shows each of its quests; a click follows that list.
+- **Your guide's steps**: where the guide you run sends you now and its next steps, numbered. A side list (the quests of Dungeon Journal (Stitch)) shows each of its quests; a click follows that list.
 - **The Route button** (and a Route Menu key): what the route follows, Add Map Pin To My Route, Edit My Route, and Tracker Beside The Globe.
-- **Thread (Tracker)'s list beside the globe** while it is open; it goes back where you keep it when the globe closes. A quest clicked in the list turns the globe to it. (**Tracker Beside The Globe**)
+- **Tracker (Thread)'s list beside the globe** while it is open; it goes back where you keep it when the globe closes. A quest clicked in the list turns the globe to it. (**Tracker Beside The Globe**)
 - **Show Quests** turns the quest marks off and on.
 
 ## 0.3.0
@@ -59,9 +80,9 @@ Travel and your route.
 
 - **Marks and lines on the globe**: an icon at a place, with a tooltip and what a click does. Marks on the far side are hidden, and where they crowd as you zoom out the more important one is kept.
 - **Flight points** of your side, as you zoom in; those you have not discovered are grey (**Show Flight Points**).
-- **Boats and zeppelins** you can take: where they put in, what they go to and how long the wait is, and the way they go across the sea (**Show Boats And Zeppelins**; needs Thread (Routes)).
-- **Your route**: the trail Thread (Routes) leads you along, in its own colours; a flight is a dashed arc over the globe, a boat a dashed line across the sea. My Route's stops are numbered; click one for Go Here First, Move Earlier, Move Later and Remove From My Route (**Show Your Route**).
-- **Herb and ore nodes** Thread (Routes) has recorded, zoomed right in (**Show Herb And Ore Nodes**).
+- **Boats and zeppelins** you can take: where they put in, what they go to and how long the wait is, and the way they go across the sea (**Show Boats And Zeppelins**; needs Routes (Thread)).
+- **Your route**: the trail Routes (Thread) leads you along, in its own colours; a flight is a dashed arc over the globe, a boat a dashed line across the sea. My Route's stops are numbered; click one for Go Here First, Move Earlier, Move Later and Remove From My Route (**Show Your Route**).
+- **Herb and ore nodes** Routes (Thread) has recorded, zoomed right in (**Show Herb And Ore Nodes**).
 - **The map pin**: Ctrl-click sets it, as on the game's map. A click on the pin tracks it or stops tracking it, a Ctrl-click on it clears it, a Shift-click links it in chat.
 - **Keys and gamepad**: Set Or Clear The Map Pin At The Middle, and Next Mark, which turns the globe to the marks in the picture one after another. The mark at the middle of the picture shows its tooltip and takes the press.
 

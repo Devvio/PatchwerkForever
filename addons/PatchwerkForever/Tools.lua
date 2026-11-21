@@ -16,7 +16,7 @@ local P = ns.P;
 --         name   = 'Routes',          -- what its chat lines begin with
 --         colour = 'ff7fd4ff',        -- and in what colour
 --         saved  = 'MyToolDB',        -- its SavedVariables, as its TOC names it
---         page   = 'Thread: Routes',  -- its first page under Patchwerk Forever's
+--         page   = 'Routes (Thread)',  -- its first page under Patchwerk Forever's
 --         slash  = '/thread',         -- shown in /patchwerk
 --     })
 --

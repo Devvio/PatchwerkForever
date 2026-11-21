@@ -1,4 +1,4 @@
--- Thread (Routes): where to go when you have not said.
+-- Routes (Thread): where to go when you have not said.
 --
 -- A map pin, or a spot given with /thread to, always comes first. With neither, the route goes
 -- where one of these says, and moves on as it does:

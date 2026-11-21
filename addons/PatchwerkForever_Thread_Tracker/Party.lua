@@ -1,4 +1,4 @@
--- Thread (Tracker): who in your party has a quest, and how far along they are.
+-- Tracker (Thread): who in your party has a quest, and how far along they are.
 --
 -- The game tells an addon whether a party member is on a quest (C_QuestLog.IsUnitOnQuest). It does
 -- not tell how far along they are. So:

@@ -1,4 +1,4 @@
-# Patchwerk Forever: Thread (Tracker)
+# Patchwerk Forever: Tracker (Thread)
 
 **Patchwerk had a list. Patchwerk lost the list. Patchwerk made a list that cannot be lost.**
 
@@ -16,7 +16,7 @@ Patchwerk wants more jobs! Patchwerk wants them written down!
 
 A quest tracker for **World of Warcraft: Forever**: your quests by zone with how far each is, the steps of the guide you run, buttons for quest items, tracked recipes and a gathering list, in a list of our own that you can move, resize and color.
 
-One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the settings pages, and nothing else. It works with no other addon installed; RestedXP Guides and Thread (Routes) each add a section when they are there.
+One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the settings pages, and nothing else. It works with no other addon installed; RestedXP Guides and Routes (Thread) each add a section when they are there, and Globe (Thread) can keep the list beside its window.
 
 One piece is marked experimental and starts disabled: dungeon objectives, which depend on what Forever's dungeons report.
 
@@ -27,11 +27,11 @@ One piece is marked experimental and starts disabled: dungeon objectives, which 
 - **Quests ready to hand in** leave the list for a short group at its foot (at its top with the ready-first order), each saying where to take it. The game's own watch list is not changed.
 - **Who in your party has a quest**, under it. For party members who run this tracker too, how far along they are.
 - **Your guide's steps**, when a guide addon runs (RestedXP): the step you are on with its lines, the next few steps dimmed under it, one line each, and in the heading the guide's name, "step 34 of 120" and a thin bar.
-- **Focus buttons** along its top: one small button for each route you can follow (Auto, RestedXP, the Dungeon Journal list, Quests, My Route), only for what is installed and running. The one in use is lit and named beside them; click another to follow it, or right-click the row for a menu. Thread (Routes) follows the focus. It is kept for each character.
+- **Focus buttons** along its top: one small button for each route you can follow (Auto, RestedXP, the Dungeon Journal list, Quests, My Route), only for what is installed and running. The one in use is lit and named beside them; click another to follow it, or right-click the row for a menu. Routes (Thread) follows the focus. It is kept for each character.
 - **My Route**: your own stops in your own order (see below), above your quests.
-- **A second list beside your guide**, with Patchwerk Forever: Stitch (Dungeon Journal): the quests of the dungeons you track in the Dungeon Journal, in a section of their own. Click it to route along it; click again to go back to your guide.
+- **A second list beside your guide**, with Patchwerk Forever: Dungeon Journal (Stitch): the quests of the dungeons you track in the Dungeon Journal, in a section of their own. Click it to route along it; click again to go back to your guide.
 - **Recipes you track** in a profession window, with what each needs and how much you have.
-- **Gathering**, with Thread (Routes) installed: the nearest herb and ore nodes you have gathered from before.
+- **Gathering**, with Routes (Thread) installed: the nearest herb and ore nodes you have gathered from before.
 - **A dungeon's stages**, where the game runs a place in stages. Untried; off until you enable it.
 
 ## Clicks
@@ -40,7 +40,7 @@ Point at a row or a heading and a tooltip says what a click on it does.
 
 | On | Click | Does |
 |---|---|---|
-| a quest | left | chooses it: a side path off the main track (your guide, or your nearest quest). Thread (Routes) goes there first, even while a guide runs, and the game's arrow is put on it. A second click goes back to the main track and puts the arrow back where it was |
+| a quest | left | chooses it: a side path off the main track (your guide, or your nearest quest). Routes (Thread) goes there first, even while a guide runs, and the game's arrow is put on it. A second click goes back to the main track and puts the arrow back where it was |
 | a quest | shift-left | opens it to read |
 | a quest | right | a menu: follow, read, add to or remove from My Route, share with the party, stop tracking, abandon (the game asks first) |
 | a focus button | left | follows that route; right: the same choices as a menu |
@@ -53,7 +53,7 @@ Point at a row or a heading and a tooltip says what a click on it does.
 | a heading | left | folds its section |
 | a Dungeon Journal stop | right | adds its quest to My Route (with the list's own entries) |
 
-A bar beside a block shows what is being followed: your guide's step, the quest you chose, a stop of My Route, or the gathering run. With Thread (Routes) installed it marks what Routes really leads you to, so after Stop Routing, or while it leads to your map pin, nothing is marked.
+A bar beside a block shows what is being followed: your guide's step, the quest you chose, a stop of My Route, or the gathering run. With Routes (Thread) installed it marks what Routes really leads you to, so after Stop Routing, or while it leads to your map pin, nothing is marked.
 
 A quest you chose and then stop tracking, here or in the quest log, is let go, and the route goes back to your main track.
 
@@ -66,7 +66,7 @@ A list of stops you build yourself, followed in your order: quests in your log, 
 A hand-in can wait: when the stop you are on is a quest to turn in and another quest's objective, or a quest to pick up, further down the list is clearly nearer, that goes first. The hand-in follows when that is done or once it is the nearer of the two. A hand-in you click yourself is not put off.
 
 - **Adding**: Add To My Route in a quest's right-click menu, or on a stop of the Dungeon Journal list; Add All Tracked Quests and Add Map Pin on the My Route heading's right-click menu; or the Add Quest To My Route key binding, for the quest under the quest arrow.
-- **At the top**, the stop it goes to next and its zone, and while My Route is followed, the way there as Thread (Routes) finds it ("Fly from Crossroads to Thunder Bluff (3 min in all)").
+- **At the top**, the stop it goes to next and its zone, and while My Route is followed, the way there as Routes (Thread) finds it ("Fly from Crossroads to Thunder Bluff (3 min in all)").
 - **Each stop** shows its number, its name, what to do there (Accept, In progress, Turn in, Go to, No place known) and how far it is. Click it to go there first; right-click it for Go Here First, Move Up, Move Down, Move To Top, Quest Details and Remove.
 - **Drag and drop**: drag a stop to another place. A ghost of the row follows the pointer and a gold line shows where it will land. Let go away from the list, or press Escape, to cancel.
 - **Order For Me** puts the stops in a short order: nearest first, then each next stop nearest the one before.
@@ -130,7 +130,7 @@ While this one is shown, the game's tracker is made invisible and lets clicks th
 
 | Page | Holds |
 |---|---|
-| Thread: Tracker | on or off, the game's tracker, width, the tallest it grows, its place, visibility (fading, instances) |
+| Tracker (Thread) | on or off, the game's tracker, width, the tallest it grows, its place, visibility (fading, instances) |
 | Tracker: Quests | the order, the ready group, levels, kinds, distance, progress colors, the flash, the party, the quest arrow on the nearest quest |
 | Tracker: Guide | the guide's steps, how many after, skipping by a click, the step's items, RestedXP's window; the focus buttons; My Route |
 | Tracker: More | item buttons, recipes, the gathering list, a dungeon's stages |

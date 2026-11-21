@@ -1,4 +1,4 @@
--- Thread (Tracker): dragging a stop of My Route to another place in it.
+-- Tracker (Thread): dragging a stop of My Route to another place in it.
 --
 -- Rows of My Route, in the tracker's section and in its window (Editor.lua), can be dragged with the
 -- left button. While you drag, a ghost of the row follows the pointer and a gold line shows where it

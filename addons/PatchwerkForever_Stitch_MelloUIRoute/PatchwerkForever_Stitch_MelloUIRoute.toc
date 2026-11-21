@@ -1,8 +1,8 @@
 ## Interface: 16001
-## Title: Patchwerk Forever: Stitch (MelloUI Route)
+## Title: Patchwerk Forever: MelloUI Route (Stitch)
 ## Notes: Additions to MelloUI's route planner: roads ready at login, roads before shortcuts, blocked spots, hearthstone and teleport suggestions, the next guide steps and a quest run. Needs Patchwerk Forever and MelloUI.
 ## Author: Tyrone
-## Version: 2.1.0
+## Version: 2.1.1
 ## Group: PatchwerkForever
 ## IconTexture: Interface\AddOns\PatchwerkForever_Stitch_MelloUIRoute\Media\icon
 ## X-Patchwerk-Voice: Their road had holes in it. Patchwerk darned the holes.

@@ -9,7 +9,7 @@ Everything here is a proposal to pick from and reorder. Sizes are rough: **S** a
 
 ## 1. Improvements to what is live
 
-### Thread (Tracker) 1.0
+### Tracker (Thread) 1.0
 
 | # | Improvement | Size | Needs |
 |---|---|---|---|
@@ -22,7 +22,7 @@ Everything here is a proposal to pick from and reorder. Sizes are rough: **S** a
 | T7 | Its own icon in the family's style (done 2026-11-17, the user's own picture) | - | - |
 | T8 | Redraw only what changed, not the whole list each second | M | only if it shows in play |
 
-### Thread (Routes), to its 1.0
+### Routes (Thread), to its 1.0
 
 | # | Improvement | Size | Needs |
 |---|---|---|---|
@@ -37,7 +37,7 @@ Everything here is a proposal to pick from and reorder. Sizes are rough: **S** a
 | R9 | Flight times measured as you fly, in place of estimates | S | - |
 | R10 | Travel speed follows your mount | S | - |
 
-### Thread (Sparkle) 1.0
+### Sparkle (Thread) 1.0
 
 | # | Improvement | Size | Needs |
 |---|---|---|---|
@@ -82,7 +82,7 @@ Everything here is a proposal to pick from and reorder. Sizes are rough: **S** a
 
 ## Built since this was written
 
-- **N1, 2026-11-13: Patchwerk Forever: Stitch (Dungeon Journal) 1.0.0**, with base 2.4.0, Routes 0.15.0
+- **N1, 2026-11-13: Patchwerk Forever: Dungeon Journal (Stitch) 1.0.0**, with base 2.4.0, Routes 0.15.0
   and Tracker 1.1.0. Passes the checks against a stand-in journal; not yet tried in the game with the
   real one. What was settled: the journal's list is a second guide beside RestedXP and is followed
   only while selected (a setting makes it the main route); nothing was sent to its author yet.
@@ -92,12 +92,12 @@ Everything here is a proposal to pick from and reorder. Sizes are rough: **S** a
   you lack routes on to its next step by another way. Not yet tried in the game: what Forever's
   flight map reports for points you do not have is what it stands on.
 - **2026-11-14: polish pass A** (`POLISH.md`, A1 to A12): base 2.5.0, Routes 0.17.0, Tracker 1.2.0,
-  Stitch (Dungeon Journal) 1.0.1. The step text once per step, "No route found" and a slower retry,
+  Dungeon Journal (Stitch) 1.0.1. The step text once per step, "No route found" and a slower retry,
   what Stop says, the trail on a flight, the tracker keeping its top corner, scrolling a long list
   without a mouse, the skip said in chat with an undo binding, rows that hold their order, and the
   Dungeon Journal list as a side list, and one quest list in instances (ours hides while the default
   tracker is kept there). Passes the checks; not yet tried in the game.
-- **2026-11-16: Sparkle 1.1.0, loot wisps, and Thread (Races) 0.1.0 (beta), a new tool.** Asked for: a
+- **2026-11-16: Sparkle 1.1.0, loot wisps, and Races (Thread) 0.1.0 (beta), a new tool.** Asked for: a
   wisp that floats loot into the bag, and race courses of your own with markers on the ground. A wisp
   flies from the loot window or the sparkled object to the bag the item went into (`Wisp.lua`). Races:
   courses made by placing checkpoints as you ride, raced against the clock with splits and a best run,
@@ -106,7 +106,7 @@ Everything here is a proposal to pick from and reorder. Sizes are rough: **S** a
   checkpoint at a time. Both pass `tools/lua_races.py`; neither has been tried in the game. To look at
   first: where the ring sits against the game's marker (Vertical Offset), how near the game lets you get
   before its marker goes, and whether `ITEM_PUSH` fires for gathering on Forever.
-- **2026-11-16: Thread (Plainsrunning) 0.1.0 (beta), a new tool.** Asked for: the interface fading
+- **2026-11-16: Plainsrunning (Thread) 0.1.0 (beta), a new tool.** Asked for: the interface fading
   slowly as Plainsrunning reaches 30 stacks, then speed streaks across the screen. The buff is spell
   1299038 (seen in the game, and in Forever's hotfix cache as an aura of increased speed, "Movement speed
   increased by $w1%"); the racial passive is 1259918 and shares the name, so it is never matched. The
@@ -115,7 +115,7 @@ Everything here is a proposal to pick from and reorder. Sizes are rough: **S** a
   Passes `tools/lua_plainsrunning.py`; not yet tried in the game. To look at first: that every window
   of Forever brings the interface back (the list is `WINDOWS` in `Run.lua`), how fast 30 stacks is
   (the streaks take 1.6 times running speed as their pace), and where the streaks' centre sits.
-- **2026-11-16: Thread (Plainsrunning) 0.2.0 (beta).** Asked for: more effects to choose from, then
+- **2026-11-16: Plainsrunning (Thread) 0.2.0 (beta).** Asked for: more effects to choose from, then
   chosen in an interview: four more effects (Wind Gusts, Dust And Seeds, Warp Rings, Edge Glow), each its
   own tick box, additive, all off by default; Keep While Faded for the minimap, unit frames and chat, each
   optional and off; the camera easing back 3 yards at full speed, on by default; run records per
@@ -127,21 +127,21 @@ Everything here is a proposal to pick from and reorder. Sizes are rough: **S** a
   frames need adding to the lists in `Run.lua`), whether CameraZoomIn works in a fight without a blocked
   action, how the new effects look over bright grass (they add light), and the hoofbeat pace of Edge
   Glow.
-- **2026-11-17: out of beta.** Routes 1.0.0 and Thread (Immersive Plainsrunning) 1.0.0, then 1.1.0
+- **2026-11-17: out of beta.** Routes 1.0.0 and Immersive Plainsrunning (Thread) 1.0.0, then 1.1.0
   (Tauren only, safe with the game's secret values); Races stays 0.1.0 (beta). Icons of the user's own for
   the Tracker, the Dungeon Journal Stitch and Immersive Plainsrunning; their CurseForge projects made.
-- **2026-11-18: Stitch (Console Port) 2.1.0, Stitch (Dungeon Journal) 1.0.2, Immersive Plainsrunning
+- **2026-11-18: Console Port (Stitch) 2.1.0, Dungeon Journal (Stitch) 1.0.2, Immersive Plainsrunning
   1.2.0**, then **focus and My Route** (`TRACKING-BLUEPRINT.md`): base 2.6.0, Routes 1.1.0, Tracker
-  1.3.0, Stitch (Dungeon Journal) 1.1.0. Choose what the route follows, and stack quests into a route of
+  1.3.0, Dungeon Journal (Stitch) 1.1.0. Choose what the route follows, and stack quests into a route of
   your own. Passes the checks; not yet tried in the game.
 - **2026-11-18: polish pass B to J and an unslop pass, by addon** (`POLISH.md`). Details in each
   addon's CHANGELOG.
-- **2026-11-19 to 2026-11-21: Thread (Globe)**, a new addon (`GLOBE-BLUEPRINT.md`): the world on a parchment
+- **2026-11-19 to 2026-11-21: Globe (Thread)**, a new addon (`GLOBE-BLUEPRINT.md`): the world on a parchment
   globe. Prototype 0.0.1 with its own pictures, zones and hand-made art. Its road to parity with the
   world map (G5 to G14, 1.0 and its first release at parity) is in the blueprint. G5 to G9 (0.5.0: the
   ground, the window and controls, travel and your route, quests, places and people) were built on
   2026-11-21 and checked offline; none of G6 to G9 has been tried in the game yet. For them the base
-  gained its Trails service (2.8.0), Thread (Routes) offers its drawing there (1.3.0), and Thread
+  gained its Trails service (2.8.0), Routes (Thread) offers its drawing there (1.3.0), and Thread
   (Tracker) can sit beside another window (1.5.0). After a first look at 0.5.0 came the Deeprun Tram and
   the lifts (in the planner too) and the Maelstrom (0.5.1). G10 to G14 were then built in one run as
   0.10.0: unexplored land left blank, rares and treasures, the Show menu, other addons' pins, city and
@@ -149,3 +149,14 @@ Everything here is a proposal to pick from and reorder. Sizes are rough: **S** a
   movement (candlelight, the Maelstrom turning, cloud shadows). Checked offline; none of it tried in
   the game yet. Left: the test, then 1.0.0, the base README's list, the CurseForge project and the
   release.
+- **2026-11-21: Globe 0.11.0 and the family's names turned round.** Aged paper on the globe, the ink
+  drawings with a wash and a little faded, variation drawings and their prompts, a prompt for a ring
+  border in place of the stand. And every addon's display name now has its name first and its kind
+  after it, in brackets: "Patchwerk Forever: Routes (Thread)", "Patchwerk Forever: Console Port
+  (Stitch)" (they were "Thread (Routes)", "Stitch (Console Port)"); options pages the same. Folders,
+  commands and saved data are as they were. The seven addons with nothing else waiting got a patch
+  version for it. Not released: the CurseForge projects' own names are changed on the site, by hand.
+- **2026-11-21: made ready for release, the Globe as 1.0.0.** The Globe is no longer held back: version
+  1.0.0, named in the base's README and in Routes' and Tracker's, an icon and logo of the family's kind.
+  Every project's zip is built and the uploads tried dry. Left to the user: the Globe's CurseForge
+  project (`release/NEW-PROJECTS.md`), the projects' new names on the site, and the word to upload.

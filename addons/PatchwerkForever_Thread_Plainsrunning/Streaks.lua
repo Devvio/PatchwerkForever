@@ -1,4 +1,4 @@
--- Thread (Immersive Plainsrunning): the effects at full speed, and the speed streaks among them.
+-- Immersive Plainsrunning (Thread): the effects at full speed, and the speed streaks among them.
 --
 -- Every effect hangs from one frame on WorldFrame, not UIParent, so they show while the interface is
 -- faded away. They come in together over half a second and go in less; how strongly they show is one

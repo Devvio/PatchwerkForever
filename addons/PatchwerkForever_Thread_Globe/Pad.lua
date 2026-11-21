@@ -1,4 +1,4 @@
--- Thread (Globe): a gamepad.
+-- Globe (Thread): a gamepad.
 --
 -- While the globe is open (and Gamepad Turns The Globe is on, and you are not in combat), a frame the
 -- size of the window takes the gamepad: the left stick turns the globe, the right stick (up and down)
@@ -141,7 +141,7 @@ ns.On('PLAYER_LOGIN', function()
 		local name = rawget(_G, 'BINDING_NAME_PATCHWERKFOREVER_GLOBE_' .. action)
 		if name then
 			special[#special + 1] = { binding = 'PATCHWERKFOREVER_GLOBE_' .. action, name = 'Globe: ' .. name,
-				desc = 'Thread (Globe). ' .. name .. '.' }
+				desc = 'Globe (Thread). ' .. name .. '.' }
 		end
 	end
 end)

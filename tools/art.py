@@ -10,7 +10,7 @@ and one sheet of all of them to look at: release/art-preview.png.
 
 The icons are a family: a sewn-on patch with gold stitching, the cloth a colour of its own for each
 addon and an emblem in the middle (a stitched seam for the base, a gamepad, menu bars, a winding
-road, a compass star, a twinkle, a ticked list). Every one is worked out from the formulas in this file; nothing is copied.
+road, a compass star, a twinkle, a ticked list, a globe). Every one is worked out from the formulas in this file; nothing is copied.
 
 Your own art. Put a PNG in the repository's art folder and it is used in place of the drawn one:
     art/<folder>/icon.png        the icon (any square size; made 64 x 64 for the game)
@@ -133,7 +133,7 @@ def road(x, y):
 
 
 def compass(x, y):
-    """Thread (Routes): a four-pointed compass star."""
+    """Routes (Thread): a four-pointed compass star."""
     s = 0.56
     ax, ay = abs(x) / s, abs(y) / s
     d = ((math.sqrt(ax) + math.sqrt(ay)) ** 2 - 1.0) * s * 0.42          # close to a distance near the edge
@@ -146,14 +146,14 @@ def _glint(x, y, cx, cy, s):
 
 
 def glints(x, y):
-    """Thread (Sparkle): a twinkle with two smaller ones beside it."""
+    """Sparkle (Thread): a twinkle with two smaller ones beside it."""
     d = min(_glint(x, y, -0.08, -0.06, 0.46), circle(x, y, -0.08, -0.06, 0.09))
     d = min(d, _glint(x, y, 0.36, 0.30, 0.22), _glint(x, y, 0.30, -0.36, 0.15))
     return d, 1.0
 
 
 def checklist(x, y):
-    """Thread (Tracker): a list of three things, the first two ticked."""
+    """Tracker (Thread): a list of three things, the first two ticked."""
     d, cut = 9.0, 1.0
     for row, ticked in ((0.32, True), (0.0, True), (-0.32, False)):
         d = min(d, box(x, y, 0.12, row, 0.30, 0.06, 0.06))
@@ -164,6 +164,27 @@ def checklist(x, y):
     return d, cut
 
 
+def _oval(x, y, cx, cy, a, b):
+    """Close to the distance to an oval's line: centre, half width, half height."""
+    px, py = x - cx, y - cy
+    k = math.hypot(px / a, py / b)
+    if k < 1e-6:
+        return -min(a, b)
+    return (k - 1.0) * k / max(math.hypot(px / (a * a), py / (b * b)), 1e-6)
+
+
+def globe(x, y):
+    """Globe (Thread): a globe on its stand, with its lines of the map."""
+    cy, r, w = 0.12, 0.44, 0.034
+    ball = circle(x, y, 0, cy, r)
+    d = abs(ball) - 0.05                                                       # the ball's edge
+    lines = min(abs(y - cy) - w, abs(x) - w, abs(_oval(x, y, 0, cy, 0.23, r)) - w,
+                abs(y - cy - 0.25) - w * 0.85, abs(y - cy + 0.25) - w * 0.85)   # equator, meridians, parallels
+    d = min(d, max(lines, ball))
+    d = min(d, stroke(x, y, 0, cy - r, 0, -0.50, 0.05), stroke(x, y, -0.24, -0.58, 0.24, -0.58, 0.06))
+    return d, 1.0
+
+
 def _side(x, y, ax, ay, bx, by):
     """How far a point is outside the line from a to b (on its right, going from a to b)."""
     dx, dy = bx - ax, by - ay
@@ -172,7 +193,7 @@ def _side(x, y, ax, ay, bx, by):
 
 
 def flag(x, y):
-    """Thread (Races): a pennant on a pole, for a checkpoint."""
+    """Races (Thread): a pennant on a pole, for a checkpoint."""
     pole = box(x, y, -0.30, -0.01, 0.045, 0.47, 0.02)
     # the pennant: a triangle from the top of the pole, pointing right (corners taken anticlockwise)
     a, b, c = (-0.27, 0.46), (-0.27, 0.02), (0.42, 0.24)
@@ -181,7 +202,7 @@ def flag(x, y):
 
 
 def speed(x, y):
-    """Thread (Immersive Plainsrunning): speed lines streaming behind a double chevron, pointing ahead."""
+    """Immersive Plainsrunning (Thread): speed lines streaming behind a double chevron, pointing ahead."""
     d = min(stroke(x, y, -0.50, 0.26, -0.12, 0.26, 0.045),
             stroke(x, y, -0.58, 0.0, -0.18, 0.0, 0.045),
             stroke(x, y, -0.50, -0.26, -0.12, -0.26, 0.045))
@@ -202,6 +223,7 @@ ICONS = {
     "PatchwerkForever_Thread_Tracker":    ((150, 108, 62), (92, 60, 32), checklist),
     "PatchwerkForever_Thread_Races":      ((40, 112, 72), (20, 60, 38), flag),
     "PatchwerkForever_Thread_Plainsrunning": ((140, 112, 46), (80, 60, 22), speed),
+    "PatchwerkForever_Thread_Globe":      ((38, 84, 148), (16, 40, 86), globe),
 }
 
 

@@ -1,4 +1,4 @@
--- Thread (Routes): choosing the focus.
+-- Routes (Thread): choosing the focus.
 --
 -- The focus (kept by the base: its Focus.lua) is what the route follows by itself: Auto (your guide or
 -- your quests, by Route Priority), one guide's list (RestedXP, the Dungeon Journal, My Route) or

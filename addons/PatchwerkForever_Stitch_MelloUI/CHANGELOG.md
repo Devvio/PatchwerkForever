@@ -1,4 +1,8 @@
-# Patchwerk Forever: Stitch (MelloUI)
+# Patchwerk Forever: MelloUI (Stitch)
+
+## 2.1.1
+
+- **Now named Patchwerk Forever: MelloUI (Stitch)**: the name comes first and what kind of addon it is after it, in brackets (it was Stitch (MelloUI)). The options page is named the same way.
 
 ## 2.1.0
 

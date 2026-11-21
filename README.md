@@ -13,16 +13,17 @@ One parent and two tracks. Each addon is its own download (a CurseForge project 
 | Folder | What it is | Needs |
 |---|---|---|
 | `addons/PatchwerkForever` | **Patchwerk Forever**, the base. | nothing |
-| `addons/PatchwerkForever_Stitch_ConsolePort` | **Stitch (Console Port)**: fixes for Console Port on Forever. | the base, Console Port |
-| `addons/PatchwerkForever_Stitch_MelloUIRoute` | **Stitch (MelloUI Route)**: additions to MelloUI's route planner. | the base, MelloUI |
-| `addons/PatchwerkForever_Stitch_DungeonJournal` | **Stitch (Dungeon Journal)**: the quests of the dungeons tracked in DungeonJournal as a list to route through. Reads the journal as it runs; holds none of its data. | the base, DungeonJournal |
-| `addons/PatchwerkForever_Stitch_MelloUI` | **Stitch (MelloUI)**: the game menu button fix and the trim to Route and the Quest Tracker. | the base, MelloUI |
-| `addons/PatchwerkForever_Thread_Routes` | **Thread (Routes)**: a route planner with its own map data, and herb and ore spots. It follows the focus you choose (your guide, the Dungeon Journal list, your quests or My Route). Its plan and early log are in `tools/PLAN.md`. | the base |
-| `addons/PatchwerkForever_Thread_Routes_Kalimdor`, `_EasternKingdoms`, `_ZephrasIsle` | Routes' map data, one folder a continent, loaded on demand. Written by `tools/pack.py`; not edited by hand. They ship in Routes' zip. | Thread (Routes) |
-| `addons/PatchwerkForever_Thread_Sparkle` | **Thread (Sparkle)**: a sparkle and a name on things you can use, and a wisp that carries what you loot into your bag. | the base |
-| `addons/PatchwerkForever_Thread_Races` | **Thread (Races)**: race courses of your own: checkpoints placed as you ride, a marker on the next one in the world, split times and best runs, courses shared with your party. | the base |
-| `addons/PatchwerkForever_Thread_Plainsrunning` | **Thread (Immersive Plainsrunning)**: for Tauren: the interface fades away as Plainsrunning stacks up, then speed streaks rush across the screen; it all comes back when the run ends, a fight starts or a window opens. | the base |
-| `addons/PatchwerkForever_Thread_Tracker` | **Thread (Tracker)**: a quest tracker of our own: quests by zone, the guide's steps, item buttons, recipes, gathering, the focus buttons and My Route. Its plan is in `tools/PLAN-tracker.md`, focus and My Route in `TRACKING-BLUEPRINT.md`. | the base |
+| `addons/PatchwerkForever_Stitch_ConsolePort` | **Console Port (Stitch)**: fixes for Console Port on Forever. | the base, Console Port |
+| `addons/PatchwerkForever_Stitch_MelloUIRoute` | **MelloUI Route (Stitch)**: additions to MelloUI's route planner. | the base, MelloUI |
+| `addons/PatchwerkForever_Stitch_DungeonJournal` | **Dungeon Journal (Stitch)**: the quests of the dungeons tracked in DungeonJournal as a list to route through. Reads the journal as it runs; holds none of its data. | the base, DungeonJournal |
+| `addons/PatchwerkForever_Stitch_MelloUI` | **MelloUI (Stitch)**: the game menu button fix and the trim to Route and the Quest Tracker. | the base, MelloUI |
+| `addons/PatchwerkForever_Thread_Routes` | **Routes (Thread)**: a route planner with its own map data, and herb and ore spots. It follows the focus you choose (your guide, the Dungeon Journal list, your quests or My Route). Its plan and early log are in `tools/PLAN.md`. | the base |
+| `addons/PatchwerkForever_Thread_Routes_Kalimdor`, `_EasternKingdoms`, `_ZephrasIsle` | Routes' map data, one folder a continent, loaded on demand. Written by `tools/pack.py`; not edited by hand. They ship in Routes' zip. | Routes (Thread) |
+| `addons/PatchwerkForever_Thread_Sparkle` | **Sparkle (Thread)**: a sparkle and a name on things you can use, and a wisp that carries what you loot into your bag. | the base |
+| `addons/PatchwerkForever_Thread_Races` | **Races (Thread)**: race courses of your own: checkpoints placed as you ride, a marker on the next one in the world, split times and best runs, courses shared with your party. | the base |
+| `addons/PatchwerkForever_Thread_Plainsrunning` | **Immersive Plainsrunning (Thread)**: for Tauren: the interface fades away as Plainsrunning stacks up, then speed streaks rush across the screen; it all comes back when the run ends, a fight starts or a window opens. | the base |
+| `addons/PatchwerkForever_Thread_Tracker` | **Tracker (Thread)**: a quest tracker of our own: quests by zone, the guide's steps, item buttons, recipes, gathering, the focus buttons and My Route. Its plan is in `tools/PLAN-tracker.md`, focus and My Route in `TRACKING-BLUEPRINT.md`. | the base |
+| `addons/PatchwerkForever_Thread_Globe` | **Globe (Thread)**: the world on a parchment globe that can stand in for the world map, drawn from pictures our own tools paint from the game's terrain. Its plan is in `GLOBE-BLUEPRINT.md`. | the base |
 
 Each addon has its own README, changelog and licence in its folder. The base's README names every part of the family, and `tools/release.py` checks that it does.
 
@@ -80,10 +81,10 @@ The tools need Python 3 and the package `lupa` (a Lua 5.1 interpreter). Run them
 |---|---|
 | `python luacheck.py <addon folder>` | checks that every Lua file of an addon parses |
 | `python lua_patchwerk.py` | runs the base and the Stitches through pretend logins: a Stitch's settings, saved data and load order; what someone who had 1.x is told; a Stitch with no base |
-| `python lua_shell.py` | runs the base with Thread (Routes) and Thread (Sparkle) through a pretend play session against a stand-in for the game: routes, the step text, gathering, the focus, My Route |
-| `python lua_tracker.py` | runs the base with Thread (Tracker) through pretend logins against a stand-in quest log, guide, Dungeon Journal list, party and secure buttons (which it fails on any touch of during a fight) |
-| `python lua_races.py` | runs the base with Thread (Races) and Sparkle's loot wisp through a pretend session: a course made, raced three times and sent to a party member; items looted, gathered and bought |
-| `python lua_plainsrunning.py` | runs the base with Thread (Immersive Plainsrunning) through a pretend run: the buff stacking to 30, the interface fading and coming back for a fight, a window, typing, standing still, the buff ending, the preview, each effect, the parts kept, the camera, the run records, a problem mid-run |
+| `python lua_shell.py` | runs the base with Routes (Thread) and Sparkle (Thread) through a pretend play session against a stand-in for the game: routes, the step text, gathering, the focus, My Route |
+| `python lua_tracker.py` | runs the base with Tracker (Thread) through pretend logins against a stand-in quest log, guide, Dungeon Journal list, party and secure buttons (which it fails on any touch of during a fight) |
+| `python lua_races.py` | runs the base with Races (Thread) and Sparkle's loot wisp through a pretend session: a course made, raced three times and sent to a party member; items looted, gathered and bought |
+| `python lua_plainsrunning.py` | runs the base with Immersive Plainsrunning (Thread) through a pretend run: the buff stacking to 30, the interface fading and coming back for a fight, a window, typing, standing still, the buff ending, the preview, each effect, the parts kept, the camera, the run records, a problem mid-run |
 | `python lua_trips.py 1 horde` | checks Routes' planner against the prototype, trip by trip (`0 alliance` for the Eastern Kingdoms) |
 | `python lua_journeys.py` | checks Routes' journeys by boat and zeppelin against a brute-force reckoning |
 | `python lua_smooth.py` | checks that Routes' smoothed route line stays on walkable ground and keeps the route's length, time and flights |

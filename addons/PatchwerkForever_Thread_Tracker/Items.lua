@@ -1,4 +1,4 @@
--- Thread (Tracker): buttons for the items your quests give you to use.
+-- Tracker (Thread): buttons for the items your quests give you to use.
 --
 -- Using an item is something the game lets only its "secure" kind of button do, and a secure
 -- button may not be made to appear, vanish, move or change what it does while you are in a fight.

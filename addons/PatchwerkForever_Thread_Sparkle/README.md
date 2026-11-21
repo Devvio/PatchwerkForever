@@ -1,4 +1,4 @@
-# Patchwerk Forever: Thread (Sparkle)
+# Patchwerk Forever: Sparkle (Thread)
 
 **Ooh. Shiny.**
 
@@ -42,11 +42,11 @@ While **Enable Sparkles** is on, two of the game's own settings are turned on (`
 
 **Sparkle With Keyboard And Mouse** (on to begin with) keeps a third the same way: the game's **Enable Interact Key** (Options → Controls, `SoftTargetInteract`). Without it the game picks an object only for a gamepad, so with keyboard and mouse nothing would sparkle. You do not need to bind the interact key. Gamepad play is not changed, and disabling the option puts the game's setting back.
 
-With **Patchwerk Forever: Thread (Routes)** installed too, an herb or a vein is known by name from the nodes you have gathered, as well as by the game's cursor.
+With **Patchwerk Forever: Routes (Thread)** installed too, an herb or a vein is known by name from the nodes you have gathered, as well as by the game's cursor.
 
 ## Options
 
-**Options → AddOns → Patchwerk Forever → Thread: Sparkle**, or `/sparkle config`. The name has the page **Sparkle: Names**; how each kind of object sparkles is on **Sparkle: Appearance**, a heading for each kind; **Sparkle: Behind My Character** has the fading; and **Sparkle: Loot Wisps** has the wisps.
+**Options → AddOns → Patchwerk Forever → Sparkle (Thread)**, or `/sparkle config`. The name has the page **Sparkle: Names**; how each kind of object sparkles is on **Sparkle: Appearance**, a heading for each kind; **Sparkle: Behind My Character** has the fading; and **Sparkle: Loot Wisps** has the wisps.
 
 ## Commands
 

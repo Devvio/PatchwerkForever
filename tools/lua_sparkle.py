@@ -1,4 +1,4 @@
-"""Run Thread (Sparkle) outside the game, on the base, against the stand-in for the game (wowstub.lua)
+"""Run Sparkle (Thread) outside the game, on the base, against the stand-in for the game (wowstub.lua)
 with what it needs added.
 
     python lua_sparkle.py
@@ -347,7 +347,7 @@ def main():
     [b for b in stub.buttons.values() if b.name == "Apply Subtle Preset"][0].click()
     assert "Sparkle: Appearance" in chat()
 
-    print("Thread (Sparkle): all passed.")
+    print("Sparkle (Thread): all passed.")
 
 
 if __name__ == "__main__":

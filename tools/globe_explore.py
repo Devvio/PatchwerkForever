@@ -176,7 +176,7 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
     for old in os.listdir(out_dir):
         os.remove(os.path.join(out_dir, old))
-    lua = ["-- Thread (Globe): the paper laid over land you have not discovered. Written by tools/globe_explore.py",
+    lua = ["-- Globe (Thread): the paper laid over land you have not discovered. Written by tools/globe_explore.py",
            "-- (python globe_explore.py), from the game's own list of the pieces of each zone's map.",
            "local _, ns = ...", "",
            "-- By the game's number for a zone map's picture (C_Map.GetMapArtID):",

@@ -1,10 +1,10 @@
--- Thread (Tracker): joining the base.
+-- Tracker (Thread): joining the base.
 --
 -- This addon is one of Patchwerk Forever's own tools. The base (the addon Patchwerk Forever) gives a
 -- tool its chat lines, its events, its settings and their pages under Patchwerk Forever's in the
 -- game's options: ns.Print, ns.Try, ns.On, ns.Get, ns.Set, ns.OnSetting, ns.RGB, ns.OpenSettings.
 -- It also reads the guide you are running, for the guide's steps (ns.Base.Guides), asks for
--- gathering runs where Thread (Routes) offers them (ns.Base.Gather), and shows and changes the focus
+-- gathering runs where Routes (Thread) offers them (ns.Base.Gather), and shows and changes the focus
 -- and My Route (ns.Base.Focus, ns.Base.MyRoute).
 -- Without a base new enough ns.linked stays unset, and the files after this one do nothing.
 local ADDON, ns = ...
@@ -18,7 +18,7 @@ if not (type(Base) == 'table' and type(Base.Tool) == 'function' and Base:Tool(AD
 	name = 'Tracker',
 	colour = 'ff5fe0c8',
 	saved = 'PatchwerkForever_Thread_TrackerDB',
-	page = 'Thread: Tracker',
+	page = 'Tracker (Thread)',
 	slash = '/tracker',
 })) then
 	-- (named as the addon list shows it, with its version, and the base it needs)

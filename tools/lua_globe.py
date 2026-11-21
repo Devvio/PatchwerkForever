@@ -1,4 +1,4 @@
-"""Thread (Globe), run outside the game: Patchwerk Forever and Thread (Globe) loaded into a stand-in for
+"""Globe (Thread), run outside the game: Patchwerk Forever and Globe (Thread) loaded into a stand-in for
 the game (wowstub.lua), with what the globe needs added to it.
 
     python lua_globe.py
@@ -13,13 +13,13 @@ click fitting it in the picture, a right-click stepping back out), the ground (d
 fading out to sea, only the tiles in the picture looked at), the window (sized by its corner, full screen and
 back, both remembered), Go To, keys and a gamepad's sticks (the middle of the picture their pointer), the
 marks (a gamepad taken and given back; boats and zeppelins, the trail, flight points, herb and ore nodes, My
-Route's stops and the map pin, with what Thread (Routes) offers made up here; quests, quests on offer, a guide's
+Route's stops and the map pin, with what Routes (Thread) offers made up here; quests, quests on offer, a guide's
 steps, Next Mark, the Route button and the tracker beside the globe), the hand-made pieces (the ink pieces on the
 sea, the whole ring and stand in the picture when zoomed right out, the globe lifted to make room for it and
 the pointer still true), rares and treasures, the Show menu, other addons' pins (through the pin library, a
 newer copy of it, and Questie's own), unexplored land (blank paper, clearing as it is discovered), light and
 movement (candlelight by the game clock, the Maelstrom turning, cloud shadows, the ring from your place, the
-opening and its sounds), a city's and a battleground's own flat map with the marks on them, a guard's
+opening and its sounds), aged paper (stains, and nearer the cracks and seams, gone by the ground), a city's and a battleground's own flat map with the marks on them, a guard's
 directions, the map key (laid over the game's keys out of combat, a button on each map to the other, the game's
 map asked for at a place), and Minimap Pictures. How it looks, and how fast, only the game can say.
 """
@@ -68,7 +68,8 @@ local function Bendable(t)
             assert(a == a and b == b and c == c and d == d and e == e and f == f and g == g and h == h, 'a corner not a number')
             self.corners = { a, b, c, d, e, f, g, h }
         else
-            assert(a and b and c and d and a < b and c < d, 'a part of no size')
+            -- (left and right may be the other way round: the picture turned to face the other way)
+            assert(a and b and c and d and a ~= b and c < d, 'a part of no size')
             self.corners, self.part = nil, { a, b, c, d }
         end
     end
@@ -632,10 +633,11 @@ def main():
     stub.Fire("PLAYER_LOGIN")
     stub.Fire("PLAYER_ENTERING_WORLD", True, False)
     chat()
-    on = [s for s in stub.settings.values() if s.page == "Thread: Globe"]
+    on = [s for s in stub.settings.values() if s.page == "Globe (Thread)"]
     assert len(on) >= 5, len(on)                  # (its settings are on its page; the button is not one)
     slash = G.SlashCmdList.PATCHWERKFOREVER_GLOBE
-    LATER = ("globeFxOpen", "globeFxMove", "globeFxPing", "globeFxLight", "globeFxSound", "globeExplore", "globeFlat")
+    LATER = ("globeFxOpen", "globeFxMove", "globeFxPing", "globeFxLight", "globeFxSound", "globeExplore", "globeFlat",
+             "globeAge")
     for key in LATER:
         assert ns.Get(key) is True, (key, "is not on as it comes")
         ns.Set(key, False)
@@ -1205,7 +1207,7 @@ def main():
     frames(60)
     go(-1005.6, -3841.6, 700)
 
-    step("your route: Thread (Routes)' trail in its colours, a flight a dashed arc, a boat joined over the sea")
+    step("your route: Routes (Thread)'s trail in its colours, a flight a dashed arc, a boat joined over the sea")
     lua.execute(ROUTE)
     trail = strokes("trail")
     cx, cy, _z = ns.GlobeWhere(1, -442, -2598)
@@ -1504,7 +1506,7 @@ def main():
     stub.pin = None
     stub.Fire("USER_WAYPOINT_UPDATED")
 
-    step("Thread (Tracker)'s list beside the globe while it is open, and back after")
+    step("Tracker (Thread)'s list beside the globe while it is open, and back after")
     lua.execute('''
         STUB.docks = 0
         function PatchwerkForever_Thread_Tracker_Dock(anchor) STUB.dockedTo = anchor or false; STUB.docks = STUB.docks + 1 return anchor ~= nil end
@@ -1923,6 +1925,34 @@ def main():
     frames(2)
     assert not fx().ping
 
+    step("aged paper: stains over the whole globe and the small things nearer, gone by the ground; a drawing turned")
+    for _ in range(40):
+        view.scripts["OnMouseWheel"](view, -1)
+    frames(80)
+    assert fx().aged == 0 and not [d for d in state()[1] if d["layer"] in ("age", "wear")]
+    ns.Set("globeAge", True)
+    frames(5)
+    drawn = state()[1]
+    stains, small = [d for d in drawn if d["layer"] == "age"], [d for d in drawn if d["layer"] == "wear"]
+    assert stains and small and fx().aged == 2, "no aging over the whole globe"
+    within_globe(state()[0], stains + small)
+    seams = [t for t in stub.allTextures.values() if t.shown and t.wrap == "REPEAT"]
+    assert seams and all(str(t.icon).endswith("wear") for t in seams), "the small things' picture does not repeat"
+    assert not [t for t in stub.allTextures.values() if t.shown and str(t.icon).endswith("age") and t.wrap == "REPEAT"]
+    go(-1500, -3000, 2400)
+    assert fx().aged == 1 and not [d for d in state()[1] if d["layer"] == "wear"], "the cracks stayed, zoomed in"
+    assert [d for d in state()[1] if d["layer"] == "age"], "the stains went too soon"
+    go(-1500, -3000, 3700)
+    assert fx().aged == 0 and not [d for d in state()[1] if d["layer"] in ("age", "wear")], "aging over the ground"
+    ns.Set("globeAge", False)
+    # (the second serpent is its own drawing, turned to face the other way; the first is as drawn)
+    for name, lat, lon, turned in (("decor_serpent2", 0.35, 3.05, True), ("decor_serpent", -0.30, 2.45, False)):
+        lua.eval("function(G, lat, lon) G.GlideTo({ math.cos(lat) * math.cos(lon), math.cos(lat) * math.sin(lon), math.sin(lat) }, 900) end")(ns.G, lat, lon)
+        frames(90)
+        ink = [list(t.part.values()) for t in stub.allTextures.values() if t.shown and str(t.icon).endswith(name)]
+        assert ink, (name, "is not on the globe")
+        assert all((p[0] > p[1]) == turned and p[2] < p[3] for p in ink), (name, "faces the wrong way")
+
     step("opening: the window fades in and the globe turns into place; the map's sounds")
     go(-1500, -3000, 900)
     lat, lon, r = look_now = (ns.G.look.lat, ns.G.look.lon, ns.G.look.r)
@@ -2230,7 +2260,7 @@ def main():
     assert len(drawn) > 200, ("zoomed right out, the world is gone", len(drawn))
     within_globe(look, drawn)
     assert chat() == "", "something was said"
-    print("Thread (Globe): all passed.")
+    print("Globe (Thread): all passed.")
 
 
 if __name__ == "__main__":

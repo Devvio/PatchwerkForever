@@ -1,8 +1,8 @@
--- Thread (Tracker): what a click on a quest does, and following the nearest quest by itself.
+-- Tracker (Thread): what a click on a quest does, and following the nearest quest by itself.
 --
 --   left-click         the quest is chosen: a side path, off the main track (your guide, or the
 --                      nearest of your quests). The base keeps the choice (its Choice.lua) and
---                      Thread (Routes), when installed, goes there first. The game's arrow is put on
+--                      Routes (Thread), when installed, goes there first. The game's arrow is put on
 --                      the quest as well. A second click gives the main track back.
 --   shift-left-click   the quest is opened to read, as the game's own tracker opens it
 --   right-click        a short menu: follow, read, add to My Route (Route.lua), share with the
@@ -18,7 +18,7 @@
 -- guide the route leads where it did before. A quest you chose that you stop tracking in the quest
 -- log is let go, as it is when you stop tracking it here.
 --
--- Which block wears the bar of "being followed" is what Thread (Routes) says it follows, through the
+-- Which block wears the bar of "being followed" is what Routes (Thread) says it follows, through the
 -- base (PatchwerkForever.Following); with no such word (Routes not installed) it is worked out here.
 --
 -- Abandoning asks first, with the game's own question. Stopping tracking changes the game's watch
@@ -152,7 +152,7 @@ end
 -- (for the gathering list: a run takes the place of a quest you chose, and the arrow put on it goes too)
 function ns.ArrowOff() PutArrow(0) end
 
--- What Thread (Routes) says it follows now (the base's Following), or nothing when no route planner
+-- What Routes (Thread) says it follows now (the base's Following), or nothing when no route planner
 -- says (Routes not installed, or it has not looked yet): then the tracker works it out itself.
 function ns.FollowingNow()
 	local Following = ns.Base.Following

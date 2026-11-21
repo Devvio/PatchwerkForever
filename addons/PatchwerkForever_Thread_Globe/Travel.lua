@@ -1,18 +1,18 @@
--- Thread (Globe): travel on the globe.
+-- Globe (Thread): travel on the globe.
 --
---   your route        the trail Thread (Routes) leads you along, in its own colours (a flight is a
+--   your route        the trail Routes (Thread) leads you along, in its own colours (a flight is a
 --                     dashed arc, a boat or zeppelin a dashed line over the sea), and the numbered
 --                     stops of My Route; a click on a stop lists what can be done with it
---   boats, zeppelins  where each puts in and the way it sails (what Thread (Routes) knows of them);
+--   boats, zeppelins  where each puts in and the way it sails (what Routes (Thread) knows of them);
 --                     the tram likewise, and the lifts it knows, from zone level in
 --   flight points     those the game shows your side, from zone level in; grey ones you have not found
---   herb and ore      the spots Thread (Routes) remembers, close in
+--   herb and ore      the spots Routes (Thread) remembers, close in
 --   the map pin       the game's own: Ctrl-click sets it; a click on it has it tracked or not,
 --                     Ctrl-click on it clears it, Shift-click links it in chat. With keys or a gamepad,
 --                     Set Or Clear The Map Pin does it at the middle of the picture.
 --
 -- The trail, the boats and the spots come through the base (PatchwerkForever.Trails): this addon does
--- not know Thread (Routes), and shows none of them without it.
+-- not know Routes (Thread), and shows none of them without it.
 local ADDON, ns = ...
 if not (ns.linked and ns.Marks) then return end
 local G, Marks = ns.G, ns.Marks

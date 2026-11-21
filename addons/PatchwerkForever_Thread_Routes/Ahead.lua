@@ -1,4 +1,4 @@
--- Thread (Routes): the way on, past the step you are on.
+-- Routes (Thread): the way on, past the step you are on.
 --
 -- A guide's steps come one after another, and the ones to come are known (the base's guides service). The way from
 -- each to the next is found here ahead of time, behind the search for your own route, and kept:

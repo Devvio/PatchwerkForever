@@ -1,4 +1,4 @@
--- Thread (Immersive Plainsrunning): each character's run records.
+-- Immersive Plainsrunning (Thread): each character's run records.
 --
 -- A run is from the first stack of the buff to its end. Kept for each character (in
 -- PatchwerkForever_Thread_PlainsrunningRecords, saved per character):

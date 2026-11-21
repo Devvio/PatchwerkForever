@@ -1,4 +1,4 @@
--- Thread (Globe): land you have not discovered is left blank, as the game's own map leaves it.
+-- Globe (Thread): land you have not discovered is left blank, as the game's own map leaves it.
 --
 -- The game's map of a zone is drawn in pieces, one for each part of it you can discover, and tells an
 -- addon which of them you have (C_MapExplorationInfo). Covers.lua has, for every such piece, the land

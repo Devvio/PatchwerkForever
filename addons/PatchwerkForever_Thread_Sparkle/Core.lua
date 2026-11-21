@@ -1,8 +1,8 @@
--- Thread (Sparkle): its settings and the slash command.
+-- Sparkle (Thread): its settings and the slash command.
 local ADDON, ns = ...
 if not ns.linked then return end
 
-ns.TITLE = 'Patchwerk Forever: Thread (Sparkle)'
+ns.TITLE = 'Patchwerk Forever: Sparkle (Thread)'
 ns.BINDING = 'Ignore / Unignore Sparkle Object'     -- the key binding's name, as the game shows it
 
 ---------------------------------------------------------------------------
@@ -10,7 +10,7 @@ ns.BINDING = 'Ignore / Unignore Sparkle Object'     -- the key binding's name, a
 ---------------------------------------------------------------------------
 -- One entry a setting, in the order they are shown. The base makes the pages from this list and
 -- says what each kind of entry becomes (its Tools.lua). page: the page it is on (none: the first,
--- "Thread: Sparkle"). parent: grayed out while that tick box is off. percent: the slider's value
+-- "Sparkle (Thread)"). parent: grayed out while that tick box is off. percent: the slider's value
 -- is shown as a percentage.
 local EFFECTS = {
 	{ 'star', 'Star' }, { 'glow', 'Soft Glow' }, { 'ring', 'Pulsing Ring' }, { 'beam', 'Light Beam' },
@@ -180,7 +180,7 @@ SlashCmdList.PATCHWERKFOREVER_SPARKLE = function(text)
 	elseif word == 'config' or word == 'settings' or word == 'options' then
 		if not ns.OpenSettings() then
 			ns.Print(InCombatLockdown() and 'Options cannot be opened in combat.'
-				or 'Options are under Options > AddOns > Patchwerk Forever > Thread: Sparkle.')
+				or 'Options are under Options > AddOns > Patchwerk Forever > Sparkle (Thread).')
 		end
 	else
 		Help()

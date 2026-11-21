@@ -1,4 +1,4 @@
--- Thread (Races): its settings, the slash command and the key bindings.
+-- Races (Thread): its settings, the slash command and the key bindings.
 --
 -- Race courses of your own, with markers (asked for on 2026-11-16). You ride the
 -- course once and place a checkpoint at each turn (Courses.lua); then you race it: the next checkpoint is
@@ -12,7 +12,7 @@
 local ADDON, ns = ...
 if not ns.linked then return end
 
-ns.TITLE = 'Patchwerk Forever: Thread (Races)'
+ns.TITLE = 'Patchwerk Forever: Races (Thread)'
 
 ns.settings = {
 	{ key = 'radius', default = 12, min = 4, max = 40, step = 1, name = 'Checkpoint Size',
@@ -107,7 +107,7 @@ SlashCmdList.PATCHWERKFOREVER_RACES = function(text)
 	elseif word == 'config' or word == 'settings' or word == 'options' then
 		if not ns.OpenSettings() then
 			ns.Print(InCombatLockdown() and 'Options cannot be opened in combat.'
-				or 'Options are under Options > AddOns > Patchwerk Forever > Thread: Races.')
+				or 'Options are under Options > AddOns > Patchwerk Forever > Races (Thread).')
 		end
 	elseif word == '' and ns.racing then
 		ns.Try('the race', ns.RaceSay)

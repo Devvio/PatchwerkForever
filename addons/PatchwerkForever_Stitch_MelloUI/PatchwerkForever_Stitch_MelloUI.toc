@@ -1,8 +1,8 @@
 ## Interface: 16001
-## Title: Patchwerk Forever: Stitch (MelloUI)
+## Title: Patchwerk Forever: MelloUI (Stitch)
 ## Notes: For MelloUI on WoW Forever: stops its game menu button and EllesmereUI's from covering each other, and can trim MelloUI to its Route and Quest Tracker (off until you ask). Needs Patchwerk Forever and MelloUI.
 ## Author: Tyrone
-## Version: 2.1.0
+## Version: 2.1.1
 ## Group: PatchwerkForever
 ## IconTexture: Interface\AddOns\PatchwerkForever_Stitch_MelloUI\Media\icon
 ## X-Patchwerk-Voice: Patchwerk snipped off the bits that itched.

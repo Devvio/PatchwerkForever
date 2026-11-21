@@ -1,4 +1,4 @@
--- More of a stand-in for the game, on top of wowstub.lua, for Thread (Tracker): the quest log as the
+-- More of a stand-in for the game, on top of wowstub.lua, for Tracker (Thread): the quest log as the
 -- game answers about it, the game's own tracker as a frame with pieces, and the frame functions a
 -- list on screen needs. (lua_tracker.py.) It checks our own code runs and does sensible things with
 -- these answers: it cannot check that the real game answers as the stand-in does.

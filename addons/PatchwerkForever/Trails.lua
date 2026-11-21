@@ -3,8 +3,8 @@ local P = ns.P;
 ---------------------------------------------------------------
 -- Trails: the way the route goes, for a tool that draws it
 ---------------------------------------------------------------
--- Thread (Routes) finds the way and draws it on the world map and
--- the minimap. A tool with a map of its own (Thread (Globe)) asks
+-- Routes (Thread) finds the way and draws it on the world map and
+-- the minimap. A tool with a map of its own (Globe (Thread)) asks
 -- here for the same trail, the boats and zeppelins, and the herb
 -- and ore spots. Neither tool knows the other: Routes offers what
 -- it knows here, and whoever wants it asks here. With Routes not

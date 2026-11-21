@@ -1,4 +1,4 @@
--- Thread (Tracker): My Route, stops you put in your own order.
+-- Tracker (Thread): My Route, stops you put in your own order.
 --
 -- The base keeps the list (its MyRoute.lua) and reads it as one more guide, 'route', so Thread
 -- (Routes) can lead you along it. This lists it in a section of its own, under the guides and above
@@ -51,7 +51,7 @@ function ns.RouteSelected()
 	return selected
 end
 
--- Is My Route the track being followed now: what Thread (Routes) says; without its word, the list
+-- Is My Route the track being followed now: what Routes (Thread) says; without its word, the list
 -- you selected, or the focus with nothing chosen before it (a quest you clicked, a gathering run).
 function ns.RouteFollowed()
 	local said = ns.FollowingNow()
@@ -380,7 +380,7 @@ ns.AddSection('route', 30, function()
 	local followed = ns.RouteFollowed()
 	local blocks = {}
 	-- at the top, where the route goes next: the stop, its zone, and while My Route is followed, how
-	-- the way goes there (where to fly from and to), as Thread (Routes) words it once the route is found
+	-- the way goes there (where to fly from and to), as Routes (Thread) words it once the route is found
 	local coming = current and entries[current]
 	if coming then
 		local lines = {}
@@ -429,7 +429,7 @@ ns.AddSection('route', 30, function()
 end)
 
 -- (the list, the choice and the focus change at a click, in this addon or another: drawn again then.
--- A focus changed by a key binding of Thread (Routes) wakes a faded tracker, as the tracker's own keys do.)
+-- A focus changed by a key binding of Routes (Thread) wakes a faded tracker, as the tracker's own keys do.)
 MyRoute():OnChange(function() ns.Refresh() end)
 ns.Base.Choice:OnChange(function() ns.Refresh() end)
 ns.Base.Focus:OnChange(function()

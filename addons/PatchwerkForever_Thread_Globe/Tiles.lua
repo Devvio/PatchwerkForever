@@ -1,4 +1,4 @@
--- Thread (Globe): the minimap picture of each terrain tile, by continent. Written by
+-- Globe (Thread): the minimap picture of each terrain tile, by continent. Written by
 -- tools/globe.py from the game's own world files; only the pictures' numbers are here.
 local _, ns = ...
 

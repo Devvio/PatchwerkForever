@@ -1,4 +1,4 @@
--- A stand-in for the game, just enough of it to run Patchwerk Forever: Thread (Routes)'s files outside the game
+-- A stand-in for the game, just enough of it to run Patchwerk Forever: Routes (Thread)'s files outside the game
 -- (lua_shell.py). It checks that the addon's own code runs: it cannot check that the real game
 -- behaves as these stand-ins do.
 

@@ -1,4 +1,4 @@
--- Thread (Globe): its own pictures of the world, and how the world is laid on the globe. Written by
+-- Globe (Thread): its own pictures of the world, and how the world is laid on the globe. Written by
 -- tools/globe_art.py (python globe_art.py world).
 local ADDON, ns = ...
 
@@ -62,13 +62,13 @@ ns.ART = {
 	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\2991_3_3', kind = 'detail', map = 2991, columns = { 24, 32 }, rows = { 24, 32 } },
 	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\2991_4_3', kind = 'detail', map = 2991, columns = { 32, 40 }, rows = { 24, 32 } },
 
-	-- the hand-made ink pieces on the open sea: a picture, its middle (latitude, longitude) and how far
-	-- across it is (radians)
+	-- the hand-made ink pieces on the open sea: a picture, its middle (latitude, longitude), how far
+	-- across it is (radians); flip: turned to face the other way
 	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\decor_compass', kind = 'decor', lat = 0.6200, lon = 0.0000, size = 0.4600 },
 	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\decor_serpent', kind = 'decor', lat = -0.3000, lon = 2.4500, size = 0.5200 },
 	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\decor_ship', kind = 'decor', lat = -0.4000, lon = -2.3500, size = 0.4300 },
-	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\decor_serpent2', kind = 'decor', lat = 0.3500, lon = 3.0500, size = 0.4600 },
-	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\decor_ship', kind = 'decor', lat = -0.1500, lon = 0.5500, size = 0.3400 },
+	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\decor_serpent2', kind = 'decor', lat = 0.3500, lon = 3.0500, size = 0.4600, flip = true },
+	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\decor_ship', kind = 'decor', lat = -0.1500, lon = 0.5500, size = 0.3400, flip = true },
 	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\decor_maelstrom', kind = 'decor', lat = 0.0500, lon = 0.0000, size = 0.4000 },
 }
 

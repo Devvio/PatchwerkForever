@@ -1,14 +1,14 @@
--- Thread (Tracker): the focus buttons, a slim row at the top of the list.
+-- Tracker (Thread): the focus buttons, a slim row at the top of the list.
 --
 -- The base keeps a focus for each character (its Focus.lua): what the route follows, Auto (your guide
--- or your quests, as Thread (Routes)' Priority setting says), one guide (RestedXP, the Dungeon
+-- or your quests, as Routes (Thread)'s Priority setting says), one guide (RestedXP, the Dungeon
 -- Journal list, My Route) or your quests only. This row has one small button for each focus there is
 -- to choose now, the one in use lit, and the name of the one in use beside them. A click follows that
 -- one; a right-click on the row gives the same choices as a menu. Choosing a focus lets go of a list
 -- you selected in the tracker (a click on a side list: the base's Focus:Set does that), since the
 -- focus is now that choice; a quest you clicked still comes first, as it does over your guide.
 --
--- Thread (Routes) follows the focus and has /thread focus and the focus key bindings; this is only a
+-- Routes (Thread) follows the focus and has /thread focus and the focus key bindings; this is only a
 -- place to see and change it. "Show Focus Buttons" hides the row.
 local ADDON, ns = ...
 if not ns.linked then return end

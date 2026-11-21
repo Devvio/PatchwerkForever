@@ -1,4 +1,4 @@
--- Thread (Sparkle): joining the base.
+-- Sparkle (Thread): joining the base.
 --
 -- This addon is one of Patchwerk Forever's own tools. The base (the addon Patchwerk Forever) gives a
 -- tool its chat lines, its events, its settings and their pages under Patchwerk Forever's in the
@@ -15,7 +15,7 @@ if not (type(Base) == 'table' and type(Base.Tool) == 'function' and Base:Tool(AD
 	name = 'Sparkle',
 	colour = 'ffffe680',
 	saved = 'PatchwerkForever_Thread_SparkleDB',
-	page = 'Thread: Sparkle',
+	page = 'Sparkle (Thread)',
 	slash = '/sparkle',
 })) then
 	-- (named as the addon list shows it, with its version, and the base it needs)

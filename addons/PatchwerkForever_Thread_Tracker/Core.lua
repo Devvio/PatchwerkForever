@@ -1,15 +1,15 @@
--- Thread (Tracker): its settings and the slash command.
+-- Tracker (Thread): its settings and the slash command.
 local ADDON, ns = ...
 if not ns.linked then return end
 
-ns.TITLE = 'Patchwerk Forever: Thread (Tracker)'
+ns.TITLE = 'Patchwerk Forever: Tracker (Thread)'
 
 ---------------------------------------------------------------------------
 -- Settings: kept in PatchwerkForever_Thread_TrackerDB.settings
 ---------------------------------------------------------------------------
 -- One entry a setting, in the order they are shown. The base makes the pages from this list and
 -- says what each kind of entry becomes (its Tools.lua). page: the page it is on (none: the first,
--- "Thread: Tracker"). parent: grayed out while that tick box is off. percent: the slider's value is
+-- "Tracker (Thread)"). parent: grayed out while that tick box is off. percent: the slider's value is
 -- shown as a percentage (a base that does not know it shows the bare number).
 --
 -- What starts unticked: anything that changes something of the game's or of another addon's by
@@ -115,7 +115,7 @@ ns.settings = {
 		desc = 'List tracked profession recipes with their reagents and how many you have.' },
 	{ page = MORE, header = true, name = 'Gathering' },
 	{ page = MORE, key = 'gather', default = true, name = 'Show Gathering Nodes',
-		desc = 'List the nearest herb and ore nodes you have gathered before. Click one to route to it. Requires Thread (Routes).' },
+		desc = 'List the nearest herb and ore nodes you have gathered before. Click one to route to it. Requires Routes (Thread).' },
 	{ page = MORE, key = 'gatherMost', default = 4, min = 1, max = 8, step = 1, name = 'Nodes Shown', parent = 'gather',
 		desc = 'Number of node types listed, nearest first.' },
 	{ page = MORE, header = true, name = 'Dungeons' },
@@ -186,7 +186,7 @@ SlashCmdList.PATCHWERKFOREVER_TRACKER = function(text)
 		ns.Try('My Route', ns.OpenRoute)
 	elseif word == 'config' or word == 'settings' or word == 'options' then
 		if not ns.OpenSettings() then
-			ns.Print('Options are under Options > AddOns > Patchwerk Forever > Thread: Tracker.')
+			ns.Print('Options are under Options > AddOns > Patchwerk Forever > Tracker (Thread).')
 		end
 	else
 		Help()
@@ -221,5 +221,5 @@ function PatchwerkForever_Thread_Tracker_RouteAdd() ns.Try('My Route', ns.RouteA
 function PatchwerkForever_Thread_Tracker_RouteUp() ns.Try('My Route', ns.RouteNudge, -1) end
 function PatchwerkForever_Thread_Tracker_RouteDown() ns.Try('My Route', ns.RouteNudge, 1) end
 function PatchwerkForever_Thread_Tracker_RouteOpen() ns.Try('My Route', ns.OpenRoute) end
--- For a window that wants the list beside it while it is open (Thread (Globe)): a frame, or nil to put it back.
+-- For a window that wants the list beside it while it is open (Globe (Thread)): a frame, or nil to put it back.
 function PatchwerkForever_Thread_Tracker_Dock(anchor) return ns.Try('the tracker', ns.Dock, anchor) and true or false end

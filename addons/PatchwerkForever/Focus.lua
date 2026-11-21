@@ -4,7 +4,7 @@ local P = ns.P;
 -- Focus: what the route follows, chosen and kept
 ---------------------------------------------------------------
 -- By itself the route follows the main track: your guide, or
--- your tracked quests, in the order Thread (Routes)' Priority
+-- your tracked quests, in the order Routes (Thread)'s Priority
 -- setting gives. A focus is your standing choice of one of them
 -- instead, kept for each character until you change it:
 --

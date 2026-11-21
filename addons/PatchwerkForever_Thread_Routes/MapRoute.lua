@@ -1,7 +1,7 @@
--- Thread (Routes): the focus and My Route on the world map.
+-- Routes (Thread): the focus and My Route on the world map.
 --
 -- A button at the map's top right opens a menu: the focuses that can be chosen (the one in use
--- checked), Edit My Route (Thread (Tracker)'s editor, opened beside the map) and Add Map Pin To My
+-- checked), Edit My Route (Tracker (Thread)'s editor, opened beside the map) and Add Map Pin To My
 -- Route. While My Route is followed (your focus, or the list you selected) its stops are marked on the
 -- map, numbered in the list's order; a right-click on a mark offers Go Here First, Move Earlier, Move
 -- Later and Remove, and a left-click goes there first.
@@ -21,7 +21,7 @@ local Guides = Base.Guides
 
 local function MyRoute() return Base.MyRoute end
 
--- A menu at the mouse, made with the game's own menus (as Thread (Tracker)'s right-click menus are).
+-- A menu at the mouse, made with the game's own menus (as Tracker (Thread)'s right-click menus are).
 -- build(root) adds the entries. Returns false when this client has none.
 local toldNoMenu
 local function Menu(owner, build)
@@ -64,13 +64,13 @@ function ns.RouteGoFirst(index)
 	Changed()
 end
 
--- Thread (Tracker)'s editor for My Route, beside anchor (the world map).
+-- Tracker (Thread)'s editor for My Route, beside anchor (the world map).
 function ns.RouteEdit(anchor)
 	local open = rawget(_G, 'PatchwerkForever_Thread_Tracker_OpenMyRoute')
 	if type(open) == 'function' then
 		open(anchor)
 	else
-		ns.Print('Editing My Route needs Thread (Tracker), which is not running.')
+		ns.Print('Editing My Route needs Tracker (Thread), which is not running.')
 	end
 end
 

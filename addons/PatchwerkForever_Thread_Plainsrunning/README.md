@@ -1,4 +1,4 @@
-# Patchwerk Forever: Thread (Immersive Plainsrunning)
+# Patchwerk Forever: Immersive Plainsrunning (Thread)
 
 **Patchwerk runs. Patchwerk runs faster. Patchwerk cannot see the buttons any more.**
 
@@ -27,7 +27,7 @@ The numbers are yours to change: **Start Fading At**, **Fully Hidden At**, and *
 
 ## Keeping parts of the interface
 
-Under **Keep While Faded**, tick what should stay while everything else fades: **Keep The Minimap** (with what other addons draw over it, such as the route of Thread (Routes)), **Keep Player And Target** (your frame, your pet's, your target's and its target's) and **Keep The Chat**. All three are off at first.
+Under **Keep While Faded**, tick what should stay while everything else fades: **Keep The Minimap** (with what other addons draw over it, such as the route of Routes (Thread)), **Keep Player And Target** (your frame, your pet's, your target's and its target's) and **Keep The Chat**. All three are off at first.
 
 ## When the interface comes back
 
@@ -38,7 +38,7 @@ Even while the buff lasts, the interface comes back:
 - **When you stand still** for five seconds. It fades away again once you have been moving for five seconds, if the buff is still on you. Both can be changed (**Seconds Standing Still**, **Seconds Moving Again**).
 - **When you die or take a flight.**
 
-Each can be turned off on **Thread: Immersive Plainsrunning** (Options → AddOns → Patchwerk Forever, or `/plains config`). Hold the **Show Interface While Held** key to see the interface for a moment; `/plains show` brings it back for the rest of the run.
+Each can be turned off on **Immersive Plainsrunning (Thread)** (Options → AddOns → Patchwerk Forever, or `/plains config`). Hold the **Show Interface While Held** key to see the interface for a moment; `/plains show` brings it back for the rest of the run.
 
 ## Is it safe?
 

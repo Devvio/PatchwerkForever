@@ -1,6 +1,6 @@
--- Thread (Routes): what it knows of the way, for the family's other tools.
+-- Routes (Thread): what it knows of the way, for the family's other tools.
 --
--- A tool with a map of its own (Thread (Globe)) draws the same trail the world map and the minimap
+-- A tool with a map of its own (Globe (Thread)) draws the same trail the world map and the minimap
 -- show, the boats and zeppelins, and the herb and ore spots. It does not know this addon: it asks
 -- the base (PatchwerkForever.Trails), and this file answers there. With a base older than 2.8.0
 -- there is nowhere to answer, and this file does nothing.

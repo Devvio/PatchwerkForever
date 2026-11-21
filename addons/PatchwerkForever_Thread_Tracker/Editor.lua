@@ -1,4 +1,4 @@
--- Thread (Tracker): the My Route window, for putting your stops in order.
+-- Tracker (Thread): the My Route window, for putting your stops in order.
 --
 -- A small window in the tracker's look: the stops numbered, each with a grip to drag it by, its name,
 -- the zone of a quest, how far it is and a cross to take it out; at its foot Order For Me, Add Tracked

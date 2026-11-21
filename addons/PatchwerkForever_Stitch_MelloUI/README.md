@@ -1,4 +1,4 @@
-# Patchwerk Forever: Stitch (MelloUI)
+# Patchwerk Forever: MelloUI (Stitch)
 
 **Two buttons in one spot. Patchwerk knows about too many parts in one place.**
 
@@ -25,14 +25,14 @@ Nothing in MelloUI's own files is changed.
 
 ## Settings and commands
 
-The page **Stitch: MelloUI**, under **Options → AddOns → Patchwerk Forever** (`/patchwerk config` opens the page above it).
+The page **MelloUI (Stitch)**, under **Options → AddOns → Patchwerk Forever** (`/patchwerk config` opens the page above it).
 
 | Command | Does |
 |---|---|
 | `/patchwerk mello` | lists which MelloUI modules are running |
 | `/patchwerk mello on` / `off` | MelloUI trimmed to Route and the Quest Tracker |
 
-For additions to MelloUI's route planner itself, see **Patchwerk Forever: Stitch (MelloUI Route)**.
+For additions to MelloUI's route planner itself, see **Patchwerk Forever: MelloUI Route (Stitch)**.
 
 ## Credits
 

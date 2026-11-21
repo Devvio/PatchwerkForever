@@ -1,4 +1,4 @@
--- Thread (Routes): the route on the world map.
+-- Routes (Thread): the route on the world map.
 --
 -- A layer over the map's canvas, above the map's picture and below its icons, with the route drawn
 -- on it in the colours, thickness and style of the settings (Trail.lua): walking, a tunnel, bridge,

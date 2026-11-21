@@ -1,4 +1,4 @@
--- Thread (Races): the marker on the next checkpoint, and the words in the middle of the screen.
+-- Races (Thread): the marker on the next checkpoint, and the words in the middle of the screen.
 --
 -- While a race is on, the next checkpoint is your map pin and is tracked (Race.lua). The game then draws
 -- its own waypoint marker at that place in the world, and C_Navigation.GetFrame() is a frame it keeps

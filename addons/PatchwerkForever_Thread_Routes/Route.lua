@@ -1,4 +1,4 @@
--- Thread (Routes): where to, where from, and keeping the route up to date.
+-- Routes (Thread): where to, where from, and keeping the route up to date.
 --
 -- ns.dest    where the route goes: { map =, x =, y =, pin = true if it came from the map pin,
 --            failed = where and when the last search found no way to it, wait = how long the next
@@ -47,7 +47,7 @@ local function Changed()
 	for _, fn in ipairs(listeners) do
 		ns.Try('drawing', fn)
 	end
-	-- (how the way goes, for the other tools: Thread (Tracker) shows it at the top of My Route)
+	-- (how the way goes, for the other tools: Tracker (Thread) shows it at the top of My Route)
 	local Following = ns.Base.Following
 	if Following and Following.SetTravel and ns.Travel then
 		ns.Try('telling the way', Following.SetTravel, Following, ns.route and ns.Travel(ns.route) or nil)

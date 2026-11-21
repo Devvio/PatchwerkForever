@@ -1,4 +1,4 @@
--- Thread (Tracker): the recipes you track.
+-- Tracker (Thread): the recipes you track.
 --
 -- A recipe ticked "track" in a profession window is listed with what it needs and how much of each
 -- you have (bags, bank and reagent bank together, as the game's own tracker counts). The game is

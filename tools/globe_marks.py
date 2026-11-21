@@ -1,4 +1,4 @@
-"""Draw the small pictures Thread (Globe) marks places with.
+"""Draw the small pictures Globe (Thread) marks places with.
 
     python globe_marks.py
 

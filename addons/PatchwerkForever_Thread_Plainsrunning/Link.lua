@@ -1,4 +1,4 @@
--- Thread (Immersive Plainsrunning): joining the base.
+-- Immersive Plainsrunning (Thread): joining the base.
 --
 -- This addon is one of Patchwerk Forever's own tools. The base (the addon Patchwerk Forever) gives a
 -- tool its chat lines, its events, its settings and their pages under Patchwerk Forever's in the
@@ -15,7 +15,7 @@ if not (type(Base) == 'table' and type(Base.Tool) == 'function' and Base:Tool(AD
 	name = 'Immersive Plainsrunning',
 	colour = 'ffe0b04d',
 	saved = 'PatchwerkForever_Thread_PlainsrunningDB',
-	page = 'Thread: Immersive Plainsrunning',
+	page = 'Immersive Plainsrunning (Thread)',
 	slash = '/plains',
 })) then
 	-- (named as the addon list shows it, with its version, and the base it needs)

@@ -1,4 +1,4 @@
-"""Run Thread (Tracker) outside the game, on its base, against a stand-in for the game
+"""Run Tracker (Thread) outside the game, on its base, against a stand-in for the game
 (wowstub.lua and trackerstub.lua).
 
     python lua_tracker.py
@@ -13,7 +13,7 @@ it; and the game's own tracker and RestedXP's window kept quiet. Then what was s
 place kept as a top corner whatever the scale; a list longer than its frame (the edges, the scroll
 bindings, the chosen quest brought into view); an order that holds while two quests are about as
 near as each other. Then the finer details: hint tooltips, one-line upcoming steps, a clock that
-does not glow, the ready group first, the bar following what Thread (Routes) says it follows, a
+does not glow, the ready group first, the bar following what Routes (Thread) says it follows, a
 quest untracked in the log let go, the quest list that cannot be read, an empty tracker unlocked,
 and the quest arrow the game places on accept. Then the focus and My Route: the focus buttons, the My Route section, its menus,
 adding from a quest, a Dungeon Journal stop and a key, dragging a stop (the drag handlers called with
@@ -354,10 +354,10 @@ def first_login():
     assert game.module.mouse is False and game.block.mouse is False, "a click would still land on the game's tracker"
     assert game.item.mouse is True, "a piece the game protects was touched"
     pages = sorted(s.stub.pages.keys())
-    assert pages == ["Thread: Tracker", "Tracker: Appearance", "Tracker: Guide", "Tracker: More", "Tracker: Quests"], pages
+    assert pages == ["Tracker (Thread)", "Tracker: Appearance", "Tracker: Guide", "Tracker: More", "Tracker: Quests"], pages
     mine = [x for x in s.stub.settings.values() if x.variable.startswith(TRACKER + "_")]
     count = {page: sum(1 for x in mine if x.page == page) for page in pages}
-    assert count == {"Thread: Tracker": 9, "Tracker: Quests": 12, "Tracker: Guide": 8, "Tracker: More": 7, "Tracker: Appearance": 9}, count
+    assert count == {"Tracker (Thread)": 9, "Tracker: Quests": 12, "Tracker: Guide": 8, "Tracker: More": 7, "Tracker: Appearance": 9}, count
     assert sorted(b.text for b in s.stub.buttons.values()) == ["Reset", "Reset", "Unlock"], sorted(b.text for b in s.stub.buttons.values())
     # each page opens with its name and a line in Patchwerk's voice, and is grouped under stitched headings
     heads = list(s.stub.headers.values())
@@ -517,7 +517,7 @@ def first_login():
     assert s.g.PatchwerkForever_Thread_TrackerDB.place is None and frame.points[1][1] == "TOPRIGHT"
     s.chat()
 
-    step("beside another window while it is open (Thread (Globe) asks): put at its right, over it, and back where you keep it")
+    step("beside another window while it is open (Globe (Thread) asks): put at its right, over it, and back where you keep it")
     s.lua.execute("""
         STUB.other = CreateFrame('Frame', nil, UIParent)
         STUB.other:SetSize(400, 300)
@@ -598,7 +598,7 @@ def first_login():
     handle.scripts.OnDragStop(handle)
     s.slash("lock")
     [b for b in s.stub.buttons.values() if b.text == "Reset" and b.name != "Reset Position"][0].click()
-    assert "Reset all Thread: Tracker options" in s.stub.asked.text, s.stub.asked.text
+    assert "Reset all Tracker (Thread) options" in s.stub.asked.text, s.stub.asked.text
     s.stub.Answer(False)
     assert ns.Get("width") == 400 and ns.Get("order") == "near", "the options were reset without a yes"
     [b for b in s.stub.buttons.values() if b.text == "Reset" and b.name != "Reset Position"][0].click()
@@ -1381,7 +1381,7 @@ def party():
 
 
 def gathering():
-    step("gathering: no list without Thread (Routes); with it, the nearest spots, a click away")
+    step("gathering: no list without Routes (Thread); with it, the nearest spots, a click away")
     s = Session(LOG)
     ns = s.load()
     assert "# Gathering | " not in s.shown() and not any("Gathering" in t for t in s.shown())
@@ -1829,7 +1829,7 @@ def polish_details():
     got = s.shown()
     assert got.index("The Barrens") < got.index("Ready To Turn In"), got
 
-    step("the bar beside a block follows what Thread (Routes) says it follows; without its word, as before")
+    step("the bar beside a block follows what Routes (Thread) says it follows; without its word, as before")
     Following = s.g.PatchwerkForever.Following
     assert s.marked().title.text == "Step 1"
     s.lua.execute("PatchwerkForever.Following:Set({ kind = 'quest', quest = 869, key = 'quest:869' })")
@@ -2145,7 +2145,7 @@ def my_route():
     got = s.show()
     # (the stop it goes to next, at the top: its name, and its zone and the way there when known)
     assert got[0] == "# My Route | 1 stop" and got[2:5] == ["Next: Raptor Thieves", "1. Raptor Thieves | 112 yd", "  - In progress"], got
-    # followed, with the way there told by Thread (Routes): it is shown under the stop's name
+    # followed, with the way there told by Routes (Thread): it is shown under the stop's name
     s.lua.execute("""
         PatchwerkForever.Focus:Set('route')
         PatchwerkForever.Following:Set({ kind = 'guide', source = 'route', key = 'route:test' })

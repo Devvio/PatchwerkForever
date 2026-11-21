@@ -1,4 +1,4 @@
--- Thread (Tracker): the quests you track, as the game has them, and the section that lists them.
+-- Tracker (Thread): the quests you track, as the game has them, and the section that lists them.
 --
 -- The game keeps a list of the quests you have chosen to track (the "watch list"), and for each quest
 -- in your log its name, level, the zone it is filed under, and its objectives with how far each has

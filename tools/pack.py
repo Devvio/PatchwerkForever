@@ -1,4 +1,4 @@
-"""Pack the maps for the game: the data addons of Patchwerk Forever: Thread (Routes).
+"""Pack the maps for the game: the data addons of Patchwerk Forever: Routes (Thread).
 
     python pack.py              packs maps 0, 1 and 2991, and the boats, zeppelins and the tram
     python pack.py crossings    only the boats, zeppelins and the tram (Crossings.lua, in the addon's own folder)
@@ -186,8 +186,8 @@ def pack_map(map_id, flights):
     write("Extra.lua", "".join(extra))
 
     with open(os.path.join(folder, "PatchwerkForever_Thread_Routes_%s.toc" % NAMES[map_id]), "w", encoding="utf-8", newline="\n") as f:
-        f.write("## Interface: 16001\n## Title: Thread (Routes) Map: %s\n"
-                "## Notes: Map data for Patchwerk Forever: Thread (Routes). Loaded by it when needed.\n"
+        f.write("## Interface: 16001\n## Title: Routes Map: %s (Thread)\n"
+                "## Notes: Map data for Patchwerk Forever: Routes (Thread). Loaded by it when needed.\n"
                 "## Author: Tyrone\n## Version: %s\n"
                 # (the game's addon list shows it under the parent; without this line it stood apart)
                 "## Group: PatchwerkForever\n"
@@ -201,7 +201,7 @@ def pack_map(map_id, flights):
 
 
 def routes_version():
-    """The version of Thread (Routes) itself: its map data carries the same (release.py checks it)."""
+    """The version of Routes (Thread) itself: its map data carries the same (release.py checks it)."""
     main = "PatchwerkForever_Thread_Routes"
     for line in open(os.path.join(ADDONS, main, main + ".toc"), encoding="utf-8"):
         if line.startswith("## Version:"):

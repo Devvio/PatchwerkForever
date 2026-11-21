@@ -1,4 +1,4 @@
--- Thread (Tracker): the game's own tracker, and RestedXP's window, kept quiet while ours is shown.
+-- Tracker (Thread): the game's own tracker, and RestedXP's window, kept quiet while ours is shown.
 --
 -- With both shown every quest is on screen twice. The game's tracker (ObjectiveTrackerFrame) is not
 -- hidden or moved: hiding it sets off the game's own layout of the frames round it, run from an

@@ -1,17 +1,18 @@
-# Patchwerk Forever: Thread (Tracker)
+# Patchwerk Forever: Tracker (Thread)
 
 ## 1.5.0
 
-- For addon authors: `PatchwerkForever_Thread_Tracker_Dock(frame)` puts the list beside another window while that window is open (to its right where the screen has room, else inside its right edge, and above it), and `PatchwerkForever_Thread_Tracker_Dock(nil)` puts it back where the player keeps it. Its saved place is not changed.
+- **Now named Patchwerk Forever: Tracker (Thread)**: the name comes first and what kind of addon it is after it, in brackets (it was Thread (Tracker)). The options page is named the same way.
+- For addon authors: `PatchwerkForever_Thread_Tracker_Dock(frame)` puts the list beside another window while that window is open (to its right where the screen has room, else inside its right edge, and above it), and `PatchwerkForever_Thread_Tracker_Dock(nil)` puts it back where the player keeps it. Its saved place is not changed. Globe (Thread), new beside this, uses it to keep the list beside the globe.
 
 ## 1.4.0
 
-Polish: the finer details. Works with Patchwerk Forever 2.6.0; the percent signs and the marker that follows Thread (Routes) need the newer base (and Routes) released beside this.
+Polish: the finer details. Works with Patchwerk Forever 2.6.0; the percent signs and the marker that follows Routes (Thread) need the newer base (and Routes) released beside this.
 
-- **My Route says where it goes next**: at its top, the next stop, its zone, and while My Route is followed, the way there as Thread (Routes) finds it, such as "Fly from Crossroads to Thunder Bluff (3 min in all)". Each stop also shows its zone beside what to do there.
+- **My Route says where it goes next**: at its top, the next stop, its zone, and while My Route is followed, the way there as Routes (Thread) finds it, such as "Fly from Crossroads to Thunder Bluff (3 min in all)". Each stop also shows its zone beside what to do there.
 ### Hints and the marker
 - **Hovering a row or a heading shows what a click does**: "Click to route to this quest.", "Click to skip this step.", "Click to collapse." and so on, with "Right-click for more options." where there is a menu. An upcoming guide step's tooltip also shows its full text.
-- **The bar beside a block marks what Thread (Routes) really follows.** After Stop Routing, or while Routes leads to your map pin, nothing is marked; with Routes leading to a quest, that quest is. Without Routes it works as before.
+- **The bar beside a block marks what Routes (Thread) really follows.** After Stop Routing, or while Routes leads to your map pin, nothing is marked; with Routes leading to a quest, that quest is. Without Routes it works as before.
 
 ### Key bindings
 - **The key bindings have a section of their own**, Patchwerk Forever, in the Key Bindings options. Bindings you already set are kept. A key bound while the Tracker is not running (its base too old) does nothing instead of giving an error.
@@ -46,7 +47,7 @@ Polish: the finer details. Works with Patchwerk Forever 2.6.0; the percent signs
 - Choices in Title Case ("By Zone (Current Zone First)", "Left", "Right"); "Hide Default Quest Tracker" is now **Hide Default Tracker**, "Upcoming Steps" is **Upcoming Steps Shown**, and "Ready to Turn In" is **Ready To Turn In**. Saved settings are kept.
 - On the Dungeon Journal list, `/tracker back` and Undo Skipped Guide Step now take back the last skip or jump and say "Skip taken back.", since that list's step number does not move.
 - With a Patchwerk Forever too old for it, the line that says so names the addon, its version and the base version it needs (2.6.0).
-- Route To Next Quest's chat line reads as Thread (Routes)' does: Routing to quest "Raptor Thieves". American spelling throughout.
+- Route To Next Quest's chat line reads as Routes (Thread)'s does: Routing to quest "Raptor Thieves". American spelling throughout.
 
 ## 1.3.0
 
@@ -123,7 +124,7 @@ Everything meant for 1.0, to be tried. **Needs Patchwerk Forever 2.2.0 or later.
 - Listed by zone, the zone you are in first, the nearest quest first. Other orders are a setting.
 - Each shows how far it is, its kind (elite, dungeon, daily, group) and, when timed, the time left. Counts go from red to green.
 - Quests ready to hand in gather in a short group at the foot.
-- Left-click chooses a quest: a side path that Thread (Routes) follows before your guide, until you click it again or hand it in. Shift-click reads it; right-click opens a menu to share, stop tracking or abandon.
+- Left-click chooses a quest: a side path that Routes (Thread) follows before your guide, until you click it again or hand it in. Shift-click reads it; right-click opens a menu to share, stop tracking or abandon.
 - A quest glows for a moment when its progress changes.
 - Who in your party has a quest, and how far along they are when they run this tracker too.
 - New setting, off by default: Auto-Track Nearest Quest.
@@ -135,11 +136,11 @@ Everything meant for 1.0, to be tried. **Needs Patchwerk Forever 2.2.0 or later.
 
 ### More sections
 - Recipes you track, with what each needs and what you have.
-- Gathering, with Thread (Routes) 0.14.0: the nearest herb and ore spots you know, each a click from being led to.
+- Gathering, with Routes (Thread) 0.14.0: the nearest herb and ore spots you know, each a click from being led to.
 - A dungeon's stages, where the game runs a place in stages. Untried, and off until ticked.
 
 ### Its options pages
-- Five pages (Thread: Tracker, Tracker: Quests, Tracker: Guide, Tracker: More, Tracker: Appearance), each opening with a line from Patchwerk, their settings grouped under headings and named in standard terms (Font Size, Scale, Background Opacity, Fade In Combat).
+- Five pages (Tracker (Thread), Tracker: Quests, Tracker: Guide, Tracker: More, Tracker: Appearance), each opening with a line from Patchwerk, their settings grouped under headings and named in standard terms (Font Size, Scale, Background Opacity, Fade In Combat).
 
 ### Stepping back
 - Three settings, off to begin with: dim in a fight, dim unless the mouse is over it, hide in dungeons and raids.

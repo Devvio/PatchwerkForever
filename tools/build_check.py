@@ -246,7 +246,7 @@ def main():
     open(log, "wb").write(title + b"\n\n## 9.9.9\n\n- Not this one.\n" + rest)
     assert "first entry is 9.9.9" in release("dungeonjournal", expect=1)
     open(log, "wb").write(kept_log)
-    open(readme, "wb").write(kept_readme.replace(b"Stitch (Dungeon Journal)", b"Stitch (the journal)"))
+    open(readme, "wb").write(kept_readme.replace(b"Dungeon Journal (Stitch)", b"Stitch (the journal)"))
     out = release("dungeonjournal")
     assert "WARNING" in out and "does not name %s" % journal in out, out
     out = release("patchwerk", expect=1)

@@ -6,8 +6,8 @@
 -- nothing by itself. Its parts are addons of their own, on two
 -- tracks:
 --     Stitch  what is sewn onto other people's addons, fixes
---             and additions (Stitch (Console Port), ...)
---     Thread  our own tools (Thread (Routes), ...): Tools.lua
+--             and additions (Console Port (Stitch), ...)
+--     Thread  our own tools (Routes (Thread), ...): Tools.lua
 -- A Stitch part needs this base and joins it as its first file
 -- loads:
 --
@@ -46,10 +46,10 @@ BINDING_CATEGORY_PatchwerkForever = 'Patchwerk Forever';
 -- is not listed here still joins and works: this list is only for
 -- telling the player about one that is missing.
 P.Family = {
-	{ addon = 'PatchwerkForever_Stitch_ConsolePort',  name = 'Patchwerk Forever: Stitch (Console Port)',  needs = 'ConsolePort', what = 'Console Port' };
-	{ addon = 'PatchwerkForever_Stitch_MelloUI',      name = 'Patchwerk Forever: Stitch (MelloUI)',       needs = 'MelloUI',     what = 'MelloUI' };
-	{ addon = 'PatchwerkForever_Stitch_MelloUIRoute', name = 'Patchwerk Forever: Stitch (MelloUI Route)', needs = 'MelloUI',     what = "MelloUI's Route" };
-	{ addon = 'PatchwerkForever_Stitch_DungeonJournal', name = 'Patchwerk Forever: Stitch (Dungeon Journal)', needs = 'ForeverDungeonJournal', what = 'Dungeon Journal' };
+	{ addon = 'PatchwerkForever_Stitch_ConsolePort',  name = 'Patchwerk Forever: Console Port (Stitch)',  needs = 'ConsolePort', what = 'Console Port' };
+	{ addon = 'PatchwerkForever_Stitch_MelloUI',      name = 'Patchwerk Forever: MelloUI (Stitch)',       needs = 'MelloUI',     what = 'MelloUI' };
+	{ addon = 'PatchwerkForever_Stitch_MelloUIRoute', name = 'Patchwerk Forever: MelloUI Route (Stitch)', needs = 'MelloUI',     what = "MelloUI's Route" };
+	{ addon = 'PatchwerkForever_Stitch_DungeonJournal', name = 'Patchwerk Forever: Dungeon Journal (Stitch)', needs = 'ForeverDungeonJournal', what = 'Dungeon Journal' };
 };
 
 local savedLoaded = false;

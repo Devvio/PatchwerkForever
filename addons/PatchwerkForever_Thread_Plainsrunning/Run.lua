@@ -1,4 +1,4 @@
--- Thread (Immersive Plainsrunning): the buff, and the interface fading away as it stacks up.
+-- Immersive Plainsrunning (Thread): the buff, and the interface fading away as it stacks up.
 --
 -- The stacks of the buff are read when the game says the player's auras changed (UNIT_AURA). While
 -- there is anything to do (stacks enough to fade, the interface not yet back as it was, streaks still
@@ -140,7 +140,7 @@ local WINDOWS = { 'WorldMapFrame', 'GameMenuFrame', 'SettingsPanel', 'InterfaceO
 	'LootFrame', 'GroupLootContainer', 'TaxiFrame', 'FlightMapFrame', 'MacroFrame', 'KeyBindingFrame',
 	'ContainerFrameCombinedBags', 'StaticPopup1', 'ItemTextFrame', 'ClassTrainerFrame', 'PetStableFrame',
 	'CommunitiesFrame', 'HelpFrame', 'MovieFrame', 'CinematicFrame',
-	'PatchwerkForever_Thread_GlobeWindow' }       -- (and Thread (Globe)'s window, a map of our own)
+	'PatchwerkForever_Thread_GlobeWindow' }       -- (and Globe (Thread)'s window, a map of our own)
 for i = 1, 13 do WINDOWS[#WINDOWS + 1] = 'ContainerFrame' .. i end
 
 local function Shown(name)
@@ -239,7 +239,7 @@ local function Free(frame)
 end
 
 -- Frames of other addons laid over the minimap rather than inside it (the path and the herb and ore
--- spots of Thread (Routes), for one: see its Minimap.lua) fade with the interface, not with the
+-- spots of Routes (Thread), for one: see its Minimap.lua) fade with the interface, not with the
 -- minimap, so with the minimap kept they are kept too. They are found by where they are: a child of
 -- UIParent with the minimap's size and place on the screen. Looked for again every second, as such a
 -- layer may be made or moved during a run.

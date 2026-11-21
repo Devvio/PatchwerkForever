@@ -1,4 +1,4 @@
--- Thread (Tracker): the frame, and how what is in it is laid out.
+-- Tracker (Thread): the frame, and how what is in it is laid out.
 --
 -- The tracker is one frame holding sections one under another: the guide's steps, the quests you
 -- track, recipes, gathering. A section is a heading (its name, a short note on the right, a row of
@@ -792,7 +792,7 @@ function ns.Unlock(on)
 	Render()
 end
 
--- Beside another window while it is open (Thread (Globe) asks): the list is put at its right, over
+-- Beside another window while it is open (Globe (Thread) asks): the list is put at its right, over
 -- what that window is over, and where you keep it is left as it is; nil puts the list back there.
 local levelKept
 function ns.Dock(anchor)

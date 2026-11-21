@@ -1,6 +1,6 @@
-# Thread (Globe): blueprint
+# Globe (Thread): blueprint
 
-The world of WoW Forever on a globe in the look of the world map on parchment, that you can spin, and zoom from the whole world down to a continent, a zone and the ground, with your place, your route and your pins on it. Written 2026-11-19 after the prototype (Thread (Globe) 0.0.1). The road from here to standing in for the world map was added 2026-11-21: see The road to parity.
+The world of WoW Forever on a globe in the look of the world map on parchment, that you can spin, and zoom from the whole world down to a continent, a zone and the ground, with your place, your route and your pins on it. Written 2026-11-19 after the prototype (Globe (Thread) 0.0.1). The road from here to standing in for the world map was added 2026-11-21: see The road to parity.
 
 ## Where the prototype got us
 
@@ -43,7 +43,7 @@ A **zone** is something you can point at and click:
 
 ## The custom graphics
 
-### Made by our tools from the game's own data (as Thread (Routes)' map data is)
+### Made by our tools from the game's own data (as Routes (Thread)'s map data is)
 
 `casc.py`, `terrain.py` and `world.py` already read every continent's terrain, heights and water. A new `tools/globe_art.py` would turn that into the parchment world:
 
@@ -96,7 +96,7 @@ What changes in `Globe.lua`:
   - a drag carries on a little after you let go
 - **Labels:** each a `FontString` at a point on the sphere, shown only while that point faces you. Sized and faded by zoom: continents and seas far out, zones nearer, towns closest.
 - **Your place:** an arrow turned to your facing (`GetPlayerFacing`).
-- **Routes on top**, with Thread (Routes):
+- **Routes on top**, with Routes (Thread):
   - the trail drawn on the globe in short straight segments
   - flight paths as arcs
   - boats across the sea
@@ -147,7 +147,7 @@ The list is taken from the world map's own code on Forever (`Blizzard_WorldMap.l
 | The zone's level range; your coordinates and the pointer's | The same, in the window's edge | G9 |
 | Floors of a dungeon, a city's own map, a cave's | That place's flat map in the globe's window, with the same marks. (Forever has maps of its own only for the cities and the battlegrounds: no dungeons, caves or floors) | G12 |
 | Which marks show (the tracking menu) | A Show menu with the same choices, plus ours | G11 |
-| The quest log at its side | Thread (Tracker)'s list beside the globe | G8 |
+| The quest log at its side | Tracker (Thread)'s list beside the globe | G8 |
 
 **Marks the game draws**
 
@@ -156,7 +156,7 @@ The list is taken from the world map's own code on Forever (`Blizzard_WorldMap.l
 | You | The arrow, turned to your facing | G1, built |
 | Flight points | The same marks; known and unknown told apart | G7 |
 | The map pin, the thing you are tracking, a link to a place in chat | Ctrl-click sets the pin as on the map; Shift-click links it; a link in chat turns the globe | G7, G14 |
-| Quest areas, quest marks, quests on offer, hand-ins | The same, with Thread (Tracker)'s focus picked out | G8 |
+| Quest areas, quest marks, quests on offer, hand-ins | The same, with Tracker (Thread)'s focus picked out | G8 |
 | Towns, landmarks, dungeon and raid entrances, graveyards | The same icons, named, thinned out by zoom | G9 |
 | Party and raid members; your corpse | The same | G9 |
 | Unexplored land left blank | The parchment blank where you have not been | G10 |
@@ -167,10 +167,10 @@ The list is taken from the world map's own code on Forever (`Blizzard_WorldMap.l
 
 | Addon | On the map today | Milestone |
 |---|---|---|
-| Thread (Routes) | The trail in its own colours (walking, tunnel, bridge, lift, drop, flight); boats and zeppelins; My Route's numbered stops with their menu; the focus button; Add Map Pin To My Route; recorded herb and ore nodes | G7 |
-| Stitch (MelloUI Route) | The numbered stops of a trip (guide steps ahead, a quest run) | Struck off 2026-11-21: nothing new is built on MelloUI |
-| Thread (Tracker) | Its list and My Route's editor, opened beside the map | G8 |
-| Stitch (Dungeon Journal) | Its quest list, led by Routes and listed by Tracker | G8 |
+| Routes (Thread) | The trail in its own colours (walking, tunnel, bridge, lift, drop, flight); boats and zeppelins; My Route's numbered stops with their menu; the focus button; Add Map Pin To My Route; recorded herb and ore nodes | G7 |
+| MelloUI Route (Stitch) | The numbered stops of a trip (guide steps ahead, a quest run) | Struck off 2026-11-21: nothing new is built on MelloUI |
+| Tracker (Thread) | Its list and My Route's editor, opened beside the map | G8 |
+| Dungeon Journal (Stitch) | Its quest list, led by Routes and listed by Tracker | G8 |
 | Immersive Plainsrunning | Counts the map as an open window (the interface comes back) | G6 |
 
 **Other addons' pins** (quest helpers, guides, rare finders): shown through the shared pin library they register with (HereBeDragons), G13. An addon that draws on the game's map by a provider of its own (as HandyNotes does) is not seen.
@@ -192,28 +192,28 @@ Each one is built, checked offline (`tools/lua_globe.py`), then tried in the gam
   - key bindings: turn, zoom in and out, Where I Am, step out, open and close
   - the gamepad (Console Port): a stick turns the globe, the triggers zoom, the middle of the picture is the pointer (the zone there is outlined and named), one button fits it and one steps out
   - Immersive Plainsrunning counts the globe as an open window
-  - the release check leaves Thread (Globe) out until 1.0 (today it fails because the base README does not list it)
+  - the release check leaves Globe (Thread) out until 1.0 (today it fails because the base README does not list it)
 - **Done when:** everything G1 to G5 can do with the mouse can be done with keys and with a gamepad, at any window size, and full screen holds its frame rate.
 
-**G7. Travel and your route** (0.3; built 2026-11-21, not yet tried in the game. The marks layer is `Marks.lua` (sources that list marks and lines when asked; crowding by rank; tooltips; a click; Next Mark by key or gamepad), and its pictures are our own (`Media/mark_*.tga`, drawn by `tools/globe_marks.py`). The interface for our other addons is a service of the base, `PatchwerkForever.Trails` (base 2.8.0): Thread (Routes) 1.3.0 offers its trail, crossings and nodes there (`Share.lua`), and `Travel.lua` draws them, with flight points from `C_TaxiMap.GetTaxiNodesForMap` on each continent's map. The pin does what the game's does: Ctrl-click sets it, a click on it tracks it or stops, a Ctrl-click on it clears it, a Shift-click links it. **Not built:** the numbered stops of a Stitch (MelloUI Route) trip; that Stitch publishes nothing another addon can read, so it needs a small change there first. To look at in the game: whether `GetTaxiNodesForMap` answers for a continent's map, whether the pin can be set on a zone's map from here, the marks' look and size, and the frame rate with a long trail.)
+**G7. Travel and your route** (0.3; built 2026-11-21, not yet tried in the game. The marks layer is `Marks.lua` (sources that list marks and lines when asked; crowding by rank; tooltips; a click; Next Mark by key or gamepad), and its pictures are our own (`Media/mark_*.tga`, drawn by `tools/globe_marks.py`). The interface for our other addons is a service of the base, `PatchwerkForever.Trails` (base 2.8.0): Routes (Thread) 1.3.0 offers its trail, crossings and nodes there (`Share.lua`), and `Travel.lua` draws them, with flight points from `C_TaxiMap.GetTaxiNodesForMap` on each continent's map. The pin does what the game's does: Ctrl-click sets it, a click on it tracks it or stops, a Ctrl-click on it clears it, a Shift-click links it. **Not built:** the numbered stops of a MelloUI Route (Stitch) trip; that Stitch publishes nothing another addon can read, so it needs a small change there first. To look at in the game: whether `GetTaxiNodesForMap` answers for a continent's map, whether the pin can be set on a zone's map from here, the marks' look and size, and the frame rate with a long trail.)
 - **Build:**
   - **the marks layer**, which every later milestone uses: a mark is a place on the sphere, an icon, a tooltip and what a click does. Marks behind the ball are hidden; crowded ones are thinned by rank as you zoom out; lines share the outline's drawing.
   - **a small interface for our other addons** (through the base addon's link, as they reach each other now) to add marks and lines, so Routes draws on the globe as it draws on the map
   - flight points (known and unknown), boats and zeppelins across the sea
   - Routes' trail in its settings' colours and styles, a flight as an arc over the ball
-  - My Route's numbered stops with their menu (Go Here First, Move Earlier, Move Later, Remove); the focus menu; Add Map Pin To My Route; a trip's numbered stops (Stitch (MelloUI Route))
+  - My Route's numbered stops with their menu (Go Here First, Move Earlier, Move Later, Remove); the focus menu; Add Map Pin To My Route; a trip's numbered stops (MelloUI Route (Stitch))
   - recorded herb and ore nodes
   - the map pin: Ctrl-click sets it, as on the game's map; a click on it clears it; Shift-click links it in chat; the thing you are tracking is marked
 - **Keys and gamepad:** a button drops the pin at the middle of the picture; marks near the middle can be stepped through and picked.
 - **Done when:** with a destination set, the globe shows the whole way there at any zoom, and you can set, move and clear the pin without the game's map.
 
-**G8. Quests** (0.4; built 2026-11-21, not yet tried in the game: `Quests.lua`. Each quest's place comes from the base's `Guides.QuestPlace`; the game's area shape is not drawn (it belongs to the game's own map frame), so the quest the route follows has a soft ring 90 yards across instead. Quests on offer come from `C_QuestLine.GetAvailableQuestLines` for the zone at the middle. A click on a quest sets the base's `Choice`, as a click in Thread (Tracker) does; it does not open the quest's details in the game's log. The Route button holds the focus list, Add Map Pin To My Route, Edit My Route and Tracker Beside The Globe; Thread (Tracker) 1.5.0 has `PatchwerkForever_Thread_Tracker_Dock` for that. To look at in the game: whether `C_QuestLine` gives offers on Forever, how the tracker's list sits beside the window and over full screen, and whether the ring reads as the place to be.)
+**G8. Quests** (0.4; built 2026-11-21, not yet tried in the game: `Quests.lua`. Each quest's place comes from the base's `Guides.QuestPlace`; the game's area shape is not drawn (it belongs to the game's own map frame), so the quest the route follows has a soft ring 90 yards across instead. Quests on offer come from `C_QuestLine.GetAvailableQuestLines` for the zone at the middle. A click on a quest sets the base's `Choice`, as a click in Tracker (Thread) does; it does not open the quest's details in the game's log. The Route button holds the focus list, Add Map Pin To My Route, Edit My Route and Tracker Beside The Globe; Tracker (Thread) 1.5.0 has `PatchwerkForever_Thread_Tracker_Dock` for that. To look at in the game: whether `C_QuestLine` gives offers on Forever, how the tracker's list sits beside the window and over full screen, and whether the ring reads as the place to be.)
 - **Build:**
   - each quest's place: a numbered mark as on the map, and its area (see the unknowns: the game's own area shape may not be drawable off its map; then a soft ring round the place)
   - quests on offer and hand-ins
   - Tracker's focus picked out; a click on a quest's mark does what it does on the map (focus, track, open its details in the game's quest log)
-  - Thread (Tracker)'s list docked beside the globe, with My Route's editor; a click on a quest in the list turns the globe to it
-  - Stitch (Dungeon Journal)'s list shows the same way
+  - Tracker (Thread)'s list docked beside the globe, with My Route's editor; a click on a quest in the list turns the globe to it
+  - Dungeon Journal (Stitch)'s list shows the same way
 - **Done when:** "where do I go for this quest" is answered on the globe alone.
 
 **G9. Places, people and words** (0.5; built 2026-11-21, not yet tried in the game: `Places.lua`. Towns and landmarks from `C_AreaPoiInfo` and entrances from `C_EncounterJournal.GetDungeonEntrancesForMap`, for the zone at the middle, with the game's icons by name or by their place on its sheet of place icons. While dead, the corpse (`C_DeathInfo`) and the spirit healer; the game's own map marks no other graveyards outside battlegrounds, so neither does the globe. Party and raid members from `UnitPosition`, each value passed through `issecretvalue` first. Each terrain chunk's own area is now in `Zones.lua` (`areas`, and `ns.AREAS` with 831 English names for where the game gives none), so the smaller place is named under the zone. A zone's levels come from `C_Map.GetMapLevels` of the game's map found at the pointer, and are kept only when that map's name is the zone's. Coordinates are on the zone's map, else the continent's. To look at in the game: which of these functions Forever has (each is asked for with care, and a missing one shows nothing), the game's icons' size beside ours, and members' places in a fight.)
@@ -288,16 +288,16 @@ Every entry of the world map's own list (`WorldMapMixin:AddStandardDataProviders
 | The tracking options button | The Show menu (G11) |
 | The map pin button | Ctrl-click, or Set Or Clear The Map Pin At The Middle by key or gamepad (G7) |
 | The coordinates panel | Coordinates at the lower edge (G9) |
-| The side panel toggle (the quest log) | Thread (Tracker)'s list beside the globe (G8) |
+| The side panel toggle (the quest log) | Tracker (Thread)'s list beside the globe (G8) |
 | The floor list | Struck off: Forever has no floors |
 | The bounty board, the action button, the zone timer, the threat frame, the activity tracker | Struck off: parts of the game's other versions |
 
-**What a click does that the globe does not:** a click on a quest's mark does not open that quest in the game's quest log (it sets what the route follows, as a click in Thread (Tracker) does).
+**What a click does that the globe does not:** a click on a quest's mark does not open that quest in the game's quest log (it sets what the route follows, as a click in Tracker (Thread) does).
 
 ### Not needed for parity
 
 Left out on purpose; each can be asked for later.
-- Race courses' checkpoints on the globe (Thread (Races) puts nothing on the world map today).
+- Race courses' checkpoints on the globe (Races (Thread) puts nothing on the world map today).
 - Relief you can tilt, a night side, or anything else a real globe program has and the world map has not. (Cloud shadows, candlelight and the turning Maelstrom came in with 0.10.0, when light and movement were asked for.)
 - Land the game does not have.
 
@@ -317,7 +317,7 @@ Left out on purpose; each can be asked for later.
 2. **Its place beside the map:** its own window and a button on the world map while it grows. At parity, an option gives it the map key, with the game's map one click away. (This widens decision 3 of 2026-11-19.)
 3. **Marks needed for parity:** all of them: quests, travel, people, places, unexplored land, rares and treasures, other addons' pins, the map pin and links in chat.
 4. **Indoors:** the place's own flat map inside the globe's window, with the same marks; a step out returns to the globe.
-5. **The side panel:** Thread (Tracker)'s list beside the globe. No quest log of the globe's own; details open in the game's.
+5. **The side panel:** Tracker (Thread)'s list beside the globe. No quest log of the globe's own; details open in the game's.
 6. **Other addons' pins:** through the shared pin library (HereBeDragons). The game's map is not mirrored pin by pin, and there is no separate pin interface for other authors.
 7. **Order:** travel and your route first after the ground level.
 8. **Window:** sized by its corner, with full screen.
@@ -331,7 +331,7 @@ Taken while building G10 to G14 in one run, at "finish off the remaining work be
 
 1. **One version for the run:** 0.10.0. The version 1.0.0, the base README's list, the CurseForge project and the release wait for the test.
 2. **Detail pictures stay in the addon.** They were to go into a load-on-demand addon for each continent, as Routes' map data is. That data is Lua tables, which cost memory once loaded; a picture is read from its file when a piece first shows it, so the pictures of a continent you do not look at are not loaded wherever their files lie. A split would move files and gain nothing. The addon is 14.4 MB, under the 15 MB agreed.
-3. **A Stitch (MelloUI Route) trip's stops are struck off.** Nothing new is built on MelloUI.
+3. **A MelloUI Route (Stitch) trip's stops are struck off.** Nothing new is built on MelloUI.
 4. **Indoors is the cities and the battlegrounds.** Forever has no other maps of places.
 5. **Light and movement** (asked for as immersion): candlelight that follows the game clock, a shine on the ball, the Maelstrom turning, cloud shadows, the opening, a ring from your place, the map's sounds. Each has a setting and is on as it comes. All are our own pictures (`tools/globe_fx.py`) or the game's sounds by name.
 6. **The Map Key Opens The Globe is off as it comes**, as decided in the interview. Everything else new is on.
@@ -358,7 +358,7 @@ None of these has been tried on Forever. The function names are where to look fi
 
 ## Added after the first look (2026-11-21, 0.5.1)
 
-- **The Deeprun Tram.** Thread (Routes) knew only the boats and zeppelins of the game's taxi table. The tram runs through a map of its own (369), entered at a door in each city, and each door is one of the game's area triggers: 2173 in Stormwind, 2175 in Ironforge, their places read from the game's `AreaTrigger` table by `tools/crossings.py` (`BY_HAND`; which trigger leads where is told by hand, since only the server knows). It is a crossing of kind `tram` in `Crossings.lua`, for the Alliance, so the planner takes it ("Take the tram from Stormwind to Ironforge") and the globe marks both stations with a dashed line between. Guessed: a minute's ride, half a minute's wait, and the walk through each city from the nearest ground the planner knows. **Others like it** go in the same list once we know which they are: the game's files do not say where a door leads, so each needs naming (and, for a lift, marking in the game with `tools/marks.py`).
+- **The Deeprun Tram.** Routes (Thread) knew only the boats and zeppelins of the game's taxi table. The tram runs through a map of its own (369), entered at a door in each city, and each door is one of the game's area triggers: 2173 in Stormwind, 2175 in Ironforge, their places read from the game's `AreaTrigger` table by `tools/crossings.py` (`BY_HAND`; which trigger leads where is told by hand, since only the server knows). It is a crossing of kind `tram` in `Crossings.lua`, for the Alliance, so the planner takes it ("Take the tram from Stormwind to Ironforge") and the globe marks both stations with a dashed line between. Guessed: a minute's ride, half a minute's wait, and the walk through each city from the nearest ground the planner knows. **Others like it** go in the same list once we know which they are: the game's files do not say where a door leads, so each needs naming (and, for a lift, marking in the game with `tools/marks.py`).
 - **Lifts.** Asked for as "others like the tram". A lift's platform is moved by the server, so no file says a lift runs somewhere; but the Great Lift and the lift of Freewind Post ride in a tower that is a building model (file 112647, placed twice on Kalimdor), with a deck at the top and one at the bottom. `tools/lifts.py` finds each placing of a model named in its `TOWERS`, takes the two largest flat floors as the decks and the walkable ground nearest each as the ends, and writes the lines into a part of its own in `tools/hand_links.txt` (`python lifts.py write`, then `links.py 1`, `pack.py 1`). The 30 seconds for wait and ride are a guess. With them Freewind Post is reached at all (it was not), and Crossroads to Gadgetzan is 20.0 minutes, was 24.5. For showing, `pack.py crossings` lists every lift of `hand_links.txt` in `Crossings.lua` (`ns.Lifts`: these two by name, Thunder Bluff's four with none), Routes offers them through the base's new `Trails:Lifts()`, and the globe marks them (`mark_lift`) from the zoom flight points show at. The Undercity's lifts are still unknown: they lead to floors inside the city, which the planner does not have.
 - **The Maelstrom.** An ink whirlpool at the middle of the Great Sea (latitude 0.05, longitude 0, 0.40 across), one more ink piece of the world (`Art/decor_maelstrom.blp`). `tools/globe_art.py` draws it itself (`maelstrom_drawing`); a hand-made `art/PatchwerkForever_Thread_Globe/globe/maelstrom.png` is used in its place when there is one (the prompt is in `art/PROMPTS.md`). Its name is under it, and The Great Sea's name moved south.
 - **What is explored (G10).** How the game says a place is discovered (`C_MapExplorationInfo`: by picture, or by area at a position), and whether that can be matched to our terrain chunks' areas. *Found:* by picture, and each picture's areas and rectangle are in the game's tables, so it can be matched.
@@ -368,6 +368,27 @@ None of these has been tried on Forever. The function names are where to look fi
 - **The pin library (G13).** Which pin addons exist on Forever and whether they use HereBeDragons; whether its add and remove calls can be followed without touching its insides; what of a pin (icon, tooltip, click) can be shown in a second place. *Found:* RareScanner, RXPGuides and Questie (a copy of its own) use it; its calls can be followed; a pin's picture, tooltip and click are its frame's own.
 - **The map key (G14).** Giving the key to the globe without the game's "action blocked" errors (a binding of our own set over the key, outside a fight), and following the game's own "show on map" calls. *Built that way; untried.*
 - **Memory (G14).** With 15 MB of pictures and detail loaded on demand. *Decided:* no split (decision 2 of the run to parity); the game's memory figure for the addon is still to be read.
+
+## Added after 0.10.0 was built (2026-11-21, 0.11.0)
+
+Asked for before the test of 0.10.0: prompts for variations of the drawings, the drawings "a little opaque" (asked which way: both a wash under them and the ink a little faded), and an aging effect.
+
+- **Variations of the ink drawings.** Where the same kind of drawing stands twice on the globe, the second is made from `<kind>2.png` when there is one and the third from `<kind>3.png` (`decor_sources` in `tools/globe_art.py`); without one, the second uses the first's picture. Every second one of a kind faces the other way: `flip = true` in `Art.lua`, and the addon mirrors the picture, so no second file is written for that. The second serpent is the hand-made `serpent2.png`. Places are kept on the sea for a third ship, a kraken, a whale and a wind, each on the globe only once its picture is made. The prompts are in `art/PROMPTS.md`, under Variations.
+- **The drawings' wash and fade.** An ink piece was the ink alone, clear everywhere else, so the sea's mottling showed through a serpent's body. Now the tool works out the drawing's body (what its outlines close in, as far as that is near ink, and wherever the ink is dense) and lays a pale wash of bare paper under it (`WASH_SHOWS` 0.34), and the darkest ink shows at 0.80, was 0.92 (`INK_SHOWS`). `tools/world/look_decor.png` shows them on the sea's colour.
+- **Aged paper.** Two pictures of our own from `tools/globe_fx.py`, on two layers of the globe over the map, the ink and the blank paper (`Effects.lua`; the setting Aged Paper, on as it comes). `age.blp` is the whole sphere at once, 512 x 256, made on the sphere itself: yellowed varnish, grime at the poles, 13 water stains with broken tide lines, 16 clusters of foxing, and paler rubbed patches, most along the equator. `wear.blp` is a square of 256 that repeats, laid twelve times round: hairline cracks, specks, and at its edge the seam between two strips of paper, set half a strip along so that no seam runs down the middle of a continent. The stains fade out between 3.5 and 6 times the picture's size, the small things between 1.8 and 3.6 (their pixels would show). Cost: with the whole globe in view, about 260 pieces more (193 before). `tools/world/look_age.png` shows both. To look at in the game: how strong it is over land and sea, whether the cracks' repeating is seen, and the drawing time in the numbers under the globe.
+- **Size:** 15.0 MB with these. Each new variation drawing adds about 0.35 MB. The 15 MB agreed was reached; the user, asked, said "it may grow" (2026-11-21), so there is no fixed limit now: say what a thing adds when it is large.
+- **A ring border in place of the stand** (asked for 2026-11-21, as the ring the world sits in on the game's logo): a prompt in `art/PROMPTS.md` for a golden ring of our own in that manner, saved as `border.png`. `ring_picture` in `tools/globe_art.py` uses it before `ring.png`, and the globe's layout follows the picture (`ns.RING`), so nothing else changes. Not made yet.
+- **The family's names turned round** (2026-11-21): the name first, the kind after it in brackets, "Patchwerk Forever: Globe (Thread)". Titles, options pages, READMEs, changelogs, tools and these notes all say it that way now; folders, commands and saved data are unchanged.
+
+## 1.0.0, made ready for release (2026-11-21)
+
+Asked "prepare for release to curseforge", the user said the Globe is part of it, as 1.0.0. So:
+
+- The TOC says 1.0.0 and no longer "Not released yet"; the changelog's 1.0.0 entry describes the whole addon, since it is what CurseForge shows for the first file. `tools/release.py` no longer holds it back (`"held"` is gone), so the base's README must name it, and does.
+- Now named in public: the base's README and 2.8.0 entry, Routes' and Tracker's READMEs and pending entries, the repository's README.
+- **Icon and logo:** the prototype's blue ball is replaced by a patch of the family's kind, a globe on its stand (`globe` in `tools/art.py`). A prompt for a painted one is in `art/PROMPTS.md`; an `art/PatchwerkForever_Thread_Globe/icon.png` takes its place.
+- **The CurseForge project is the user's to make.** Its fields are in `release/NEW-PROJECTS.md`. Once its id and slug are in `tools/curseforge.json`, `python upload.py globe` sends the file.
+- **Not there yet:** pictures for the listing (screenshots are taken in the game), and `border.png`, so the stand is still what is drawn.
 
 ## Rules this keeps
 

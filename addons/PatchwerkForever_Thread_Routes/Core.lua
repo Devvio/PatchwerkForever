@@ -1,8 +1,8 @@
--- Thread (Routes): its settings and the slash command.
+-- Routes (Thread): its settings and the slash command.
 local ADDON, ns = ...
 if not ns.linked then return end
 
-ns.TITLE = 'Patchwerk Forever: Thread (Routes)'
+ns.TITLE = 'Patchwerk Forever: Routes (Thread)'
 
 -- Asks the game: fn's first three answers, or nothing where it errs or this client lacks it.
 function ns.Ask(fn, ...)
@@ -17,7 +17,7 @@ end
 ---------------------------------------------------------------------------
 -- One entry a setting, in the order they are shown. The base makes the pages from this list and
 -- says what each kind of entry becomes (its Tools.lua). page: the page it is on (none: the first,
--- "Thread: Routes"). parent: greyed out while that tick box is off.
+-- "Routes (Thread)"). parent: greyed out while that tick box is off.
 ns.settings = {
 	{ header = true, name = 'Destinations' },
 	{ key = 'auto', default = true, name = 'Route To Map Pin',
@@ -146,7 +146,7 @@ SlashCmdList.PATCHWERKFOREVER_THREAD = function(text)
 		end
 	elseif word == 'config' or word == 'settings' or word == 'options' then
 		if not ns.OpenSettings() then
-			ns.Print('Options are under Options > AddOns > Patchwerk Forever > Thread: Routes.')
+			ns.Print('Options are under Options > AddOns > Patchwerk Forever > Routes (Thread).')
 		end
 	elseif word == 'where' then
 		ns.Try('where', ns.SayWhere)

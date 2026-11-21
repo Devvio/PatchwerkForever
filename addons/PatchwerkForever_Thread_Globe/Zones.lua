@@ -1,4 +1,4 @@
--- Thread (Globe): the zones of each continent, to point at, outline and zoom to. Written by
+-- Globe (Thread): the zones of each continent, to point at, outline and zoom to. Written by
 -- tools/globe_art.py (python globe_art.py zones), from the area of each terrain chunk.
 local _, ns = ...
 

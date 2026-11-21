@@ -1,4 +1,4 @@
-# Patchwerk Forever: Thread (Races)
+# Patchwerk Forever: Races (Thread)
 
 **Patchwerk is not fast. Patchwerk is thorough.**
 
@@ -36,7 +36,7 @@ A checkpoint counts when you pass within **Checkpoint Size** yards of it (12 to 
 - **At the finish**, your time, and a new best run kept if it was faster. `/race best` shows your best run, checkpoint by checkpoint.
 - `/race stop` stops (the **Stop Race** key binding too). `/race` on its own, during a race, says where you are in it.
 
-**The map pin.** A race uses your map pin for the next checkpoint. When it ends, the pin you had before is put back (a setting clears it instead). With Thread (Routes) installed, its trail leads to each checkpoint as the pin moves on.
+**The map pin.** A race uses your map pin for the next checkpoint. When it ends, the pin you had before is put back (a setting clears it instead). With Routes (Thread) installed, its trail leads to each checkpoint as the pin moves on.
 
 ## The marker
 
@@ -48,11 +48,11 @@ Options on **Races: Marker**: size, a vertical offset to set the ring on the gro
 
 ## Sharing a course
 
-`/race share <name>` sends a course to your party or raid; `/race share <name> <player>` to one player. They need Thread (Races) too. They are told who sent which course, and `/race accept` keeps it. Only the checkpoints and the size are sent; best runs are not.
+`/race share <name>` sends a course to your party or raid; `/race share <name> <player>` to one player. They need Races (Thread) too. They are told who sent which course, and `/race accept` keeps it. Only the checkpoints and the size are sent; best runs are not.
 
 ## Options
 
-**Options → AddOns → Patchwerk Forever → Thread: Races**, or `/race config`. Checkpoint Size, Countdown At The Start, Show Split Times, Play Sounds, Restore Map Pin After A Race and Split Times In Chat are on the first page; the marker has the page **Races: Marker**.
+**Options → AddOns → Patchwerk Forever → Races (Thread)**, or `/race config`. Checkpoint Size, Countdown At The Start, Show Split Times, Play Sounds, Restore Map Pin After A Race and Split Times In Chat are on the first page; the marker has the page **Races: Marker**.
 
 ## Commands
 

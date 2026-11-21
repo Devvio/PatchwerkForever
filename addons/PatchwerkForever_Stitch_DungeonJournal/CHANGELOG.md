@@ -1,4 +1,8 @@
-# Patchwerk Forever: Stitch (Dungeon Journal)
+# Patchwerk Forever: Dungeon Journal (Stitch)
+
+## 1.2.1
+
+- **Now named Patchwerk Forever: Dungeon Journal (Stitch)**: the name comes first and what kind of addon it is after it, in brackets (it was Stitch (Dungeon Journal)). The options page is named the same way.
 
 ## 1.2.0
 
@@ -16,7 +20,7 @@
 ## 1.1.0
 
 - **The journal's quests can go in My Route** (with Patchwerk Forever 2.6.0): a quest not yet picked up is routed to where the journal says it starts, or to the quest that must be done first; once you take it, it is a quest in your log.
-- **The Dungeon Journal can be your focus**, chosen in Thread (Tracker) or Thread (Routes), while the journal is running and Route Dungeon Journal Quests is enabled.
+- **The Dungeon Journal can be your focus**, chosen in Tracker (Thread) or Routes (Thread), while the journal is running and Route Dungeon Journal Quests is enabled.
 
 ## 1.0.2
 
@@ -31,7 +35,7 @@
 The first release.
 
 - The quests of the dungeons you track in DungeonJournal become a list to route through: where to accept each, and where to turn it in once it is done.
-- Thread (Tracker) lists it beside your levelling guide; click it and Thread (Routes) leads you from one stop to the next, nearest first.
+- Tracker (Thread) lists it beside your levelling guide; click it and Routes (Thread) leads you from one stop to the next, nearest first.
 - A quest that needs another done first sends you to that one. A spot you point the journal's own map arrow at comes first.
 - A binding and `/patchwerk dj` start and stop it without a mouse.
 - A setting makes it the main route ahead of RestedXP, for a session of dungeon quests.

@@ -140,7 +140,7 @@ def main():
     assert post[1] == "/api/projects/1005/upload-file" and post[2] == TOKEN
     meta, (name, data) = post[3], post[4]
     version = toc("PatchwerkForever_Thread_Routes")[0]["Version"]
-    assert meta["displayName"] == "Patchwerk Forever: Thread (Routes) " + version, meta["displayName"]
+    assert meta["displayName"] == "Patchwerk Forever: Routes (Thread) " + version, meta["displayName"]
     kind = "beta" if version.startswith("0.") else "release"
     assert meta["releaseType"] == kind and meta["changelogType"] == "markdown" and meta["gameVersions"] == [502], meta
     assert meta["relations"] == {"projects": [{"slug": "patchwerk-forever", "type": "requiredDependency"}]}, meta
@@ -167,7 +167,7 @@ def main():
     print("--test: the same file, sent to the test project; so is a project that has no id of its own yet")
     run(["--test", "routes"], env)
     post = SEEN[-1]
-    assert post[1] == "/api/projects/2001/upload-file" and post[3]["displayName"] == "Patchwerk Forever: Thread (Routes) " + version, post[1]
+    assert post[1] == "/api/projects/2001/upload-file" and post[3]["displayName"] == "Patchwerk Forever: Routes (Thread) " + version, post[1]
     assert post[3]["relations"] == {"projects": [{"slug": "patchwerk-forever", "type": "requiredDependency"}]}
     with zipfile.ZipFile(io.BytesIO(post[4][1])) as z:
         assert "## X-Curse-Project-ID: 1005" in z.read("PatchwerkForever_Thread_Routes/PatchwerkForever_Thread_Routes.toc").decode()

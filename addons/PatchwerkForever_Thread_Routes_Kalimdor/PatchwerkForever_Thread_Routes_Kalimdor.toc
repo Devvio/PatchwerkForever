@@ -1,6 +1,6 @@
 ## Interface: 16001
-## Title: Thread (Routes) Map: Kalimdor
-## Notes: Map data for Patchwerk Forever: Thread (Routes). Loaded by it when needed.
+## Title: Routes Map: Kalimdor (Thread)
+## Notes: Map data for Patchwerk Forever: Routes (Thread). Loaded by it when needed.
 ## Author: Tyrone
 ## Version: 1.3.0
 ## Group: PatchwerkForever

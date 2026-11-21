@@ -1,10 +1,10 @@
 ## Interface: 16001
-## Title: Patchwerk Forever: Thread (Globe)
-## Notes: The world on a globe you can spin and zoom, painted like the world map on parchment, with everything the world map shows on it: your route, quests, places, unexplored land and other addons' pins. Not released yet. Needs Patchwerk Forever. Type /globe.
+## Title: Patchwerk Forever: Globe (Thread)
+## Notes: The world on a globe you can spin and zoom, painted like the world map on parchment, with everything the world map shows on it: your route, quests, places, unexplored land and other addons' pins. Needs Patchwerk Forever. Type /globe.
 ## Author: Tyrone
-## Version: 0.10.0
+## Version: 1.0.0
 ## Group: PatchwerkForever
-## X-Category: Map
+## X-Category: Map & Minimap
 ## X-License: MIT
 ## IconTexture: Interface\AddOns\PatchwerkForever_Thread_Globe\Media\icon
 ## X-Patchwerk-Voice: Patchwerk was told the world is round. Patchwerk checked.

@@ -1,6 +1,6 @@
--- Thread (Tracker): the gathering list.
+-- Tracker (Thread): the gathering list.
 --
--- Thread (Routes) remembers where you picked herbs and mined ore, and can lead you from one spot
+-- Routes (Thread) remembers where you picked herbs and mined ore, and can lead you from one spot
 -- to the next. It offers that through the base (PatchwerkForever.Gather); this lists it and starts
 -- it. The two addons do not know each other: with Routes not installed nothing is offered and
 -- there is no such list. The only spots known are the ones you have gathered from yourself.

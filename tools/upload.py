@@ -1,6 +1,6 @@
 """Upload a project's zip to CurseForge, through CurseForge's upload API.
 
-    python upload.py routes                    build Thread (Routes) and upload it
+    python upload.py routes                    build Routes (Thread) and upload it
     python upload.py consoleport melloui       several, one after the other
     python upload.py all                       every project, in the order of release/UPLOAD.md
     python upload.py --tag thread-routes-0.11.0   the project that tag is for (this is what CI runs)
@@ -24,7 +24,7 @@ What it needs:
                 (the zip is the one that would go to the real project, its own number in its TOC).
 
 What it sends for a project: the zip release.py builds; the changelog entry for that version; a
-display name ("Patchwerk Forever: Thread (Routes) 0.11.0"); beta for a version beginning 0., else
+display name ("Patchwerk Forever: Routes (Thread) 0.11.0"); beta for a version beginning 0., else
 release; the game version; and Patchwerk Forever as a required dependency where the addon needs it.
 --as alpha (or beta, or release) sets the release type for everything in that run, whatever the
 version: a file held back as alpha is not offered to people on the release channel, and its type is

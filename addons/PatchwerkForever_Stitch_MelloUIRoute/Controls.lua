@@ -77,7 +77,7 @@ local actions = {
 };
 
 -- (the game's Key Bindings list names a CLICK binding by this global)
-BINDING_HEADER_PATCHWERKFOREVER_MELLOUIROUTE = 'Patchwerk Forever: Stitch (MelloUI Route)';
+BINDING_HEADER_PATCHWERKFOREVER_MELLOUIROUTE = 'Patchwerk Forever: MelloUI Route (Stitch)';
 for _, action in ipairs(actions) do
 	if ( action.run and not _G[action.button] ) then
 		local button = CreateFrame('Button', action.button, UIParent);

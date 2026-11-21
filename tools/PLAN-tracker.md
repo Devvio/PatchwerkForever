@@ -1,4 +1,4 @@
-# Thread (Tracker): plan
+# Tracker (Thread): plan
 
 A quest tracker of our own for World of Warcraft: Forever, as a Thread tool. It shows the quests
 you track with their objectives, and the steps of the guide you are running. Guide addons are read
@@ -24,10 +24,10 @@ The user's choices, from the interview of 2026-11-12:
 
 Mine, open to change:
 
-- **Name:** Patchwerk Forever: Thread (Tracker). Folder `PatchwerkForever_Thread_Tracker`, saved data
+- **Name:** Patchwerk Forever: Tracker (Thread). Folder `PatchwerkForever_Thread_Tracker`, saved data
   `PatchwerkForever_Thread_TrackerDB`, command `/tracker` (and `/pftr`).
 - **Version:** 0.1.0, a beta, when the first milestone that is usable is done.
-- **It needs only the base.** With Thread (Routes) installed too, clicking a quest routes to it, but
+- **It needs only the base.** With Routes (Thread) installed too, clicking a quest routes to it, but
   through the game (the quest becomes the one the game's arrow is on, which Routes already follows),
   not through a link between the two addons.
 
@@ -73,7 +73,7 @@ game's tracker shows that ours would hide (see Risks).
 
 ### The guides service, in the base
 
-Both Thread (Routes) and the tracker need to know what the guide says. Today Routes has its own
+Both Routes (Thread) and the tracker need to know what the guide says. Today Routes has its own
 reader (`Guide.lua`). It moves to the base and becomes a service with one reader per guide addon.
 
 ```
@@ -185,7 +185,7 @@ Milestones 0 and 1 are done and are not repeated here.
 | About | Choice |
 |---|---|
 | The guide section | the steps after the current one, dimmed; the guide's name and "step 34 of 120" with a thin bar; clicking a step skips it in RestedXP. A line of a step goes as soon as it is done ("stays, ticked" was not picked). |
-| A left-click on a quest | routes to it: it becomes the one the game's arrow is on, which Thread (Routes) follows. Shift-click opens it in the quest log. The rest is in a right-click menu. |
+| A left-click on a quest | routes to it: it becomes the one the game's arrow is on, which Routes (Thread) follows. Shift-click opens it in the quest log. The rest is in a right-click menu. |
 | The order of quests | by zone under headings, the zone you are in first, its quests nearest first. The other orders stay as a setting. |
 | Quest items | a strip of buttons beside the tracker, in the order of their quests. |
 | Bound to a button | use the item of the nearest quest. (Folding is bound already. Next/previous quest and skipping a step were not picked.) |
@@ -195,7 +195,7 @@ Milestones 0 and 1 are done and are not repeated here.
 | Stepping back | three switches, all off to begin with: fade in a fight, fade unless the mouse is over it, hide in dungeons and raids. |
 | Also listed | the items the guide's step wants used, in the item strip; a dungeon's stages and timers; and one added in the interview, gathering (below). Not achievements. |
 | RestedXP's own window | hidden while the tracker shows the guide, the gentle way, with a switch. RestedXP's settings are not changed. |
-| Before it is called 1.0 | every feature seen working in the game; a week of play as the only tracker, a dungeon included, with no errors; and it works with nothing else installed (no EllesmereUI, Console Port, RestedXP or Thread (Routes)). |
+| Before it is called 1.0 | every feature seen working in the game; a week of play as the only tracker, a dungeon included, with no errors; and it works with nothing else installed (no EllesmereUI, Console Port, RestedXP or Routes (Thread)). |
 
 **Gathering**: find the nearest node for your gathering professions and route to it. Then asked about:
 
@@ -205,7 +205,7 @@ Milestones 0 and 1 are done and are not repeated here.
   few minutes, until it is stopped.
 - It is a section in the tracker listing the nearest few spots, each clickable. (No binding or command
   was asked for.)
-- The only spots known are the ones Thread (Routes) has remembered from the player's own gathering. The
+- The only spots known are the ones Routes (Thread) has remembered from the player's own gathering. The
   game's files do not say where herbs and ore spawn, and that was said at the time.
 
 ### How I read three of the answers
@@ -214,7 +214,7 @@ Milestones 0 and 1 are done and are not repeated here.
   into a short "ready to hand in" group. It is a matter of where it is shown. The game's own watch
   list is not changed.
 - **"Follow the nearest quest"** puts the game's arrow on the nearest tracked quest when no guide is
-  running and nothing was chosen. Thread (Routes) already follows the nearest tracked quest in that
+  running and nothing was chosen. Routes (Thread) already follows the nearest tracked quest in that
   case without moving the game's arrow. The tracker will mark the quest that is being followed either
   way, and moving the game's arrow as well is the switch.
 - **Stepping back:** all four were ticked, "always fully shown" among them, and then all three were
@@ -232,7 +232,7 @@ Milestones 0 and 1 are done and are not repeated here.
 - **Skipping a guide step** means calling RestedXP's own function for it, as its window does on a
   click. That function has to be found and may change with RestedXP. It is the one place the tracker
   acts on another addon, and it does so only on a click.
-- **Gathering needs Thread (Routes)**, which remembers the spots and finds the ways. Without it there
+- **Gathering needs Routes (Thread)**, which remembers the spots and finds the ways. Without it there
   is no gathering section. The finding and the round belong in Routes (a new kind of destination,
   beside the pin, the guide and the quest); Routes offers them through the base, as the guides service
   is offered, and the tracker only lists and starts them.
@@ -277,7 +277,7 @@ against stand-ins.
 | 8 | Gathering: in Routes the runs (`any`, `kind`, `round`, on to the next at each spot, `/thread gather`); in the base a `Gather` service; in the tracker the section. | Routes `Gather.lua`, base `Gather.lua`, tracker `Gather.lua` |
 | 9 | A dungeon's stages from `C_Scenario`: off to begin with and marked untried. | `Dungeon.lua` |
 
-Settings: 43, on five pages (Thread: Tracker, Tracker: Quests, Tracker: Guide, Tracker: More, Tracker: Look).
+Settings: 43, on five pages (Tracker (Thread), Tracker: Quests, Tracker: Guide, Tracker: More, Tracker: Look).
 
 Choices made while building, open to change:
 
@@ -423,12 +423,12 @@ could that be used, or the places taken from the wiki?
   are the quest-start table and what its "map pointing" follows now (`WaypointArrowTarget`,
   `FollowWaypoint`).
 - **Its map pointing is its own.** It draws its own pins and arrow and does not set the game's map
-  pin (its code says Forever's is not reliable for it), so Thread (Routes) does not see it today.
+  pin (its code says Forever's is not reliable for it), so Routes (Thread) does not see it today.
 - Its tracked list is kept in its saved data (`questTracker`).
 
 ### So: yes, without the wiki
 
-- A small **Stitch** (it is for someone else's addon): *Patchwerk Forever: Stitch (Dungeon Journal)*.
+- A small **Stitch** (it is for someone else's addon): *Patchwerk Forever: Dungeon Journal (Stitch)*.
   It registers one more reader with the base's guides service. The reader asks the running journal
   what its arrow is following, and for each quest on its to-do list where that quest starts, and
   gives that as the step and the steps after. Routes then leads there and the tracker lists it, as
@@ -442,10 +442,10 @@ could that be used, or the places taken from the wiki?
   wins: likely a setting, or the journal only while its arrow is on); and a note to the author,
   as a courtesy, since the Stitch leans on names inside his addon.
 
-### Built: Stitch (Dungeon Journal) 1.0.0 (2026-11-13)
+### Built: Dungeon Journal (Stitch) 1.0.0 (2026-11-13)
 
 Approved and built. `addons/PatchwerkForever_Stitch_DungeonJournal`: `Link.lua` (API 4),
-`Reader.lua`, a binding, `/patchwerk dj`, two settings on the page Stitch: Dungeon Journal.
+`Reader.lua`, a binding, `/patchwerk dj`, two settings on the page Dungeon Journal (Stitch).
 
 - **What the reader reads**, each time it is asked, from the running journal: the dungeons ticked in
   it (`ForeverDungeonJournalCharacterDB.trackedDungeons`), each one's quests

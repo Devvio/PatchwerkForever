@@ -1,4 +1,4 @@
--- Thread (Races): racing a course.
+-- Races (Thread): racing a course.
 --
 -- /race start: the start of the course becomes your map pin, tracked, so the game shows its marker in
 -- the world and Marker.lua draws on it. Reaching the start counts down from 3 (or not, by the setting)
@@ -8,7 +8,7 @@
 -- put back (or cleared, by the setting).
 --
 -- The checkpoints are taken in order; one missed is not skipped, it stays the next until you reach it.
--- With Thread (Routes) installed, its trail leads to each checkpoint as the pin moves on.
+-- With Routes (Thread) installed, its trail leads to each checkpoint as the pin moves on.
 local ADDON, ns = ...
 if not ns.linked then return end
 

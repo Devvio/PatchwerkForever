@@ -1,4 +1,4 @@
--- Thread (Globe): the pins other addons put on the world map.
+-- Globe (Thread): the pins other addons put on the world map.
 --
 -- Most addons that mark the map (quest helpers, guides, rare finders) do not draw on it themselves:
 -- they hand each pin (a small frame of their own, and where it goes) to a library they share,

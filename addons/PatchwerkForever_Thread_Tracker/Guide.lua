@@ -1,4 +1,4 @@
--- Thread (Tracker): the steps of the guides you are running.
+-- Tracker (Thread): the steps of the guides you are running.
 --
 -- The base reads the guide addons (its Guides.lua: RestedXP, and through a Stitch the Dungeon
 -- Journal's quest list). Each gets a section: the step you are on with its lines, the steps after
@@ -218,7 +218,7 @@ local function Section(n)
 				end
 			end
 		end
-		-- (marked while it is the track being followed. Thread (Routes) says which that is, through the
+		-- (marked while it is the track being followed. Routes (Thread) says which that is, through the
 		-- base; without it: the main guide with nothing chosen and no gathering run on, and only on Auto
 		-- or as the focus; a side list while it is the one chosen or the focus)
 		local followed

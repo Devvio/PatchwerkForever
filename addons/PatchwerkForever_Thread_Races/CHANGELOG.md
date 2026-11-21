@@ -1,4 +1,8 @@
-# Patchwerk Forever: Thread (Races)
+# Patchwerk Forever: Races (Thread)
+
+## 0.1.2 (beta)
+
+- **Now named Patchwerk Forever: Races (Thread)**: the name comes first and what kind of addon it is after it, in brackets (it was Thread (Races)). The options page is named the same way.
 
 ## 0.1.1 (beta)
 
@@ -14,5 +18,5 @@ The first release.
 - **Race it against the clock**: `/race start`. The next checkpoint is your map pin, tracked, and a ring and a beam of light are drawn on the game's waypoint marker for it. A countdown at the start, your time and how far ahead of or behind your best run at each checkpoint, and your best run kept.
 - **The pin you had** is put back when a race ends.
 - **Send a course** to your party, or to one player, with `/race share`; they keep it with `/race accept`.
-- Settings on **Thread: Races** and **Races: Marker**; key bindings Place Checkpoint, Start Last Race and Stop Race.
+- Settings on **Races (Thread)** and **Races: Marker**; key bindings Place Checkpoint, Start Last Race and Stop Race.
 - Needs **Patchwerk Forever**.

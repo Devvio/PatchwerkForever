@@ -1,4 +1,4 @@
--- Thread (Races): the courses. Making one as you ride it, keeping it, and sending it to others.
+-- Races (Thread): the courses. Making one as you ride it, keeping it, and sending it to others.
 --
 -- A course is a list of checkpoints: the first is the start, the last the finish. Each is kept as the
 -- game's map and a place on it (0 to 1 across and down), the way a map pin is, so it can be made the
@@ -6,7 +6,7 @@
 --     { points = { { m = uiMapID, x =, y = }, ... }, radius = yards, made = date, by = who made it,
 --       best = { time = seconds, splits = { [checkpoint] = seconds }, date = } }
 -- How near you are to a checkpoint is reckoned in the world's own yards, from where the game says you
--- are (UnitPosition) and where the checkpoint is (C_Map.GetWorldPosFromMapPos), as Thread (Routes) does.
+-- are (UnitPosition) and where the checkpoint is (C_Map.GetWorldPosFromMapPos), as Routes (Thread) does.
 local ADDON, ns = ...
 if not ns.linked then return end
 
@@ -328,7 +328,7 @@ function ns.CourseShare(text)
 	for i = 1, total do
 		send(PREFIX, ('%s:%d:%d:%s'):format(id, i, total, line:sub((i - 1) * CHUNK + 1, i * CHUNK)), channel, to)
 	end
-	ns.Print(('Course "%s" sent to %s. They need Thread (Races) to keep it.'):format(name, to or 'your group'))
+	ns.Print(('Course "%s" sent to %s. They need Races (Thread) to keep it.'):format(name, to or 'your group'))
 end
 
 local incoming, offered = {}, nil

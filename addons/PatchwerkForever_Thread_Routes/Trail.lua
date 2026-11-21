@@ -1,4 +1,4 @@
--- Thread (Routes): how the route's trail is drawn, shared by the world map and the minimap.
+-- Routes (Thread): how the route's trail is drawn, shared by the world map and the minimap.
 --
 -- The trail's colours, its style (a solid line, dashes or dots) and whether the dashes or dots flow
 -- along the route come from the settings. The two maps hand each straight piece of the route to

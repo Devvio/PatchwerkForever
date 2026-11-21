@@ -1,4 +1,4 @@
-# Patchwerk Forever: Thread (Routes)
+# Patchwerk Forever: Routes (Thread)
 
 **Follow the thread. It knows the way. Patchwerk checked. Twice.**
 
@@ -35,14 +35,15 @@ When a guide and a quest both lead somewhere, the guide goes first; the setting 
 
 What the route follows by itself is the main track: your guide when one is running, else your tracked quests (the settings say which first). Now and then you want to go somewhere else for a while.
 
-- **A quest you click in Thread (Tracker)** becomes the route, even while a guide is running. Its walking is drawn in a color of its own, so you can tell a side path from the main track.
+- **A quest you click in Tracker (Thread)** becomes the route, even while a guide is running. Its walking is drawn in a color of its own, so you can tell a side path from the main track.
 - **The way back is drawn too**: fainter, on from the quest to the step your guide is waiting at.
 - **Click it again**, or hand the quest in, and the main track is followed once more.
 - **A second guide's list** can be chosen the same way: the Dungeon Journal's quests (with its Stitch), clicked in the tracker, are followed stop after stop until the list is done or you go back. Its next stops are drawn in the selected color too.
 - **A gathering run** is a side path of the same kind. There is one at a time: choosing a quest ends a run, and starting a run lets the quest go (unless the run cannot start).
 - A map pin of your own still comes before everything.
 - **When a quest you select cannot be followed**, the chat says why, once: it has no location on the map, it is on a continent the route cannot reach from here, or your map pin comes first.
-- **Thread (Tracker) marks what the route follows**: Routes tells it, so the mark is right for a map pin, for a quest ahead of the guide, and after Stop Routing (with a Patchwerk Forever that passes it on).
+- **Globe (Thread) draws the route on its globe**: the trail, the boats, zeppelins and tram, the lifts, and the recorded herb and ore nodes, as on the world map.
+- **Tracker (Thread) marks what the route follows**: Routes tells it, so the mark is right for a map pin, for a quest ahead of the guide, and after Stop Routing (with a Patchwerk Forever that passes it on).
 
 ## Focus: you choose what the route follows
 
@@ -60,15 +61,15 @@ Only what is running is offered. A gathering run, your map pin and a quest or li
 
 - **When the focus has nowhere to send you** (the journal's list is done, nothing is tracked, My Route is empty), the route follows Auto instead and says so once in chat.
 - **A change of focus is said on screen**: "Following: Dungeon Journal", above the words of the step it leads to.
-- **Where to change it:** the button at the top right of the world map, `/thread focus`, the key bindings, and Thread (Tracker)'s focus bar.
+- **Where to change it:** the button at the top right of the world map, `/thread focus`, the key bindings, and Tracker (Thread)'s focus bar.
 
 ## My Route on the world map
 
-My Route is a list of stops you put in your own order: quests in your log, Dungeon Journal quests not yet taken, and map spots. It is kept for each character, by Patchwerk Forever; Thread (Tracker) has its editor. A quest to turn in waits while another stop's objective or pickup is clearly nearer.
+My Route is a list of stops you put in your own order: quests in your log, Dungeon Journal quests not yet taken, and map spots. It is kept for each character, by Patchwerk Forever; Tracker (Thread) has its editor. A quest to turn in waits while another stop's objective or pickup is clearly nearer.
 
 - **Numbered marks.** While My Route is your focus or the list you selected, its stops are marked on the world map, 1, 2, 3, in the list's order (only those on the map shown).
 - **Right-click a mark** for **Go Here First**, **Move Earlier**, **Move Later** and **Remove**. A left-click goes there first.
-- **The focus button's menu** has **Edit My Route** (opens Thread (Tracker)'s editor beside the map) and **Add Map Pin To My Route**.
+- **The focus button's menu** has **Edit My Route** (opens Tracker (Thread)'s editor beside the map) and **Add Map Pin To My Route**.
 
 ## The quest log
 
@@ -130,13 +131,13 @@ Each spot where you pick a herb or mine a vein is remembered for all your charac
 - `/thread gather round` keeps to the spots near where you began, and ends when you have been round them.
 - `/thread gather Peacebloom` goes only to spots of that one thing. `/thread gather list` shows what is near.
 - Only what your character can gather is gone to, as the game's profession book says; a character with no gathering profession gets no runs. While a run is on, your guide and your quests are not followed; a pin of your own still comes first, and **Start Routing** ends the run.
-- With **Thread (Tracker)** installed, its Gathering section lists the nearest spots and starts a run on a click. The **Toggle Gathering Run** key starts one and, pressed again, ends it.
+- With **Tracker (Thread)** installed, its Gathering section lists the nearest spots and starts a run on a click. The **Toggle Gathering Run** key starts one and, pressed again, ends it.
 
 The only spots known are the ones you have gathered from yourself: the game's files do not say where herbs and ore grow.
 
 ## Settings
 
-**Options → AddOns → Patchwerk Forever → Thread: Routes**, or `/thread config`. The trail's colors, width and style (solid, dashed or dotted, animated if you like) are on **Routes: Trail**; the words on screen are on **Routes: Step Text**, whose sample follows the sliders while you move them.
+**Options → AddOns → Patchwerk Forever → Routes (Thread)**, or `/thread config`. The trail's colors, width and style (solid, dashed or dotted, animated if you like) are on **Routes: Trail**; the words on screen are on **Routes: Step Text**, whose sample follows the sliders while you move them.
 
 Under **Destinations**: **Route To Map Pin**, **Follow Guide**, **Follow Tracked Quests** and **Route Priority** (what always comes first is in its tooltip). Under **Focus And My Route**: **Focus Button On The World Map** and **Show My Route On The World Map** (both on to begin with).
 
@@ -180,7 +181,7 @@ The download holds four folders. All four go in `Interface\AddOns`:
 - `PatchwerkForever_Thread_Routes`: the tool.
 - `PatchwerkForever_Thread_Routes_Kalimdor`, `_EasternKingdoms`, `_ZephrasIsle`: the map data, about 4 MB in all. Each is loaded the first time a route needs it; with boats and zeppelins on, the first route loads all three.
 
-The sparkle on things you can use, once part of this addon, is now **Patchwerk Forever: Thread (Sparkle)**.
+The sparkle on things you can use, once part of this addon, is now **Patchwerk Forever: Sparkle (Thread)**.
 
 Something wrong? Report it as a comment on the addon's CurseForge page.
 

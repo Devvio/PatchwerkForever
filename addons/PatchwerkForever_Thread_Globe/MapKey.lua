@@ -1,4 +1,4 @@
--- Thread (Globe): the globe in place of the game's world map.
+-- Globe (Thread): the globe in place of the game's world map.
 --
 -- With the setting The Map Key Opens The Globe (off as it comes):
 --   the map key     every key the game's Toggle World Map is bound to opens and closes the globe. The

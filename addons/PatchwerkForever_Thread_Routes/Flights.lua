@@ -1,4 +1,4 @@
--- Thread (Routes): the flight points this character knows.
+-- Routes (Thread): the flight points this character knows.
 --
 -- A route may only fly between flight points you have found. Which those are is learned three ways,
 -- the surest first:

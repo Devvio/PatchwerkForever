@@ -1,4 +1,4 @@
-# Patchwerk Forever: Stitch (MelloUI Route)
+# Patchwerk Forever: MelloUI Route (Stitch)
 
 **The map said walk. The cliff said otherwise.**
 
@@ -20,7 +20,7 @@ Additions to the route planner of **MelloUI** on **World of Warcraft: Forever**.
 
 Nothing in MelloUI's own files is changed, and its road data is not included, read or copied.
 
-(For a route planner that needs no MelloUI at all, see **Patchwerk Forever: Thread (Routes)**.)
+(For a route planner that needs no MelloUI at all, see **Patchwerk Forever: Routes (Thread)**.)
 
 ## What it adds
 
@@ -37,7 +37,7 @@ Not possible from outside MelloUI: closing MelloUI's own shipped roads at a bloc
 
 ## Settings and bindings
 
-The page **Stitch: MelloUI Route**, under **Options → AddOns → Patchwerk Forever** (`/patchwerk config` opens the page above it).
+The page **MelloUI Route (Stitch)**, under **Options → AddOns → Patchwerk Forever** (`/patchwerk config` opens the page above it).
 
 Bind these under **Options → Keybindings**, in the **Patchwerk Forever** section, or in Console Port's binding list: **Route: Mark Trail Ahead Blocked**, **Route: Undo Blocked Spot**, **Route: Quest Run**, **Route: Next Quest Run Stop** and **Route: Use Suggested Shortcut**. In a macro: `/click PatchwerkRouteQuestRun` (and `PatchwerkRouteNextStop`, `PatchwerkRouteBlock`, `PatchwerkRouteUnblock`, `PatchwerkRouteTravel`).
 

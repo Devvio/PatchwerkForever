@@ -1,8 +1,8 @@
--- Thread (Globe): its settings and the slash command.
+-- Globe (Thread): its settings and the slash command.
 local ADDON, ns = ...
 if not ns.linked then return end
 
-ns.TITLE = 'Patchwerk Forever: Thread (Globe)'
+ns.TITLE = 'Patchwerk Forever: Globe (Thread)'
 
 -- One entry a setting, in the order they are shown (the base makes the page from this list).
 ns.settings = {
@@ -16,16 +16,18 @@ ns.settings = {
 		desc = 'Show your coordinates, and those of the place under the pointer, at the lower edge of the picture.' },
 	{ key = 'globeExplore', default = true, name = 'Leave Unexplored Land Blank',
 		desc = 'Leave the land you have not discovered as blank paper, as the world map does. It fills in as you explore. Parchment style only.' },
+	{ key = 'globeAge', default = true, name = 'Aged Paper',
+		desc = 'The paper of an old globe: stains, foxing and rubbed patches, and closer to, hairline cracks and the seams between the strips of paper. It fades away as you zoom in to the ground. Parchment style only.' },
 	{ key = 'globeFlat', default = true, name = 'City Maps',
 		desc = 'When the globe is opened, or Where I Am is pressed, while you are in a city or a battleground, show that place\'s own map in the window. A right-click, Step Out or zooming out goes back to the globe. Off: such a map is opened from Go To, or by a click on a city that already fills the picture.' },
 
 	{ header = true, name = 'Marks' },
 	{ key = 'globeRoute', default = true, name = 'Show Your Route',
-		desc = 'Show the trail Thread (Routes) leads you along, and the numbered stops of My Route. Click a stop for what can be done with it.' },
+		desc = 'Show the trail Routes (Thread) leads you along, and the numbered stops of My Route. Click a stop for what can be done with it.' },
 	{ key = 'globeQuests', default = true, name = 'Show Quests',
 		desc = 'Show where your quests are done and handed in, quests on offer, and the steps of the guide you run. Click a quest to route to it.' },
 	{ key = 'globeTracker', default = true, name = 'Tracker Beside The Globe',
-		desc = 'While the globe is open, put the list of Thread (Tracker) beside it. It goes back where you keep it when the globe closes. Needs Thread (Tracker).' },
+		desc = 'While the globe is open, put the list of Tracker (Thread) beside it. It goes back where you keep it when the globe closes. Needs Tracker (Thread).' },
 	{ key = 'globePlaces', default = true, name = 'Show Places',
 		desc = 'Show towns, landmarks, and dungeon and raid entrances as you zoom in; the place a city guard points you to; while you are dead, your corpse and the spirit healer; and on a battleground\'s map its places and flags.' },
 	{ key = 'globePeople', default = true, name = 'Show Your Group',
@@ -33,9 +35,9 @@ ns.settings = {
 	{ key = 'globeFlights', default = true, name = 'Show Flight Points',
 		desc = 'Show the flight points of your side as you zoom in. Those you have not discovered are grey.' },
 	{ key = 'globeCrossings', default = true, name = 'Show Boats And Zeppelins',
-		desc = 'Show where the boats and zeppelins you can take put in, and the way they go; the Deeprun Tram; and, as you zoom in, the lifts. Needs Thread (Routes).' },
+		desc = 'Show where the boats and zeppelins you can take put in, and the way they go; the Deeprun Tram; and, as you zoom in, the lifts. Needs Routes (Thread).' },
 	{ key = 'globeNodes', default = true, name = 'Show Herb And Ore Nodes',
-		desc = 'Show the herb and ore nodes Thread (Routes) has recorded, when you zoom right in. Needs Thread (Routes).' },
+		desc = 'Show the herb and ore nodes Routes (Thread) has recorded, when you zoom right in. Needs Routes (Thread).' },
 	{ key = 'globeRares', default = true, name = 'Show Rares And Treasures',
 		desc = 'Show the rare creatures, treasures and events the game marks on the minimap while they are near you.' },
 	{ key = 'globePins', default = true, name = "Show Other Addons' Pins",
@@ -92,7 +94,7 @@ SlashCmdList.PATCHWERKFOREVER_GLOBE = function(text)
 	elseif word == 'config' or word == 'settings' or word == 'options' then
 		if not ns.OpenSettings() then
 			ns.Print(InCombatLockdown() and 'Options cannot be opened in combat.'
-				or 'Options are under Options > AddOns > Patchwerk Forever > Thread: Globe.')
+				or 'Options are under Options > AddOns > Patchwerk Forever > Globe (Thread).')
 		end
 	else
 		Help()

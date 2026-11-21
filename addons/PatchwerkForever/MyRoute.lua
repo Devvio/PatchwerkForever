@@ -5,8 +5,8 @@ local P = ns.P;
 ---------------------------------------------------------------
 -- A list of stops for each character, followed in the order you
 -- give it. It is one more guide reader (Guides.lua), 'route', so
--- whatever follows a guide follows it: Thread (Routes) leads you
--- along it and draws the stops after, Thread (Tracker) lists it.
+-- whatever follows a guide follows it: Routes (Thread) leads you
+-- along it and draws the stops after, Tracker (Thread) lists it.
 -- It is a side list: followed when it is your focus (Focus.lua) or
 -- you select it, never by itself.
 --

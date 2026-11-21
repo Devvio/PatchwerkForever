@@ -1,4 +1,4 @@
--- Thread (Routes): the route on the minimap.
+-- Routes (Thread): the route on the minimap.
 --
 -- Lines over the minimap for the part of the route within its view, turned with the minimap when it
 -- turns with the character, and cut off at its edge (round, or square where the minimap says it is).

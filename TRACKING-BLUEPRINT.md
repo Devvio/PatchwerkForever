@@ -2,7 +2,7 @@
 
 Asked for on 2026-11-18: buttons to focus the route on one source (RestedXP, the Dungeon Journal, questing), then routes of your own made by selecting quests and stacking them in order, reordered by drag and drop, on the map and the journal too.
 
-Built on 2026-11-18 (all five milestones; base 2.6.0, Routes 1.1.0, Tracker 1.3.0, Stitch (Dungeon Journal) 1.1.0), passing the checks outside the game; not yet tried in the game. Your answers to the ten decisions are at the end; the text below follows them.
+Built on 2026-11-18 (all five milestones; base 2.6.0, Routes 1.1.0, Tracker 1.3.0, Dungeon Journal (Stitch) 1.1.0), passing the checks outside the game; not yet tried in the game. Your answers to the ten decisions are at the end; the text below follows them.
 
 ## Where things stood before it was built
 
@@ -97,7 +97,7 @@ A list of stops you build yourself, followed in your order.
   - The My Route section, with dragging, its rows and the editor window.
   - The menu items.
   - Route To Next/Previous Quest walk My Route while it is the focus (**Q8**).
-- **Stitch (Dungeon Journal):** its stops can be added to My Route (a start spot for a quest not yet taken).
+- **Dungeon Journal (Stitch):** its stops can be added to My Route (a start spot for a quest not yet taken).
 - **The world map and quest log** are touched only from outside:
   - our own buttons, parented to the map's frames, never added with the map's `AddOverlayFrame`. The map refreshes those through secure code, and an addon's frame there risks the game's "action blocked" errors.
   - the quest log reached through hooks after it draws.

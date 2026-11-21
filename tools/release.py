@@ -1,15 +1,16 @@
 """Build the upload for the addons. Each is a CurseForge project of its own.
 
     python release.py patchwerk     Patchwerk Forever, the base
-    python release.py consoleport   Patchwerk Forever: Stitch (Console Port)
-    python release.py melloui       Patchwerk Forever: Stitch (MelloUI)
-    python release.py melloroute    Patchwerk Forever: Stitch (MelloUI Route)
-    python release.py routes        Patchwerk Forever: Thread (Routes) (four folders: the tool and its map data)
-    python release.py sparkle       Patchwerk Forever: Thread (Sparkle)
-    python release.py tracker       Patchwerk Forever: Thread (Tracker)
-    python release.py races         Patchwerk Forever: Thread (Races)
-    python release.py plains        Patchwerk Forever: Thread (Immersive Plainsrunning)
-    python release.py dungeonjournal   Patchwerk Forever: Stitch (Dungeon Journal)
+    python release.py consoleport   Patchwerk Forever: Console Port (Stitch)
+    python release.py melloui       Patchwerk Forever: MelloUI (Stitch)
+    python release.py melloroute    Patchwerk Forever: MelloUI Route (Stitch)
+    python release.py routes        Patchwerk Forever: Routes (Thread) (four folders: the tool and its map data)
+    python release.py sparkle       Patchwerk Forever: Sparkle (Thread)
+    python release.py tracker       Patchwerk Forever: Tracker (Thread)
+    python release.py races         Patchwerk Forever: Races (Thread)
+    python release.py globe         Patchwerk Forever: Globe (Thread)
+    python release.py plains        Patchwerk Forever: Immersive Plainsrunning (Thread)
+    python release.py dungeonjournal   Patchwerk Forever: Dungeon Journal (Stitch)
     python release.py               all of them
 
 Checks the addon's folders, then writes into its release folder in the repository
@@ -148,9 +149,6 @@ PROJECTS = {
         "needs": ("README.md", "CHANGELOG.md", "LICENSE", "Media/icon.tga", "Link.lua", "Bindings.xml"),
         "summary": "The world of WoW Forever on a parchment globe you can spin and zoom, from the whole world down to "
                    "the ground. Needs Patchwerk Forever.",
-        # (held back until it can stand in for the world map, GLOBE-BLUEPRINT.md: its first release is 1.0. Until
-        # then the base's README does not name it, and it is not uploaded.)
-        "held": True,
     },
     "plains": {
         "main": "PatchwerkForever_Thread_Plainsrunning",
@@ -302,7 +300,7 @@ def changelog_problems(main, version):
 
 def family_problems():
     """The other projects that the base's README does not name. A part is named by its title without the
-    family's prefix ("Thread (Routes)"), as the README's tables give it."""
+    family's prefix ("Routes (Thread)"), as the README's tables give it."""
     base = PROJECTS["patchwerk"]["main"]
     readme = open(os.path.join(ADDONS, base, "README.md"), encoding="utf-8").read()
     prefix = toc(base)[0].get("Title", base) + ": "

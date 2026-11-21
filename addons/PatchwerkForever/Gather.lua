@@ -3,7 +3,7 @@ local P = ns.P;
 ---------------------------------------------------------------
 -- Gather: where the herbs and the ore were
 ---------------------------------------------------------------
--- Thread (Routes) remembers each spot where you picked a herb or
+-- Routes (Thread) remembers each spot where you picked a herb or
 -- mined a vein, and can lead you to the nearest. The tracker
 -- lists them. Neither tool knows the other: Routes offers what
 -- it can do here, and whoever wants it asks here. With Routes

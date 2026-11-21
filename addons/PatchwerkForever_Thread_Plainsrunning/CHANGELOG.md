@@ -1,4 +1,8 @@
-# Patchwerk Forever: Thread (Immersive Plainsrunning)
+# Patchwerk Forever: Immersive Plainsrunning (Thread)
+
+## 1.2.2
+
+- **Now named Patchwerk Forever: Immersive Plainsrunning (Thread)**: the name comes first and what kind of addon it is after it, in brackets (it was Thread (Immersive Plainsrunning)). The options page is named the same way.
 
 ## 1.2.1
 
@@ -27,7 +31,7 @@ The first release: speed mode as in 0.1.0, with everything 0.2.0 added (both lis
   - **Dust And Seeds**: specks of dust and grass seeds fly past you, most of them low. Amount, size, brightness and color.
   - **Warp Rings**: faint rings swell outward from the horizon ahead. Number, brightness and color.
   - **Edge Glow**: a glow along the edges of the screen that beats with your stride. Brightness, color, and whether it pulses.
-- **Keep While Faded**: keep the minimap (with what other addons draw over it, such as the route of Thread (Routes)), your unit frames (player, pet, target and its target) or the chat while the rest of the interface fades. Each is its own tick box; all are off at first.
+- **Keep While Faded**: keep the minimap (with what other addons draw over it, such as the route of Routes (Thread)), your unit frames (player, pet, target and its target) or the chat while the rest of the interface fades. Each is its own tick box; all are off at first.
 - **Pull The Camera Back**: the camera eases back 3 yards when the effects come in and returns when the run ends or the interface comes back. The distance can be set from 1 to 10 yards. It never takes back more than it moved, so a camera already at the game's furthest zoom stays where it was.
 - **Run records**, kept for each character: longest time at full speed, fastest time to 30 stacks, farthest run, runs at full speed and the yards covered in all. A new record is told in chat (this can be turned off); `/plains records` lists them, `/plains records reset` forgets them.
 - The second options page is now **Plainsrunning: Effects**. **Show Streaks At** is now **Show Effects At**, and Match My Speed, Vertical Offset and Clear Middle work for all the effects.

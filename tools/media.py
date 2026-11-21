@@ -1,4 +1,4 @@
-"""Draw the pictures Thread (Sparkle)'s effects and Thread (Routes)'s dotted trail are made of.
+"""Draw the pictures Sparkle (Thread)'s effects and Routes (Thread)'s dotted trail are made of.
 
     python media.py
 

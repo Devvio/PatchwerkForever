@@ -1,4 +1,4 @@
-"""Run Thread (Races) and Thread (Sparkle)'s loot wisp outside the game, on the base, against the stand-in
+"""Run Races (Thread) and Sparkle (Thread)'s loot wisp outside the game, on the base, against the stand-in
 for the game (wowstub.lua) with what these two need added to it.
 
     python lua_races.py
@@ -129,8 +129,8 @@ def main():
     pages = sorted(stub.pages.keys())
     assert "Races: Marker" in pages and "Sparkle: Loot Wisps" in pages, pages
     on = lambda page: [s for s in stub.settings.values() if s.page == page]
-    assert len(on("Thread: Races")) == 6 and len(on("Races: Marker")) == 9 and len(on("Sparkle: Loot Wisps")) == 8, \
-        (len(on("Thread: Races")), len(on("Races: Marker")), len(on("Sparkle: Loot Wisps")))
+    assert len(on("Races (Thread)")) == 6 and len(on("Races: Marker")) == 9 and len(on("Sparkle: Loot Wisps")) == 8, \
+        (len(on("Races (Thread)")), len(on("Races: Marker")), len(on("Sparkle: Loot Wisps")))
     # the key bindings in the family's own section of the Key Bindings page
     bindings = open(os.path.join(ADDONS, RACES, "Bindings.xml"), encoding="utf-8").read()
     assert bindings.count('category="BINDING_CATEGORY_PatchwerkForever"') == 3 and "ADDONS" not in bindings

@@ -1,4 +1,4 @@
-"""Thread (Globe)'s own pictures of the world, in the look of the world map on parchment, made from the
+"""Globe (Thread)'s own pictures of the world, in the look of the world map on parchment, made from the
 game's terrain (GLOBE-BLUEPRINT.md, milestone G2: the tools and one test picture).
 
     python globe_art.py world       the whole world (G3): one picture, 2048 x 1024, longitude across and latitude
@@ -21,9 +21,14 @@ What it draws, in this order:
     zone borders           thin, in a lighter ink
     paper                  the hand-made paper's stains and grain (a soft grain of our own while there is none)
 The hand-made pieces (art/PROMPTS.md) are read from art/PatchwerkForever_Thread_Globe/globe/: paper.png is laid
-over everything; compass.png, serpent.png, serpent2.png (a second drawing of the serpent, so the two on the
-globe are not the same) and ship.png become pictures of their own on the open sea
-(Art/decor_<name>.blp); ring.png, cut from its magenta, becomes the ring and stand round the ball (Art/ring.blp).
+over everything; compass.png, serpent.png, ship.png and the rest of the ink drawings become pictures of their
+own on the open sea (Art/decor_<name>.blp), their ink a little faded and a pale wash under their bodies; ring.png,
+cut from its magenta, becomes the ring and stand round the ball (Art/ring.blp). A border.png (a ring alone, with
+no stand) is used in ring.png's place when it is there.
+A drawing may have variations: where the same kind stands twice on the globe (two serpents, two ships), the
+second looks for <kind>2.png, the third for <kind>3.png, and uses <kind>.png while there is none. Every second
+one of a kind faces the other way (the addon turns it; no second picture is written for that). A kind with no
+picture at all (the kraken, the whale, the wind) is left off the globe.
 Words are never drawn: the addon writes the names in the game's own font.
 
 What it writes:
@@ -36,7 +41,7 @@ import struct
 import sys
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFilter
 
 from blp import write_blp
 from casc import Storage
@@ -193,11 +198,19 @@ WORLD_W, WORLD_H, PIECE = 2048, 1024, 512
 # the hand-made pieces (art/PROMPTS.md): in a folder of their own, which the build does not make into pictures
 ART_IN = os.path.join(HERE, "..", "art", "PatchwerkForever_Thread_Globe", "globe")
 # the ink pieces on the open sea, each a picture of its own on the globe (so it stays sharp as you zoom in):
-# (name, latitude, longitude, how far across in radians)
+# (kind, latitude, longitude, how far across in radians). The second of a kind is drawn from <kind>2.png where
+# there is one, the third from <kind>3.png (art/PROMPTS.md has a prompt for each), and every second one faces
+# the other way.
 DECOR = [("compass", 0.62, 0.0, 0.46), ("serpent", -0.30, 2.45, 0.52), ("ship", -0.40, -2.35, 0.43),
-         ("serpent2", 0.35, 3.05, 0.46), ("ship", -0.15, 0.55, 0.34),
+         ("serpent", 0.35, 3.05, 0.46), ("ship", -0.15, 0.55, 0.34),
          # the Maelstrom, in the middle of the Great Sea between Kalimdor and the Eastern Kingdoms
-         ("maelstrom", 0.05, 0.0, 0.40)]
+         ("maelstrom", 0.05, 0.0, 0.40),
+         # on the globe only once their pictures are made
+         ("ship", -0.55, 1.90, 0.32), ("kraken", -0.70, -2.85, 0.46), ("whale", 0.62, -2.00, 0.40),
+         ("wind", 0.95, 2.20, 0.44)]
+INK_SHOWS = 0.80              # how much of the darkest ink shows (1: solid): a little faded, as old ink is
+WASH_SHOWS = 0.34             # how much of the pale wash under a drawing's body shows
+WASH = (236, 226, 200)        # the wash's colour: bare paper
 PAPER = 1.3                   # how strongly the paper's stains and grain show (1: as in its picture)
 PAPER_COLOUR = 0.25           # how much of the paper's own colour shows in its stains (0: only light and dark)
 PAPER_FINE = 8                # the paper laid again this many times smaller on the detail pictures, for its grain
@@ -464,47 +477,91 @@ def maelstrom_drawing(size=960):
 
 # ink pieces drawn here where no hand-made picture of that name is in art/
 DRAWN = {"maelstrom": maelstrom_drawing}
-# an ink piece made from another's picture where it has none of its own
-STANDS_IN = {"serpent2": "serpent"}
-# ink pieces turned to face the other way (the second serpent looks west, the first east)
-MIRRORED = {"serpent2"}
+
+
+def blurred(mask, radius):
+    """A mask (0 to 1) softened."""
+    im = Image.fromarray((np.clip(mask, 0, 1) * 255).astype(np.uint8))
+    return np.asarray(im.filter(ImageFilter.GaussianBlur(radius)), dtype=np.float32) / 255
+
+
+def body_of(ink):
+    """Where a drawing's body is, from where its ink is (0 to 1): what its outlines close in, as far as that is
+    near ink (the gap under a serpent's arch is closed in too, and is not its body), and wherever the ink is
+    dense (hatching, scales, the arms of the whirlpool). Soft at its edge."""
+    lines = ink > 0.3
+    # (outlines drawn by hand have small gaps: thickened a little before the outside is flooded from a corner)
+    thick = Image.fromarray((lines * 255).astype(np.uint8)).filter(ImageFilter.MaxFilter(5))
+    padded = Image.new("L", (thick.width + 2, thick.height + 2), 0)
+    padded.paste(thick, (1, 1))
+    ImageDraw.floodfill(padded, (0, 0), 128)
+    inside = np.asarray(padded)[1:-1, 1:-1] != 128
+    near = blurred(lines, 9) > 0.07
+    dense = np.clip((blurred(lines, 7) - 0.16) / 0.22, 0, 1)
+    return blurred(np.maximum(inside & near, dense), 2.5)
+
+
+def decor_sources():
+    """Each ink piece of DECOR that has a picture to be made from: (kind, the picture's name, turned the other
+    way, latitude, longitude, size). The n-th of a kind is made from <kind><n>.png; the second, while it has none,
+    from <kind>.png (or the drawing made here); every second one of a kind is turned."""
+    out, count = [], {}
+    for kind, dlat, dlon, size in DECOR:
+        n = count[kind] = count.get(kind, 0) + 1
+        source = None
+        if n > 1 and os.path.exists(os.path.join(ART_IN, "%s%d.png" % (kind, n))):
+            source = "%s%d" % (kind, n)
+        elif n <= 2 and (os.path.exists(os.path.join(ART_IN, kind + ".png")) or kind in DRAWN):
+            source = kind                                    # (a third of a kind only with a drawing of its own)
+        if source:
+            out.append((kind, source, n % 2 == 0, dlat, dlon, size))
+    return out
 
 
 def decor_pictures(art_dir, written):
     """The hand-made ink pieces as pictures of their own: the ink's colour, showing as much as the drawing is
-    dark there (so the white is clear). Returns the names made."""
-    made = set()
-    for name in sorted({d[0] for d in DECOR}):
+    dark there, a little faded; under the drawing's body a pale wash, so the sea's mottling does not show
+    through it as through glass; clear everywhere else. Returns decor_sources()."""
+    sources = decor_sources()
+    looks = []
+    for name in sorted({s[1] for s in sources}):
         path = os.path.join(ART_IN, name + ".png")
-        if not os.path.exists(path) and name in STANDS_IN:
-            path = os.path.join(ART_IN, STANDS_IN[name] + ".png")
-        if os.path.exists(path):
-            drawing = Image.open(path).convert("RGB")
-        elif name in DRAWN:
-            drawing = DRAWN[name]()
-        else:
-            continue
-        if name in MIRRORED:
-            drawing = drawing.transpose(Image.FLIP_LEFT_RIGHT)
+        drawing = Image.open(path).convert("RGB") if os.path.exists(path) else DRAWN[name]()
         a = np.asarray(drawing.resize((480, 480), Image.LANCZOS), dtype=np.float32)
         light = a.mean(axis=2)
         darkest = light < np.percentile(light, 5)
         ink, floor = a[darkest].mean(axis=0), float(light[darkest].mean())
-        show = np.clip((246 - light) / (246 - floor), 0, 1) ** 0.85 * 0.92
+        dark = np.clip((246 - light) / (246 - floor), 0, 1)
+        show = dark ** 0.85 * INK_SHOWS
+        wash = body_of(dark) * WASH_SHOWS
+        # (the ink over the wash, as one picture)
+        alpha = show + wash * (1 - show)
+        colour = (ink[None, None, :] * show[..., None] + np.array(WASH, np.float32)[None, None, :] * (wash * (1 - show))[..., None]) \
+            / np.maximum(alpha, 1e-4)[..., None]
         rgba = np.zeros((512, 512, 4), np.uint8)             # (a clear margin, so nothing smears at the edges)
         rgba[..., :3] = ink.astype(np.uint8)
-        rgba[16:496, 16:496, 3] = (show * 255).astype(np.uint8)
+        rgba[16:496, 16:496, :3] = np.clip(colour, 0, 255).astype(np.uint8)
+        rgba[16:496, 16:496, 3] = (np.clip(alpha, 0, 1) * 255).astype(np.uint8)
         write_blp(os.path.join(art_dir, "decor_%s.blp" % name), rgba)
         written.add("decor_%s.blp" % name)
-        made.add(name)
-    return made
+        looks.append(rgba)
+    if looks:
+        # (how they look on the sea, for a look before the game: world/look_decor.png)
+        sheet = Image.new("RGBA", (512 * len(looks), 512), (140, 159, 149, 255))
+        for i, rgba in enumerate(looks):
+            sheet.alpha_composite(Image.fromarray(rgba), (i * 512, 0))
+        sheet.convert("RGB").save(os.path.join(WORLD, "look_decor.png"))
+    return sources
 
 
 def ring_picture(art_dir, written):
     """The brass ring and stand, cut from its flat magenta, its hole made a true circle and put in the middle
     across. Returns where it is in the picture, in parts of its side: the hole's middle (down), the hole's
-    radius, and the top and bottom of what is drawn; None while there is no ring."""
-    path = os.path.join(ART_IN, "ring.png")
+    radius, and the top and bottom of what is drawn; None while there is no ring. A border.png (a ring alone,
+    with no stand: art/PROMPTS.md) is used before ring.png; the globe lays itself out by what the picture holds."""
+    path = os.path.join(ART_IN, "border.png")
+    if not os.path.exists(path):
+        path = os.path.join(ART_IN, "ring.png")
     if not os.path.exists(path):
         return None
     r = np.asarray(Image.open(path).convert("RGB"), dtype=np.float32)
@@ -800,7 +857,7 @@ def zones():
     store = Storage(GAME, "wowf")
     parents = area_parents(store)
     names = texts(Table(store.read_fdid(AREA_TABLE)), NAME)
-    lines = ["-- Thread (Globe): the zones of each continent, to point at, outline and zoom to. Written by",
+    lines = ["-- Globe (Thread): the zones of each continent, to point at, outline and zoom to. Written by",
              "-- tools/globe_art.py (python globe_art.py zones), from the area of each terrain chunk.",
              "local _, ns = ...", "",
              "-- By continent (the game's map number):",
@@ -924,7 +981,7 @@ def world():
         if old.endswith(".blp") and old not in written:
             os.remove(os.path.join(art_dir, old))
     Image.fromarray(rgba[..., :3]).resize((1024, 512), Image.LANCZOS).save(os.path.join(WORLD, "globe_world.png"))
-    lines = ["-- Thread (Globe): its own pictures of the world, and how the world is laid on the globe. Written by",
+    lines = ["-- Globe (Thread): its own pictures of the world, and how the world is laid on the globe. Written by",
              "-- tools/globe_art.py (python globe_art.py world).",
              "local ADDON, ns = ...", "",
              "-- rw: yards of the world to a radian of the globe; sea: its colour; each continent's middle on the",
@@ -946,12 +1003,11 @@ def world():
                      % (name, map_id, c0, c1, r0, r1))
     if inked:
         lines.append("")
-        lines.append("\t-- the hand-made ink pieces on the open sea: a picture, its middle (latitude, longitude) and how far")
-        lines.append("\t-- across it is (radians)")
-        for name, dlat, dlon, size in DECOR:
-            if name in inked:
-                lines.append("\t{ file = 'Interface\\\\AddOns\\\\' .. ADDON .. '\\\\Art\\\\decor_%s', kind = 'decor', lat = %.4f, lon = %.4f, size = %.4f },"
-                             % (name, dlat, dlon, size))
+        lines.append("\t-- the hand-made ink pieces on the open sea: a picture, its middle (latitude, longitude), how far")
+        lines.append("\t-- across it is (radians); flip: turned to face the other way")
+        for _kind, source, flip, dlat, dlon, size in inked:
+            lines.append("\t{ file = 'Interface\\\\AddOns\\\\' .. ADDON .. '\\\\Art\\\\decor_%s', kind = 'decor', lat = %.4f, lon = %.4f, size = %.4f%s },"
+                         % (source, dlat, dlon, size, ", flip = true" if flip else ""))
     lines.append("}")
     if ring:
         lines += ["",
@@ -963,7 +1019,8 @@ def world():
     print("written %d world and %d detail pictures, Art.lua, world/globe_world.png; sea %s"
           % (len(pieces), len(details), tuple(round(float(c), 3) for c in sea)))
     print("hand-made: paper %s, ink pieces %s, ring %s"
-          % ("laid in" if tile is not None else "not there", ", ".join(sorted(inked)) or "none", "made" if ring else "not there"))
+          % ("laid in" if tile is not None else "not there",
+             ", ".join(s[1] + (" (turned)" if s[2] else "") for s in inked) or "none", "made" if ring else "not there"))
 
 
 def test():

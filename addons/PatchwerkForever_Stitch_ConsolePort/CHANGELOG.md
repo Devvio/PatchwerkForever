@@ -1,4 +1,8 @@
-# Patchwerk Forever: Stitch (Console Port)
+# Patchwerk Forever: Console Port (Stitch)
+
+## 2.2.1
+
+- **Now named Patchwerk Forever: Console Port (Stitch)**: the name comes first and what kind of addon it is after it, in brackets (it was Stitch (Console Port)). The options page is named the same way.
 
 ## 2.2.0
 

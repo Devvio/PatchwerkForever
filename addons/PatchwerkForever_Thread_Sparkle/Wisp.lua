@@ -1,4 +1,4 @@
--- Thread (Sparkle): a wisp that carries what you pick up into your bag.
+-- Sparkle (Thread): a wisp that carries what you pick up into your bag.
 --
 -- Asked for on 2026-11-16: a wisp that floats into the bag when you pick an item up. The game says when an item goes into a bag, and which bag, and the item's picture (ITEM_PUSH). A
 -- small light then leaves the place the thing was and flies in a curve to that bag's button, with a

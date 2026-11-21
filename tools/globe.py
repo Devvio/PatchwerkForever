@@ -1,4 +1,4 @@
-"""The minimap image tiles of each continent, for Thread (Globe).
+"""The minimap image tiles of each continent, for Globe (Thread).
 
     python globe.py                 writes addons/PatchwerkForever_Thread_Globe/Tiles.lua
 
@@ -8,7 +8,7 @@ are written: the addon asks the game for the pictures by number, so none of the 
 the addon.
 
 A tile's place: column tx (east is more), row ty (south is more); world Y = 17066.67 - tx * 533.33,
-world X = 17066.67 - ty * 533.33 at its north-west corner (as Thread (Routes)' planner counts cells).
+world X = 17066.67 - ty * 533.33 at its north-west corner (as Routes (Thread)'s planner counts cells).
 """
 import os
 import struct
@@ -50,7 +50,7 @@ def minimap_tiles(store, wdt_fdid):
 def main():
     store = Storage(GAME, "wowf")
     files = map_files(store)
-    lines = ["-- Thread (Globe): the minimap picture of each terrain tile, by continent. Written by",
+    lines = ["-- Globe (Thread): the minimap picture of each terrain tile, by continent. Written by",
              "-- tools/globe.py from the game's own world files; only the pictures' numbers are here.",
              "local _, ns = ...", "", "ns.TILES = {"]
     for map_id, name in CONTINENTS:

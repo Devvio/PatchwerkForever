@@ -1,4 +1,4 @@
-"""Run Patchwerk Forever's own tools, Thread (Routes) and Thread (Sparkle), outside the game on its base,
+"""Run Patchwerk Forever's own tools, Routes (Thread) and Sparkle (Thread), outside the game on its base,
 against a stand-in for the game (wowstub.lua).
 
     python lua_shell.py
@@ -908,7 +908,7 @@ def main():
     assert len(by_name) == 91, "expected 91 settings on the options pages, found %d" % len(by_name)
     assert "baseTellMissing" not in by_name, "the base's switch is on its front page, not a row of the game's"
     pages = sorted(stub.pages.keys())
-    WANT = {"Thread: Routes": 16, "Routes: Trail": 12, "Routes: Step Text": 6, "Thread: Sparkle": 5, "Sparkle: Names": 8,
+    WANT = {"Routes (Thread)": 16, "Routes: Trail": 12, "Routes: Step Text": 6, "Sparkle (Thread)": 5, "Sparkle: Names": 8,
             "Sparkle: Behind My Character": 6, "Sparkle: Appearance": 30, "Sparkle: Loot Wisps": 8}
     assert pages == sorted(WANT), pages
     for page in pages:
@@ -921,7 +921,7 @@ def main():
     # every page opens with its name, its tool's picture and a line in Patchwerk's voice
     intros = {i.name: i for i in stub.intros.values()}
     assert sorted(intros) == sorted(WANT), sorted(intros)
-    assert intros["Thread: Routes"].voice == "Follow the thread. Patchwerk knows the way. Mostly."
+    assert intros["Routes (Thread)"].voice == "Follow the thread. Patchwerk knows the way. Mostly."
     assert intros["Routes: Trail"].voice.startswith("A line on the ground.") and intros["Sparkle: Appearance"].voice.startswith("Every shiny thing")
     assert all(i.voice and i.icon and i.icon.endswith("icon") for i in intros.values()), [n for n, i in intros.items() if not i.voice]
     assert stub.Rows() == len(WANT) + 15, "a row of our own could not be made"
@@ -933,7 +933,7 @@ def main():
     parts = [(x.name, x.says, x.open) for x in page.parts.values()]
     for part in parts:
         print("      front page: %s | %s" % part[:2])
-    assert [x[0].split("  ")[0] for x in parts] == ["Thread (Routes)", "Thread (Sparkle)"] and all(x[2] for x in parts), parts
+    assert [x[0].split("  ")[0] for x in parts] == ["Routes (Thread)", "Sparkle (Thread)"] and all(x[2] for x in parts), parts
     assert "Two threads" in page.said, page.said
     names = [s.name for s in by_name.values()]
     assert "Route To Map Pin" in names and "Follow Guide" in names and "Font Size" in names and "Walking Color" in names, names
@@ -941,7 +941,7 @@ def main():
     assert sdb and not lua.globals().PatchwerkForever_Thread_RoutesDB.sparkleWas, "the sparkle keeps its things in the routes' saved data"
     buttons = list(stub.buttons.values())
     # (Routes' own buttons exactly; Sparkle's are its own business, and change with it)
-    mine = sorted(b.text for b in buttons if b.page.startswith("Routes") or b.page == "Thread: Routes")
+    mine = sorted(b.text for b in buttons if b.page.startswith("Routes") or b.page == "Routes (Thread)")
     assert mine == ["Reset", "Show"], mine
     assert sum(1 for b in buttons if b.text == "Reset") == 2, [b.text for b in buttons]
     assert sum(1 for s in by_name.values() if s.colour) == 12 and sum(1 for s in by_name.values() if s.choices) == 14
@@ -953,12 +953,12 @@ def main():
     setv("trailStyle", "dots")
     setv("flights", False)
     setv("nameSize", 20)
-    [b for b in buttons if b.text == "Reset" and b.page == "Thread: Routes"][0].click()
-    assert "Reset all Thread: Routes options" in stub.asked.text, stub.asked.text
+    [b for b in buttons if b.text == "Reset" and b.page == "Routes (Thread)"][0].click()
+    assert "Reset all Routes (Thread) options" in stub.asked.text, stub.asked.text
     stub.Answer(True)
     assert ns.Get("trailStyle") == "solid" and ns.Get("flights") is True, "Routes' options were not reset"
     assert sparkle.Get("nameSize") == 20, "resetting Routes reset the Sparkle too"
-    [b for b in buttons if b.text == "Reset" and b.page == "Thread: Sparkle"][0].click()
+    [b for b in buttons if b.text == "Reset" and b.page == "Sparkle (Thread)"][0].click()
     stub.Answer(True)
     assert sparkle.Get("nameSize") == 13
     chat("reset")
@@ -2462,7 +2462,7 @@ def main():
     frames()
     assert focus() == "quests" and near(*FIELD)
     pick("Edit My Route")
-    assert any("Editing My Route needs Thread (Tracker)" in t for t in chat("edit")), "nothing said without the tracker"
+    assert any("Editing My Route needs Tracker (Thread)" in t for t in chat("edit")), "nothing said without the tracker"
     lua.execute("function PatchwerkForever_Thread_Tracker_OpenMyRoute(anchor) STUB.editorBeside = anchor end")
     pick("Edit My Route")
     assert same(stub.editorBeside, world_map), "the editor was not opened beside the map"

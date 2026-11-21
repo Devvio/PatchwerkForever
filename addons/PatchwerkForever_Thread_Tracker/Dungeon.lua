@@ -1,4 +1,4 @@
--- Thread (Tracker): a dungeon's stages. Untried, and off until you tick it.
+-- Tracker (Thread): a dungeon's stages. Untried, and off until you tick it.
 --
 -- Where the game runs a place in stages (it calls that a "scenario"), its own tracker shows the
 -- stage you are on and what the stage asks. This asks the game the same way (C_Scenario.GetInfo,

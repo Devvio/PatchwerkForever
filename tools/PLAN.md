@@ -4,7 +4,7 @@ Goal: a route planner for WoW Forever that is ours end to end: map data made fro
 game's own files by our tools, a planner written by us, shipped as its own addon. No
 MelloUI code or data in it.
 
-**Where it stands (2026-11-18):** Thread (Routes) 1.1.0 is live on CurseForge, out of beta since 1.0.0.
+**Where it stands (2026-11-18):** Routes (Thread) 1.1.0 is live on CurseForge, out of beta since 1.0.0.
 This file is the planner's plan, the log of its early versions (to Routes 0.12.0) and of the checks
 against other addons' updates. The quest tracker's plan is `PLAN-tracker.md`; what came later is in
 `ROADMAP.md`, `POLISH.md`, `TRACKING-BLUEPRINT.md` and each addon's CHANGELOG.
@@ -23,7 +23,7 @@ base), the sparkle split from the route planner, and MelloUI Route's additions u
 - The base's new `Tools.lua` is what Wayfarer's Core.lua and Settings.lua were, made general:
   `PatchwerkForever:Tool(addon, ns, spec)` gives a tool `ns.Print/Try/On/Get/Set/OnSetting/RGB/
   OpenSettings`, and at login the base makes the tool's pages from `ns.settings` as sub-pages of
-  its own (Thread: Routes, Thread: Trail, Thread: Sparkle, Sparkle: Names, five Sparkle kinds,
+  its own (Routes (Thread), Thread: Trail, Sparkle (Thread), Sparkle: Names, five Sparkle kinds,
   Sparkle: Behind My Character). Each tool lists `Link.lua` first; every later file starts with
   `if not ns.linked then return end`.
 - The sparkle reads the route planner's `nodeKinds` when that tool is installed, else goes by the
@@ -46,11 +46,11 @@ base), the sparkle split from the route planner, and MelloUI Route's additions u
   by one: `/thread config` and `/sparkle config` opening their own page, a route and a sparkle
   in play under the new names, each Console Port fix.
 - Two things from a look at it in the game (2026-11-12): the Stitch options were not found where they were, a
-  section of the parent's first page, so each Stitch now has a sub-page of its own ("Stitch: Console Port");
+  section of the parent's first page, so each Stitch now has a sub-page of its own ("Console Port (Stitch)");
   and a screenshot of the addon list showed the three map data folders standing outside the Patchwerk
   Forever group with their titles cut off. Forever's addon list goes by a `## Group:` line in the TOC (set by
   the client from names and dependencies when absent; read in Blizzard's AddonList.lua): every TOC now says
-  `## Group: PatchwerkForever`, and the map data titles are "Thread (Routes) map: Kalimdor" and so on.
+  `## Group: PatchwerkForever`, and the map data titles are "Routes (Thread) map: Kalimdor" and so on.
   Both built into the game; neither seen there yet.
 - Checked against the addons updated on 2026-11-12 (asked for): MelloUI 2.1.44 to 2.1.48 and RestedXP Guides
   v4.11.36; Console Port (3.3.13) and EllesmereUI (9.8.4) had not changed. MelloUI's Route files, its game menu
@@ -111,7 +111,7 @@ base), the sparkle split from the route planner, and MelloUI Route's additions u
   the eight names the reader reads are there with the same shapes (`FDJ.TurnInSpotFor`,
   `FDJ.QuestMatchesFaction`, `trackedDungeons` on the character's saved table). EllesmereUI: both menu button
   names and `EllesmereUIQuestTracker` there. None of this was tried in the game.
-- Thread (Routes) 0.12.0: RestedXP read ahead, and the step said on screen (asked for 2026-11-12: route by
+- Routes (Thread) 0.12.0: RestedXP read ahead, and the step said on screen (asked for 2026-11-12: route by
   the upcoming RestedXP steps, and a floating text that describes the step when the route changes; of the
   interview all four read-ahead parts were taken, the step then the route for the words, upper middle and
   configurable, every new destination).
@@ -130,7 +130,7 @@ base), the sparkle split from the route planner, and MelloUI Route's additions u
     on screen and the fainter trail runs on ahead. So RestedXP's `RXP` table and its
     steps are there as read. Not heard one by one: the handover with no pause when a step is done, a fly
     step walked to, a hearthstone step said and not routed, and whether the size and place of the words suit.
-Below, read Wayfarer, `PatchwerkForever_Wayfarer` and `/wayfarer` as Thread (Routes) and its names;
+Below, read Wayfarer, `PatchwerkForever_Wayfarer` and `/wayfarer` as Routes (Thread) and its names;
 the log keeps the names things had when it was written.
 
 **Name (2026-11-12): "Patchwerk Forever: Wayfarer".** It was "Wayfinder Forever" until then; CurseForge

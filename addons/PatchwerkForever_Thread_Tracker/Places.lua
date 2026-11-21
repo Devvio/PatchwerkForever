@@ -1,4 +1,4 @@
--- Thread (Tracker): where a quest is, and how far.
+-- Tracker (Thread): where a quest is, and how far.
 --
 -- The game is asked the way its own world map asks: the map a quest is on (GetQuestUiMapID) and the
 -- quest's mark on that map (C_QuestLog.GetQuestsOnMap), which the game turns into a place in the

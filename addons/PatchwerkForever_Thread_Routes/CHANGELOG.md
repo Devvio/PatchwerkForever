@@ -1,18 +1,19 @@
-# Patchwerk Forever: Thread (Routes)
+# Patchwerk Forever: Routes (Thread)
 
 ## 1.3.0
 
+- **Now named Patchwerk Forever: Routes (Thread)**: the name comes first and what kind of addon it is after it, in brackets (it was Thread (Routes)). The options page is named the same way.
 Works with Patchwerk Forever 2.6.0 or later, as before; what is new here needs 2.8.0. The three map data addons are 1.3.0 too (the data itself is unchanged).
 
 - **The Deeprun Tram.** For the Alliance, routes between Stormwind and Ironforge take the tram where that is quicker: "Take the tram from Stormwind to Ironforge". Its two doors are read from the game's files; the ride (about a minute), the wait (about half a minute) and the walk through each city are estimates. Use Boats And Zeppelins turns it off with them.
 - **The Great Lift and the lift of Freewind Post.** Routes between the Barrens and Thousand Needles go down the Great Lift instead of round through Dustwallow Marsh (Crossroads to Gadgetzan: about 20 minutes, was 24), and Freewind Post, which no route reached, is reached by its lift. Where each lift stands is read from the game's files; the half minute allowed for the wait and the ride is an estimate. This is in the Kalimdor map data.
-- For addon authors: the trail, the boats, zeppelins and tram, the lifts, and the recorded herb and ore nodes are offered through the base's `PatchwerkForever.Trails`, so a tool with a map of its own can draw them as Routes draws them on the world map.
+- For addon authors: the trail, the boats, zeppelins and tram, the lifts, and the recorded herb and ore nodes are offered through the base's `PatchwerkForever.Trails`, so a tool with a map of its own can draw them as Routes draws them on the world map. Globe (Thread), new beside this, draws them on its globe.
 
 ## 1.2.0
 
 Polish. Needs Patchwerk Forever 2.6.0 or later, as before; the three map data addons are 1.2.0 too.
 
-- **The way there, in words, for My Route**: once a route is found, Thread (Tracker) is told where to fly from and to, what boat or zeppelin to take, and how long it takes in all, and shows it at the top of My Route.
+- **The way there, in words, for My Route**: once a route is found, Tracker (Thread) is told where to fly from and to, what boat or zeppelin to take, and how long it takes in all, and shows it at the top of My Route.
 ### Key bindings
 - The bindings have a section of their own, **Patchwerk Forever**, on the Key Bindings page, shared with the family's other addons. Keys you had bound are kept.
 - **Route To Pin, Guide Step Or Quest** is now called **Start Routing**.
@@ -20,7 +21,7 @@ Polish. Needs Patchwerk Forever 2.6.0 or later, as before; the three map data ad
 - With a Patchwerk Forever too old for this addon, a bound key does nothing instead of giving a Lua error, and the chat line names the addon, its version and the Patchwerk Forever version it needs.
 
 ### What is followed
-- **Thread (Tracker) marks what the route really follows**: Routes now tells it (with a Patchwerk Forever that passes it on), so the mark is right for a map pin, for a quest followed ahead of the guide, and after Stop Routing.
+- **Tracker (Thread) marks what the route really follows**: Routes now tells it (with a Patchwerk Forever that passes it on), so the mark is right for a map pin, for a quest followed ahead of the guide, and after Stop Routing.
 - Selecting a quest that has no location on the map, or one on a continent the route cannot reach from here, says so once in chat; your main route goes on. Selecting one while your map pin or coordinates stand says that those come first.
 - **Start Routing** during a gathering run ends the run first.
 - A gathering run that cannot start keeps the quest you had selected.
@@ -45,7 +46,7 @@ Polish. Needs Patchwerk Forever 2.6.0 or later, as before; the three map data ad
 - **Boat and zeppelin stops are named**: "zeppelin Thunder Bluff > Zephras Isle" and "boat near Gadgetzan > Powderfuse Port", instead of "a landing".
 - `/thread to` shows the coordinates on screen ("To 45.2, 61.8"); `/thread where` names the continent.
 - Reworded: standing where the planner knows no ground, a route that cannot be found, map data that could not be loaded (now by its title, with the game's own reason), and the gathering run lines.
-- The addon list note says "nodes", as the options do. The map data addons are titled **Thread (Routes) Map: ...**.
+- The addon list note says "nodes", as the options do. The map data addons are titled **Routes (Thread) Map: ...**.
 
 ## 1.1.0
 
@@ -62,14 +63,14 @@ Needs Patchwerk Forever with API 5 (the focus and My Route).
 - The route changes the moment the focus, your selection or My Route changes, instead of at the next half-second check.
 
 ### On the world map
-- **A focus button** at the map's top right: the focuses to choose from (the one in use checked), **Edit My Route** (with Thread (Tracker)) and **Add Map Pin To My Route**. New setting: **Focus Button On The World Map**.
+- **A focus button** at the map's top right: the focuses to choose from (the one in use checked), **Edit My Route** (with Tracker (Thread)) and **Add Map Pin To My Route**. New setting: **Focus Button On The World Map**.
 - **My Route's stops are numbered on the map** while My Route is your focus or selected. Right-click a mark for Go Here First, Move Earlier, Move Later and Remove; a left-click goes there first. New setting: **Show My Route On The World Map**.
 
 ### The quest log
 - **A + beside each quest** in the world map's quest log adds it to My Route (a check mark takes it out again), and the quest's right-click menu has **Add To My Route** / **Remove From My Route**.
 
 ### Fixed
-- Starting a gathering run with `/thread gather` now ends a quest or list you had selected, as starting one from Thread (Tracker) does.
+- Starting a gathering run with `/thread gather` now ends a quest or list you had selected, as starting one from Tracker (Thread) does.
 
 ## 1.0.0
 
@@ -109,25 +110,25 @@ Polish: the things you meet every session.
 
 ## 0.15.0 (beta)
 
-- **A second guide's list can be selected as a side route**, as a quest can: the route follows it step after step in the selected-route colour, with its next steps drawn fainter, until it has no more or you go back to your main guide. This is what leads you through the Dungeon Journal's quests (with Patchwerk Forever: Stitch (Dungeon Journal)).
+- **A second guide's list can be selected as a side route**, as a quest can: the route follows it step after step in the selected-route colour, with its next steps drawn fainter, until it has no more or you go back to your main guide. This is what leads you through the Dungeon Journal's quests (with Patchwerk Forever: Dungeon Journal (Stitch)).
 - Needs **Patchwerk Forever 2.4.0** or later.
 
 ## 0.14.0 (beta)
 
 ### The main track, and a path you choose
-- Your guide (or, with none, your tracked quests) is the main track. **A quest you click in Thread (Tracker) is a side path that comes first**: the route goes to it even while a guide is running.
+- Your guide (or, with none, your tracked quests) is the main track. **A quest you click in Tracker (Thread) is a side path that comes first**: the route goes to it even while a guide is running.
 - The side path's walking is drawn in a colour of its own (new setting: Selected Route Color), and the way on from the quest back to your guide's step is drawn fainter.
 - Clicking the quest again, or handing it in, gives the main track back. A gathering run is a side path too, in the same colour; there is one side path at a time.
 
 ### Its options pages
-- The pages are now **Thread: Routes**, **Routes: Trail** and **Routes: Step Text**, each opening with a line from Patchwerk, with headings for their sections (with Patchwerk Forever 2.2.0). Settings are renamed in standard terms (Line Style, Animation Speed, Walking Color, Font Size), and chat messages, command help and key bindings are reworded to match; nothing changes in what they do.
+- The pages are now **Routes (Thread)**, **Routes: Trail** and **Routes: Step Text**, each opening with a line from Patchwerk, with headings for their sections (with Patchwerk Forever 2.2.0). Settings are renamed in standard terms (Line Style, Animation Speed, Walking Color, Font Size), and chat messages, command help and key bindings are reworded to match; nothing changes in what they do.
 
 ### Gathering runs
 - `/thread gather` leads to the nearest herb or ore spot you have gathered at before, and on reaching it goes on to the next, leaving out the ones you have just been to, until `/thread gather stop`.
 - `/thread gather round` keeps to the spots near where you began; `/thread gather <name>` goes only to spots of one thing; `/thread gather list` shows what is near.
 - Only spots your character can gather are gone to. While a run is on, your guide and quests are not followed; a pin of your own still comes first.
 - The spots show where things grow, not whether one is there now.
-- With Thread (Tracker) installed, the runs are listed and started from its Gathering section.
+- With Tracker (Thread) installed, the runs are listed and started from its Gathering section.
 
 ## 0.13.0 (beta)
 
@@ -152,9 +153,9 @@ Polish: the things you meet every session.
 
 A new name and a new home. This addon was "Wayfarer" until now.
 
-- **It is now Patchwerk Forever: Thread (Routes)**, one of Patchwerk Forever's own tools, and **needs the Patchwerk Forever base** (a small addon). Its settings are under Options → AddOns → Patchwerk Forever, on the pages **Thread: Routes** and **Thread: Trail**.
+- **It is now Patchwerk Forever: Routes (Thread)**, one of Patchwerk Forever's own tools, and **needs the Patchwerk Forever base** (a small addon). Its settings are under Options → AddOns → Patchwerk Forever, on the pages **Routes (Thread)** and **Thread: Trail**.
 - **The command is `/thread`** (or `/pft`).
-- **The sparkle moved out** to an addon of its own, *Patchwerk Forever: Thread (Sparkle)*, for people who want it without the map data, or the routes without it. Install it to keep the sparkle.
+- **The sparkle moved out** to an addon of its own, *Patchwerk Forever: Sparkle (Thread)*, for people who want it without the map data, or the routes without it. Install it to keep the sparkle.
 - The folders and the saved data have new names. Settings and herb and ore spots saved under the old name are not read; the key bindings need setting again.
 - A new icon in the game's addon list.
 

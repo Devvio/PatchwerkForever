@@ -1,4 +1,4 @@
--- Thread (Globe): the world on a globe you can spin and zoom.
+-- Globe (Thread): the world on a globe you can spin and zoom.
 --
 -- An addon cannot make a 3D shape, but it can move the four corners of a picture anywhere on the
 -- screen (Texture:SetVertexOffset). So the globe is a ball of pictures: each is laid on the sphere,
@@ -48,7 +48,7 @@ local sin, cos, sqrt, floor, min, max, abs = math.sin, math.cos, math.sqrt, math
 local asin, acos, atan2, exp, log = math.asin, math.acos, math.atan2 or math.atan, math.exp, math.log
 
 local TILE = 1600 / 3                 -- yards across a terrain tile
-local EDGE = 32 * TILE                -- the world's edge, from its middle (as Thread (Routes) counts cells)
+local EDGE = 32 * TILE                -- the world's edge, from its middle (as Routes (Thread) counts cells)
 -- the layout comes from Art.lua, written with the pictures (tools/globe_art.py), so the two always agree
 local LAYOUT = ns.LAYOUT or {}
 local RW = LAYOUT.rw or 19000         -- yards of the world to a radian of the globe (Kalimdor: about 90 degrees tall)
@@ -91,12 +91,12 @@ local GLIDE = 1.1                     -- seconds Where I Am takes to turn the gl
 -- a picture is split this deep at most (each step halves it)
 local CURVE = 1.5
 local EDGE_PIECE = 10                 -- a piece crossing the globe's edge this small (points) is dropped: the sea disc shows there
-local DEEPEST = { art = 4, ours = 8, detail = 5, decor = 4, ground = 2, cover = 4, sky = 5 }
+local DEEPEST = { art = 4, ours = 8, detail = 5, decor = 4, ground = 2, cover = 4, age = 4, wear = 4, sky = 5 }
 -- a ground tile that fades out toward a corner is cut smaller, since a piece can fade only straight
 -- across or straight down: as deep as this at most, and no smaller than this on the screen (points)
 local FADE_DEEPEST, FADE_PIECE = 4, 48
 local NEAR_MOST = 10                  -- the ground is picked by place while the picture shows fewer tiles than this from its middle
-local SUBLEVEL = { art = 0, ours = 1, detail = 2, decor = 3, ground = 4, cover = 5, sky = 6 }    -- which is drawn over which
+local SUBLEVEL = { art = -2, ours = -1, detail = 0, decor = 1, ground = 2, cover = 3, age = 4, wear = 5, sky = 6 }    -- which is drawn over which
 -- zooming in: our detail pictures (8 yards a pixel) fade in over the world picture (58 yards a pixel) as
 -- its pixels would start to show, then the ground (the minimap's pictures, 2 yards a pixel) over the
 -- detail as its pixels would (by the globe's radius in points)
@@ -242,7 +242,8 @@ local function Prepare()
 		elseif a.kind == 'decor' then
 			-- (an ink piece on the open sea: a square round its middle, its distances kept from there)
 			local b, size = { Basis(a.lat, a.lon) }, a.size
-			pictures.decor[#pictures.decor + 1] = { fdid = a.file, layer = 'decor', coords = { 0, 1, 0, 1 },
+			-- (flip: the picture turned to face the other way)
+			pictures.decor[#pictures.decor + 1] = { fdid = a.file, layer = 'decor', coords = a.flip and { 1, 0, 0, 1 } or { 0, 1, 0, 1 },
 				At = function(fu, fv)
 					local e, n = (fu - 0.5) * size, (0.5 - fv) * size
 					local d = sqrt(e * e + n * n)

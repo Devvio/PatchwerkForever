@@ -1,4 +1,4 @@
--- Thread (Routes): the step, said on screen.
+-- Routes (Thread): the step, said on screen.
 --
 -- When the route gets a new destination, a few words appear in the upper middle of the screen: what
 -- you are going to do (the guide's own words for its step, the quest's name, "to your map pin") and,

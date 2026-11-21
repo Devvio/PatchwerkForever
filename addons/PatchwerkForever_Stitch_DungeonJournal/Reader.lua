@@ -7,8 +7,8 @@ if not ns.linked then return end;
 -- dungeon's quests, and you tick the dungeons you mean to do. It
 -- knows where each quest is picked up and handed in. This reads
 -- that as the journal runs and gives it to Patchwerk Forever's
--- guides service as one more guide, so Thread (Routes) can lead
--- you from one quest giver to the next and Thread (Tracker) can
+-- guides service as one more guide, so Routes (Thread) can lead
+-- you from one quest giver to the next and Tracker (Thread) can
 -- list them.
 --
 -- What is read, each time it is asked for, from the journal's own
@@ -43,7 +43,7 @@ if not ns.linked then return end;
 -- An arrow on a listed stop (within 15 yards) brings that stop to
 -- the front; elsewhere it is a stop of its own.
 --
--- Skipping a stop (a click in Thread (Tracker)) lasts for the
+-- Skipping a stop (a click in Tracker (Thread)) lasts for the
 -- session; Previous Step or /tracker back takes the last skip or
 -- jump back, and the binding brings every skipped stop back when
 -- nothing else is left.
@@ -58,7 +58,7 @@ ns:AddSetting({
 	default = true;
 	section = SECTION;
 	name    = 'Route Dungeon Journal Quests';
-	desc    = 'Offer the quests of the dungeons you track in the Dungeon Journal as a list to route through: where to accept each, and where to turn it in. Thread (Tracker) lists it and Thread (Routes) leads you along it once you select it.';
+	desc    = 'Offer the quests of the dungeons you track in the Dungeon Journal as a list to route through: where to accept each, and where to turn it in. Tracker (Thread) lists it and Routes (Thread) leads you along it once you select it.';
 })
 ns:AddSetting({
 	key     = 'djLeads';
@@ -406,7 +406,7 @@ Guides:Register(SOURCE, {
 ---------------------------------------------------------------
 -- A key or a gamepad button: route through the list, or stop
 ---------------------------------------------------------------
-BINDING_HEADER_PATCHWERKFOREVER_DUNGEONJOURNAL = 'Patchwerk Forever: Stitch (Dungeon Journal)';
+BINDING_HEADER_PATCHWERKFOREVER_DUNGEONJOURNAL = 'Patchwerk Forever: Dungeon Journal (Stitch)';
 BINDING_NAME_PATCHWERKFOREVER_DUNGEONJOURNAL_ROUTE = 'Toggle Dungeon Journal Route';
 
 -- Why the list is empty, in one sentence (only when asked: not on the reads many times a second).
@@ -420,7 +420,7 @@ local function Why()
 		return 'Dungeon Journal is not running.';
 	end
 	if not ns:GetSetting('djList') then
-		return 'Route Dungeon Journal Quests is disabled (Options > AddOns > Patchwerk Forever > Stitch: Dungeon Journal).';
+		return 'Route Dungeon Journal Quests is disabled (Options > AddOns > Patchwerk Forever > Dungeon Journal (Stitch)).';
 	end
 	local _, total, done, names, inside, skips = Stops(journal);
 	if ( #names == 0 ) then return 'No dungeon is tracked in the Dungeon Journal.' end;

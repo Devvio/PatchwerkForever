@@ -1,4 +1,4 @@
--- Thread (Routes): gathering. The way to the nearest herb or ore spot, and on to the next.
+-- Routes (Thread): gathering. The way to the nearest herb or ore spot, and on to the next.
 --
 -- The spots are the ones remembered from your own gathering (Nodes.lua): they show where things grow,
 -- not whether one is there now. So a gathering run does not stop at a spot: when you reach it, the

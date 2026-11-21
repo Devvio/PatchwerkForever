@@ -1,4 +1,4 @@
--- Thread (Globe): marks and lines on the globe.
+-- Globe (Thread): marks and lines on the globe.
 --
 -- Everything shown on the globe besides the map itself is a mark (an icon at a place, with a name and
 -- what a click on it does) or a line (a trail from place to place, bent round the ball). They come from

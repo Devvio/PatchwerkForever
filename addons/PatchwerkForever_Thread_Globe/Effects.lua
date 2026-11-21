@@ -1,10 +1,13 @@
--- Thread (Globe): light and movement, so the globe is a thing on a desk and not a diagram.
+-- Globe (Thread): light and movement, so the globe is a thing on a desk and not a diagram.
 --
 --   candlelight   the corners of the picture darkened and flickering a little, more so at night by the
 --                 game's clock; a soft shine on the ball while the whole of it is in view
 --   sea and sky   the Maelstrom turns in its place; cloud shadows drift over the globe, zoomed out
 --   opening       the window fades in and the globe turns into place; the map's own sounds
 --   your place    a ring spreads from where you are, every few seconds
+--   age           the paper of an old globe: stains, foxing, rubbed patches, and closer to, hairline
+--                 cracks, specks and the seams between the paper's twelve strips. Laid over the map, the
+--                 ink drawings and the blank paper alike; gone by the time the ground shows
 --
 -- Each has its setting. None of it is drawn again by the globe: a moving picture's pieces are given
 -- new parts of their texture where they lie (the Maelstrom's turned about its middle, the clouds' slid
@@ -25,10 +28,15 @@ local CLOUDS = 0.6                    -- how much of their picture shows at most
 local TICK = 0.05                     -- seconds between two steps of what moves
 local FADE = 0.25                     -- seconds the window takes to fade in
 local PING = 2.6                      -- seconds between two rings from your place
+local AGE, WEAR = 0.95, 0.85          -- how much of the aging's two pictures shows at most
+local AGE_GONE = { VIEW * 3.5, VIEW * 6 }         -- zooming in to the ground, the stains fade out between these
+local WEAR_GONE = { VIEW * 1.8, VIEW * 3.6 }      -- and the small things sooner (their picture would show its pixels)
+local STRIPS = 12                     -- the paper's strips round the globe (the small things' picture has the seam at its edge)
 
 local state = { turn = 0, drift = 0, clock = 0, since = 0, fade = nil }
 local light, sheen, ping
 local sky                             -- the clouds' pictures
+local aged, worn                      -- the aging's: stains for the whole sphere, and the small things, repeating
 local maelstrom                       -- the Maelstrom's picture (one of the globe's own ink pieces)
 
 local function On(key) return ns.Get(key) and true or false end
@@ -84,6 +92,24 @@ local function Prepare()
 	for _, pic in ipairs(G.pictures.decor or {}) do
 		if type(pic.fdid) == 'string' and pic.fdid:find('decor_maelstrom', 1, true) then maelstrom = pic end
 	end
+	-- the aging: the sphere in four pieces round and two down, as the world's own picture is laid
+	aged, worn = {}, {}
+	local across = STRIPS / 4
+	for j = 0, 1 do
+		for i = 0, 3 do
+			local l0, l1 = -pi + pi / 2 * i, -pi + pi / 2 * (i + 1)
+			local a0, a1 = pi / 2 - pi / 2 * j, pi / 2 - pi / 2 * (j + 1)
+			local function At(fu, fv)
+				local lon, lat = l0 + (l1 - l0) * fu, a0 + (a1 - a0) * fv
+				return { cos(lat) * cos(lon), cos(lat) * sin(lon), sin(lat) }
+			end
+			aged[#aged + 1] = { fdid = FX .. 'age', layer = 'age', coords = { i / 4, (i + 1) / 4, j / 2, (j + 1) / 2 }, At = At }
+			-- (half a strip along, so that no seam runs down the middle of a continent; thinning out toward
+			-- the poles, where the strips narrow to nothing)
+			worn[#worn + 1] = { fdid = FX .. 'wear', layer = 'wear', wrap = 'REPEAT', coords = { 0.5, across + 0.5, 0, across }, At = At,
+				Fade = function(_, fv) return 1 - G.Smooth(1.1, 1.45, math.abs(a0 + (a1 - a0) * fv)) end }
+		end
+	end
 end
 
 local function Moving(on)
@@ -97,6 +123,18 @@ end
 
 ns.GlobeOn('pictures', function(r, shade, style)
 	Prepare()
+	state.aged = 0
+	if On('globeAge') and style == 'parchment' then
+		local stains = AGE * (1 - G.Smooth(AGE_GONE[1], AGE_GONE[2], r))
+		local small = WEAR * (1 - G.Smooth(WEAR_GONE[1], WEAR_GONE[2], r))
+		if stains >= 0.02 then
+			for _, pic in ipairs(aged) do G.Draw(pic, r, stains, false) end
+		end
+		if small >= 0.02 then
+			for _, pic in ipairs(worn) do G.Draw(pic, r, small, false) end
+		end
+		state.aged = stains >= 0.02 and (small >= 0.02 and 2 or 1) or 0
+	end
 	local on = On('globeFxMove')
 	if (maelstrom and maelstrom.Moved ~= nil) ~= on then Moving(on) end
 	if not on or style ~= 'parchment' then return end
@@ -262,6 +300,7 @@ end)
 function ns.EffectsState()
 	local out = { turn = state.turn, drift = state.drift, light = state.light, fading = state.fade ~= nil,
 		sheen = sheen and sheen:IsShown() or false, ping = ping and ping:IsShown() or false,
-		maelstrom = maelstrom ~= nil, moving = maelstrom ~= nil and maelstrom.Moved ~= nil, sky = sky and #sky or 0 }
+		maelstrom = maelstrom ~= nil, moving = maelstrom ~= nil and maelstrom.Moved ~= nil, sky = sky and #sky or 0,
+		aged = state.aged or 0 }
 	return out
 end

@@ -1,4 +1,4 @@
--- Thread (Globe): the Show menu. Each kind of mark, and each thing drawn over the map, turned on and
+-- Globe (Thread): the Show menu. Each kind of mark, and each thing drawn over the map, turned on and
 -- off where you look at it; the same settings as on the options page, and remembered as those are.
 -- Opened by the Show button, or by its key (Show Menu, under Key Bindings).
 local ADDON, ns = ...
@@ -20,6 +20,7 @@ local MARKS = {
 	{ 'globeNames', 'Names' },
 	{ 'globeCoords', 'Coordinates' },
 	{ 'globeExplore', 'Unexplored Land Left Blank' },
+	{ 'globeAge', 'Aged Paper' },
 }
 local LIGHT = {
 	{ 'globeFxLight', 'Candlelight' },

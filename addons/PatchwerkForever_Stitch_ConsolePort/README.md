@@ -1,4 +1,4 @@
-# Patchwerk Forever: Stitch (Console Port)
+# Patchwerk Forever: Console Port (Stitch)
 
 **Why buy a new controller when this one only twitches a little?**
 
@@ -34,7 +34,7 @@ Nothing in Console Port's own files is changed: the fixes hook it while the game
 
 ## Settings and commands
 
-The page **Stitch: Console Port**, under **Options → AddOns → Patchwerk Forever** (`/patchwerk config` opens the page above it). Nothing is added to Console Port's own settings.
+The page **Console Port (Stitch)**, under **Options → AddOns → Patchwerk Forever** (`/patchwerk config` opens the page above it). Nothing is added to Console Port's own settings.
 
 `/patchwerk consoleport` lists which fixes took hold and which did not, and prints gamepad binding diagnostics. With **Report Binding Changes** on, each binding this addon clears, restores or replaces is said in chat.
 

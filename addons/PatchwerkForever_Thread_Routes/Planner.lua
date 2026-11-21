@@ -1,4 +1,4 @@
--- Thread (Routes): the planner.
+-- Routes (Thread): the planner.
 --
 -- Finds the quickest way over the ground (and, if asked, by flight path) between two places on a
 -- map. It uses no game function, so the same file is run outside the game against the Python

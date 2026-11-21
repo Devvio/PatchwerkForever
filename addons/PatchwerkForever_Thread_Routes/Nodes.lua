@@ -1,4 +1,4 @@
--- Thread (Routes): herbs and ore.
+-- Routes (Thread): herbs and ore.
 --
 -- Remembers each spot where you pick a herb or mine a vein, and shows the spots on the minimap and
 -- the world map with the icon of what you got there. Herbs and veins come back in the same places,

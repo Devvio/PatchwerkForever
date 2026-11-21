@@ -274,7 +274,7 @@ Reported, checked and dropped. The reasons in full are at the end of each sectio
 
 ### Pass A, 2026-11-14: A1 to A12
 
-Built as base 2.5.0, Routes 0.17.0, Tracker 1.2.0 and Stitch (Dungeon Journal) 1.0.1. Every
+Built as base 2.5.0, Routes 0.17.0, Tracker 1.2.0 and Dungeon Journal (Stitch) 1.0.1. Every
 check passes (`lua_shell.py`, `lua_tracker.py`, `lua_patchwerk.py`, `lua_trips.py`,
 `lua_journeys.py`, `build_check.py`), and each change has a check step that fails when the
 change is taken out. **None of it has been tried in the game.** A12 was built after a yes

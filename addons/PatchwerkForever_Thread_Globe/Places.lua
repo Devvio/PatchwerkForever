@@ -1,4 +1,4 @@
--- Thread (Globe): places, people and words.
+-- Globe (Thread): places, people and words.
 --
 --   places       the towns and landmarks of the zone at the middle of the picture, and its dungeon and
 --                raid entrances, with the game's own icons and names, from zone level in

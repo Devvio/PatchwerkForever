@@ -1,4 +1,4 @@
--- Thread (Globe): places with a flat map of their own, shown in the globe's window.
+-- Globe (Thread): places with a flat map of their own, shown in the globe's window.
 --
 -- On this game the places with a map of their own that the globe does not already draw are the six
 -- cities and the three battlegrounds (it has no maps of dungeons, and no floors). Such a map is the

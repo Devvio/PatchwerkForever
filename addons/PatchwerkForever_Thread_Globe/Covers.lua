@@ -1,4 +1,4 @@
--- Thread (Globe): the paper laid over land you have not discovered. Written by tools/globe_explore.py
+-- Globe (Thread): the paper laid over land you have not discovered. Written by tools/globe_explore.py
 -- (python globe_explore.py), from the game's own list of the pieces of each zone's map.
 local _, ns = ...
 

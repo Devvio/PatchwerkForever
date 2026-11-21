@@ -1,4 +1,4 @@
--- Thread (Routes): adding quests to My Route from the game's quest log.
+-- Routes (Thread): adding quests to My Route from the game's quest log.
 --
 -- Forever's quest log is the side panel of the world map (QuestMapFrame, from Blizzard's modern world
 -- map). Each quest's title in it is a button from a pool (QuestScrollFrame.titleFramePool), and the

@@ -1,4 +1,4 @@
--- Thread (Globe): what the game marks only while it is near you: rare creatures, treasures, events.
+-- Globe (Thread): what the game marks only while it is near you: rare creatures, treasures, events.
 --
 -- The game calls these vignettes (C_VignetteInfo): the star on the minimap for a rare creature, the
 -- chest for a treasure. Each is shown where the game says it is, with the game's own icon and name.

@@ -1,4 +1,4 @@
--- Thread (Sparkle): a sparkle, and a name, on the thing nearby you can use.
+-- Sparkle (Thread): a sparkle, and a name, on the thing nearby you can use.
 --
 -- The game itself picks, at every moment, the one thing near you that pressing Interact would use
 -- (its "soft interact" target) and gives it a nameplate. This hangs a light effect on that nameplate
@@ -10,7 +10,7 @@
 -- SetUnitCursorTexture, the function its nameplates use for their icon). On this client the cursor
 -- comes back as a named piece of a shared picture (an atlas, "Cursor_Crosshair_GatherHerbs_64"), so
 -- the kind is read from words in that name; a plain file's path is read the same way. For herbs and
--- veins the names of the nodes you have gathered count as well, when Thread (Routes) is installed
+-- veins the names of the nodes you have gathered count as well, when Routes (Thread) is installed
 -- (it remembers them).
 --
 -- The effects are drawn from the addon's own pictures (Media, made by the tools' media.py).
@@ -101,7 +101,7 @@ local function Kind()
 	local cursor = Cursor()
 	local name = UnitName(UNIT)
 	if type(name) == 'string' and Plain(name) then
-		-- (Thread (Routes), when it is installed, remembers what was gathered from nodes of this name)
+		-- (Routes (Thread), when it is installed, remembers what was gathered from nodes of this name)
 		local routes = rawget(_G, 'PatchwerkForever_Thread_RoutesDB')
 		local known = type(routes) == 'table' and routes.nodeKinds and routes.nodeKinds[name]
 		if known then return known.kind == 'h' and 'herb' or 'ore', true, cursor end

@@ -199,7 +199,7 @@ def main():
     base = s.addon(BASE)
     s.login()
     text = s.chat()
-    assert len(text) == 2 and "Patchwerk Forever: Stitch (Console Port)" in text[0], text
+    assert len(text) == 2 and "Patchwerk Forever: Console Port (Stitch)" in text[0], text
     assert text[1] == "Patchwerk: Options are under Options > AddOns > Patchwerk Forever.", text
     assert s.g.PatchwerkForeverDB.told.welcome is True
     assert s.stub.category and s.stub.front, "the base's page was not built"
@@ -213,7 +213,7 @@ def main():
     assert "Nothing sewn on yet" in page.said, page.said
     # (Console Port is running and its Stitch is not installed: listed greyed, with no button)
     parts = list(page.parts.values())
-    assert len(parts) == 1 and parts[0].name == "Stitch (Console Port)" and not parts[0].open, [x.name for x in parts]
+    assert len(parts) == 1 and parts[0].name == "Console Port (Stitch)" and not parts[0].open, [x.name for x in parts]
     assert "Not sewn on. It is for Console Port, which is running." == parts[0].says, parts[0].says
     switches = list(page.switches.values())
     assert len(switches) == 1 and switches[0].key == "baseTellMissing" and switches[0].checked is True
@@ -232,7 +232,7 @@ def main():
     # the commands, one to a line, the options last; no fix's command with no fix
     assert text[-1] == "  /patchwerk config: open the options" and "Patchwerk: Commands:" in text, text
     assert not any("/patchwerk <id>" in t for t in text), text
-    assert any("Patchwerk Forever: Stitch (Console Port) (for Console Port): not installed" in t for t in text), text
+    assert any("Patchwerk Forever: Console Port (Stitch) (for Console Port): not installed" in t for t in text), text
     icon = s.g.PatchwerkForever.Icon(s.g.PatchwerkForever, BASE)
     assert icon == "Interface\\AddOns\\PatchwerkForever\\Media\\icon", icon
     told = s.lua.eval("PatchwerkForeverDB.told['PatchwerkForever_Stitch_ConsolePort']")
@@ -361,11 +361,11 @@ def main():
     assert env.NativeContext == 5 and env.db is not None
     assert len(s.stub.settings) == 10, len(s.stub.settings)
     assert list(s.stub.headers.values()) == []
-    assert list(s.stub.pages.keys()) == ["Stitch: Console Port"], list(s.stub.pages.keys())
-    assert sum(1 for x in s.stub.settings.values() if x.page == "Stitch: Console Port") == 10
+    assert list(s.stub.pages.keys()) == ["Console Port (Stitch)"], list(s.stub.pages.keys())
+    assert sum(1 for x in s.stub.settings.values() if x.page == "Console Port (Stitch)") == 10
     # the Stitch's page opens with its name, its picture and what Patchwerk says of it (its TOC)
     intro = list(s.stub.intros.values())[0]
-    assert intro.name == "Stitch: Console Port" and intro.icon.endswith("Stitch_ConsolePort\\Media\\icon"), (intro.name, intro.icon)
+    assert intro.name == "Console Port (Stitch)" and intro.icon.endswith("Stitch_ConsolePort\\Media\\icon"), (intro.name, intro.icon)
     assert intro.voice == "Buttons were loose. Patchwerk sewed them back on the stick.", intro.voice
     assert s.stub.Rows() == 1
     assert env.GetSetting(env, "foreverNotify") is False and env.GetSetting(env, "foreverClearPing") is True
@@ -445,7 +445,7 @@ def main():
         s.lua.execute(setup)
         ns = s.addon(PARTS[0])
         text = list(s.stub.messages.values())
-        assert len(text) == 1 and "Patchwerk Forever: Stitch (Console Port)|r needs Patchwerk Forever 2.0.0 or later" in text[0], (label, text)
+        assert len(text) == 1 and "Patchwerk Forever: Console Port (Stitch)|r needs Patchwerk Forever 2.0.0 or later" in text[0], (label, text)
         assert not ns.linked and not ns.NativeContext, label
     s = Session()
     s.addon(BASE)
@@ -780,7 +780,7 @@ def main():
     info = G.Read(G, 9, "fdj")
     assert info.lines[1].text == "Accept: Horde Job", "the stop clicked does not lead: " + info.lines[1].text
     s.lua.execute("STUB.player.x, STUB.player.y = 0, 0")
-    # (its step number counts the quests turned in: it stays through a skip. Thread (Tracker) tells such a
+    # (its step number counts the quests turned in: it stays through a skip. Tracker (Thread) tells such a
     # list by this to word its chat lines, and the stand-in for it in lua_tracker.py, STAYS, moves the same
     # way: change them together.)
     assert info.index == 1, "the step number moved on a skip"
@@ -840,7 +840,7 @@ def main():
     assert G.Read(G, 1, "fdj").lines[1].text == "Turn in: Dungeon Journal map point", "a pin opened for a finished quest"
     s.lua.execute("STUB.arrow = nil; STUB.complete[5003] = nil")
     # its page, its two settings, and the binding: the list chosen as a side path, and let go again
-    assert list(s.stub.pages.keys()) == ["Stitch: Dungeon Journal"], list(s.stub.pages.keys())
+    assert list(s.stub.pages.keys()) == ["Dungeon Journal (Stitch)"], list(s.stub.pages.keys())
     intro = list(s.stub.intros.values())[0]
     assert intro.voice.startswith("The big book knows who has the jobs."), intro.voice
     assert sorted(x.name for x in s.stub.settings.values()) == ["Dungeon Journal First", "Route Dungeon Journal Quests"]
@@ -929,7 +929,7 @@ def main():
     s.addon(BASE)
     s.login()
     text = s.chat()
-    assert len(text) == 1 and "Patchwerk Forever: Stitch (Dungeon Journal)" in text[0], text
+    assert len(text) == 1 and "Patchwerk Forever: Dungeon Journal (Stitch)" in text[0], text
 
     step("Focus and My Route (API 5): a focus kept for each character; stops added, moved, ordered, followed, tidied")
     s = Session(running=["ForeverDungeonJournal"])

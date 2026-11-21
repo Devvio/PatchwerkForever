@@ -1,20 +1,20 @@
--- Thread (Globe): quests on the globe.
+-- Globe (Thread): quests on the globe.
 --
 --   your quests       each quest in your log that the game marks a place for: a numbered mark where
 --                     its next objective is, a ? where it is handed in once it is done. The one the
 --                     route follows (or you chose, or the game's arrow is on) is larger, with a soft
 --                     ring round where it is done. (The game draws a quest's area as a shape only on
 --                     its own map; the ring stands in for it.) A click chooses the quest, as a click
---                     on it in Thread (Tracker) does: Thread (Routes) goes there first. A click on
+--                     on it in Tracker (Thread) does: Routes (Thread) goes there first. A click on
 --                     the chosen one goes back to your main route.
 --   quests on offer   a ! where the game says a quest can be picked up, in the zone at the middle of
 --                     the picture, from zone level in
 --   a guide's steps   where the guide you run sends you now, and its next steps, numbered; a side list
---                     (Stitch (Dungeon Journal)'s quests) shows each of its quests as a !, and a click
+--                     (Dungeon Journal (Stitch)'s quests) shows each of its quests as a !, and a click
 --                     follows that list
 --
 -- The Route button (and the Route Menu key) lists what the route can follow, adds the map pin to My
--- Route, opens My Route's editor beside the globe, and keeps Thread (Tracker)'s list beside the globe
+-- Route, opens My Route's editor beside the globe, and keeps Tracker (Thread)'s list beside the globe
 -- while it is open. A quest chosen anywhere (a click in the tracker) turns the globe to it.
 local ADDON, ns = ...
 if not (ns.linked and ns.Marks) then return end
@@ -80,7 +80,7 @@ local function QuestClick(_, m)
 		arrowed = nil
 	else
 		Choice:Set('quest', m.quest)
-		-- (with no Thread (Tracker) to move the game's own arrow, it is put on the quest here, and taken
+		-- (with no Tracker (Thread) to move the game's own arrow, it is put on the quest here, and taken
 		-- off again when you go back)
 		if not rawget(_G, 'PatchwerkForeverTracker') and not rawget(_G, 'PatchwerkForever_Thread_Tracker_Dock') then
 			Ask(track.SetSuperTrackedQuestID, m.quest)
@@ -223,7 +223,7 @@ Marks.Source('steps', {
 })
 
 ---------------------------------------------------------------------------
--- The Route button, and Thread (Tracker) beside the globe
+-- The Route button, and Tracker (Thread) beside the globe
 ---------------------------------------------------------------------------
 local function Pin()
 	local point = C_Map and Ask(C_Map.GetUserWaypoint)
@@ -235,7 +235,7 @@ end
 
 local function TrackerDock() return rawget(_G, 'PatchwerkForever_Thread_Tracker_Dock') end
 
--- Thread (Tracker)'s list beside the globe while it is open, and back where you keep it after.
+-- Tracker (Thread)'s list beside the globe while it is open, and back where you keep it after.
 local docked = false
 local function Dock()
 	local dock = TrackerDock()

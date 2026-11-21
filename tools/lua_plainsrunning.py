@@ -1,4 +1,4 @@
-"""Run Thread (Immersive Plainsrunning) outside the game, on the base, against the stand-in for the game
+"""Run Immersive Plainsrunning (Thread) outside the game, on the base, against the stand-in for the game
 (wowstub.lua) with what it needs added.
 
     python lua_plainsrunning.py
@@ -106,7 +106,7 @@ function CreateFrame(...)
 end
 MinimapCluster, Minimap = CreateFrame('Frame'), CreateFrame('Frame')
 Minimap.cx, Minimap.cy, Minimap.width, Minimap.height = 900, 600, 140, 140
--- another addon's layer laid over the minimap (as Thread (Routes) draws its path), and one elsewhere
+-- another addon's layer laid over the minimap (as Routes (Thread) draws its path), and one elsewhere
 STUB.pathLayer = CreateFrame('Frame', nil, UIParent)
 STUB.pathLayer.cx, STUB.pathLayer.cy, STUB.pathLayer.width, STUB.pathLayer.height = 900, 600, 140, 140
 STUB.otherLayer = CreateFrame('Frame', nil, UIParent)
@@ -199,7 +199,7 @@ def main():
     stub.Fire("PLAYER_ENTERING_WORLD", True, False)
     chat()
     pages = sorted(stub.pages.keys())
-    assert "Thread: Immersive Plainsrunning" in pages and "Plainsrunning: Effects" in pages, pages
+    assert "Immersive Plainsrunning (Thread)" in pages and "Plainsrunning: Effects" in pages, pages
     # every slider whose tooltip once said "in percent" shows a percent sign; the bindings in the family's section
     defs = [d for d in ns.settings.values() if d.key]
     assert not any(d.desc.endswith(", in percent.") for d in defs), [d.key for d in defs if d.desc.endswith(", in percent.")]
@@ -612,7 +612,7 @@ def main():
     run(0.5)
     assert alpha() == 1 and not state()[2]
 
-    print("Thread (Immersive Plainsrunning): all passed.")
+    print("Immersive Plainsrunning (Thread): all passed.")
 
 
 if __name__ == "__main__":

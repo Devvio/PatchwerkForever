@@ -43,7 +43,7 @@ local function Build()
 		parentCategory, parentLayout = Settings.RegisterVerticalLayoutCategory(TITLE);
 	end
 	-- The base's own switches are on the first page. Each Stitch has a page of its own beneath it
-	-- ("Stitch: Console Port"), beside the tools' pages, so the list on the left shows what is
+	-- ("Console Port (Stitch)"), beside the tools' pages, so the list on the left shows what is
 	-- installed. (A client without sub-pages gets them all on the one page, a heading for each.)
 	local pages, sectionsOf = {}, {};
 	for _, def in ipairs(P.Settings.list) do
@@ -114,15 +114,11 @@ local function Build()
 	settingsCategory = parentCategory;
 end
 
--- What a Stitch's page is called: its title without the family's name, "Stitch (Console Port)"
--- written as the tools' pages are, "Stitch: Console Port".
+-- What a Stitch's page is called: its title without the family's name, "Console Port (Stitch)", as
+-- the tools' pages are named ("Routes (Thread)").
 function ns.PageName(part)
 	local title = ns.Meta(part, 'Title') or part;
 	title = title:gsub('^Patchwerk Forever:%s*', '');
-	local track, what = title:match('^(%a+)%s*%((.+)%)$');
-	if track then
-		return track .. ': ' .. what;
-	end
 	return title;
 end
 
