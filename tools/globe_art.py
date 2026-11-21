@@ -21,7 +21,8 @@ What it draws, in this order:
     zone borders           thin, in a lighter ink
     paper                  the hand-made paper's stains and grain (a soft grain of our own while there is none)
 The hand-made pieces (art/PROMPTS.md) are read from art/PatchwerkForever_Thread_Globe/globe/: paper.png is laid
-over everything; compass.png, serpent.png and ship.png become pictures of their own on the open sea
+over everything; compass.png, serpent.png, serpent2.png (a second drawing of the serpent, so the two on the
+globe are not the same) and ship.png become pictures of their own on the open sea
 (Art/decor_<name>.blp); ring.png, cut from its magenta, becomes the ring and stand round the ball (Art/ring.blp).
 Words are never drawn: the addon writes the names in the game's own font.
 
@@ -194,7 +195,7 @@ ART_IN = os.path.join(HERE, "..", "art", "PatchwerkForever_Thread_Globe", "globe
 # the ink pieces on the open sea, each a picture of its own on the globe (so it stays sharp as you zoom in):
 # (name, latitude, longitude, how far across in radians)
 DECOR = [("compass", 0.62, 0.0, 0.46), ("serpent", -0.30, 2.45, 0.52), ("ship", -0.40, -2.35, 0.43),
-         ("serpent", 0.35, 3.05, 0.46), ("ship", -0.15, 0.55, 0.34),
+         ("serpent2", 0.35, 3.05, 0.46), ("ship", -0.15, 0.55, 0.34),
          # the Maelstrom, in the middle of the Great Sea between Kalimdor and the Eastern Kingdoms
          ("maelstrom", 0.05, 0.0, 0.40)]
 PAPER = 1.3                   # how strongly the paper's stains and grain show (1: as in its picture)
@@ -463,6 +464,10 @@ def maelstrom_drawing(size=960):
 
 # ink pieces drawn here where no hand-made picture of that name is in art/
 DRAWN = {"maelstrom": maelstrom_drawing}
+# an ink piece made from another's picture where it has none of its own
+STANDS_IN = {"serpent2": "serpent"}
+# ink pieces turned to face the other way (the second serpent looks west, the first east)
+MIRRORED = {"serpent2"}
 
 
 def decor_pictures(art_dir, written):
@@ -471,12 +476,16 @@ def decor_pictures(art_dir, written):
     made = set()
     for name in sorted({d[0] for d in DECOR}):
         path = os.path.join(ART_IN, name + ".png")
+        if not os.path.exists(path) and name in STANDS_IN:
+            path = os.path.join(ART_IN, STANDS_IN[name] + ".png")
         if os.path.exists(path):
             drawing = Image.open(path).convert("RGB")
         elif name in DRAWN:
             drawing = DRAWN[name]()
         else:
             continue
+        if name in MIRRORED:
+            drawing = drawing.transpose(Image.FLIP_LEFT_RIGHT)
         a = np.asarray(drawing.resize((480, 480), Image.LANCZOS), dtype=np.float32)
         light = a.mean(axis=2)
         darkest = light < np.percentile(light, 5)

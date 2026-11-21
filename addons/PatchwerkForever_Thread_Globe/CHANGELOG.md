@@ -20,6 +20,7 @@ Everything the world map does. To be played with before it goes out as 1.0.
   - **Pulse Where You Are**: a ring spreads from your place every few seconds.
   - **Map Sounds**: the world map's sounds when the globe opens and closes.
 - Places that belong to an event going on now are shown with the others.
+- The second sea serpent is a drawing of its own and faces the other way, so the two are not the same.
 - The options page is in groups: The Map, Marks, Light And Movement, Controls, Other.
 - The buttons along the top of the window are narrower, to fit the smallest window.
 

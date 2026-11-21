@@ -67,7 +67,7 @@ ns.ART = {
 	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\decor_compass', kind = 'decor', lat = 0.6200, lon = 0.0000, size = 0.4600 },
 	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\decor_serpent', kind = 'decor', lat = -0.3000, lon = 2.4500, size = 0.5200 },
 	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\decor_ship', kind = 'decor', lat = -0.4000, lon = -2.3500, size = 0.4300 },
-	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\decor_serpent', kind = 'decor', lat = 0.3500, lon = 3.0500, size = 0.4600 },
+	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\decor_serpent2', kind = 'decor', lat = 0.3500, lon = 3.0500, size = 0.4600 },
 	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\decor_ship', kind = 'decor', lat = -0.1500, lon = 0.5500, size = 0.3400 },
 	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\decor_maelstrom', kind = 'decor', lat = 0.0500, lon = 0.0000, size = 0.4000 },
 }
