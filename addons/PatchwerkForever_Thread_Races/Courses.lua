@@ -4,14 +4,26 @@
 -- game's map and a place on it (0 to 1 across and down), the way a map pin is, so it can be made the
 -- map pin when it is raced. Kept in PatchwerkForever_Thread_RacesDB.courses[name]:
 --     { points = { { m = uiMapID, x =, y = }, ... }, radius = yards, made = date, by = who made it,
---       best = { time = seconds, splits = { [checkpoint] = seconds }, date = } }
+--       rule = 'any' or 'foot' (none, as on a course from before 0.2.0: 'any'),
+--       best = { time = seconds, splits = { [checkpoint] = seconds }, date = },
+--       footBest = { the same } }
 -- How near you are to a checkpoint is reckoned in the world's own yards, from where the game says you
 -- are (UnitPosition) and where the checkpoint is (C_Map.GetWorldPosFromMapPos), as Routes (Thread) does.
+--
+-- The rule: Anything Goes ('any'), or On Foot ('foot'), under which a run does not count when you were
+-- mounted or on a flight path during it (Race.lua judges that). A course keeps a best run for each rule:
+-- `best` is the one under Anything Goes, where every best run from before there were rules already is,
+-- and `footBest` the one under On Foot. Changing the rule touches neither.
 local ADDON, ns = ...
 if not ns.linked then return end
 
 local PREFIX = 'PWFRace'      -- the addon messages a course is sent in
 local CHUNK = 200             -- characters of a course in one message (a message holds 255)
+local MOST = 60               -- messages a course may come in; more is not a course of ours
+local WAITING = 8             -- courses still arriving that are kept at once
+
+local RULES = { any = 'Anything Goes', foot = 'On Foot' }
+ns.PREFIX, ns.RULES = PREFIX, RULES
 
 local function Plain(value)
 	return value ~= nil and not (issecretvalue and issecretvalue(value))
@@ -110,6 +122,33 @@ end
 local function Clean(name)
 	return ((name or ''):gsub('[|;:]', ''):gsub('^%s+', ''):gsub('%s+$', ''))
 end
+ns.Clean = Clean
+
+-- A course's rule ('any' or 'foot'), and where the best run under a rule is kept on a course.
+function ns.Rule(course)
+	return course.rule == 'foot' and 'foot' or 'any'
+end
+
+function ns.BestKey(rule)
+	return rule == 'foot' and 'footBest' or 'best'
+end
+
+-- The best run on a course under a rule (the course's own, when none is given).
+function ns.Best(course, rule)
+	return course[ns.BestKey(rule or ns.Rule(course))]
+end
+
+-- A number that is the same for the same checkpoints and size, whatever the course is named: how two
+-- players know they have the same course (Together.lua). Not a secret, only a comparison.
+function ns.Fingerprint(course)
+	local sum = 7
+	local function Add(text)
+		for i = 1, #text do sum = (sum * 31 + text:byte(i)) % 2147483647 end
+	end
+	Add(tostring(course.radius or 12))
+	for _, p in ipairs(course.points) do Add((';%d,%.4f,%.4f'):format(p.m, p.x, p.y)) end
+	return ('%d'):format(sum)
+end
 
 ---------------------------------------------------------------------------
 -- Making a course
@@ -185,12 +224,14 @@ function ns.CourseSave()
 		return
 	end
 	local db = DB()
+	local rule = ns.Get('rule') == 'foot' and 'foot' or 'any'
 	db.courses[making.name] = { points = making.points, radius = ns.Get('radius') or 12,
-		made = date and date('%Y-%m-%d') or '', by = UnitName('player') }
+		made = date and date('%Y-%m-%d') or '', by = UnitName('player'), rule = rule }
 	db.last = making.name
 	local between = #making.points - 2
 	ns.Print(('Course "%s" saved: %s. /race start to race it.'):format(making.name, between == 0
 		and 'a start and the finish' or ('a start, %s and the finish'):format(ns.Checkpoints(between))))
+	if rule == 'foot' then ns.Print('Its rule is On Foot. /race rule any changes it.') end
 	making = nil
 end
 
@@ -211,9 +252,10 @@ end
 
 local function Describe(name, course)
 	local length = Length(course)
-	return ('"%s": %s%s%s'):format(name, ns.Checkpoints(#course.points - 1),
-		length and (', %d yards'):format(length) or '',
-		course.best and (', best ' .. ns.Clock(course.best.time)) or '')
+	local best = ns.Best(course)
+	return ('"%s": %s%s, %s%s'):format(name, ns.Checkpoints(#course.points - 1),
+		length and (', %d yards'):format(length) or '', RULES[ns.Rule(course)],
+		best and (', best ' .. ns.Clock(best.time)) or '')
 end
 
 function ns.CourseList()
@@ -234,17 +276,24 @@ function ns.CourseBest(name)
 		ns.Print(named and ('No course named "%s".'):format(named) or 'No course yet.')
 		return
 	end
-	if not course.best then
-		ns.Print(('"%s" has not been finished yet.'):format(named))
-		return
+	local rule = ns.Rule(course)
+	local best = ns.Best(course, rule)
+	local other = rule == 'foot' and 'any' or 'foot'
+	local kept = ns.Best(course, other)              -- (the best run under the rule it does not have now)
+	if not best then
+		ns.Print(('"%s" (%s) has not been finished yet.'):format(named, RULES[rule]))
+	else
+		local parts = {}
+		for i = 2, #course.points do
+			local t = best.splits[i]
+			if t then parts[#parts + 1] = (i == #course.points and 'finish ' or (i - 1) .. ': ') .. ns.Clock(t) end
+		end
+		ns.Print(('Best on "%s" (%s): %s (%s). %s.'):format(named, RULES[rule], ns.Clock(best.time), best.date or '',
+			table.concat(parts, ', ')))
 	end
-	local parts = {}
-	for i = 2, #course.points do
-		local t = course.best.splits[i]
-		if t then parts[#parts + 1] = (i == #course.points and 'finish ' or (i - 1) .. ': ') .. ns.Clock(t) end
+	if kept then
+		ns.Print(('Its best under %s: %s (%s).'):format(RULES[other], ns.Clock(kept.time), kept.date or ''))
 	end
-	ns.Print(('Best on "%s": %s (%s). %s.'):format(named, ns.Clock(course.best.time), course.best.date or '',
-		table.concat(parts, ', ')))
 end
 
 function ns.CourseDelete(name)
@@ -265,14 +314,54 @@ function ns.CourseReset(name)
 		ns.Print('Name the course: /race reset <name>. /race list shows them.')
 		return
 	end
-	course.best = nil
-	ns.Print(('Best run on "%s" forgotten.'):format(named))
+	-- (only the one under the rule the course has now; the other rule's is not what was asked about)
+	course[ns.BestKey(ns.Rule(course))] = nil
+	ns.Print(('Best run on "%s" under %s forgotten.'):format(named, RULES[ns.Rule(course)]))
+end
+
+-- /race rule foot|any [name]: a course's rule. Without anything, says the last course's rule.
+function ns.CourseRule(text)
+	local word, name = (text or ''):match('^%s*(%S*)%s*(.-)%s*$')
+	word = word:lower()
+	local rule = (word == 'foot' or word == 'onfoot') and 'foot' or (word == 'any' or word == 'anything') and 'any' or nil
+	if not rule and word ~= '' then
+		ns.Print('Rules: /race rule foot [name] for On Foot, /race rule any [name] for Anything Goes.')
+		return
+	end
+	local course, named = ns.Course(name)
+	if not course then
+		ns.Print(named and ('No course named "%s". /race list shows them.'):format(named) or 'No course yet.')
+		return
+	end
+	if not rule then
+		ns.Print(('The rule of "%s" is %s. /race rule foot or /race rule any changes it.'):format(named, RULES[ns.Rule(course)]))
+		return
+	end
+	if ns.Rule(course) == rule then
+		ns.Print(('The rule of "%s" is already %s.'):format(named, RULES[rule]))
+		return
+	end
+	local before = ns.Rule(course)
+	course.rule = rule
+	ns.Print(('The rule of "%s" is now %s%s.%s'):format(named, RULES[rule],
+		rule == 'foot' and ': a run during which you are mounted or on a flight path does not count' or '',
+		ns.Best(course, before) and (' Its best run under %s is kept.'):format(RULES[before]) or ''))
+	if ns.racing and ns.racing.course == course then
+		ns.Print('The race that is on keeps the rule it started with.')
+	end
 end
 
 ---------------------------------------------------------------------------
 -- Sending a course to someone, and keeping one you were sent
 ---------------------------------------------------------------------------
--- A course as a line of text: "1;radius;name;map,x,y;map,x,y;...".
+-- A course as a line of text: "1;radius;name;map,x,y;map,x,y;...", sent in pieces "id:piece:pieces:text".
+--
+-- The rule is not in that line. Races 0.1.x reads every part after the name as a checkpoint and drops
+-- the whole course when one is not, so nothing can be added to the line that it would still accept. The
+-- rule goes in a message of its own, "R:id:foot", sent before the pieces: 0.1.x passes over a message
+-- that does not begin with a number, and keeps the course as it always did. A course that comes with no
+-- such message (from 0.1.x, or an Anything Goes course) is Anything Goes.
+-- Every other message that begins with a letter belongs to a race together (Together.lua).
 function ns.Encode(name, course)
 	local parts = { '1', tostring(course.radius or 12), Clean(name) }
 	for _, p in ipairs(course.points) do
@@ -299,6 +388,7 @@ local function Group()
 	if IsInGroup and IsInGroup() then return 'PARTY' end
 	return nil
 end
+ns.Group = Group
 
 function ns.CourseShare(text)
 	local course, name = ns.Course(text)             -- all of it a course's name (none: the last course)
@@ -325,6 +415,7 @@ function ns.CourseShare(text)
 	local line = ns.Encode(name, course)
 	local id = tostring(math.random(1000, 9999))
 	local total = math.ceil(#line / CHUNK)
+	if ns.Rule(course) == 'foot' then send(PREFIX, ('R:%s:foot'):format(id), channel, to) end
 	for i = 1, total do
 		send(PREFIX, ('%s:%d:%d:%s'):format(id, i, total, line:sub((i - 1) * CHUNK + 1, i * CHUNK)), channel, to)
 	end
@@ -333,15 +424,43 @@ end
 
 local incoming, offered = {}, nil
 
+-- The course a sender is sending under an id, while its messages arrive. What others send is not
+-- trusted to end: when too many are half arrived, they are all let go.
+local function Arriving(key)
+	local got = incoming[key]
+	if got then return got end
+	local count = 0
+	for _ in pairs(incoming) do count = count + 1 end
+	if count >= WAITING then incoming = {} end
+	got = { parts = {}, count = 0 }
+	incoming[key] = got
+	return got
+end
+
 local function Heard(prefix, text, channel, sender)
-	if prefix ~= PREFIX or type(text) ~= 'string' or not Plain(sender) then return end
+	if not (Plain(prefix) and Plain(text) and Plain(sender)) then return end
+	if prefix ~= PREFIX or type(text) ~= 'string' or #text > 255 then return end
 	if type(sender) ~= 'string' or sender:match('^([^%-]+)') == UnitName('player') then return end
+	local kind, rest = text:match('^(%a):(.*)$')
+	if kind == 'R' then                              -- the rule of a course on its way, or just arrived
+		local id, rule = rest:match('^(%d%d?%d?%d?%d?%d?):(%a+)$')
+		if not (id and RULES[rule]) then return end
+		local key = sender .. id
+		if offered and offered.key == key then
+			offered.course.rule = rule
+		else
+			Arriving(key).rule = rule
+		end
+		return
+	elseif kind then
+		return ns.TogetherHeard(kind, rest, Plain(channel) and channel or nil, sender)
+	end
 	local id, i, total, data = text:match('^(%d+):(%d+):(%d+):(.*)$')
 	if not id then return end
 	i, total = tonumber(i), tonumber(total)
-	local key = tostring(sender) .. id
-	local got = incoming[key] or { parts = {}, count = 0 }
-	incoming[key] = got
+	if total < 1 or total > MOST or i < 1 or i > total then return end
+	local key = sender .. id
+	local got = Arriving(key)
 	if not got.parts[i] then got.count = got.count + 1 end
 	got.parts[i] = data
 	if got.count < total then return end
@@ -349,9 +468,10 @@ local function Heard(prefix, text, channel, sender)
 	local name, course = ns.Decode(table.concat(got.parts))
 	if not name then return end
 	course.by = sender
-	offered = { name = name, course = course, from = sender }
-	ns.Print(('%s sent you the course "%s" (%s). /race accept to keep it.')
-		:format(tostring(sender), name, ns.Checkpoints(#course.points - 1)))
+	course.rule = got.rule or 'any'
+	offered = { name = name, course = course, from = sender, key = key }
+	ns.Print(('%s sent you the course "%s" (%s, %s). /race accept to keep it.')
+		:format(sender, name, ns.Checkpoints(#course.points - 1), RULES[course.rule]))
 end
 
 function ns.CourseAccept()
@@ -364,7 +484,7 @@ function ns.CourseAccept()
 	offered.course.made = date and date('%Y-%m-%d') or ''
 	db.courses[name] = offered.course
 	db.last = name
-	ns.Print(('Course "%s" kept. /race start to race it.'):format(name))
+	ns.Print(('Course "%s" kept (%s). /race start to race it.'):format(name, RULES[ns.Rule(offered.course)]))
 	offered = nil
 end
 

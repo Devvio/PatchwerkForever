@@ -131,6 +131,10 @@ function CreateFrame(kind, name, parent)
 			return true
 		end
 		function fs:SetTextColor(r, g, b) assert(r and g and b) self.colour = { r, g, b } end
+		function fs:GetFont() return self.font, self.size, self.flags end
+		function fs:SetShadowOffset(x, y) assert(type(x) == 'number' and type(y) == 'number') self.shadow = x end
+		function fs:GetShadowOffset() return self.shadow or 1, self.shadow and -self.shadow or -1 end    -- (the game's fonts come with one)
+		function fs:SetShadowColor(r, g, b, a) assert(r and g and b) end
 			function fs:SetAlpha(alpha) assert(alpha >= 0 and alpha <= 1, 'alpha out of range: ' .. tostring(alpha)) self.alpha = alpha end
 		function fs:ClearAllPoints() end
 		function fs:SetPoint(point, to, rel, x, y) assert(to and x == x and y == y) end
@@ -426,7 +430,7 @@ GameFontNormal = { GetFont = function() return 'Fonts\\FRIZQT__.TTF', 12, '' end
 -- (the game knows a row's template once its XML file is read: the stand-in is told here; STUB.noRows = true: it is not)
 C_XMLUtil = { GetTemplateInfo = function(name)
 	if STUB.noRows then return nil end
-	local tall = ({ PatchwerkForeverIntroTemplate = 84, PatchwerkForeverHeaderTemplate = 44 })[name]
+	local tall = ({ PatchwerkForeverIntroTemplate = 84, PatchwerkForeverHeaderTemplate = 44, PatchwerkForeverListTemplate = 266 })[name]
 	if tall then return { type = 'Frame', width = 0, height = tall } end
 end }
 
@@ -437,7 +441,7 @@ function STUB.Rows()
 	for _, row in ipairs(STUB.rows) do
 		local mixin = _G[(row.template:gsub('Template$', 'Mixin'))]
 		assert(type(mixin) == 'table', 'no mixin for ' .. row.template)
-		local frame = CreateFrame('Frame')
+		local frame = CreateFrame('Frame', nil, UIParent)          -- (in the game the options list holds it)
 		for key, value in pairs(mixin) do frame[key] = value end
 		frame.width = 600
 		frame:OnLoad()

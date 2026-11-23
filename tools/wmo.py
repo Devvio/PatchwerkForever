@@ -3,7 +3,9 @@
 A terrain file lists each building model standing on it (MODF): which model,
 where, turned how, and its bounding box. The model's root file lists its group
 files, and each group holds vertices and triangles, with a flag per triangle
-that says whether a character collides with it.
+that says whether a character collides with it. (The newer models, this
+game's own cities among them, keep the flags in MPY2, four bytes a triangle,
+and may count their vertices in MOVX, four bytes each.)
 
 Coordinates here are *placement yards*: x east, z south, both from the map's
 north-west corner, and y up. A ground cell (gx, gy) is (x / CELL, z / CELL).
@@ -63,16 +65,18 @@ def model(store, fdid):
                 part = {}
                 for sub, sat, ssize in _chunks(data, at + 68, at + size):
                     part.setdefault(sub, (sat, ssize))
-                if b"MOVT" not in part or b"MOVI" not in part or b"MOPY" not in part:
+                flag_tag, flag_step = (b"MOPY", 2) if b"MOPY" in part else (b"MPY2", 4)
+                index_tag, index_kind, index_step = (b"MOVI", "H", 2) if b"MOVI" in part else (b"MOVX", "I", 4)
+                if b"MOVT" not in part or index_tag not in part or flag_tag not in part:
                     continue
                 vat, vsize = part[b"MOVT"]
                 verts = [struct.unpack_from("<3f", data, vat + 12 * i) for i in range(vsize // 12)]
-                iat, isize = part[b"MOVI"]
-                index = struct.unpack_from("<%dH" % (isize // 2), data, iat)
-                pat, psize = part[b"MOPY"]
+                iat, isize = part[index_tag]
+                index = struct.unpack_from("<%d%s" % (isize // index_step, index_kind), data, iat)
+                pat, psize = part[flag_tag]
                 tris = []
-                for t in range(min(psize // 2, len(index) // 3)):
-                    flags = data[pat + 2 * t]
+                for t in range(min(psize // flag_step, len(index) // 3)):
+                    flags = data[pat + flag_step * t]
                     if (flags & 0x08) or ((flags & 0x20) and not (flags & 0x04)):      # collides
                         i, j, k = index[3 * t], index[3 * t + 1], index[3 * t + 2]
                         if i < len(verts) and j < len(verts) and k < len(verts):

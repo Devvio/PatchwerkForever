@@ -144,6 +144,28 @@ def soft(a, radius):
     return np.asarray(img.filter(ImageFilter.GaussianBlur(radius)), dtype=np.float32) / 255
 
 
+ZONE_SOFT = 2.2               # how far a zone's edge is smoothed (pixels of the detail pictures: about half a chunk)
+
+
+def smooth_zones(zone):
+    """The zones a pixel, their edges smoothed. The game says which zone a place is in by the 33-yard chunk, so
+    an edge between two zones is a staircase of chunk corners: each zone is blurred a little and a pixel goes to
+    the zone that is strongest there, which turns a staircase into a slanting line and rounds a corner. The
+    painted borders and the outlines (Zones.lua) are both made from this, so they lie on one another."""
+    out = zone.copy()
+    best = np.zeros(zone.shape, np.float32)
+    pad = int(ZONE_SOFT * 4) + 2
+    for z in np.unique(zone):
+        mask = zone == z
+        y0, y1, x0, x1 = box(mask, pad, mask.shape)
+        strength = soft(mask[y0:y1, x0:x1].astype(np.float32), ZONE_SOFT)
+        there = best[y0:y1, x0:x1]
+        win = strength > there
+        out[y0:y1, x0:x1][win] = z
+        there[win] = strength[win]
+    return out
+
+
 def paint(kinds, heights, zones, size):
     """The picture (size x size x 4) of a square region: kinds and heights in cells, zones in cells."""
     n = kinds.shape[0] // size
@@ -223,7 +245,7 @@ def continent_base(store, map_id, parents):
     path = os.path.join(WORLD, "globe_base_%d.npz" % map_id)
     if os.path.exists(path):
         return dict(np.load(path))
-    world = load(os.path.join(WORLD, "map_%d.bin" % map_id))
+    world = load(os.path.join(WORLD, "map_%d.bin" % map_id), walls=False)       # (the terrain alone: the globe paints land, not buildings)
     water = np.ones((1024, 1024), np.float32)
     height = np.zeros((1024, 1024), np.float32)
     have = np.zeros((1024, 1024), bool)
@@ -253,7 +275,7 @@ def continent_areas(store, map_id):
     path = os.path.join(WORLD, "globe_areas_%d.npz" % map_id)
     if os.path.exists(path):
         return np.load(path)["area"]
-    world = load(os.path.join(WORLD, "map_%d.bin" % map_id))
+    world = load(os.path.join(WORLD, "map_%d.bin" % map_id), walls=False)       # (the terrain alone: the globe paints land, not buildings)
     area = np.zeros((1024, 1024), np.uint32)
     for (tx, ty), grid in chunk_areas(store, map_files(store)[map_id], list(world["tiles"])).items():
         area[ty * 16:(ty + 1) * 16, tx * 16:(tx + 1) * 16] = grid
@@ -739,7 +761,7 @@ def continent_cells(map_id, base):
     hgt = np.zeros((H, W), np.float32)
     zone = np.zeros((H, W), np.uint32)
     has = np.zeros((64, 64), bool)
-    world = load(os.path.join(WORLD, "map_%d.bin" % map_id))
+    world = load(os.path.join(WORLD, "map_%d.bin" % map_id), walls=False)       # (the terrain alone: the globe paints land, not buildings)
     n = 128 // PER
     for (tx, ty), (cells, hs) in world["tiles"].items():
         if not keep[ty, tx]:
@@ -753,6 +775,7 @@ def continent_cells(map_id, base):
         zone[y0:y0 + PER, x0:x0 + PER] = np.kron(base["zone"][ty * 16:(ty + 1) * 16, tx * 16:(tx + 1) * 16],
                                                  np.ones((PER // 16, PER // 16), dtype=np.uint32))
         has[ty, tx] = tile_land.any()
+    zone = smooth_zones(zone)
     land = without_slivers(land, hgt, 5, 60)
     th, tw = land.shape[0] // PER, land.shape[1] // PER
     has = np.zeros((64, 64), bool)                           # (which tiles have land, the slivers gone)
@@ -791,9 +814,34 @@ def continent_detail(map_id, base, art_dir, written, place=None, tile=None):
 NAME = 1                      # AreaTable's column of the name shown (the Barrens: "The Barrens")
 ZONE_LEAST = 100              # a zone has at least this much land (33-yard chunks): less is a sea, or a scrap
 RING_LEAST = 150              # an island smaller than this (pixels of the detail pictures) gets no outline
-RING_WITHIN = 2.0             # an outline keeps to within this of the true one (pixels: about 17 yards)
+RING_WITHIN = 0.3             # an outline keeps to within this of the rounded one (pixels: about 3 yards)
+RING_ROUND = 1.6              # how far an outline's corners are rounded (pixels along it: about 13 yards)
+FINE = 4                      # an outline's points are written this many to a pixel, so a curve stays one
 THIN = 0.08                   # a ring less round than this (a circle is 1) is a sliver, and left out
 NEAR_LAND = 5                 # water this near a zone's land (chunks) counts as the zone when pointing at it
+def rounded(ring):
+    """The ring as a smooth line: its points taken every half pixel along it, each then the weighted middle of
+    those near it along the ring. A staircase of pixel or chunk corners becomes a slant, a corner a curve; a
+    long straight side stays where it is."""
+    p = np.asarray(ring, dtype=np.float64)
+    q = np.vstack([p, p[:1]])
+    along = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(q, axis=0).T))])
+    total = float(along[-1])
+    n = int(total / 0.5)
+    sigma = RING_ROUND / 0.5
+    half = int(sigma * 3) + 1
+    if n <= 2 * half:
+        return p
+    at = np.arange(n) * total / n
+    weights = np.exp(-0.5 * (np.arange(-half, half + 1) / sigma) ** 2)
+    weights /= weights.sum()
+    out = []
+    for column in (0, 1):
+        v = np.interp(at, along, q[:, column])
+        out.append(np.convolve(np.concatenate([v[-half:], v, v[:half]]), weights, mode="valid"))
+    return np.column_stack(out)
+
+
 def simplified(ring, within):
     """The ring with the points left out that lie within `within` of the line between those kept."""
     p = np.asarray(ring, dtype=np.float64)
@@ -887,18 +935,20 @@ def zones():
         ys, xs = np.nonzero(dry)
         mx, my = (xs.min() + xs.max() + 1) / 32, (ys.min() + ys.max() + 1) / 32
         reach = float(np.hypot((xs + 0.5) / 16 - mx, (ys + 0.5) / 16 - my).max())
-        lines.append("\t[%d] = { per = %d, middle = { %.3f, %.3f }, reach = %.3f, zones = {" % (map_id, PER, mx, my, reach))
+        lines.append("\t[%d] = { per = %d, middle = { %.3f, %.3f }, reach = %.3f, zones = {" % (map_id, PER * FINE, mx, my, reach))
         hit = np.zeros((1024, 1024), np.uint8)
         preview = Image.open(os.path.join(WORLD, "globe_detail_%d.png" % map_id)).convert("RGB")
         draw = ImageDraw.Draw(preview)
         for index, z in enumerate(ids, 1):
             mine = land & (zone == z)
-            y0, y1, x0, x1 = box(mine, 1, mine.shape)
-            rings = [r for r in rings_of(mine[y0:y1, x0:x1]) if area_of(r) >= RING_LEAST]
+            y0, y1, x0, x1 = box(mine, 6, mine.shape)
+            # (tidied first: a spike or a notch a pixel wide is no part of an outline)
+            tidy = soft(mine[y0:y1, x0:x1].astype(np.float32), 1.0) > 0.5
+            rings = [r for r in rings_of(tidy) if area_of(r) >= RING_LEAST]
             rings.sort(key=area_of, reverse=True)
             texts_out = []
             for ring in rings:
-                p = simplified(ring, RING_WITHIN)
+                p = simplified(rounded(ring), RING_WITHIN)
                 if len(p) < 4:
                     continue
                 # (a sliver, such as a strip of flat terrain left out at sea, is no island: far more edge than land)
@@ -907,7 +957,7 @@ def zones():
                     continue
                 p = p + (x0 + tx0 * PER, y0 + ty0 * PER)
                 points += len(p)
-                texts_out.append(",".join("%d,%d" % (x, y) for x, y in p.astype(int)))
+                texts_out.append(",".join("%d,%d" % (x, y) for x, y in np.rint(p * FINE).astype(int)))
                 draw.line([((x - tx0 * PER) / 8, (y - ty0 * PER) / 8) for x, y in np.vstack([p, p[:1]])], fill=(200, 30, 30))
             lines.append("\t\t{ id = %d, name = %s, rings = {" % (z, lua_text(names.get(z) or "Zone %d" % z)))
             lines += ["\t\t\t'%s'," % t for t in texts_out]
@@ -1011,7 +1061,7 @@ def world():
     lines.append("}")
     if ring:
         lines += ["",
-                  "-- the brass ring and stand round the ball: in parts of the picture's side, the middle of its hole (across",
+                  "-- the brass ring round the ball, and its stand where the picture has one: in parts of the picture's side, the middle of its hole (across",
                   "-- and down), the hole's radius, and the top and bottom of what is drawn",
                   "ns.RING = { file = 'Interface\\\\AddOns\\\\' .. ADDON .. '\\\\Art\\\\ring', cx = 0.5, cy = %.4f, inner = %.4f, top = %.4f, bottom = %.4f }" % ring]
     with open(os.path.join(ADDON, "Art.lua"), "w", encoding="utf-8", newline="\n") as f:
@@ -1026,7 +1076,7 @@ def world():
 def test():
     store = Storage(GAME, "wowf")
     map_id, columns, rows, size, name = 1, (33, 41), (30, 38), 512, "test_kalimdor"
-    world = load(os.path.join(WORLD, "map_%d.bin" % map_id))
+    world = load(os.path.join(WORLD, "map_%d.bin" % map_id), walls=False)       # (the terrain alone: the globe paints land, not buildings)
     kinds, heights = cells_region(world, columns, rows)
     wanted = [(tx, ty) for tx in range(*columns) for ty in range(*rows)]
     areas = chunk_areas(store, map_files(store)[map_id], wanted)

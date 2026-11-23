@@ -1,5 +1,16 @@
 # Patchwerk Forever: Immersive Plainsrunning (Thread)
 
+## 1.3.0
+
+- **Other ways of going fast.** Speed mode can also run while you are mounted and moving (**Mounts**), while you are moving in Travel Form, Aquatic Form or Ghost Wolf or under Aspect of the Cheetah or Aspect of the Pack (**Travel Forms**), and while you are on a flight (**Flight Paths**). Each is a setting of its own under the new heading **Other Ways Of Going Fast**, each is off until you enable it, and they work for every race.
+  - They have no stacks. Once you have kept moving for five seconds (**Seconds Before Fading**, from 0 to 30), the interface fades over about ten seconds, much as it does while Plainsrunning stacks up at a run, and then the effects come in.
+  - Everything that brings the interface back still does: combat, a window, typing, standing still, dying, the held key and `/plains show`. Keep While Faded, the camera and the preview work as before.
+  - With Flight Paths enabled, a flight fades the interface instead of bringing it back.
+  - Getting off the mount, leaving the form, landing or standing still for ten seconds ends the run.
+  - Plainsrunning itself is unchanged and still for Tauren only. Its stacks come first when both apply, and the run records count Plainsrunning runs only.
+- `/plains` says what speed mode is running on, and lists the other sources that are enabled.
+- **Wind Shows The Way** (on Plainsrunning: Effects, off until you enable it): with Routes (Thread) installed and a route being followed, the point the effects rush out from leans left or right toward where the route goes next, so you can follow the route with the interface gone. Straight ahead is the middle, a turn to come leans it that way, and a route beside or behind you leans it all the way to the nearer side. **How Far It Leans** sets how far that is, from 5% to 30% of the screen's width. It does nothing without Routes (Thread), without a route, on a flight, or where the game does not say where you are or which way you face, as in instances.
+
 ## 1.2.2
 
 - **Now named Patchwerk Forever: Immersive Plainsrunning (Thread)**: the name comes first and what kind of addon it is after it, in brackets (it was Thread (Immersive Plainsrunning)). The options page is named the same way.

@@ -62,6 +62,8 @@ end
 
 local make = CreateFrame
 function CreateFrame(kind, name, parent, template)
+	-- (STUB.noTemplate = { [name] = true }: a template this client does not have)
+	assert(not (template and STUB.noTemplate and STUB.noTemplate[template]), 'no such template: ' .. tostring(template))
 	local frame = make(kind, name, parent)
 	frame.kind, frame.mouse, frame.wheel, frame.children, frame.points = kind, kind == 'Button', false, {}, {}
 	if parent and parent.children then parent.children[#parent.children + 1] = frame end
@@ -170,6 +172,24 @@ function CreateFrame(kind, name, parent, template)
 	if kind == 'Cooldown' then
 		function frame:SetCooldown(start, duration) assert(start and duration > 0) self.cooling = { start, duration } end
 		function frame:Clear() self.cooling = nil end
+	end
+	-- a box to type in: what is in it (frame.text), and whether it has the keyboard (frame.focus).
+	-- One told to take numbers only is given nothing else.
+	if kind == 'EditBox' then
+		frame.text, frame.focus = '', false
+		function frame:SetAutoFocus(on) assert(type(on) == 'boolean') self.autoFocus = on end
+		function frame:SetNumeric(on) assert(type(on) == 'boolean') self.numeric = on end
+		function frame:SetMaxLetters(n) assert(n > 0) self.most = n end
+		function frame:SetFontObject(font) assert(font ~= nil) self.font = font end
+		function frame:SetText(text)
+			assert(type(text) == 'string' and not (self.numeric and text:find('%D')), 'not a number for a box of numbers: ' .. tostring(text))
+			assert(not self.most or #text <= self.most, 'more letters than the box takes')
+			self.text = text
+		end
+		function frame:GetText() return self.text end
+		function frame:SetFocus() self.focus = true end
+		function frame:ClearFocus() self.focus = false end
+		function frame:HighlightText() self.highlit = true end
 	end
 	function frame:StartMoving() assert(self.movable, 'a frame that cannot be moved was dragged') self.moving = true end
 	-- Where it was let go: the game hangs a dragged frame from whichever point of the screen it picks
@@ -347,13 +367,32 @@ end
 ---------------------------------------------------------------------------
 -- Items, and the quests that give one to use
 ---------------------------------------------------------------------------
--- STUB.bags[item] = how many you carry; STUB.cooling[item] = { start, duration }.
-STUB.bags, STUB.cooling, STUB.itemNames = {}, {}, {}
+-- STUB.bags[item] = how many you carry; STUB.bank[item] = how many more are in your bank (counted
+-- only when the bank is asked for too); STUB.cooling[item] = { start, duration }.
+STUB.bags, STUB.bank, STUB.cooling, STUB.itemNames = {}, {}, {}, {}
 function GetQuestLogSpecialItemInfo(index)
 	local e = STUB.log[index]
 	if e and e.item then return 'item:' .. e.item[1] .. ':0:0', 5000 + e.item[1], 1, e.item[2] == true end
 end
-C_Item.GetItemCount = function(id) assert(type(id) == 'number') return STUB.bags[id] or 0 end
+C_Item.GetItemCount = function(id, bank)
+	assert(type(id) == 'number' and (bank == nil or type(bank) == 'boolean'))
+	return (STUB.bags[id] or 0) + (bank and STUB.bank[id] or 0)
+end
+-- What the cursor holds: STUB.cursorItem, an item's number, or nothing. STUB.Pick(id) takes an item
+-- up, and the game says the cursor changed; ClearCursor puts it back where it was, and the game says
+-- so again. (Not protected: it may be called in a fight.)
+function GetCursorInfo()
+	if STUB.cursorItem then return 'item', STUB.cursorItem, 'item:' .. STUB.cursorItem .. ':0:0' end
+end
+function ClearCursor()
+	if not STUB.cursorItem then return end
+	STUB.cursorItem = nil
+	STUB.Fire('CURSOR_CHANGED', true, 0, 1, 0)
+end
+function STUB.Pick(id)
+	STUB.cursorItem = id
+	STUB.Fire('CURSOR_CHANGED', false, 1, 0, 0)
+end
 C_Item.GetItemIconByID = function(id) return 7000 + id end
 C_Item.GetItemNameByID = function(id) return STUB.itemNames[id] end
 C_Item.RequestLoadItemDataByID = function(id) STUB.askedFor = id end
@@ -401,8 +440,12 @@ C_TradeSkillUI = {
 ---------------------------------------------------------------------------
 -- The party
 ---------------------------------------------------------------------------
--- STUB.party = { { name =, quests = { [id] = true } } }; STUB.raid = true in a raid.
+-- STUB.party = { { name =, quests = { [id] = true }, offline = true or nil } }; STUB.raid = true in a raid.
 STUB.party, STUB.told = {}, {}
+function UnitIsConnected(unit)
+	local i = type(unit) == 'string' and tonumber(unit:match('^party(%d)$'))
+	return i ~= nil and STUB.party[i] ~= nil and STUB.party[i].offline ~= true
+end
 function IsInGroup() return #STUB.party > 0 end
 function IsInRaid() return STUB.raid == true end
 function GetNumSubgroupMembers() return #STUB.party end

@@ -47,4 +47,7 @@
 	<Binding name="PATCHWERKFOREVER_GLOBE_SHOW" category="BINDING_CATEGORY_PatchwerkForever">
 		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('show') end
 	</Binding>
+	<Binding name="PATCHWERKFOREVER_GLOBE_LEVELS" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('levels') end
+	</Binding>
 </Bindings>

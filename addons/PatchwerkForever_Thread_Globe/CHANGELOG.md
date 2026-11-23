@@ -1,5 +1,20 @@
 # Patchwerk Forever: Globe (Thread)
 
+## 1.1.0
+
+- **Zones colored by level**: **Color Zones By Level** (off as it comes) lays a thin wash of color over each zone, in the colors the levels by a zone's name are written in: gray for far below you, green, yellow, orange, and red for far above. A small key in the lower left corner says which is which. It follows the zone's shape, changes when you gain a level, fades out toward the ground, and is not drawn on a city's or battleground's map. A zone the game gives no levels for has no wash, nor have the few zones the game's map has no pictures of. In the Show menu, by `/globe levels`, and by a key binding.
+- **Guild members and friends**: **Show Guild Members** and **Show Friends** (both off as they come, and both in the Show menu) put one mark by a zone's name for the guild members and friends who are in it, with how many. Point at it for their names in class colors and their levels; click it to fit the zone. Battle.net friends are counted while they play this game. Yourself and anyone offline are not counted, and someone who is both is counted once.
+- **A new ring**: the globe now sits in a brass ring with the four points of the compass on it. The stand is gone.
+- **Your map pin and tracked quest** are read from Patchwerk Forever 2.9.0 when it has them, so the globe shows yours, not the marker Routes (Thread) moves along its trail (Mark The Way Ahead).
+- **Smoother zone borders**: the borders between zones, and the outline drawn round the zone you point at, are smooth lines now. They were stepped, which showed when zoomed in close.
+- **Fog of war**: land you have not discovered now lies under a thin fog, not blank paper: the painted map shows through it. The fog thins out to mist at its edges and over the shore, and clears as you explore. **Fog Opacity** sets how much it hides (30% as it comes). The setting is now called **Fog Of War** (it was Leave Unexplored Land Blank).
+- **The ground is part of the fog of war**: zoomed in to where the minimap's pictures of the ground come in, they come in only over land you have discovered. The rest stays the painted map under its fog.
+- **Zones you have never entered are under fog too.** Only the zones you had been in were covered, and the rest of the world was shown in full.
+- **The map key opens the globe where you are**: with **The Map Key Opens The Globe** on, the key opens the globe turned and zoomed to your place. Opened any other way, the globe is as you left it.
+- **Thinner outlines on names**: the names had an outline and a shadow at once, which made small letters heavy and hard to read. They have the outline alone now. **Name Outline** can change it to a shadow alone.
+- **Numbers sit in the middle of their marks**: the numbers of your route's stops and of quests were drawn with the same doubled edge, which made them look off-center.
+- **Smoother turning and zooming**: the globe does about half the work it did each time it is drawn while you turn or zoom it.
+
 ## 1.0.0
 
 The first release. Needs Patchwerk Forever 2.8.0 or later.

@@ -188,9 +188,27 @@ def extract(store, map_id, wdt_fdid, out_dir):
     return done
 
 
-def load(path):
+def load(path, walls=True):
+    """A map's cells and heights. With walls (walls.py has made world/walls_<id>.bin), what the buildings do to
+    the ground is laid on the terrain's cells: a wall as ground too steep to walk, a floor over no ground or
+    over water as ground, and a floor's height where the ground is one. walls=False gives the terrain alone."""
     with open(path, "rb") as f:
-        return pickle.loads(zlib.decompress(f.read()))
+        info = pickle.loads(zlib.decompress(f.read()))
+    name = os.path.basename(path)
+    extra = os.path.join(os.path.dirname(path), "walls_" + name[4:])
+    if walls and name.startswith("map_") and os.path.exists(extra):
+        with open(extra, "rb") as f:
+            found = pickle.loads(zlib.decompress(f.read()))
+        for key, places in found["tiles"].items():
+            if key in info["tiles"]:
+                cells, heights = info["tiles"][key]
+                cells = bytearray(cells)
+                for i, kind, height in places:
+                    cells[i] = kind
+                    if height is not None:                  # (the cell's ground is a floor: the floor's height)
+                        heights[i] = height
+                info["tiles"][key] = (bytes(cells), heights)
+    return info
 
 
 _COLOURS = {NONE: (10, 10, 20), STEEP: (205, 45, 45), WADE: (90, 170, 215), SWIM: (30, 80, 170)}

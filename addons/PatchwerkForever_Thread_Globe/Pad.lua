@@ -128,7 +128,7 @@ end)
 
 -- Console Port's binding list, when Console Port is here. (Its LinkEnv hands back its database; the
 -- table given is not kept.)
-local LISTED = { 'TOGGLE', 'ME', 'FULL', 'GOTO', 'FIT', 'BACK', 'LEFT', 'RIGHT', 'UP', 'DOWN', 'IN', 'OUT', 'PIN', 'NEXT', 'ROUTE' }
+local LISTED = { 'TOGGLE', 'ME', 'FULL', 'GOTO', 'FIT', 'BACK', 'LEFT', 'RIGHT', 'UP', 'DOWN', 'IN', 'OUT', 'PIN', 'NEXT', 'ROUTE', 'LEVELS' }
 local listed = false
 ns.On('PLAYER_LOGIN', function()
 	local api = rawget(_G, 'CPAPI')

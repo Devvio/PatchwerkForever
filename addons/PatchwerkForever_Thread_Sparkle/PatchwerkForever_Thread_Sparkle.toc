@@ -1,8 +1,8 @@
 ## Interface: 16001
 ## Title: Patchwerk Forever: Sparkle (Thread)
-## Notes: A sparkle and a name on the herb, vein, chest or quest object you are coming up to: twelve effects, a look for each kind of thing. A wisp carries what you loot into your bag. Works best with the interact key or a gamepad. Needs Patchwerk Forever. Type /sparkle.
+## Notes: A sparkle and a name on the herb, vein, chest, quest object or corpse with loot you are coming up to, and on the waypoint you follow: sixteen effects, a look and an alert sound for each kind of thing. A wisp carries what you loot into your bag. Works best with the interact key or a gamepad. Needs Patchwerk Forever. Type /sparkle.
 ## Author: Tyrone
-## Version: 1.3.1
+## Version: 1.5.0
 ## Group: PatchwerkForever
 ## X-Category: Miscellaneous
 ## X-License: MIT
@@ -15,4 +15,7 @@
 Link.lua
 Core.lua
 Sparkle.lua
+Cue.lua
+Waypoint.lua
+Passed.lua
 Wisp.lua

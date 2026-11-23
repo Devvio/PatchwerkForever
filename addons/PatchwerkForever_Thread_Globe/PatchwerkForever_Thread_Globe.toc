@@ -2,7 +2,7 @@
 ## Title: Patchwerk Forever: Globe (Thread)
 ## Notes: The world on a globe you can spin and zoom, painted like the world map on parchment, with everything the world map shows on it: your route, quests, places, unexplored land and other addons' pins. Needs Patchwerk Forever. Type /globe.
 ## Author: Tyrone
-## Version: 1.0.0
+## Version: 1.1.0
 ## Group: PatchwerkForever
 ## X-Category: Map & Minimap
 ## X-License: MIT
@@ -23,10 +23,12 @@ Marks.lua
 Travel.lua
 Quests.lua
 Places.lua
+Social.lua
 Rares.lua
 Pins.lua
 Covers.lua
 Explore.lua
+Wash.lua
 Flat.lua
 Effects.lua
 Show.lua

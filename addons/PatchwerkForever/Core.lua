@@ -28,9 +28,10 @@ local addonName, ns = ...;
 
 -- API: raised when something is added that a part may need (2: the guides service, Guides.lua;
 -- 3: the gathering service, Gather.lua, and a guide step's items and skipping; 4: more than one
--- guide at a time; 5: Focus.lua, MyRoute.lua and Choice:OnChange). Something an older part simply
--- does not use (Following.lua, a reader's Side) leaves it as it is.
-local P = { API = 5, Fixes = {}, Parts = {}, Settings = { list = {}, byKey = {} } };
+-- guide at a time; 5: Focus.lua, MyRoute.lua and Choice:OnChange; 6: lists on a tool's pages and
+-- Gather:Note). Something an older part simply does not use (Following.lua, a reader's Side) leaves
+-- it as it is.
+local P = { API = 6, Fixes = {}, Parts = {}, Settings = { list = {}, byKey = {} } };
 PatchwerkForever = P;
 ns.P = P;
 

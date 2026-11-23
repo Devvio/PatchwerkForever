@@ -16,7 +16,7 @@ One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwer
 
 ## How it goes
 
-Plainsrunning, the Tauren racial, gives a stack of extra speed for as long as you keep moving, up to 30. Speed mode runs only on Tauren: on any other race it does nothing (the preview still plays).
+Plainsrunning, the Tauren racial, gives a stack of extra speed for as long as you keep moving, up to 30. Plainsrunning is for Tauren only: on any other race speed mode does nothing (the preview still plays) until you enable one of the other ways of going fast, described below.
 
 - **Below 10 stacks** nothing changes.
 - **From 10 stacks** the interface fades a little with every stack.
@@ -36,9 +36,25 @@ Even while the buff lasts, the interface comes back:
 - **In combat**, at once, and stays for the whole fight.
 - **When a window opens**: the map, your bags, the game menu, the options, a vendor, a quest, and so on, or while you type in chat.
 - **When you stand still** for five seconds. It fades away again once you have been moving for five seconds, if the buff is still on you. Both can be changed (**Seconds Standing Still**, **Seconds Moving Again**).
-- **When you die or take a flight.**
+- **When you die or take a flight.** (With **Flight Paths** enabled, below, a flight fades the interface instead.)
 
 Each can be turned off on **Immersive Plainsrunning (Thread)** (Options → AddOns → Patchwerk Forever, or `/plains config`). Hold the **Show Interface While Held** key to see the interface for a moment; `/plains show` brings it back for the rest of the run.
+
+## Other ways of going fast
+
+Speed mode can also run on a mount, in a travel form or on a flight. These work for every race. Each is off until you enable it, under **Other Ways Of Going Fast** on **Immersive Plainsrunning (Thread)**:
+
+- **Mounts**: while you are mounted and moving.
+- **Travel Forms**: while you are moving in Travel Form, Aquatic Form or Ghost Wolf, or under Aspect of the Cheetah or Aspect of the Pack.
+- **Flight Paths**: while you are on a flight. A flight then fades the interface instead of bringing it back.
+
+None of these has stacks, so speed mode counts some for them. Once you have kept moving for five seconds (**Seconds Before Fading**, from 0 to 30), the interface begins to fade and is gone about ten seconds later, much as it goes while Plainsrunning stacks up at a run. Then the effects come in, as at 30 stacks. **Start Fading At**, **Fully Hidden At** and **Show Effects At** count here as they do for Plainsrunning.
+
+Everything that brings the interface back does so here too: combat, a window, typing, standing still, dying, the **Show Interface While Held** key and `/plains show`. **Keep While Faded**, the effects and the camera work the same. Getting off the mount, leaving the form or landing ends the run. So does standing still for ten seconds: the next time you set off, it waits and fades again. On a flight there is no standing still.
+
+A Tauren's Plainsrunning comes first: while the buff has stacks, they decide, exactly as before. Run records count Plainsrunning runs only. `/plains` says what speed mode is running on.
+
+Which forms and aspects count is a fixed list. In combat the game may hide your auras from addons, so an aspect that was on when the fight began is taken to stay on until the fight ends.
 
 ## Is it safe?
 
@@ -59,6 +75,14 @@ All on **Plainsrunning: Effects**. Each has its own tick box, and they add up: t
 
 For all of them: **Show Effects At** (the stacks they come in at), **Match My Speed** (faster the faster you run; they fade when you slow down), **Vertical Offset** (the point on the horizon they come from) and **Clear Middle** (a space kept clear so you can see where you are going). **Preview Speed Mode** pretends to run for fifteen seconds; close the options to watch it.
 
+## The wind shows the way
+
+With **Routes (Thread)** installed and a route being followed, **Wind Shows The Way** leans the point the effects rush out from toward where the route goes next. It sits in the middle while the route is straight ahead, moves to one side for a turn to come, and goes all the way to the nearer side when the route is beside or behind you. Turn until the wind comes from the middle again and you are on the route, with the interface gone.
+
+It is off until you enable it on **Plainsrunning: Effects**. **How Far It Leans** sets how far the point may move, from 5% to 30% of the screen's width (15% at first). **Vertical Offset** and **Clear Middle** work with it as before.
+
+It points at the route about 40 yards ahead of you, so a kink underfoot does not jerk it about, and only along the part of the route you go on foot: it leads you to a flight master or a boat, not beyond. It does nothing without Routes (Thread), without a route, on a flight, or where the game does not say where you are or which way you face, as in instances.
+
 ## The camera
 
 **Pull The Camera Back** eases the camera back 3 yards when the effects come in, and returns it when the run ends or the interface comes back. **Camera Distance** sets how far, from 1 to 10 yards. Only its own part is taken back: zoom as you like during a run, and a camera already at the game's furthest zoom stays where it was.
@@ -71,7 +95,7 @@ Each character keeps its records: the **longest time at full speed** (30 stacks)
 
 | Command | Does |
 |---|---|
-| `/plains` | says your stacks, how far the interface is faded, and why it is kept if it is (`/pfplains` is the same; `/plains help` lists the commands) |
+| `/plains` | says what speed mode is running on (your stacks of Plainsrunning, or a mount, a travel form or a flight), how far the interface is faded, and why it is kept if it is (`/pfplains` is the same; `/plains help` lists the commands) |
 | `/plains on` / `off` | turns speed mode on or off |
 | `/plains test` | pretends to run with Plainsrunning for fifteen seconds |
 | `/plains show` | brings the interface back for the rest of this run |

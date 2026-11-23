@@ -8,4 +8,10 @@
 	<Binding name="PATCHWERKFOREVER_RACES_STOP" category="BINDING_CATEGORY_PatchwerkForever">
 		if PatchwerkForever_Thread_Races_Stop then PatchwerkForever_Thread_Races_Stop() end
 	</Binding>
+	<Binding name="PATCHWERKFOREVER_RACES_TOGETHER" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Races_Together then PatchwerkForever_Thread_Races_Together() end
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_RACES_JOIN" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Races_Join then PatchwerkForever_Thread_Races_Join() end
+	</Binding>
 </Bindings>

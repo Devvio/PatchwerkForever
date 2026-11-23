@@ -31,7 +31,9 @@
 -- Between the two stands the focus (the base's Focus.lua): your standing choice of what the main track
 -- is. 'auto' is the main track as above; 'quests' your tracked quests only; a guide reader's id
 -- ('rxp', 'fdj', 'route' for My Route) that reader's list only, followed as a chosen guide is. So,
--- highest first: a gathering run, your pin or spot, a choice, the focus, then the main track by
+-- highest first: the way to your corpse while you are a ghost (Corpse.lua), a gathering run or a
+-- flight point search (Gather.lua, Discover.lua: your pin or spot is gone to first, and the run goes
+-- on after it), your pin or spot, a choice, the focus, then the main track by
 -- Route Priority. You chose the focus yourself, so the settings that disable the guide or the quests
 -- do not hold it back. With nowhere to send you, the focus gives way to the main track, and that is
 -- said in chat once (until the focus changes, or has somewhere to go again).
@@ -145,9 +147,12 @@ local function QuestSpot(id, here)
 	return nil
 end
 
--- The quest the game's own arrow is on, or nil.
+-- The quest the game's own arrow is on, or nil. (Asked of the base, which keeps it while the game's
+-- waypoint is lent to mark the way ahead.)
 local function Focused()
-	local id = C_SuperTrack and Ask(C_SuperTrack.GetSuperTrackedQuestID)
+	local marker = ns.Base.Marker
+	local id
+	if marker and marker.Quest then id = marker:Quest() else id = C_SuperTrack and Ask(C_SuperTrack.GetSuperTrackedQuestID) end
 	if type(id) == 'number' and id ~= 0 then return id end
 	return nil
 end
@@ -427,7 +432,9 @@ end
 
 -- What is followed now, for the other tools (the base's Following: the tracker marks the line that
 -- matches). Told at every look; the base passes it on only when the kind or the key has changed, and
--- the key changes with the destination. kind: 'pin', 'spot', 'gather', 'guide', 'quest' or 'none'.
+-- the key changes with the destination. kind: 'pin', 'spot', 'gather', 'guide', 'quest' or 'none',
+-- and, new with 1.4.0, 'corpse' and 'discover' (a tool that marks a quest or a guide's line marks
+-- nothing for a kind it does not know, which is right for both).
 local function Report(kind, source, questID, map, x, y, step)
 	local Following = ns.Base.Following
 	if not (Following and Following.Set) then return end
@@ -478,6 +485,20 @@ local function SayPickLost(picked)
 end
 
 local function Look()
+	-- A ghost on the way to its corpse: that comes before everything (Corpse.lua). Nothing here is
+	-- touched meanwhile (what you stopped or reached, the choice, the focus), so all of it stands as it
+	-- was once you are alive; only what was said is forgotten, so what leads again is said again.
+	if ns.CorpseActive and ns.CorpseActive() then
+		said = nil
+		ns.Ahead.Set({})
+		local dest = ns.dest
+		if dest and dest.source == 'corpse' then
+			Report('corpse', nil, nil, dest.map, dest.x, dest.y)
+		else
+			Report('corpse')
+		end
+		return
+	end
 	if ns.GatherActive and ns.GatherActive() then            -- a gathering run is on: it has the say (Gather.lua)
 		said = nil
 		ns.Ahead.Set({})
@@ -486,6 +507,17 @@ local function Look()
 			Report('gather', nil, nil, dest.map, dest.x, dest.y)
 		else
 			Report('gather')
+		end
+		return
+	end
+	if ns.DiscoverActive and ns.DiscoverActive() then        -- so is a flight point search (Discover.lua)
+		said = nil
+		ns.Ahead.Set({})
+		local dest = ns.dest
+		if dest and dest.source == 'discover' then
+			Report('discover', nil, nil, dest.map, dest.x, dest.y)
+		else
+			Report('discover')
 		end
 		return
 	end
@@ -604,6 +636,8 @@ function ns.GoToSource()
 	if not source then return false end
 	-- (a gathering run would hold the destination still: it ends first, and only where there is something else to go to)
 	if ns.GatherActive and ns.GatherActive() and ns.GatherStop() then ns.Print('Gathering stopped.') end
+	-- (and so would a flight point search)
+	if ns.DiscoverActive and ns.DiscoverActive() and ns.DiscoverStop() then ns.Print('Flight point search stopped.') end
 	skip = nil
 	if not map then                                    -- the guide's step has no place: its words, again
 		Note()
@@ -649,8 +683,16 @@ function ns.QuestSay()
 	if focused then Tell(focused) end
 	for _, id in ipairs(watched) do Tell(id) end
 	-- what is followed, in the order Look() decides it
+	if ns.CorpseActive and ns.CorpseActive() then
+		ns.Print('Following: the way to your corpse (it comes first while you are a ghost).')
+		return
+	end
 	if ns.GatherActive and ns.GatherActive() then
 		ns.Print('Following: your gathering run. /thread gather stop ends it.')
+		return
+	end
+	if ns.DiscoverActive and ns.DiscoverActive() then
+		ns.Print('Following: your flight point search. /thread discover stop ends it.')
 		return
 	end
 	if ns.dest and not ns.dest.source then

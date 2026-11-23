@@ -183,7 +183,10 @@ def main():
     stub.Fire("PLAYER_LOGIN")
     stub.Fire("PLAYER_ENTERING_WORLD", True, False)               # (as the game gives it: a login, not a reload)
     chat("login")
-    assert len(stub.settings) == 91 and stub.category and stub.front, "the settings pages were not built"
+    # (counted by addon: Routes' own settings are checked here, Sparkle's in its own suite, lua_sparkle.py)
+    def own_settings(addon=ADDON):
+        return sum(1 for s in stub.settings.values() if s.variable.startswith(addon + "_"))
+    assert own_settings() == 36 and own_settings(SPARKLE) > 0 and stub.category and stub.front, "the settings pages were not built"
     assert stub.provider, "the world map layer was not attached"
 
     step("put a pin on Gadgetzan")
@@ -315,8 +318,11 @@ def main():
     frames()
     mine = taxi()
     assert mine.known[30] is True and mine.known[23] is False and mine.known[77] is False
-    # (from here, in the southern Barrens, the walk down the Great Lift to Freewind Post beats going back to Crossroads)
+    # (from the southern Barrens the walk down the Great Lift to Freewind Post beats going back to Crossroads. A place
+    # of its own, not where the trail's sixth point happens to lie: that moves with the ground's data)
+    stub.player.x, stub.player.y = -4000.0, -2000.0
     assert any("fly Freewind Post > Gadgetzan" in t for t in go_again("short list")), "the listed points were not flown between"
+    stub.player.x, stub.player.y = here
     stub.flightMapShort = None
     # a flight point found as you walk up to it (the game's own message): known from then on
     stub.flightMap = lua.table_from({40: 1})
@@ -397,7 +403,7 @@ def main():
     assert any("/thread stop: stop routing (a route to a guide step or quest resumes" in t for t in text), text
 
     step("no pin: the route follows the RestedXP guide's arrow, step by step")
-    assert len(stub.settings) == 91, "the guide setting is missing from the settings page"
+    assert own_settings() == 36, "the guide setting is missing from the settings page"
     stub.pin = None
     stub.Fire("USER_WAYPOINT_UPDATED")
     assert not ns.dest
@@ -893,6 +899,14 @@ def main():
         stub.player.x, stub.player.y = x, y
         slash("nodes forget")
     assert spots() == 1
+    # a spot another tool saw (Sparkle's herbs you passed), told through the base: kept as one gathered
+    # from, with the game's plain herb icon until you gather there yourself
+    assert G.Note(G, "Mageroyal", "h", stub.player.map, -800.0, -3000.0) is True and spots() == 2
+    assert db.nodeKinds["Mageroyal"].guessed and "Herb" in db.nodeKinds["Mageroyal"].icon
+    assert G.Note(G, "Mageroyal", "x", stub.player.map, 0.0, 0.0) is False, "a spot of no known kind was taken"
+    stub.player.x, stub.player.y = -800.0, -3000.0
+    slash("nodes forget")
+    assert spots() == 1
     stub.player.x, stub.player.y = -442.0, -2598.0
     chat("gather")
 
@@ -905,26 +919,31 @@ def main():
                 assert s.variable[len(addon) + 1:] not in by_name, s.variable
                 by_name[s.variable[len(addon) + 1:]] = s
                 break
-    assert len(by_name) == 91, "expected 91 settings on the options pages, found %d" % len(by_name)
+    # (Routes' own exactly, here and below; Sparkle's are its own business and change with it: lua_sparkle.py)
+    assert len(by_name) == len(stub.settings) and own_settings() == 36, "expected 36 Routes settings on the options pages, found %d" % own_settings()
     assert "baseTellMissing" not in by_name, "the base's switch is on its front page, not a row of the game's"
     pages = sorted(stub.pages.keys())
-    WANT = {"Routes (Thread)": 16, "Routes: Trail": 12, "Routes: Step Text": 6, "Sparkle (Thread)": 5, "Sparkle: Names": 8,
-            "Sparkle: Behind My Character": 6, "Sparkle: Appearance": 30, "Sparkle: Loot Wisps": 8}
-    assert pages == sorted(WANT), pages
+    WANT = {"Routes (Thread)": 17, "Routes: Trail": 13, "Routes: Step Text": 6}
+    assert [p for p in pages if not p.startswith("Sparkle")] == sorted(WANT), pages
+    assert "Sparkle (Thread)" in pages and "Sparkle: Appearance" in pages, pages
     for page in pages:
         on_it = [n for n, s in by_name.items() if s.page == page]
-        assert len(on_it) == WANT[page], "%s has %d settings, expected %d" % (page, len(on_it), WANT[page])
-    # headings, each kind of sparkle under its own on the one page of looks
-    assert list(stub.headers.values()) == [
-        "Destinations", "Focus And My Route", "Travel Options", "Chat", "Gathering Nodes", "Display", "Line", "Colors", "Defaults",
-        "Herbs", "Ore", "Chests", "Quest Objects", "Other Objects", "Defaults"], list(stub.headers.values())
+        # (a Sparkle page may hold only a list and a button: Sparkle: Ignore List)
+        assert len(on_it) == WANT.get(page, len(on_it)) and (on_it or page == "Sparkle: Ignore List"), \
+            "%s has %d settings, expected %s" % (page, len(on_it), WANT.get(page))
+    # headings: Routes' own, in order, then the Sparkle's
+    headers = list(stub.headers.values())
+    assert headers[:9] == [
+        "Destinations", "Focus And My Route", "Travel Options", "Chat", "Gathering Nodes", "Display", "Line", "Colors", "Defaults"], headers
+    assert len(headers) > 9 and headers[-1] == "Defaults", headers
     # every page opens with its name, its tool's picture and a line in Patchwerk's voice
     intros = {i.name: i for i in stub.intros.values()}
-    assert sorted(intros) == sorted(WANT), sorted(intros)
+    assert sorted(intros) == pages, sorted(intros)
     assert intros["Routes (Thread)"].voice == "Follow the thread. Patchwerk knows the way. Mostly."
     assert intros["Routes: Trail"].voice.startswith("A line on the ground.") and intros["Sparkle: Appearance"].voice.startswith("Every shiny thing")
     assert all(i.voice and i.icon and i.icon.endswith("icon") for i in intros.values()), [n for n, i in intros.items() if not i.voice]
-    assert stub.Rows() == len(WANT) + 15, "a row of our own could not be made"
+    lists = len([r for r in stub.rows.values() if r.template == "PatchwerkForeverListTemplate"])   # (Sparkle's two lists)
+    assert stub.Rows() == len(pages) + len(headers) + lists, "a row of our own could not be made"
     # the front page: what is sewn on, each with a button to its page
     front = stub.front
     front.shown = True
@@ -944,7 +963,9 @@ def main():
     mine = sorted(b.text for b in buttons if b.page.startswith("Routes") or b.page == "Routes (Thread)")
     assert mine == ["Reset", "Show"], mine
     assert sum(1 for b in buttons if b.text == "Reset") == 2, [b.text for b in buttons]
-    assert sum(1 for s in by_name.values() if s.colour) == 12 and sum(1 for s in by_name.values() if s.choices) == 14
+    routes_own = [s for s in by_name.values() if s.variable.startswith(ADDON + "_")]
+    assert sum(1 for s in routes_own if s.colour) == 5 and sum(1 for s in routes_own if s.choices) == 3
+    assert "Route To My Corpse" in names and [s for s in routes_own if s.name == "Route To My Corpse"][0].default is True
 
     def setv(name, value):
         by_name[name].set(value)
@@ -1000,8 +1021,9 @@ def main():
     # every effect: the right number of pictures, and it runs without an error (the subtle ones for
     # long enough that every speck goes through several of its turns)
     pieces = {"star": 2, "glow": 1, "ring": 3, "beam": 2, "swirl": 3, "brackets": 4, "none": 0,
-              "glints": 5, "fireflies": 6, "shimmer": 2, "ripple": 3, "wisp": 4}
-    subtle = ("glints", "fireflies", "shimmer", "ripple", "wisp")
+              "glints": 5, "fireflies": 6, "shimmer": 2, "ripple": 3, "wisp": 4,
+              "leaves": 5, "embers": 6, "coins": 5, "rays": 3}
+    subtle = ("glints", "fireflies", "shimmer", "ripple", "wisp", "leaves", "embers", "coins")
     assert sorted(c.value for c in by_name["look_herb_effect"].choices.values()) == sorted(pieces), "the list of effects does not match the effects there are"
     for effect, count in pieces.items():
         setv("look_herb_effect", effect)
@@ -1116,7 +1138,7 @@ def main():
         return s.alpha
 
     cx, cy, hw, hh = body()
-    assert alpha_at(cx, cy) in (None, 1.0), "the sparkle faded without being asked"
+    assert alpha_at(cx, cy) in (None, 1.0), "the sparkle faded without being asked: %s" % s.alpha
     setv("sparkleBehind", True)
     assert s.alpha == 0.0, "the sparkle did not fade right over your character, at once"
     assert alpha_at(cx + 6 * hw, cy) == 1.0, "the sparkle faded well clear of your character"
@@ -2661,6 +2683,579 @@ def main():
     assert followed() == ("none", None, None), followed()
     chat("followed")
 
+    step("a ghost is led to its corpse before everything else, on foot; alive again, what was followed is followed again")
+    # The stand-in can die. STUB.dead = 'dead' (died, not released) or 'ghost'; STUB.CorpseAt(map, x, y) is
+    # where the game says the corpse lies (STUB.corpse = nil: it does not say); STUB.secret is a value an
+    # addon may not read, which the game hands over with STUB.deadSecret or STUB.corpseSecret set.
+    lua.execute("""
+        STUB.dead, STUB.secret, STUB.corpseAsked = nil, {}, 0
+        function issecretvalue(value) return value == STUB.secret end
+        function UnitIsGhost(unit)
+            assert(unit == 'player')
+            if STUB.deadSecret then return STUB.secret end
+            return STUB.dead == 'ghost'
+        end
+        function UnitIsDeadOrGhost(unit)
+            assert(unit == 'player')
+            if STUB.deadSecret then return STUB.secret end
+            return STUB.dead ~= nil
+        end
+        function STUB.CorpseAt(map, x, y)
+            local pin = STUB.pin
+            STUB.PinAt(map, x, y)
+            STUB.corpse, STUB.pin = STUB.pin, pin
+        end
+        C_DeathInfo = { GetCorpseMapPosition = function(uiMap)
+            assert(type(uiMap) == 'number')
+            STUB.corpseAsked = STUB.corpseAsked + 1
+            if STUB.corpseSecret then return STUB.secret end
+            local corpse = STUB.corpse
+            if corpse and corpse.uiMapID == uiMap then return corpse.position end
+        end }
+    """)
+    CORPSE, GRAVE = (-620.0, -2760.0), (-442.0, -2598.0)
+
+    def die(where=CORPSE, known=True):
+        stand(where)
+        if known:
+            stub.CorpseAt(1, *where)
+        else:
+            stub.corpse = None
+        stub.dead = "dead"
+        stub.Fire("PLAYER_DEAD")
+
+    def release():                     # (the game's event for becoming a ghost is PLAYER_ALIVE)
+        stub.dead = "ghost"
+        stand(GRAVE)
+        stub.Fire("PLAYER_ALIVE")
+        ticks()
+
+    def revive(where=CORPSE):
+        stand(where)
+        stub.dead, stub.corpse = None, None
+        stub.Fire("PLAYER_UNGHOST")
+        ticks()
+
+    def corpse():
+        return ns.CorpseActive()
+
+    setting("notify", True)
+    setting("flights", True)
+    stand(GRAVE)
+    arrow.element = lua.table_from({"wx": RATCHET[1], "wy": RATCHET[0], "instance": 1})
+    ticks()
+    assert followed()[0] == "guide" and near(*RATCHET), followed()
+    assert not ns.CorpseState().watching, "the corpse is looked for while you are alive"
+    quiet()
+    chat("before dying")
+    # dead and not released: nothing changes, and the game is not asked where the corpse lies
+    die()
+    ticks()
+    assert not corpse() and near(*RATCHET) and stub.corpseAsked == 0, "something was done before you released"
+    # released: the corpse, on foot, said on screen and told to the base; nothing in chat
+    release()
+    assert corpse() and ns.dest.source == "corpse" and near(*CORPSE) and ns.dest.walkOnly, "a ghost was not led to its corpse"
+    assert ns.route and len(ns.route.flown) == 0 and len(ns.route.rides) == 0, "no way on foot to the corpse"
+    assert followed() == ("corpse", None, None), followed()
+    words, under = on_screen()
+    assert words == "To your corpse" and under and "walk" in under, (words, under)
+    assert not chat("to the corpse"), "the way to the corpse was said in chat"
+    # (asked no more while the way leads there)
+    asked = stub.corpseAsked
+    ticks(5)
+    assert stub.corpseAsked == asked and ns.dest.source == "corpse"
+    # a spot or a pin of your own given meanwhile waits, and that is said; nor is the guide followed
+    slash("to 50 50")
+    stub.PinAt(1, *CAMP)
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    ticks()
+    text = chat("a pin while a ghost")
+    assert ns.dest.source == "corpse" and near(*CORPSE), "a pin came before the corpse"
+    assert sum(1 for t in text if "Your corpse comes first. The coordinates you gave are routed to once you are alive." in t) == 1, text
+    assert sum(1 for t in text if "Your corpse comes first. Your map pin is routed to once you are alive." in t) == 1, text
+    slash("quest")
+    assert any("Following: the way to your corpse" in t for t in chat("quest, a ghost"))
+    # alive again: the pin (the last of the two given), as a pin comes first; with it gone, the guide's step as before
+    revive()
+    assert not corpse() and ns.dest.pin and near(*CAMP) and followed()[0] == "pin", "the pin given while dead was not gone to"
+    assert not ns.CorpseState().watching
+    stub.pin = None
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    ticks()
+    assert followed()[0] == "guide" and near(*RATCHET), followed()
+    # a pin that led when you died is gone to again; one removed meanwhile is not
+    stub.PinAt(1, *CAMP)
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    ticks()
+    assert ns.dest.pin
+    die()
+    release()
+    assert ns.dest.source == "corpse" and followed()[0] == "corpse"
+    revive()
+    assert ns.dest.pin and near(*CAMP), "the pin that led before was not gone to again"
+    die()
+    release()
+    stub.pin = None
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    ticks()
+    assert ns.dest.source == "corpse"
+    revive()
+    assert followed()[0] == "guide" and near(*RATCHET), "a pin removed while dead was gone to"
+    chat("pins")
+    # a gathering run waits, and goes on
+    stub.time += 400
+    slash("gather")
+    ticks()
+    assert ns.dest.source == "gather"
+    die()
+    release()
+    assert ns.dest.source == "corpse" and ns.GatherActive(), "the gathering run was ended by dying"
+    ticks(5)
+    assert ns.dest.source == "corpse", "the gathering run did not wait for the corpse"
+    revive()
+    assert ns.dest and ns.dest.source == "gather" and followed()[0] == "gather", "the gathering run did not go on"
+    slash("gather stop")
+    ticks()
+    # a quest you selected and the focus stand as they were
+    stub.QuestAt(993, "A Quest Kept", 1, *CAMP)
+    stub.watched = lua.table_from([993])
+    Choice.Set(Choice, "quest", 993)
+    slash("focus quests")
+    ticks()
+    assert ns.dest.source == "quest" and ns.dest.chosen and near(*CAMP)
+    die()
+    release()
+    assert ns.dest.source == "corpse" and not ns.dest.chosen and ns.TrailLook(ns.route, True, 0.9, 0.45)[0] is None
+    revive()
+    assert ns.dest.source == "quest" and ns.dest.chosen and near(*CAMP), "the selected quest was not followed again"
+    assert Choice.Is(Choice, "quest", 993) and focus() == "quests", "the choice or the focus was lost"
+    Choice.Clear(Choice)
+    stub.QuestGone(993)
+    slash("focus auto")
+    ticks()
+    assert followed()[0] == "guide"
+    chat("side paths, a ghost")
+    # reaching the corpse as a ghost: nothing else is routed to until you are alive
+    die()
+    release()
+    stand(CORPSE)
+    ticks()
+    assert not ns.dest and corpse() and followed()[0] == "corpse", "the guide was followed from the corpse, by a ghost"
+    ticks(4)
+    assert not ns.dest
+    revive()
+    assert followed()[0] == "guide" and near(*RATCHET), "the guide was not followed again"
+    # Stop Routing as a ghost says what was stopped; Start Routing leads to the corpse again
+    die()
+    release()
+    slash("stop")
+    ticks()
+    text = chat("stopped as a ghost")
+    assert not ns.dest and corpse() and any("Routing to your corpse stopped." in t for t in text), text
+    slash("go")
+    ticks()
+    text = chat("go as a ghost")
+    assert ns.dest.source == "corpse" and any(t.endswith("Routing to your corpse:") for t in text) and any("walk" in t for t in text), text
+    # the setting: off, your other routes at once; on, the corpse again
+    setting("corpse", False)
+    ticks()
+    assert not corpse() and followed()[0] == "guide" and not ns.CorpseState().watching
+    setting("corpse", True)
+    ticks()
+    assert ns.dest.source == "corpse"
+    revive()
+    # no flight for a ghost, where the living fly
+    arrow.element = None
+    stand(GRAVE)
+    stub.PinAt(1, -7140.0, -3790.0)
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    frames()
+    assert any("fly" in t for t in chat("the living fly")), "the living do not fly to Gadgetzan: the check below proves nothing"
+    stub.pin = None
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    die((-7140.0, -3790.0))
+    release()
+    assert ns.dest.source == "corpse" and ns.route and len(ns.route.flown) == 0, "a ghost was sent by flight path"
+    assert "fly" not in on_screen()[1], on_screen()
+    revive(GRAVE)
+    assert followed() == ("none", None, None), followed()
+    quiet()
+    chat("a ghost")
+
+    step("a corpse with no place on the map is not routed to, and the chat says why once for each death")
+    NO_PLACE = "Your corpse has no location on the map (it may be in an instance), so it is not routed to."
+    arrow.element = lua.table_from({"wx": RATCHET[1], "wy": RATCHET[0], "instance": 1})
+    ticks()
+    die(known=False)
+    release()
+    assert not corpse() and followed()[0] == "guide" and not any("corpse" in t for t in heard()), "said before the game had a moment to answer"
+    ticks(4)
+    text = chat("no place")
+    assert sum(1 for t in text if NO_PLACE in t) == 1 and not corpse() and near(*RATCHET), text
+    ticks(12)
+    assert not any("corpse" in t for t in chat("no place, again")), "said more than once for one death"
+    # the game says where after all (you came out of the instance): led there from then on
+    stub.CorpseAt(1, *CORPSE)
+    ticks(6)
+    assert corpse() and near(*CORPSE), "a corpse whose place became known was not routed to"
+    revive()
+    # the next death is said again
+    die(known=False)
+    release()
+    ticks(4)
+    assert sum(1 for t in chat("no place, the next death") if NO_PLACE in t) == 1
+    revive()
+    # on another continent: a ghost takes no boat
+    die()
+    stub.CorpseAt(0, -8900.0, -120.0)
+    release()
+    ticks(4)
+    text = chat("another continent")
+    assert not corpse() and followed()[0] == "guide", "a corpse on another continent was routed to"
+    assert sum(1 for t in text if "Your corpse is on another continent (Eastern Kingdoms). A ghost takes no boat or zeppelin, so it is not routed to." in t) == 1, text
+    revive()
+    # where the game gives no position for you (an instance): not routed to, and said
+    die()
+    stub.dead, stub.player.x = "ghost", None
+    stub.Fire("PLAYER_ALIVE")
+    ticks(6)
+    text = chat("no position")
+    assert not corpse() and sum(1 for t in text if "Your position is not available here, so your corpse is not routed to." in t) == 1, text
+    stub.player.x = GRAVE[0]
+    revive()
+    # a position the game will not let an addon read is no position
+    die()
+    stub.corpseSecret = True
+    release()
+    ticks(4)
+    assert not corpse() and sum(1 for t in chat("a secret place") if NO_PLACE in t) == 1
+    stub.corpseSecret = None
+    revive()
+    # nor is a secret answer to "are you a ghost" taken for yes: nothing at all is done
+    stub.deadSecret = True
+    asked = stub.corpseAsked
+    die()
+    release()
+    ticks(6)
+    assert not corpse() and not ns.CorpseState().watching and stub.corpseAsked == asked and not chat("a secret ghost")
+    stub.deadSecret = None
+    revive()
+    # a client without the corpse's position: said as a corpse with no place; one that cannot say you are a ghost: nothing
+    lua.execute("STUB.kept = { C_DeathInfo, UnitIsGhost, UnitIsDeadOrGhost }; C_DeathInfo = nil")
+    die()
+    release()
+    ticks(4)
+    assert not corpse() and sum(1 for t in chat("no C_DeathInfo") if NO_PLACE in t) == 1
+    revive()
+    lua.execute("C_DeathInfo = STUB.kept[1]; UnitIsGhost, UnitIsDeadOrGhost = nil, nil")
+    die()
+    release()
+    ticks(6)
+    assert not corpse() and not chat("no UnitIsGhost") and followed()[0] == "guide"
+    lua.execute("UnitIsGhost, UnitIsDeadOrGhost = STUB.kept[2], STUB.kept[3]")
+    revive()
+    # on a battleground you die again and again, and the spirit healer brings you back: not said there
+    lua.execute("STUB.inInstance = IsInInstance; function IsInInstance() return true, 'pvp' end")
+    die(known=False)
+    release()
+    ticks(6)
+    assert not corpse() and not chat("a battleground"), "said on a battleground"
+    lua.execute("IsInInstance = STUB.inInstance")
+    revive()
+    # the setting off: a ghost is left alone, and the game is not asked
+    setting("corpse", False)
+    asked = stub.corpseAsked
+    die()
+    release()
+    ticks(6)
+    assert not corpse() and stub.corpseAsked == asked and near(*RATCHET) and not chat("the setting off")
+    revive()
+    setting("corpse", True)
+    assert not ns.CorpseState().watching and followed()[0] == "guide"
+    arrow.element = None
+    ticks()
+    quiet()
+    chat("a corpse with no place")
+
+    step("the flight point search: to the nearest flight point you lack and on to the next, once a flight map has been read")
+    POINTS = G.PatchwerkForever_Thread_RoutesData[1].points
+
+    def mine():
+        return G.PatchwerkForever_Thread_RoutesDB.taxi["Player-1-00000001"]
+
+    def horde():                       # the Horde's flight points on Kalimdor: (id, name, cell x, cell y)
+        return [(p[1], p[2], p[3], p[4]) for p in POINTS.values() if "H" in p[5]]
+
+    def know(*ids, others=False):      # these flight points are yours, the Horde's others are or are not
+        for pid, _, _, _ in horde():
+            mine().known[pid] = (pid in ids) or others
+
+    def lack(*ids):                    # every flight point is yours but these
+        for pid, _, _, _ in horde():
+            mine().known[pid] = pid not in ids
+
+    def nearest_lacking(*left):        # worked out here as the search does: straight there, in cells
+        cx, cy = ns.Planner.CellOf(1, stub.player.x, stub.player.y)
+        best = None
+        for pid, name, x, y in horde():
+            if mine().known[pid] is not True and name not in left:
+                far = (x - cx) ** 2 + (y - cy) ** 2
+                if best is None or far < best[0]:
+                    best = (far, name)
+        return best and best[1]
+
+    def going():
+        state = ns.DiscoverState()
+        return state and state.going
+
+    def searching():
+        return ns.DiscoverActive()
+
+    stand(HERE)
+    slash("flights")
+    chat("flights, before the search")
+    keep = lua.eval("""function(mine)
+        local was = { seen = {}, known = {} }
+        for k, v in pairs(mine.seen) do was.seen[k] = v end
+        for k, v in pairs(mine.known) do was.known[k] = v end
+        return was
+    end""")(mine())
+    # no flight map read on this continent: a point not known may be one never read, so no search
+    mine().seen[1] = None
+    slash("discover")
+    text = chat("discover, nothing read")
+    assert not searching() and not ns.dest and not any("started" in t for t in text), text
+    assert sum(1 for t in text if "Open the flight map at a flight master first." in t) == 1, text
+    # read: Crossroads (here) and Orgrimmar are yours. The nearest you lack is Ratchet.
+    stub.flightMap = lua.table_from({25: 0, 23: 1})
+    stub.Fire("TAXIMAP_OPENED")
+    frames()
+    chat("flight map")
+    assert nearest_lacking() == "Ratchet, The Barrens", nearest_lacking()
+    slash("discover")
+    ticks()
+    text = chat("discover")
+    assert searching() and ns.dest.source == "discover" and ns.dest.chosen and ns.route, "the search did not start"
+    assert any("Flight point search started: nearest undiscovered flight point first, then the next. /thread discover stop ends it." in t for t in text), text
+    assert lines() == ["Discover the flight point at Ratchet"] and "walk" in on_screen()[1], on_screen()
+    assert going() == "Ratchet, The Barrens" and followed() == ("discover", None, None), (going(), followed())
+    slash("quest")
+    assert any("Following: your flight point search. /thread discover stop ends it." in t for t in chat("quest, searching"))
+    # your guide is not followed meanwhile; a pin of your own comes first, and the search goes on after it
+    arrow.element = lua.table_from({"wx": CAMP[1], "wy": CAMP[0], "instance": 1})
+    ticks()
+    assert ns.dest.source == "discover"
+    stub.PinAt(1, *FIELD)
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    ticks()
+    assert ns.dest.pin and searching() and followed()[0] == "discover"
+    stub.pin = None
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    ticks()
+    assert ns.dest.source == "discover" and going() == "Ratchet, The Barrens", "the search did not go on once the pin was gone"
+    chat("a pin during the search")
+    # there: the search waits for the flight master's word, and says so once
+    ratchet = (ns.dest.x, ns.dest.y)
+    stand(ratchet)
+    ticks()
+    text = chat("at the flight point")
+    assert not ns.dest and searching() and ns.DiscoverState().at, "the search did not wait at the flight point"
+    assert sum(1 for t in text if "You have arrived at Ratchet. Speak to the flight master to discover the flight point." in t) == 1, text
+    ticks(4)
+    assert not ns.dest and going() == "Ratchet, The Barrens" and not chat("waiting")
+    # the game says it is yours: on to the next nearest
+    stub.Fire("UI_INFO_MESSAGE", 372, G.ERR_NEWTAXIPATH)
+    ticks()
+    text = chat("discovered")
+    assert mine().known[80] is True and any("Flight point discovered: Ratchet, The Barrens." in t for t in text), text
+    second = nearest_lacking()
+    assert second == "Camp Taurajo, The Barrens" and going() == second and ns.dest.source == "discover" and ns.route, (second, going())
+    assert lines() == ["Discover the flight point at Camp Taurajo"], lines()
+    # one that turns up on a flight map you open is yours too
+    stub.flightMap = lua.table_from({25: 1, 23: 1, 80: 0, 77: 1})
+    stub.Fire("TAXIMAP_OPENED")
+    ticks()
+    third = nearest_lacking()
+    assert third and third != second and going() == third, (third, going())
+    chat("a flight map during the search")
+    # no way to the next: it is left out and the one after gone to, with nothing in chat
+    stub.noWay = 1
+    know(25, 23, 80, 77, [p[0] for p in horde() if p[1] == third][0])
+    stub.Tick(); frames()
+    lost = going()
+    assert lost == nearest_lacking() and ns.dest.failed and not ns.route, (lost, nearest_lacking())
+    assert on_screen() == ("Discover the flight point at " + lost.split(",")[0], "No route found"), on_screen()
+    ticks()
+    after = going()
+    assert after == nearest_lacking(lost) and ns.route and list(ns.DiscoverState().left.values()) == [lost], (after, lost)
+    assert not any("No route found" in t for t in chat("a flight point with no way")), "said in chat for one point of a search"
+    # there, and away again without it being discovered: left out too, and said
+    there = (ns.dest.x, ns.dest.y)
+    stand(there)
+    ticks()
+    assert ns.DiscoverState().at and not ns.dest
+    stand(there, 100.0)
+    ticks()
+    text = chat("walked away")
+    assert any("%s was not discovered, and is left out of this search." % after.split(",")[0] in t for t in text), text
+    assert going() == nearest_lacking(lost, after) and ns.dest.source == "discover", (going(), nearest_lacking(lost, after))
+    # the rest found: the search ends, naming the ones it left out
+    for pid, name, _, _ in horde():
+        if name not in (lost, after):
+            mine().known[pid] = True
+    ticks()
+    text = chat("the search ended")
+    assert not searching() and not (ns.dest and ns.dest.source == "discover"), "the search did not end"
+    assert any("Flight point search ended. Not reached or not discovered: %s." % "; ".join(sorted([lost, after])) in t for t in text), text
+    ticks()
+    assert followed()[0] == "guide" and near(*CAMP), "the guide was not followed again after the search"
+    # the last one: the way there may fly between points you have; found, the chat says all are known
+    arrow.element = None
+    stand(HERE)
+    lack(40)
+    slash("discover")
+    ticks()
+    text = chat("the last one")
+    assert going() == "Gadgetzan, Tanaris" and ns.route and len(ns.route.flown) > 0, "the way to the last flight point does not fly"
+    mine().known[40] = True
+    ticks()
+    text = chat("all known")
+    assert not searching() and not ns.dest and sum(1 for t in text if "All flight points on this continent are known." in t) == 1, text
+    slash("discover")
+    text = chat("discover, all known")
+    assert not searching() and any("All flight points on this continent are known." in t for t in text) and not any("started" in t for t in text), text
+    # a flight point the map data has no walk to (as the ones inside Ironforge and the Undercity) is left out and named
+    lua.execute("table.insert(PatchwerkForever_Thread_RoutesData[1].points, { 9001, 'Nowhere, The Sea', 1936, 4096, 'H', false, 0, {} })")
+    lack(9001)
+    slash("discover")
+    text = chat("discover, no ground")
+    assert not searching() and any("No route to the flight points you have not discovered: Nowhere, The Sea." in t for t in text), text
+    lack(9001, 80)
+    stand(ratchet, 200.0)
+    slash("discover")
+    ticks()
+    assert going() == "Ratchet, The Barrens"
+    mine().known[80] = True
+    ticks()
+    text = chat("ended, no ground")
+    assert not searching() and any("Flight point search ended. Not reached or not discovered: Nowhere, The Sea." in t for t in text), text
+    lua.execute("table.remove(PatchwerkForever_Thread_RoutesData[1].points)")
+    mine().known[9001] = None
+    stand(HERE)
+
+    step("the flight point search is a side path: one at a time, Start Routing and Stop Routing end it, its key; a ghost first")
+    know(25, 23)
+    # a search ends a gathering run, and a gathering run ends a search
+    stub.time += 400
+    slash("gather")
+    ticks()
+    assert ns.GatherActive() and ns.dest.source == "gather"
+    slash("discover")
+    ticks()
+    text = chat("a search during a run")
+    assert not ns.GatherActive() and searching() and ns.dest.source == "discover", "a search left the gathering run on"
+    assert any(t.endswith("Gathering stopped.") for t in text), text
+    slash("gather")
+    ticks()
+    assert ns.GatherActive() and not searching() and ns.dest.source == "gather", "a gathering run left the search on"
+    slash("gather stop")
+    # a search lets a selected quest go, and selecting a quest ends a search
+    stub.QuestAt(994, "A Side Job", 1, *FIELD)
+    Choice.Set(Choice, "quest", 994)
+    ticks()
+    assert ns.dest.source == "quest" and ns.dest.chosen
+    slash("discover")
+    ticks()
+    assert searching() and Choice.Get(Choice) is None and ns.dest.source == "discover", "a search left the selected quest standing"
+    Choice.Set(Choice, "quest", 994)
+    ticks()
+    assert not searching() and ns.dest.source == "quest", "selecting a quest left the search on"
+    Choice.Clear(Choice)
+    stub.QuestGone(994)
+    ticks()
+    chat("side paths")
+    # a search that cannot start leaves a selected quest and a gathering run as they were
+    stub.QuestAt(994, "A Side Job", 1, *FIELD)
+    Choice.Set(Choice, "quest", 994)
+    mine().seen[1] = None
+    slash("discover")
+    assert not searching() and Choice.Is(Choice, "quest", 994), "a search that did not start dropped the selected quest"
+    mine().seen[1] = True
+    Choice.Clear(Choice)
+    stub.QuestGone(994)
+    ticks()
+    chat("a search that could not start")
+    # Start Routing ends it where there is a guide step to go to; Stop Routing ends it and says what was stopped
+    arrow.element = lua.table_from({"wx": CAMP[1], "wy": CAMP[0], "instance": 1})
+    slash("discover")
+    ticks()
+    assert ns.dest.source == "discover"
+    slash("go")
+    ticks()
+    text = chat("go during a search")
+    assert not searching() and ns.dest.source == "rxp", "Start Routing left the search on"
+    assert any(t.endswith("Flight point search stopped.") for t in text), text
+    slash("discover")
+    ticks()
+    slash("stop")
+    ticks()
+    text = chat("stop during a search")
+    assert not searching() and any(t.endswith("Flight point search stopped.") for t in text) and not any("Routing" in t for t in text), text
+    assert ns.dest and ns.dest.source == "rxp", "the guide was not followed again once the search was stopped"
+    # the commands, and the key: one press starts a search, the next ends it, each saying how
+    slash("discover stop")
+    slash("discover everything")
+    slash("")
+    text = chat("discover, the commands")
+    assert any("No flight point search is active." in t for t in text) and any("Usage: /thread discover, or /thread discover stop." in t for t in text), text
+    assert any("/thread discover: route to the nearest flight point you have not discovered" in t for t in text), text
+    key = G.PatchwerkForever_Thread_Routes_Discover
+    key()
+    assert searching() and any("Press the key again to stop." in t for t in chat("the search key"))
+    key()
+    assert not searching() and any("Flight point search stopped." in t for t in chat("the search key, again"))
+    assert G.BINDING_NAME_PATCHWERKFOREVER_THREAD_DISCOVER == "Toggle Flight Point Search"
+    # a ghost goes to its corpse first: the search waits, and goes on
+    arrow.element = None
+    slash("discover")
+    ticks()
+    was_going = going()
+    die()
+    release()
+    assert ns.dest.source == "corpse" and searching() and followed()[0] == "corpse"
+    ticks(4)
+    assert ns.dest.source == "corpse"
+    revive(HERE)
+    assert ns.dest.source == "discover" and going() == was_going, "the search did not go on once alive"
+    # where you are is not to be had (an instance): the search waits; and none can start there
+    stub.player.x = None
+    ticks()
+    assert searching()
+    slash("discover stop")
+    slash("discover")
+    text = chat("discover, no position")
+    assert not searching() and any("Your position is not available here." in t for t in text), text
+    stub.player.x = HERE[0]
+    # a character of no faction yet, and a map with no flight points
+    stub.player.side = None
+    slash("discover")
+    assert not searching() and any("Your faction is not known yet" in t for t in chat("discover, no faction"))
+    stub.player.side = "Horde"
+    lua.execute("STUB.points = PatchwerkForever_Thread_RoutesData[1].points; PatchwerkForever_Thread_RoutesData[1].points = {}")
+    slash("discover")
+    assert not searching() and any("No flight points on this map." in t for t in chat("discover, no flight points"))
+    lua.execute("PatchwerkForever_Thread_RoutesData[1].points = STUB.points")
+    # (what this character knows is put back as it was, and the stand-in lives again as it did)
+    lua.eval("""function(mine, was)
+        mine.seen, mine.known = was.seen, was.known
+        issecretvalue, UnitIsGhost, UnitIsDeadOrGhost, C_DeathInfo = nil, nil, nil, nil
+    end""")(mine(), keep)
+    stub.flightMap = None
+    ticks()
+    assert followed() == ("none", None, None), followed()
+    quiet()
+    chat("the flight point search")
+
     step("the keys: every binding in the family's section, each safe without its function, and named")
     bindings = open(os.path.join(ADDONS, ADDON, "Bindings.xml"), encoding="utf-8").read()
     import re
@@ -2681,6 +3276,114 @@ def main():
     assert words == "Fly from Crossroads to Thunder Bluff, then take the zeppelin from Orgrimmar to Grom'gol (12 min in all)", words
     words = ns.Travel(lua.eval("{ flown = {}, rides = {}, yards = 450, seconds = 60 }"))
     assert words == "Walk 450 yd (60 s)", words
+
+    step("Mark The Way Ahead: the game's pin lent to mark the trail ahead, yours kept, followed, and given back")
+    slash("stop")
+    chat("stop before the way ahead")
+    set_option("flights", False)
+    stub.player.x, stub.player.y, stub.player.map = -442.0, -2598.0, 1
+    # (the game's pin as an addon can set it, and what it tracks: the stand-in only reads them otherwise)
+    lua.execute("""
+        local MAPS = { [1414] = { 1, 17066.6, -19733.21, 12799.9, -11733.3 }, [1415] = { 0, 18171.97, -22569.21, 11176.34, -15973.34 } }
+        STUB.pinTracked, STUB.pinSets = false, 0
+        C_Map.SetUserWaypoint = function(point)
+            STUB.pin = { uiMapID = point.uiMapID, position = CreateVector2D(point.position.x, point.position.y) }
+            STUB.pinSets = STUB.pinSets + 1
+        end
+        C_Map.ClearUserWaypoint = function() STUB.pin = nil end
+        C_Map.GetMapPosFromWorldPos = function(map, pos)
+            local id = map == 1 and 1414 or 1415
+            local m = MAPS[id]
+            return id, CreateVector2D((m[2] - pos.y) / (m[2] - m[3]), (m[4] - pos.x) / (m[4] - m[5]))
+        end
+        C_SuperTrack.SetSuperTrackedUserWaypoint = function(on) STUB.pinTracked = on and true or false if on then STUB.focus = 0 end end
+        C_SuperTrack.IsSuperTrackingUserWaypoint = function() return STUB.pinTracked end
+        C_SuperTrack.SetSuperTrackedQuestID = function(id) STUB.focus = id STUB.pinTracked = false end
+        function STUB.PinWorld()
+            local pin = STUB.pin
+            if not pin then return nil end
+            local map, world = C_Map.GetWorldPosFromMapPos(pin.uiMapID, pin.position)
+            return world.x, world.y
+        end
+    """)
+    marker = G.PatchwerkForever.Marker
+
+    def pin_world():
+        got = stub.PinWorld()
+        return got if isinstance(got, tuple) else (None, None)
+
+    stub.PinAt(1, -7140.0, -3790.0)                               # your own pin, at Gadgetzan
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    frames()
+    chat("a pin for the way ahead")
+    dest = ns.dest
+    assert dest and dest.pin and ns.route, "no route to the pin"
+    stub.Tick()
+    placed = ns.WayAheadPlaced()
+    assert placed and marker.Active(marker) and marker.IsOurs(marker) and stub.pinTracked, "the way ahead was not marked"
+    wx, wy = pin_world()
+    far = ((wx - stub.player.x) ** 2 + (wy - stub.player.y) ** 2) ** 0.5
+    assert 5 < far <= 40.5, "the marker is not on the trail a little way ahead: %.1f yd" % far
+    mine = marker.Pin(marker)
+    assert mine and abs(mine.position.x - stub.pin.position.x) > 1e-4, "your own pin was not kept"
+    stub.Fire("USER_WAYPOINT_UPDATED")                            # (the game's word of the pin moved here: no news)
+    frames()
+    assert same(ns.dest, dest), "the pin moved to mark the way ahead was taken for a pin of yours"
+    sets = stub.pinSets
+    stub.Tick()
+    assert stub.pinSets == sets, "the pin was set again without having moved"
+    # walking on: the marker moves on along the trail
+    p = ns.route.points[min(6, len(ns.route.points))]
+    stub.player.x, stub.player.y = p[1], p[2]
+    stub.time += 5
+    stub.Tick()
+    stub.Tick()
+    assert not same(ns.WayAheadPlaced(), placed) and stub.pinSets > sets, "the marker did not move on as you walked"
+    assert same(ns.dest, dest)
+    # a pin of your own set while it is lent: yours, and routed to
+    stub.PinAt(1, -956.0, -3754.0)
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    frames()
+    chat("a pin of your own while lent")
+    assert not same(ns.dest, dest) and abs(ns.dest.x - -956.0) < 1 and abs(ns.dest.y - -3754.0) < 1, "your new pin was not routed to"
+    stub.Tick()
+    assert marker.IsOurs(marker), "the marker was not put back on the new trail"
+    yours = marker.Pin(marker)
+    assert yours and abs(yours.position.x - (17066.6 - -3754.0) / (17066.6 - -19733.21)) < 1e-6, "your new pin was not kept as yours"
+    # a quest chosen while it is lent: it is yours to give back, and the route's marker takes the pin again
+    lua.globals().C_SuperTrack.SetSuperTrackedQuestID(55)
+    stub.Fire("SUPER_TRACKING_CHANGED")
+    assert marker.Quest(marker) == 55, "the quest you chose was not kept"
+    stub.Tick()
+    assert stub.pinTracked, "the marker did not take the pin again after you chose a quest"
+    # disabled: everything given back, and the route does not take the given-back pin for news
+    dest = ns.dest
+    set_option("wayAhead", False)
+    assert not marker.Active(marker) and stub.focus == 55 and not stub.pinTracked, "the tracked quest was not given back"
+    wx, wy = pin_world()
+    assert abs(wx - -956.0) < 0.5 and abs(wy - -3754.0) < 0.5, "your pin was not given back: %s" % ((wx, wy),)
+    stub.Fire("USER_WAYPOINT_UPDATED")
+    frames()
+    assert same(ns.dest, dest), "the pin given back was routed to anew"
+    # on again, then Stop Routing: given back
+    set_option("wayAhead", True)
+    stub.Tick()
+    assert marker.IsOurs(marker)
+    slash("stop")
+    chat("stop the way ahead")
+    assert not marker.Active(marker), "stopping the route did not give the pin back"
+    wx, wy = pin_world()
+    assert abs(wx - -956.0) < 0.5, "your pin was not given back when the route stopped"
+    # at logout too, and a pin left lent by a game that closed without one is given back at the next login
+    slash("go")
+    frames()
+    stub.Tick()
+    assert marker.IsOurs(marker)
+    stub.Fire("PLAYER_LOGOUT")
+    assert not marker.Active(marker) and abs(pin_world()[0] - -956.0) < 0.5, "not given back at logout"
+    slash("stop")
+    set_option("flights", True)
+    chat("the way ahead")
 
     print("all steps ran; memory at the end %.1f MB" % (lua.eval("collectgarbage('count')") / 1024))
 

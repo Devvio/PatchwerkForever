@@ -84,7 +84,9 @@ local pending
 local Watch                   -- (below) starts or stops the minimap's redraws, and has it drawn anew
 
 local function Remember(p, kind, icon)
-	if not db.nodeKinds[p.name] then
+	-- (a kind only guessed, from a spot another tool told of, takes the real icon the first time you gather)
+	local had = db.nodeKinds[p.name]
+	if not had or (had.guessed and icon) then
 		db.nodeKinds[p.name] = { icon = icon, kind = kind }
 	end
 	local known = false
@@ -327,4 +329,23 @@ end
 function ns.NodeIcon(name)
 	local kind = db and db.nodeKinds and db.nodeKinds[name]
 	return kind and kind.icon or nil
+end
+
+-- A spot another tool tells of (Sparkle (Thread): an herb or a vein you passed, through the base's
+-- Gather:Note), kept as one you gathered from. Until you gather there yourself, what grows there shows
+-- with the game's plain herb or ore icon. kind: 'h' or 'o'. True when it was taken.
+local GUESSED = { h = 'Interface\\Icons\\INV_Misc_Herb_07', o = 'Interface\\Icons\\INV_Ore_Copper_01' }
+function ns.NodesNote(name, kind, map, x, y)
+	if not (db and type(name) == 'string' and name ~= '' and GUESSED[kind] and tonumber(map)
+		and type(x) == 'number' and type(y) == 'number') then
+		return false
+	end
+	if not db.nodeKinds[name] then
+		db.nodeKinds[name] = { icon = GUESSED[kind], kind = kind, guessed = true }
+	end
+	local told = db.nodesTold
+	db.nodesTold = true                               -- (the first-node line is for your own gathering)
+	Remember({ name = name, map = map, x = x, y = y }, kind, nil)
+	db.nodesTold = told or db.nodesTold
+	return true
 end

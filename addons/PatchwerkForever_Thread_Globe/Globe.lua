@@ -26,9 +26,10 @@
 -- game's own map list, faded in and out by zoom. Your place: an arrow turned the way you face.
 --
 -- Hand-made pieces (Art.lua): a compass rose, sea serpents and ships in ink on the open sea, each a
--- picture of its own on the sphere; and a brass ring and stand round the ball. Zoomed right out, the
--- whole desk globe is in the picture (the ball a little above the middle, on its stand); zooming in,
--- the ball comes to the middle and grows past the picture, the ring and stand with it.
+-- picture of its own on the sphere; and a brass ring round the ball (the ring's picture may have a stand
+-- under it, or none: its numbers in Art.lua say what is drawn). Zoomed right out, the whole of that
+-- picture is in view, the ball as far above the middle as it takes to sit it evenly; zooming in, the
+-- ball comes to the middle and grows past the picture, the ring with it.
 --
 -- Zones (Zones.lua): the one under the pointer is outlined and named; a click turns and zooms the
 -- globe to fit it, and a right-click steps back out, to the continent and then the whole globe.
@@ -61,9 +62,10 @@ local VIEW = 600                      -- the picture as it first opens, in point
 -- The picture can be any size (the window is sized by its corner, or fills the screen): everything is
 -- laid out from the globe's middle, and what depends on the picture's size is worked out by Sized.
 local viewW, viewH = VIEW, VIEW       -- the picture now (points)
--- The brass ring and stand (Art.lua): the ring's hole is a little wider than the ball. Zoomed right
--- out, the whole of it is in the picture, 8 points clear above and below, the ball lifted to make
--- room for the stand under it.
+-- The brass ring (Art.lua): its hole is a little wider than the ball. Zoomed right out, the whole of
+-- its picture is in view, 8 points clear above and below. The ball is lifted by half of what the picture
+-- has more under the hole's middle than over it: a long way for a ring on a stand, hardly at all for a
+-- ring alone (and down, should there be more over it).
 local RING = ns.RING
 local RING_GAP = 1.03                 -- the ring's hole, in radii of the ball as seen
 local RMIN, LIFT                      -- the smallest globe (points), and how far it is lifted then
@@ -90,13 +92,19 @@ local GLIDE = 1.1                     -- seconds Where I Am takes to turn the gl
 -- splitting: a piece whose middle is seen this far (points) off the middle of its corners is split;
 -- a picture is split this deep at most (each step halves it)
 local CURVE = 1.5
+-- (what lies over the map with nothing in it to line up with the map's own lines is split less finely: a
+-- stain or a cloud a few points from where the sphere would have it looks the same, and costs a quarter)
+local CURVES = { age = 5, wear = 4, sky = 8, cover = 2.5, wash = 2.5 }
 local EDGE_PIECE = 10                 -- a piece crossing the globe's edge this small (points) is dropped: the sea disc shows there
-local DEEPEST = { art = 4, ours = 8, detail = 5, decor = 4, ground = 2, cover = 4, age = 4, wear = 4, sky = 5 }
+local DEEPEST = { art = 4, ours = 8, detail = 5, decor = 4, ground = 2, cover = 4, wash = 4, age = 4, wear = 4, sky = 5 }
 -- a ground tile that fades out toward a corner is cut smaller, since a piece can fade only straight
 -- across or straight down: as deep as this at most, and no smaller than this on the screen (points)
 local FADE_DEEPEST, FADE_PIECE = 4, 48
 local NEAR_MOST = 10                  -- the ground is picked by place while the picture shows fewer tiles than this from its middle
-local SUBLEVEL = { art = -2, ours = -1, detail = 0, decor = 1, ground = 2, cover = 3, age = 4, wear = 5, sky = 6 }    -- which is drawn over which
+-- which is drawn over which: the map, the ground, the fog over undiscovered land, the wash that
+-- colours a zone by its levels (over the fog too: where to go next is mostly land not yet
+-- seen), then the paper's age and the clouds
+local SUBLEVEL = { art = -3, ours = -2, detail = -1, decor = 0, ground = 1, cover = 2, wash = 3, age = 4, wear = 5, sky = 6 }
 -- zooming in: our detail pictures (8 yards a pixel) fade in over the world picture (58 yards a pixel) as
 -- its pixels would start to show, then the ground (the minimap's pictures, 2 yards a pixel) over the
 -- detail as its pixels would (by the globe's radius in points)
@@ -168,7 +176,8 @@ local function Dot(p, q) return p[1] * q[1] + p[2] * q[2] + p[3] * q[3] end
 ---------------------------------------------------------------------------
 -- A picture: { fdid, layer ('art' or 'ground'), coords (the part of its texture: u0, u1, v0, v1),
 -- At(fu, fv) (a point of it, 0 to 1 across and down, on the sphere), Fade(fu, fv) (how much of it
--- shows there: 1, less toward a continent map's edges), c (its continent), root (its first piece) }.
+-- shows there: 1, less toward a continent map's edges), tint ({ r, g, b }: it is drawn in that colour;
+-- a picture given another tint table is coloured again), c (its continent), root (its first piece) }.
 local pictures = { art = {}, ours = {}, detail = {}, decor = {}, ground = {} }
 
 local function Prepare()
@@ -342,28 +351,38 @@ local function PrepareArt()
 end
 
 -- A piece of a picture: the part fu0..fu1 across, fv0..fv1 down; its corners and middle on the sphere,
--- and how far its corners reach from its middle (radians); its four halves made when first needed.
-local function Piece(pic, fu0, fu1, fv0, fv1, depth)
-	local p = { pic = pic, fu0 = fu0, fu1 = fu1, fv0 = fv0, fv1 = fv1, depth = depth,
-		ul = pic.At(fu0, fv0), ll = pic.At(fu0, fv1), ur = pic.At(fu1, fv0), lr = pic.At(fu1, fv1),
-		mid = pic.At((fu0 + fu1) / 2, (fv0 + fv1) / 2) }
-	local reach = 0
-	for _, k in ipairs({ p.ul, p.ll, p.ur, p.lr }) do
-		reach = max(reach, acos(max(-1, min(1, Dot(p.mid, k)))))
-	end
-	p.reach = reach
-	p.hideBelow = cos(min(math.pi, HIDDEN + reach))    -- (wholly behind while its middle is seen less than this)
-	return p
+-- and how far its corners reach from its middle (radians, and straight through the sphere); its four
+-- halves made when first needed. A point is { x, y, z } and is the picture's own (At makes it new): a
+-- half's corners are the very points of the piece it was cut from, so that where each is seen is worked
+-- out once a drawing for all the pieces that meet there (Corner keeps it in the point: [4] the drawing,
+-- [5] [6] [7] where it was seen then).
+local function Piece(pic, fu0, fu1, fv0, fv1, depth, ul, ll, ur, lr)
+	local mid = pic.At((fu0 + fu1) / 2, (fv0 + fv1) / 2)
+	ul, ll = ul or pic.At(fu0, fv0), ll or pic.At(fu0, fv1)
+	ur, lr = ur or pic.At(fu1, fv0), lr or pic.At(fu1, fv1)
+	local least = min(Dot(mid, ul), Dot(mid, ll), Dot(mid, ur), Dot(mid, lr))
+	local reach = acos(max(-1, min(1, least)))
+	return { pic = pic, fu0 = fu0, fu1 = fu1, fv0 = fv0, fv1 = fv1, depth = depth, ul = ul, ll = ll, ur = ur, lr = lr, mid = mid,
+		reach = reach, chord = 2 * sin(reach / 2),
+		hideBelow = cos(min(math.pi, HIDDEN + reach)),    -- (wholly behind while its middle is seen less than this)
+		deep = depth >= (pic.deepest or DEEPEST[pic.layer]), curve = CURVES[pic.layer] or CURVE,
+		-- (a picture that shows unevenly says of each piece: 0 none of it shows, 1 cut it smaller, 2 cut it
+		-- smaller while it is large; Explore.lua does, for the ground over land you have not discovered)
+		cut = pic.Cut and pic.Cut(fu0, fu1, fv0, fv1, depth) or nil }
 end
 
 local function Halves(p)
-	if not p.kids then
-		local um, vm = (p.fu0 + p.fu1) / 2, (p.fv0 + p.fv1) / 2
+	local kids = p.kids
+	if not kids then
+		local pic, fu0, fu1, fv0, fv1, mid = p.pic, p.fu0, p.fu1, p.fv0, p.fv1, p.mid
+		local um, vm = (fu0 + fu1) / 2, (fv0 + fv1) / 2
 		local d = p.depth + 1
-		p.kids = { Piece(p.pic, p.fu0, um, p.fv0, vm, d), Piece(p.pic, um, p.fu1, p.fv0, vm, d),
-			Piece(p.pic, p.fu0, um, vm, p.fv1, d), Piece(p.pic, um, p.fu1, vm, p.fv1, d) }
+		local top, bottom, left, right = pic.At(um, fv0), pic.At(um, fv1), pic.At(fu0, vm), pic.At(fu1, vm)
+		kids = { Piece(pic, fu0, um, fv0, vm, d, p.ul, left, top, mid), Piece(pic, um, fu1, fv0, vm, d, top, mid, p.ur, right),
+			Piece(pic, fu0, um, vm, fv1, d, left, p.ll, mid, bottom), Piece(pic, um, fu1, vm, fv1, d, mid, bottom, right, p.lr) }
+		p.kids = kids
 	end
-	return p.kids
+	return kids
 end
 
 ---------------------------------------------------------------------------
@@ -379,6 +398,41 @@ local window, view, canvas, ocean, halo, dot, arrow, statsText, zoneText, ring, 
 -- A place with a flat map of its own (a city, a battleground) is shown by Flat.lua in the same picture:
 -- while it is (ns.FlatOn), the globe draws nothing of its own and is not turned or zoomed.
 local hooks = { paint = {}, frame = {}, press = {}, key = {}, show = {}, hide = {}, place = {}, pictures = {} }
+
+-- A text on the globe: its font, and how it is set off from the map under it. The game's fonts come
+-- with a drop shadow, and an outline over that is twice as heavy down and to the right: it clogs small
+-- letters, and a number looks pushed off the middle of its mark. So a text has an outline and no
+-- shadow, or (Name Outline: Shadow) a shadow and no outline, never both.
+--   how    nil: a name (as Name Outline says); 'plain': ink on the paper, neither; 'always': an outline
+--          whatever the setting (a number on a mark)
+--   back   the size in the game's plain font, where this client lacks the font asked for
+do
+	local texts = {}
+	local function Set(fs, t)
+		local outline = t.how == 'always' or (t.how ~= 'plain' and ns.Get('globeNameEdge') ~= 'shadow')
+		local flags = outline and 'OUTLINE' or ''
+		if not fs:SetFont(t.font, t.size, flags) then fs:SetFont('Fonts\\FRIZQT__.TTF', t.back or t.size, flags) end
+		if fs.SetShadowOffset and fs.SetShadowColor then
+			if outline or t.how == 'plain' then
+				fs:SetShadowOffset(0, 0)
+			else
+				fs:SetShadowColor(0, 0, 0, 1)
+				fs:SetShadowOffset(1, -1)
+			end
+		end
+	end
+	function ns.GlobeText(fs, font, size, how, back)
+		local t = { font = font, size = size, how = how, back = back }
+		texts[fs] = t
+		Set(fs, t)
+		return fs
+	end
+	ns.OnSetting(function(key)
+		if key == 'globeNameEdge' then
+			for fs, t in pairs(texts) do Set(fs, t) end
+		end
+	end)
+end
 function ns.GlobeOn(what, fn) hooks[what][#hooks[what] + 1] = fn end
 local function Fire(what, ...)
 	for _, fn in ipairs(hooks[what]) do
@@ -399,11 +453,12 @@ local lift = 0                        -- how far the globe is drawn above the mi
 local aim = { r = look.r }            -- the zoom being eased toward, and the point held under the pointer
                                       -- (x, y: where in the picture, from its middle)
 local basis                           -- the eye's: out, east, north (Basis of look)
+local b1, b2, b3, b4, b5, b6, b7, b8, b9 = 1, 0, 0, 0, 1, 0, 0, 0, 1   -- (the same, for the drawing: no table to look in)
+local drawingAt = 0                   -- the time of the drawing being made
 local dirty = false
 local glide                           -- Where I Am on its way
 local coast                           -- a drag's turn carrying on after it: radians a second
 local last = { drawn = 0, ms = 0, made = 0, ground = 0, map = 0, names = 0 }
-local frame = 0                       -- each drawing's number
 local drawnNow, drawnBefore = {}, {}  -- the pieces drawn this time and the time before
 local pool = {}                       -- textures given back, for the next piece
 local owned = {}                      -- pieces holding a texture
@@ -448,6 +503,24 @@ local function Seen(p, r)
 	local z = p[1] * b[1] + p[2] * b[2] + p[3] * b[3]
 	local k = EYE / (EYE - z) * r
 	return (p[1] * b[4] + p[2] * b[5] + p[3] * b[6]) * k, (p[1] * b[7] + p[2] * b[8] + p[3] * b[9]) * k, z
+end
+
+-- The same for a point of a piece, worked out once a drawing (pieces share their corners).
+local frame = 0                       -- each drawing's number
+-- A drawing begins: the eye's basis from where the globe is turned to.
+local function Look()
+	drawingAt = GetTime()
+	b1, b2, b3, b4, b5, b6, b7, b8, b9 = Basis(look.lat, look.lon)
+	basis = { b1, b2, b3, b4, b5, b6, b7, b8, b9 }
+end
+local function Corner(p, r)
+	if p[4] == frame then return p[5], p[6], p[7] end
+	local px, py, pz = p[1], p[2], p[3]
+	local z = px * b1 + py * b2 + pz * b3
+	local k = EYE / (EYE - z) * r
+	local x, y = (px * b4 + py * b5 + pz * b6) * k, (px * b7 + py * b8 + pz * b9) * k
+	p[4], p[5], p[6], p[7] = frame, x, y, z
+	return x, y, z
 end
 
 -- The point of the sphere seen at x, y (points from the middle), or nil off the globe.
@@ -504,7 +577,7 @@ local function Smooth(a, b, x)
 end
 
 -- How far the globe is lifted above the middle of the picture at radius r: all the way with the
--- whole desk globe in view, not at all once the ball fills the picture.
+-- whole ring in view, not at all once the ball fills the picture.
 local function Lift(r)
 	if LIFT == 0 then return 0 end
 	return LIFT * (1 - Smooth(RMIN * 1.15, LIFT_GONE, r))
@@ -640,7 +713,7 @@ end
 local function Give(p)
 	p.tex:Hide()
 	pool[#pool + 1] = p.tex
-	p.tex, p.shown, p.colourKey = nil, false, nil
+	p.tex, p.shown, p.colourKey, p.tinted = nil, false, nil, nil
 	owned[p] = nil
 end
 
@@ -665,8 +738,11 @@ local function Show(p, x1, y1, x2, y2, x3, y3, x4, y4, lit, alpha)
 	-- the piece, the way it changes most; worked out once a piece). Set only when it changes enough to see.
 	lit, alpha = floor(lit * 48 + 0.5) / 48, floor(alpha * 64 + 0.5) / 64
 	local key = lit * 100 + alpha
-	if key ~= p.colourKey then
-		p.colourKey = key
+	local tint = p.pic.tint
+	if key ~= p.colourKey or tint ~= p.tinted then
+		p.colourKey, p.tinted = key, tint
+		local lr, lg, lb = lit, lit, lit
+		if tint then lr, lg, lb = lit * tint[1], lit * tint[2], lit * tint[3] end
 		local Fade = p.pic.Fade
 		if Fade and not p.fade then
 			local fl, fr = Fade(p.fu0, (p.fv0 + p.fv1) / 2), Fade(p.fu1, (p.fv0 + p.fv1) / 2)
@@ -681,16 +757,16 @@ local function Show(p, x1, y1, x2, y2, x3, y3, x4, y4, lit, alpha)
 		end
 		local f = p.fade
 		if f and f[1] then
-			t:SetGradient(f[1], Colour(1, lit, lit, lit, alpha * f[2]), Colour(2, lit, lit, lit, alpha * f[3]))
+			t:SetGradient(f[1], Colour(1, lr, lg, lb, alpha * f[2]), Colour(2, lr, lg, lb, alpha * f[3]))
 		else
-			t:SetVertexColor(lit, lit, lit, alpha * (f and f[2] or 1))
+			t:SetVertexColor(lr, lg, lb, alpha * (f and f[2] or 1))
 		end
 	end
 	if not p.shown then
 		t:Show()
 		p.shown = true
 	end
-	p.seen = GetTime()
+	p.seen = drawingAt
 	p.frame = frame
 	drawnNow[#drawnNow + 1] = p
 end
@@ -698,35 +774,69 @@ end
 -- One piece: dropped when it is wholly behind or out of the window, split while it is too large to
 -- lie flat or crosses the globe's edge, else drawn.
 -- A corner behind the globe's edge, slid along the sphere onto the edge (where it is seen last).
+local EDGE_OUT = sqrt(1 - SEEN * SEEN)
 local function OnEdge(p, r)
-	local b = basis
-	local z = p[1] * b[1] + p[2] * b[2] + p[3] * b[3]
-	local tx, ty, tz = p[1] - z * b[1], p[2] - z * b[2], p[3] - z * b[3]
+	local px, py, pz = p[1], p[2], p[3]
+	local z = px * b1 + py * b2 + pz * b3
+	local tx, ty, tz = px - z * b1, py - z * b2, pz - z * b3
 	local tl = sqrt(tx * tx + ty * ty + tz * tz)
 	if tl < 1e-9 then return Seen(p, r) end
-	local s = sqrt(1 - SEEN * SEEN) / tl
-	return Seen({ SEEN * b[1] + tx * s, SEEN * b[2] + ty * s, SEEN * b[3] + tz * s }, r)
+	-- (the point of the edge that way: as deep as the edge is, SEEN)
+	local s = EDGE_OUT / tl
+	local qx, qy, qz = SEEN * b1 + tx * s, SEEN * b2 + ty * s, SEEN * b3 + tz * s
+	local k = EYE / (EYE - SEEN) * r
+	return (qx * b4 + qy * b5 + qz * b6) * k, (qx * b7 + qy * b8 + qz * b9) * k
+end
+
+-- How far from where its middle is seen a piece's corner can be seen at most, for each radius of the
+-- globe its corners lie from its middle (straight): nearer the eye things are seen larger, hence more.
+local REACH = FRONT + EYE / ((EYE - 1) * (EYE - 1))
+-- Can any of a piece be in the picture? No when it is wholly behind the globe, or wholly in front and
+-- its middle is seen further out of the picture than its corners reach in (far cheaper than its corners).
+local function InView(p, r, slack)
+	local m = p.mid
+	local zm = m[1] * b1 + m[2] * b2 + m[3] * b3
+	if zm < p.hideBelow then return false end
+	local chord = p.chord * (slack or 1)
+	if zm - chord > SEEN then
+		local mx, my = Corner(m, r)
+		local far = chord * r * REACH
+		if mx - far > xMost or mx + far < -xMost or my - far > yHigh or my + far < yLow then return false end
+	end
+	return true
 end
 
 -- One piece: dropped when it is wholly behind or out of the window, split while it is too large to lie
 -- flat, else drawn. One across the globe's edge with its middle in front is drawn with its corners
 -- behind the edge slid onto it (once it is small enough), so it neither folds over nor leaves a gap.
 local function Visit(p, r, alpha, shade)
-	local zm = Dot(p.mid, basis)
+	local cut = p.cut
+	if cut == 0 then return end
+	local m = p.mid
+	local zm = m[1] * b1 + m[2] * b2 + m[3] * b3
 	if zm < p.hideBelow then return end
-	local x1, y1, z1 = Seen(p.ul, r)
-	local x2, y2, z2 = Seen(p.ll, r)
-	local x3, y3, z3 = Seen(p.ur, r)
-	local x4, y4, z4 = Seen(p.lr, r)
+	-- (wholly in front, and its middle further out of the picture than its corners reach in: not in it)
+	local mx, my
+	local chord = p.chord
+	if zm - chord > SEEN then
+		mx, my = Corner(m, r)
+		local far = chord * r * REACH
+		if mx - far > xMost or mx + far < -xMost or my - far > yHigh or my + far < yLow then return end
+	end
+	local x1, y1, z1 = Corner(p.ul, r)
+	local x2, y2, z2 = Corner(p.ll, r)
+	local x3, y3, z3 = Corner(p.ur, r)
+	local x4, y4, z4 = Corner(p.lr, r)
 	local front = z1 > SEEN and z2 > SEEN and z3 > SEEN and z4 > SEEN and zm > SEEN
 	if Out(x1, x2, x3, x4, y1, y2, y3, y4) and (front or zm < SEEN) then return end
-	local deep = p.depth >= (p.pic.deepest or DEEPEST[p.pic.layer])
+	local deep = p.deep
 	if not front then
 		-- (across the edge: split while large, then drawn with its corners on the edge; dropped if its
 		-- middle is behind and it can be split no more)
 		local size = max(max(x1, x2, x3, x4) - min(x1, x2, x3, x4), max(y1, y2, y3, y4) - min(y1, y2, y3, y4))
 		if not deep and (zm <= SEEN or size > EDGE_PIECE * 8) then
-			for _, kid in ipairs(Halves(p)) do Visit(kid, r, alpha, shade) end
+			local kids = p.kids or Halves(p)
+			Visit(kids[1], r, alpha, shade); Visit(kids[2], r, alpha, shade); Visit(kids[3], r, alpha, shade); Visit(kids[4], r, alpha, shade)
 			return
 		end
 		if zm <= SEEN then return end
@@ -738,18 +848,20 @@ local function Visit(p, r, alpha, shade)
 		-- (slid corners can turn a sliver inside out: split it, or leave it out)
 		if (x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1) < 0 or (x4 - x3) * (y2 - y3) - (y4 - y3) * (x2 - x3) > 0 then
 			if not deep then
-				for _, kid in ipairs(Halves(p)) do Visit(kid, r, alpha, shade) end
+				local kids = p.kids or Halves(p)
+				Visit(kids[1], r, alpha, shade); Visit(kids[2], r, alpha, shade); Visit(kids[3], r, alpha, shade); Visit(kids[4], r, alpha, shade)
 			end
 			return
 		end
 	elseif not deep then
 		-- (toward the globe's edge, where everything is squeezed, more is let pass)
-		local mx, my = Seen(p.mid, r)
+		if not mx then mx, my = Corner(m, r) end
 		local edge = 1 - zm
-		if abs(mx - (x1 + x2 + x3 + x4) / 4) + abs(my - (y1 + y2 + y3 + y4) / 4) > CURVE * (1 + 10 * edge * edge)
-			or (p.pic.uneven and max(max(x1, x2, x3, x4) - min(x1, x2, x3, x4),
+		if cut == 1 or abs(mx - (x1 + x2 + x3 + x4) / 4) + abs(my - (y1 + y2 + y3 + y4) / 4) > p.curve * (1 + 10 * edge * edge)
+			or ((cut == 2 or p.pic.uneven) and max(max(x1, x2, x3, x4) - min(x1, x2, x3, x4),
 				max(y1, y2, y3, y4) - min(y1, y2, y3, y4)) > FADE_PIECE) then
-			for _, kid in ipairs(Halves(p)) do Visit(kid, r, alpha, shade) end
+			local kids = p.kids or Halves(p)
+			Visit(kids[1], r, alpha, shade); Visit(kids[2], r, alpha, shade); Visit(kids[3], r, alpha, shade); Visit(kids[4], r, alpha, shade)
 			return
 		end
 	end
@@ -787,8 +899,7 @@ local function MakeLabels()
 	for _, label in ipairs(labels) do
 		local style = NAMES[label.kind]
 		local fs = canvas:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
-		local flags = style.plain and '' or 'OUTLINE'
-		if not fs:SetFont(style.font, style.size, flags) then fs:SetFont('Fonts\\FRIZQT__.TTF', style.size, flags) end
+		ns.GlobeText(fs, style.font, style.size, style.plain and 'plain' or nil)
 		fs:SetTextColor(style.colour[1], style.colour[2], style.colour[3])
 		fs:SetText(label.text)
 		fs:Hide()
@@ -917,7 +1028,7 @@ local function Paint()
 	dirty = false
 	local started = debugprofilestop()
 	frame = frame + 1
-	basis = { Basis(look.lat, look.lon) }
+	Look()
 	local r = look.r
 	local style = ns.Get('globeStyle') == 'minimap' and 'minimap' or 'parchment'
 	local shade = ns.Get('globeLight')
@@ -966,7 +1077,7 @@ local function Paint()
 	end
 	xMost, yLow, yHigh = viewW / 2, -viewH / 2 - lift, viewH / 2 - lift
 	if ring then
-		-- (the ring's hole round the ball, the stand under it; gone once the hole is wider than the picture)
+		-- (the ring's hole round the ball; gone once the hole is wider than the picture)
 		local side = RING_GAP * LIMB * r / RING.inner
 		if RING.inner * side < max(viewW, viewH) * 0.75 then
 			ring:SetSize(side, side)
@@ -1058,11 +1169,38 @@ local function Paint()
 	Stats()
 end
 
--- Pieces unseen for a while give their textures back.
+-- Pieces unseen for a while give their textures back; and now and then the pieces cut from one that
+-- hold no texture any more are forgotten (a long look round the world would else keep them all).
+local others = {}                     -- the pictures laid on the globe by the files after this one (G.Draw)
+local function Thin(p)
+	local holds, kids = p.tex ~= nil, p.kids
+	if kids then
+		local any = false
+		for i = 1, 4 do
+			if Thin(kids[i]) then any = true end
+		end
+		if any then holds = true else p.kids = nil end
+	end
+	return holds
+end
+local tidies = 0
 local function Tidy()
 	local now = GetTime()
 	for p in pairs(owned) do
 		if not p.shown and now - (p.seen or 0) > RELEASE then Give(p) end
+	end
+	tidies = tidies + 1
+	if tidies % 6 == 0 then
+		for _, list in pairs(pictures) do
+			if type(list) == 'table' then
+				for _, pic in ipairs(list) do
+					if pic.root then Thin(pic.root) end
+				end
+			end
+		end
+		for pic in pairs(others) do
+			if pic.root then Thin(pic.root) end
+		end
 	end
 end
 
@@ -1534,7 +1672,7 @@ local function Build()
 	arrow:Hide()
 
 	zoneText = canvas:CreateFontString(nil, 'OVERLAY', 'GameFontNormalLarge')
-	if not zoneText:SetFont('Fonts\\MORPHEUS.TTF', 20, 'OUTLINE') then zoneText:SetFont('Fonts\\FRIZQT__.TTF', 18, 'OUTLINE') end
+	ns.GlobeText(zoneText, 'Fonts\\MORPHEUS.TTF', 20, nil, 18)
 	zoneText:SetTextColor(1, 0.92, 0.72)
 	zoneText:SetPoint('TOP', view, 'TOP', 0, -12)
 	zoneText:Hide()
@@ -1605,6 +1743,21 @@ function ns.CenterOnMe()
 	GlideTo(me, max(look.r, VIEW * 4))
 end
 
+-- The globe turned and zoomed to where you are at once, with no glide: before the window opens (the map
+-- key, MapKey.lua). False where your place is not on the globe; the globe is then left as it was.
+function ns.LookAtMe()
+	if not Build() then return false end
+	local _, me = MyPlace()
+	if not me then return false end
+	look.lat = max(-1.45, min(1.45, asin(max(-1, min(1, me[3])))))
+	look.lon = atan2(me[2], me[1])
+	look.r = max(look.r, VIEW * 4)
+	aim.r, aim.p = look.r, nil
+	glide, coast = nil, nil
+	Changed()
+	return true
+end
+
 function ns.SayStats()
 	Prepare()
 	local style = ns.Get('globeStyle') == 'minimap' and 'Minimap pictures' or 'Parchment'
@@ -1629,13 +1782,45 @@ ns.G = {
 	Smooth = Smooth, Dot = Dot, Changed = Changed, GlideTo = GlideTo, FitRadius = FitRadius, Menu = Menu,
 	ZoneAt = ZoneAt, ZoneName = ZoneName, MyPlace = MyPlace, PrepareArt = PrepareArt,
 	Outline = Outline,                -- (c, zone): its outlines; the zone then has its middle (mid) and reach
+	NameAt = function(text)           -- where a zone's name is written on the globe: a direction, or nil (no such name, or none made yet)
+		for _, label in ipairs(labels or {}) do
+			if label.kind == 'zone' and label.text == text then return label.at end
+		end
+	end,
 	pictures = pictures,              -- the globe's own pictures, by layer
 	-- lay one more picture on the globe at this drawing (from a 'pictures' hook): { fdid, layer ('cover',
-	-- 'sky'), coords, At, Fade, wrap, Moved }
+	-- 'wash', 'sky'), coords, At, Fade, tint, wrap, Moved }
 	Draw = function(pic, r, alpha, shade)
-		pic.root = pic.root or Piece(pic, 0, 1, 0, 1, 0)
+		if not pic.root then
+			pic.root = Piece(pic, 0, 1, 0, 1, 0)
+			others[pic] = true
+		end
 		Visit(pic.root, r, alpha, shade)
 	end,
+	-- can any of a picture be in the window at this drawing (from a 'pictures' hook: a quick look, before
+	-- many small pictures that lie within it are each asked for); slack: its reach taken this much larger
+	InView = function(pic, r, slack)
+		if not pic.root then
+			pic.root = Piece(pic, 0, 1, 0, 1, 0)
+			others[pic] = true
+		end
+		return InView(pic.root, r, slack)
+	end,
+	-- a picture whose Fade, Cut or deepest has changed is cut afresh at the next drawing (not from within
+	-- a drawing: its pieces would be gone from that one)
+	Forget = function(pic)
+		local function Drop(p)
+			if p.tex then Give(p) end
+			if p.kids then
+				for i = 1, 4 do Drop(p.kids[i]) end
+			end
+		end
+		if pic.root then
+			Drop(pic.root)
+			pic.root = nil
+		end
+	end,
+	FADE_DEEPEST = FADE_DEEPEST,
 	Least = function() return RMIN end,   -- the globe's radius with the whole of it in the picture
 	Basis = function() return basis end,
 	Lift = function() return lift end,
@@ -1671,10 +1856,10 @@ end
 
 -- For the checks outside the game: what was drawn last, and where.
 function ns.GlobeState()
-	local out = { look = look, drawn = {}, labels = {}, rmin = RMIN, lift = lift, asked = last.asked,
+	local out = { look = look, drawn = {}, labels = {}, rmin = RMIN, lift = lift, asked = last.asked, ms = last.ms,
 		ground = last.ground, w = viewW, h = viewH, byKeys = byKeys, cross = cross and cross:IsShown() or false }
 	if ring and ring:IsShown() then
-		-- (the top and bottom of the ring and stand, in points from the middle of the picture)
+		-- (the top and bottom of what the ring's picture draws, in points from the middle of the picture)
 		local side = RING_GAP * LIMB * look.r / RING.inner
 		out.ring = { top = lift + (RING.cy - RING.top) * side, bottom = lift - (RING.bottom - RING.cy) * side,
 			hole = RING.inner * side }
@@ -1686,14 +1871,15 @@ function ns.GlobeState()
 		local x3, y3 = Seen(p.ur, r)
 		local x4, y4 = Seen(p.lr, r)
 		local f = p.fade
-		out.drawn[#out.drawn + 1] = { fdid = p.pic.fdid, layer = p.pic.layer, depth = p.depth,
+		out.drawn[#out.drawn + 1] = { fdid = p.pic.fdid, layer = p.pic.layer, depth = p.depth, tint = p.tinted,
 			fu0 = p.fu0, fu1 = p.fu1, fv0 = p.fv0, fv1 = p.fv1, x = { x1, x2, x3, x4 }, y = { y1, y2, y3, y4 },
 			-- (how much of it shows: one figure, or from one side to the other)
 			fade = f and { f[1] or 'FLAT', f[2], f[3] or f[2] } or nil }
 	end
 	for _, label in ipairs(labels or {}) do
+		local _, _, flags = label.fs:GetFont()
 		out.labels[#out.labels + 1] = { text = label.text, kind = label.kind, shown = label.shown == true,
-			x = label.x, y = label.y }
+			x = label.x, y = label.y, flags = flags, shadow = label.fs.GetShadowOffset and label.fs:GetShadowOffset() or nil }
 	end
 	out.zone = hover and { id = hover.zone.id, name = ZoneName(hover.zone), reach = hover.zone.reach } or nil
 	out.lines = {}

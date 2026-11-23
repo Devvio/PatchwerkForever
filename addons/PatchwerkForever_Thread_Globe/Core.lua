@@ -12,10 +12,17 @@ ns.settings = {
 		desc = 'Parchment: the painted world map of each continent, as the world map shows it. Minimap Pictures: the land as the minimap shows it, from above.' },
 	{ key = 'globeNames', default = true, name = 'Show Names',
 		desc = 'Show the names of the continents when the whole globe is in view, and of the zones as you zoom in.' },
+	{ key = 'globeNameEdge', default = 'outline', name = 'Name Outline',
+		choices = { { 'outline', 'Outline' }, { 'shadow', 'Shadow' } },
+		desc = 'How the names on the globe are set off from the map under them. Outline: a thin dark outline. Shadow: a drop shadow only, which is lighter but harder to read on pale ground.' },
 	{ key = 'globeCoords', default = true, name = 'Show Coordinates',
 		desc = 'Show your coordinates, and those of the place under the pointer, at the lower edge of the picture.' },
-	{ key = 'globeExplore', default = true, name = 'Leave Unexplored Land Blank',
-		desc = 'Leave the land you have not discovered as blank paper, as the world map does. It fills in as you explore. Parchment style only.' },
+	{ key = 'globeExplore', default = true, name = 'Fog Of War',
+		desc = 'Lay fog over the land you have not discovered, where the world map leaves it blank, and keep it as the painted map when you zoom in to the ground. It clears as you explore. Parchment style only.' },
+	{ key = 'globeFog', default = 30, min = 10, max = 100, step = 5, percent = true, name = 'Fog Opacity', parent = 'globeExplore',
+		desc = 'How much the fog hides of the map under it.' },
+	{ key = 'globeLevels', default = false, name = 'Color Zones By Level',
+		desc = 'Lay a thin wash of color over each zone that shows how its levels compare to yours: gray far below you, then green, yellow, orange, and red far above. A key to the colors is shown in the corner. It fades out as you zoom in to the ground. Cities, and zones the game gives no levels for, are left as they are.' },
 	{ key = 'globeAge', default = true, name = 'Aged Paper',
 		desc = 'The paper of an old globe: stains, foxing and rubbed patches, and closer to, hairline cracks and the seams between the strips of paper. It fades away as you zoom in to the ground. Parchment style only.' },
 	{ key = 'globeFlat', default = true, name = 'City Maps',
@@ -32,6 +39,10 @@ ns.settings = {
 		desc = 'Show towns, landmarks, and dungeon and raid entrances as you zoom in; the place a city guard points you to; while you are dead, your corpse and the spirit healer; and on a battleground\'s map its places and flags.' },
 	{ key = 'globePeople', default = true, name = 'Show Your Group',
 		desc = 'Show the members of your party or raid, each in the colour of their class.' },
+	{ key = 'globeGuild', default = false, name = 'Show Guild Members',
+		desc = 'Show how many online members of your guild are in each zone, as a number by the zone\'s name. Point at it for their names and levels; click it to fit that zone in the picture. The guild roster is requested every 15 seconds while the globe is open. A member in a dungeon, or anywhere the globe has no zone for, is not shown.' },
+	{ key = 'globeFriends', default = false, name = 'Show Friends',
+		desc = 'Show how many of your online friends are in each zone, as a number by the zone\'s name, with Battle.net friends who are playing this game. Point at it for their names and levels; click it to fit that zone in the picture. A friend in a dungeon, or anywhere the globe has no zone for, is not shown.' },
 	{ key = 'globeFlights', default = true, name = 'Show Flight Points',
 		desc = 'Show the flight points of your side as you zoom in. Those you have not discovered are grey.' },
 	{ key = 'globeCrossings', default = true, name = 'Show Boats And Zeppelins',
@@ -61,7 +72,7 @@ ns.settings = {
 	{ key = 'globePad', default = true, name = 'Gamepad Turns The Globe',
 		desc = 'While the globe is open and you are not in combat, a gamepad turns it with the left stick and zooms with the right stick or the triggers. Its four face buttons press what is at the middle of the picture (or fit the zone there), step out (and close from the whole globe), go to the next mark, and set or clear the map pin. Your character does not move by the left stick meanwhile. Off: the gamepad is left alone, and the keys under Key Bindings can be given to its buttons.' },
 	{ key = 'globeMapKey', default = false, name = 'The Map Key Opens The Globe',
-		desc = 'The key that opens the world map opens the globe instead, and a map link in chat or a "show on map" turns the globe to that place. The World Map button on the globe (and in Go To) still opens the world map, and a Globe button on that map comes back. The key is taken over outside combat only: turned on or off in a fight, it changes when the fight ends.' },
+		desc = 'The key that opens the world map opens the globe instead, turned and zoomed to where you are, and a map link in chat or a "show on map" turns the globe to that place. The World Map button on the globe (and in Go To) still opens the world map, and a Globe button on that map comes back. The key is taken over outside combat only: turned on or off in a fight, it changes when the fight ends.' },
 
 	{ header = true, name = 'Other' },
 	{ key = 'globeStats', default = true, name = 'Show Drawing Numbers',
@@ -75,6 +86,7 @@ local function Help()
 	ns.Print('  /globe: open or close the globe')
 	ns.Print('  /globe me: open it turned to where you are')
 	ns.Print('  /globe full: fill the screen with it, or back to a window')
+	ns.Print('  /globe levels: color the zones by level, or stop')
 	ns.Print('  /globe stats: say how the last drawing went')
 	ns.Print('  /globe config: open the options')
 end
@@ -89,6 +101,9 @@ SlashCmdList.PATCHWERKFOREVER_GLOBE = function(text)
 		ns.Try('the globe', function() ns.Toggle(true); ns.CenterOnMe() end)
 	elseif word == 'full' then
 		ns.Try('the globe', function() ns.Toggle(true); ns.GlobeFull() end)
+	elseif word == 'levels' then
+		ns.Set('globeLevels', not ns.Get('globeLevels'))
+		ns.Print(ns.Get('globeLevels') and 'Zones are colored by level.' or 'Zones are no longer colored by level.')
 	elseif word == 'stats' then
 		ns.Try('the globe', ns.SayStats)
 	elseif word == 'config' or word == 'settings' or word == 'options' then
@@ -120,6 +135,7 @@ BINDING_NAME_PATCHWERKFOREVER_GLOBE_PIN = 'Set Or Clear The Map Pin At The Middl
 BINDING_NAME_PATCHWERKFOREVER_GLOBE_NEXT = 'Next Mark'
 BINDING_NAME_PATCHWERKFOREVER_GLOBE_ROUTE = 'Route Menu'
 BINDING_NAME_PATCHWERKFOREVER_GLOBE_SHOW = 'Show Menu'
+BINDING_NAME_PATCHWERKFOREVER_GLOBE_LEVELS = 'Color Zones By Level'
 function PatchwerkForever_Thread_Globe_Key(what, down)
 	if what == 'toggle' then
 		ns.Try('the globe', ns.Toggle)

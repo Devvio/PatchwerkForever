@@ -24,6 +24,7 @@ local function Start(mode, name)
 	ns.Wake()
 	ns.Refresh()
 end
+ns.GatherStart = Start        -- (a row of the collect list starts a run the same way: Collect.lua)
 
 ns.AddSection('gather', 80, function()
 	local Gather = ns.Base.Gather

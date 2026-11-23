@@ -38,6 +38,10 @@ local P = ns.P;
 --     colour = true                       a colour (default 'ffRRGGBB')
 --     button = 'text', click = function   a button; no value
 --     header = true                       a heading; no value
+--     list = function, empty = 'words'    a list, a page at a time (2.9.0, API 6): list() gives
+--                                         { { text =, buttons = { { text =, click = fn }, ... } }, ... },
+--                                         at most two buttons a line; `empty` is said when it gives none.
+--                                         Left out where the game does not know the base's own rows.
 --     (a Reset To Defaults button is put at the foot of the tool's first page by the base)
 --     voice  = 'words'                    what Patchwerk says at the top of the page it names
 --                                         (the first page says the TOC's X-Patchwerk-Voice line)
@@ -230,6 +234,10 @@ local function Control(category, tool, def)
 		if CreateSettingsButtonInitializer then
 			Place(page, CreateSettingsButtonInitializer(shown, def.button, def.click, def.desc, true))
 		end
+		return;
+	end
+	if def.list then
+		ns.PlaceList(page, def)
 		return;
 	end
 	local key = def.key;

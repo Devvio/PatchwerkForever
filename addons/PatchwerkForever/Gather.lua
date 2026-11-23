@@ -18,6 +18,11 @@ local P = ns.P;
 --                                                 On reaching a spot the next is gone to, until Stop.
 --     PatchwerkForever.Gather:Stop()
 --     PatchwerkForever.Gather:State()             nil, or { mode =, name =, going = the name of the spot gone to }
+--     PatchwerkForever.Gather:Note(name, kind, map, x, y)   a spot another tool saw: kept as one gathered
+--                                                 from (kind 'h' or 'o'; world coordinates, as UnitPosition
+--                                                 gives them). Sparkle (Thread) tells of the herbs and ore
+--                                                 you passed. True when it was taken; a provider without
+--                                                 Note (an older Routes) takes nothing (2.9.0)
 
 local Gather = {};
 P.Gather = Gather;
@@ -53,3 +58,7 @@ function Gather:Start(mode, name)
 end
 function Gather:Stop() return Ask('Stop') end
 function Gather:State() return Ask('State') end
+function Gather:Note(name, kind, map, x, y)
+	if not ( provider and type(provider.Note) == 'function' ) then return false end;
+	return Ask('Note', name, kind, map, x, y) == true;
+end

@@ -8,6 +8,9 @@
 --   right-click        a short menu: follow, read, add to My Route (Route.lua), share with the
 --                      party, stop tracking, abandon
 --
+-- Sharing is also a click on a quest's share mark (Party.lua) and a key binding, Share Quest With
+-- Party, for the quest under the quest arrow.
+--
 -- Everything here is done only because you clicked, with one exception that is a setting and starts
 -- off: with no guide running and no quest or side list chosen by you, the game's arrow is put on the
 -- nearest quest you track ("Quest Arrow On Nearest Quest"). An arrow the game itself puts on a quest
@@ -40,8 +43,9 @@ local function Ask(fn, ...)
 	return nil
 end
 
+-- (asked of the base, which keeps the quest you track while the game's waypoint is lent to Routes)
 local function Followed()
-	local id = C_SuperTrack and Ask(C_SuperTrack.GetSuperTrackedQuestID)
+	local id = (ns.Base.Marker and ns.Base.Marker.Quest) and ns.Base.Marker:Quest() or (C_SuperTrack and Ask(C_SuperTrack.GetSuperTrackedQuestID))
 	return (type(id) == 'number' and id > 0) and id or nil
 end
 
@@ -189,12 +193,45 @@ function ns.OpenQuest(id)
 	ns.Print('Quest details could not be opened on this client.')
 end
 
+-- Shares a quest with your party, as the game's own tracker and quest log do. Returns whether the
+-- game was asked to.
 local function Share(id)
 	local util = rawget(_G, 'QuestUtil')
-	if type(util) == 'table' and type(util.ShareQuest) == 'function' and pcall(util.ShareQuest, id) then return end
+	if type(util) == 'table' and type(util.ShareQuest) == 'function' and pcall(util.ShareQuest, id) then return true end
 	local index = Ask(C_QuestLog.GetLogIndexForQuestID, id)
 	local push = rawget(_G, 'QuestLogPushQuest')
-	if index and type(push) == 'function' then pcall(push, index) end
+	if index and type(push) == 'function' then return (pcall(push, index)) end
+	return false
+end
+
+-- The same, said in chat: for the share mark on a quest's row (Party.lua) and the key binding, where
+-- nothing else shows that the click or the key did something.
+function ns.ShareQuest(id)
+	if Share(id) then
+		ns.Print(('Sharing quest "%s" with your party.'):format(tostring(Ask(C_QuestLog.GetTitleForQuestID, id) or id)))
+	else
+		ns.Print('The quest could not be shared on this client.')
+	end
+end
+
+-- For the key binding "Share Quest With Party": the quest under the quest arrow, picked as Add Quest
+-- To My Route picks its quest (ns.QuestAtHand, Route.lua). What stands in the way is said.
+function ns.ShareAtHand()
+	local id = ns.QuestAtHand()
+	if not id then
+		ns.Print('No quest selected. Put the quest arrow on a quest, then try again.')
+		return
+	end
+	if not Ask(rawget(_G, 'IsInGroup')) then
+		ns.Print('You are not in a party.')
+		return
+	end
+	local can = Ask(C_QuestLog.IsPushableQuest, id)
+	if not (ns.Plain(can) and can) then
+		ns.Print(('Quest "%s" cannot be shared.'):format(tostring(Ask(C_QuestLog.GetTitleForQuestID, id) or id)))
+		return
+	end
+	ns.ShareQuest(id)
 end
 
 local function Untrack(id)

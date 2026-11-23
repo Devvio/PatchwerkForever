@@ -3,7 +3,8 @@
 -- A recipe ticked "track" in a profession window is listed with what it needs and how much of each
 -- you have (bags, bank and reagent bank together, as the game's own tracker counts). The game is
 -- asked the way its own tracker asks: C_TradeSkillUI.GetRecipesTracked and GetRecipeSchematic.
--- A click opens the recipe; a right-click offers to stop tracking it.
+-- A click opens the recipe; a right-click offers to stop tracking it, and to put the reagents you
+-- have too few of on the collect list (Collect What Is Missing: Collect.lua).
 local ADDON, ns = ...
 if not ns.linked then return end
 
@@ -41,7 +42,9 @@ local function Needs(schematic)
 			for _, reagent in ipairs(slot.reagents) do           -- (any quality of it counts)
 				if reagent.itemID then have = have + Have(reagent.itemID) end
 			end
-			lines[#lines + 1] = { text = ('%d/%d %s'):format(have, need, Name(first.itemID)), done = have >= need }
+			-- (item and need: for Collect What Is Missing)
+			lines[#lines + 1] = { text = ('%d/%d %s'):format(have, need, Name(first.itemID)), done = have >= need,
+				item = first.itemID, need = need }
 		end
 	end
 	return lines
@@ -75,6 +78,7 @@ ns.AddSection('recipes', 70, function()
 						if button == 'RightButton' then
 							ns.Menu(block, title, {
 								{ 'Open Recipe', function() Open(id) end },
+								{ 'Collect What Is Missing', function() ns.CollectMissing(title, lines) end },
 								{ 'Untrack Recipe', function()
 									Ask(C_TradeSkillUI.SetRecipeTracked, id, false, recraft)
 									ns.Refresh()

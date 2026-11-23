@@ -14,11 +14,13 @@ fading out to sea, only the tiles in the picture looked at), the window (sized b
 back, both remembered), Go To, keys and a gamepad's sticks (the middle of the picture their pointer), the
 marks (a gamepad taken and given back; boats and zeppelins, the trail, flight points, herb and ore nodes, My
 Route's stops and the map pin, with what Routes (Thread) offers made up here; quests, quests on offer, a guide's
-steps, Next Mark, the Route button and the tracker beside the globe), the hand-made pieces (the ink pieces on the
-sea, the whole ring and stand in the picture when zoomed right out, the globe lifted to make room for it and
-the pointer still true), rares and treasures, the Show menu, other addons' pins (through the pin library, a
-newer copy of it, and Questie's own), unexplored land (blank paper, clearing as it is discovered), light and
-movement (candlelight by the game clock, the Maelstrom turning, cloud shadows, the ring from your place, the
+steps, Next Mark, the Route button and the tracker beside the globe), guild members and friends (counted by the
+zone each is in, from the guild's club and the friends lists; the roster asked for no more often than the game
+allows), the hand-made pieces (the ink pieces on the
+sea, the whole brass ring (and its stand, when the ring's picture has one) in the picture when zoomed right
+out, the globe lifted as far as that picture asks and the pointer still true), rares and treasures, the Show menu, other addons' pins (through the pin library, a
+newer copy of it, and Questie's own), unexplored land (fog, clearing as it is discovered), the zones colored by level (a wash over each as
+its levels become known, a key to the colors, what it costs), light and movement (candlelight by the game clock, the Maelstrom turning, cloud shadows, the ring from your place, the
 opening and its sounds), aged paper (stains, and nearer the cracks and seams, gone by the ground), a city's and a battleground's own flat map with the marks on them, a guard's
 directions, the map key (laid over the game's keys out of combat, a button on each map to the other, the game's
 map asked for at a place), and Minimap Pictures. How it looks, and how fast, only the game can say.
@@ -60,7 +62,10 @@ local function Bendable(t)
     function t:SetSnapToPixelGrid(on) assert(on == false) end
     function t:SetTexelSnappingBias(b) assert(b == 0) end
     function t:AddMaskTexture(m) assert(m and m.mask) end
-    function t:SetDrawLayer(layer, sub) assert((layer == 'ARTWORK' or layer == 'OVERLAY') and sub >= -8 and sub <= 7) end
+    function t:SetDrawLayer(layer, sub)
+        assert((layer == 'ARTWORK' or layer == 'OVERLAY') and sub >= -8 and sub <= 7)
+        self.layer, self.sub = layer, sub
+    end
     function t:SetAtlas(name) assert(type(name) == 'string') self.atlas, self.icon = name, nil end
     function t:SetTexCoord(a, b, c, d, e, f, g, h)
         if e ~= nil then
@@ -376,7 +381,8 @@ STUB.explored, STUB.artOf = nil, {}
 C_Map.GetMapArtID = function(id) return STUB.artOf[id] end
 C_MapExplorationInfo = { GetExploredMapTextures = function(id)
     assert(type(id) == 'number')
-    if not STUB.explored then return nil end
+    -- (as the game: no list at all for a zone with nothing discovered in it, one you have never entered)
+    if not STUB.explored or not STUB.explored[id] or #STUB.explored[id] == 0 then return nil end
     local out = {}
     for _, at in ipairs(STUB.explored[id] or {}) do out[#out + 1] = { offsetX = at[1], offsetY = at[2], fileDataIDs = {} } end
     return out
@@ -436,6 +442,55 @@ function OpenWorldMap(id) WorldMapFrame.mapID = id; WorldMapFrame:Show() end
 function HideUIPanel(frame) frame:Hide() end
 """
 
+# what the stand-in lacks for the zones' levels by map, the guild's members and the friends lists
+KNOWN = r"""
+-- a zone map's levels: STUB.mapLevels[id] = { least, most } (else as before); STUB.levelsMute: the game
+-- answers nothing ('secret': with numbers an addon may not read)
+local mapLevels = C_Map.GetMapLevels
+STUB.mapLevels, STUB.levelAsks, STUB.levelsMute = {}, 0, false
+C_Map.GetMapLevels = function(id)
+    assert(type(id) == 'number', 'levels asked of no map')
+    STUB.levelAsks = STUB.levelAsks + 1
+    if STUB.levelsMute == 'secret' then return STUB.secret, STUB.secret, 0, 0 end
+    if STUB.levelsMute then return nil end
+    local l = STUB.mapLevels[id]
+    if l then return l[1], l[2], 0, 0 end
+    return mapLevels(id)
+end
+QuestDifficultyColors = { impossible = { r = 1, g = 0.1, b = 0.1 }, verydifficult = { r = 1, g = 0.5, b = 0.25 },
+    difficult = { r = 1, g = 0.82, b = 0 }, standard = { r = 0.25, g = 0.75, b = 0.25 }, trivial = { r = 0.5, g = 0.5, b = 0.5 } }
+-- the guild (a club, as the game keeps it), the friends list and the Battle.net friends
+STUB.inGuild, STUB.guild, STUB.friends, STUB.bnet, STUB.rosterAsks, STUB.friendAsks = true, {}, {}, {}, {}, 0
+Enum.ClubMemberPresence = { Unknown = 0, Online = 1, OnlineMobile = 2, Offline = 3, Away = 4, Busy = 5 }
+C_Club = {
+    GetGuildClubId = function() return STUB.inGuild and 'club-7' or nil end,
+    GetClubMembers = function(id)
+        assert(id == 'club-7', 'members asked of no club')
+        local out = {}
+        for i in ipairs(STUB.guild) do out[i] = 100 + i end
+        return out
+    end,
+    GetMemberInfo = function(id, member) assert(id == 'club-7' and type(member) == 'number') return STUB.guild[member - 100] end,
+}
+C_GuildInfo = { GuildRoster = function()
+    assert(PatchwerkForever_Thread_GlobeWindow and PatchwerkForever_Thread_GlobeWindow.shown, 'the roster asked for with the globe closed')
+    table.insert(STUB.rosterAsks, STUB.time)
+end }
+function IsInGuild() return STUB.inGuild end
+C_FriendList = {
+    GetNumFriends = function() return #STUB.friends end,
+    GetFriendInfoByIndex = function(i) return STUB.friends[i] end,
+    ShowFriends = function() STUB.friendAsks = STUB.friendAsks + 1 end,
+}
+function BNGetNumFriends() return #STUB.bnet, 0 end
+C_BattleNet = { GetFriendAccountInfo = function(i) return STUB.bnet[i] end }
+BNET_CLIENT_WOW, WOW_PROJECT_ID = 'WoW', 99
+C_CreatureInfo = { GetClassInfo = function(id)
+    local file = ({ [1] = 'WARRIOR', [8] = 'MAGE' })[id]
+    return file and { classID = id, classFile = file, className = file } or nil
+end }
+LOCALIZED_CLASS_NAMES_MALE = { MAGE = 'Mage', WARRIOR = 'Warrior' }
+"""
 
 TRAILS = r"""
 STUB.crossings = {
@@ -520,6 +575,7 @@ def main():
     lua = LuaRuntime(unpack_returned_tuples=True)
     lua.execute(open(os.path.join(HERE, "wowstub.lua"), encoding="utf-8").read())
     lua.execute(MORE)
+    lua.execute(KNOWN)
     meta = {}
     for addon in (BASE, GLOBE):
         meta[addon] = {}
@@ -574,6 +630,7 @@ def main():
                           "fu1": d.fu1, "fv1": d.fv1,
                           # (how much of it shows: None for all of it, else the way it fades and its two ends)
                           "fade": (d.fade[1], d.fade[2], d.fade[3]) if d.fade else None,
+                          "tint": tuple(d.tint.values()) if d.tint else None,     # (the colour it is drawn in, if any)
                           "pts": list(zip(list(d.x.values()), list(d.y.values())))})   # ul, ll, ur, lr
         labels = {l.text: l for l in st.labels.values()}
         return st.look, drawn, labels
@@ -591,9 +648,13 @@ def main():
         return x, y
 
     def inside(lines, x, y):
-        # (a line going right from x, y crosses an outline round it an odd number of times)
+        # (a line going right from x, y crosses an outline round it an odd number of times; each stretch is
+        # drawn a point past its two ends, so they are taken back first: a join is then counted once)
         crossings = 0
         for x1, y1, x2, y2 in lines:
+            length = math.hypot(x2 - x1, y2 - y1)
+            dx, dy = (x2 - x1) / length, (y2 - y1) / length
+            x1, y1, x2, y2 = x1 + dx, y1 + dy, x2 - dx, y2 - dy
             if (y1 > y) != (y2 > y) and x1 + (y - y1) / (y2 - y1) * (x2 - x1) > x:
                 crossings += 1
         return crossings % 2 == 1
@@ -660,16 +721,43 @@ def main():
     assert not [d for d in drawn if d["layer"] == "ground"], "the ground showed before zooming in"
     assert labels["Kalimdor"].shown and labels["Eastern Kingdoms"].shown and not labels["The Barrens"].shown
     assert labels["The Great Sea"].shown, "the sea between the continents is not named"
+    # (a name has an outline or a shadow, never both: both together are too heavy to read. Ink on the paper has neither)
+    assert ns.Get("globeNameEdge") == "outline"
+    for name in ("Kalimdor", "The Barrens"):
+        assert labels[name].flags == "OUTLINE" and labels[name].shadow == 0, (name, labels[name].flags, labels[name].shadow)
+    assert labels["The Great Sea"].flags == "" and labels["The Great Sea"].shadow == 0
+    ns.Set("globeNameEdge", "shadow")
+    again = state()[2]
+    assert again["The Barrens"].flags == "" and again["The Barrens"].shadow == 1, "Name Outline: Shadow is not followed"
+    assert again["The Great Sea"].flags == "" and again["The Great Sea"].shadow == 0
+    ns.Set("globeNameEdge", "outline")
+    assert state()[2]["The Barrens"].flags == "OUTLINE" and state()[2]["The Barrens"].shadow == 0
     within_globe(look, drawn)
     slash("stats")
     assert "Parchment:" in chat()
 
-    step("zoomed right out: the whole ring and stand in the picture, the ball in its hole, ink on the sea")
+    step("zoomed right out: the whole ring (and a stand, if it has one) in the picture, the ball in its hole, ink on the sea")
     st = ns.GlobeState()
-    assert ns.RING and st.ring, "the ring and stand are not shown"
-    assert 280 < st.ring.top <= 300 and -300 <= st.ring.bottom < -280, ("the ring and stand do not fill the picture", st.ring.top, st.ring.bottom)
+    assert ns.RING and st.ring, "the ring is not shown"
+    assert 280 < st.ring.top <= 300 and -300 <= st.ring.bottom < -280, ("the ring does not fill the picture", st.ring.top, st.ring.bottom)
     assert look.r * LIMB < st.ring.hole < look.r * LIMB * 1.06, ("the ball does not sit in the ring's hole", st.ring.hole)
-    assert st.lift > 40 and st.lift + look.r * LIMB < 300, ("the ball is not lifted clear of the stand", st.lift)
+    # The ring's own numbers (Art.lua) say what is drawn over and under the middle of its hole. A ring on a
+    # stand has far more under it than over it, and the ball is lifted to make room; a ring alone has about
+    # as much each way, and the ball stays near the middle. Either way what is drawn sits evenly in the picture.
+    over, under = ns.RING.cy - ns.RING.top, ns.RING.bottom - ns.RING.cy
+    STAND = under - over > 0.1                     # (in parts of the picture's side)
+
+    def lifted(w, h):
+        # (how far the ball is lifted with the whole globe in a picture this size)
+        return (under - over) * min((h - 16) / (ns.RING.bottom - ns.RING.top), w) / 2
+
+    assert abs(st.lift - lifted(600, 600)) < 0.01, ("the ball is not lifted as the ring's picture asks", st.lift, lifted(600, 600))
+    assert abs(st.ring.top + st.ring.bottom) < 0.01, ("the ring is not in the middle of the picture", st.ring.top, st.ring.bottom)
+    if STAND:
+        assert st.lift > 40, ("the ball is not lifted clear of the stand", st.lift)
+    else:
+        assert abs(st.lift) < 40, ("a ring with no stand, and the ball is lifted as if it had one", st.lift)
+    assert st.lift + look.r * LIMB < 300 and st.lift - look.r * LIMB > -300, ("the ball is not wholly in the picture", st.lift)
     inked = [d for d in drawn if d["layer"] == "decor"]
     assert inked and "decor_compass" in inked[0]["fdid"], "the compass rose is not on the sea"
     # the Maelstrom at the middle of the Great Sea: its picture, its name under it, the sea's name under that
@@ -838,7 +926,7 @@ def main():
     click("RightButton")
     assert abs(look.r / ns.GlobeState().rmin - 1) < 0.01, ("not the whole globe", look.r)
     within_globe(*state()[:2])
-    assert ns.GlobeState().ring and ns.GlobeState().lift > 40, "the ring and stand did not come back"
+    assert ns.GlobeState().ring and abs(ns.GlobeState().lift - lifted(600, 600)) < 0.01, "the ring did not come back"
     x, y = point_at(*CROSSROADS)
     frames(2)
     zone, lines = zone_state()
@@ -961,8 +1049,9 @@ def main():
         view.scripts["OnMouseWheel"](view, -1)
     frames(90)
     st = ns.GlobeState()
-    assert st.ring and st.ring.top <= 250 and st.ring.bottom >= -250, ("zoomed right out, the ring and stand do not fit", st.ring.top, st.ring.bottom)
-    assert st.ring.top > 230 and abs(st.look.r - st.rmin) < 1e-6, "the desk globe does not fill the picture's height"
+    assert st.ring and st.ring.top <= 250 and st.ring.bottom >= -250, ("zoomed right out, the ring does not fit", st.ring.top, st.ring.bottom)
+    assert st.ring.top > 230 and abs(st.look.r - st.rmin) < 1e-6, "the ring does not fill the picture's height"
+    assert abs(st.lift - lifted(800, 500)) < 0.01, ("in a wider picture, the ball is not lifted as the ring's picture asks", st.lift)
     in_box(st, state()[1])
 
     step("full screen and back: the picture fills the screen, then the window is as it was left")
@@ -1613,6 +1702,177 @@ def main():
     stub.Fire("GROUP_ROSTER_UPDATE")
     assert not marks("people"), "marks of a group you have left"
 
+    step("guild members and friends: one mark a zone by its name, with how many are there and who; a click fits the zone")
+    assert ns.Get("globeGuild") is False and ns.Get("globeFriends") is False, "the people you know are shown as it comes"
+    lua.execute("""
+        STUB.guild = {
+            { isSelf = true, name = 'Walker', presence = 1, zone = 'The Barrens', level = 20, classID = 1, guid = 'Player-1-000A' },
+            { isSelf = false, name = 'Tessa-Stormrage', presence = 1, zone = 'The Barrens', level = 23, classID = 8, guid = 'Player-1-0T' },
+            { isSelf = false, name = 'Brom', presence = 4, zone = 'Durotar', level = 12, classID = 1, guid = 'Player-1-0B' },
+            { isSelf = false, name = 'Ilse', presence = 3, zone = 'The Barrens', level = 60, classID = 8, guid = 'Player-1-0I' },
+            { isSelf = false, name = 'Odo', presence = 2, zone = 'The Barrens', level = 60, classID = 8, guid = 'Player-1-0O' },
+            { isSelf = false, name = 'Pim', presence = 1, zone = 'the crossroads', level = 18, classID = 99, guid = 'Player-1-0P' },
+            { isSelf = false, name = 'Quill', presence = 1, zone = 'Somewhere Else Entirely', level = 18, classID = 1, guid = 'Player-1-0Q' },
+            { isSelf = false, name = STUB.secret, presence = 1, zone = 'Durotar', level = 18, classID = 1 },
+            { isSelf = false, name = 'Rook', presence = 1, zone = STUB.secret, level = 18, classID = 1 },
+            { isSelf = false, name = 'Sly', presence = STUB.secret, zone = 'Durotar', level = 18, classID = 1 },
+        }
+        STUB.friends = {
+            { connected = true, name = 'Tessa', area = 'The Barrens', level = 23, className = 'Mage', guid = 'Player-1-0T' },
+            { connected = true, name = 'Sam', area = 'The Barrens', level = 30, className = 'Warrior', guid = 'Player-1-0S' },
+            { connected = false, name = 'Una', area = 'Durotar', level = 9, className = 'Mage', guid = 'Player-1-0U' },
+            { connected = true, name = 'Vex', area = 'Durotar', level = 0, guid = 'Player-1-0V' },
+        }
+        local function Playing(program, project, name, area, level, class, guid, online)
+            return { accountName = 'someone', gameAccountInfo = { isOnline = online ~= false, clientProgram = program, wowProjectID = project,
+                characterName = name, areaName = area, characterLevel = level, classFilename = class, playerGuid = guid } }
+        end
+        STUB.bnet = {
+            Playing('WoW', 99, 'Wren', 'Durotar', 14, 'MAGE', 'Player-1-0W'),
+            Playing('WoW', 1, 'Xan', 'Durotar', 70, 'MAGE', 'Player-9-0X'),           -- (in another of the games)
+            Playing('App', nil, nil, nil, nil, nil, nil),
+            Playing('WoW', 99, 'Sam', 'The Barrens', 30, 'WARRIOR', 'Player-1-0S'),    -- (a friend twice over: once)
+            Playing('WoW', 99, 'Yule', 'Durotar', 14, 'MAGE', 'Player-1-0Y', false),
+        }
+    """)
+    asks = lambda: list(stub.rosterAsks.values())
+    NAME_AT = (-1765.63, -2443.745)              # (where the Barrens' name is written: the middle of the game's map of it)
+    go(NAME_AT[0], NAME_AT[1], 700)
+    frames(100)
+    assert not marks("social") and not asks() and stub.friendAsks == 0, "switched off, people are shown or their lists asked for"
+    ns.Set("globeGuild", True)
+    ms = marks("social")
+    assert sorted(m.name for m in ms) == ["Durotar", "The Barrens"], [m.name for m in ms]
+    barrens, durotar = named(ms, "The Barrens"), named(ms, "Durotar")
+    # (online and away; not yourself, the one offline, the one on the phone, the one nowhere on the globe, nor
+    # those whose name, zone or presence the game keeps to itself; a town counts as its zone)
+    assert barrens.text == "2" and durotar.text == "1", (barrens.text, durotar.text)
+    at(barrens, NAME_AT[0], NAME_AT[1], 13)
+    assert barrens.icon.endswith("mark_badge") and [round(v, 2) for v in barrens.mark.tint.values()] == [0.35, 1, 0.35]
+    assert list(barrens.mark.lines.values()) == ["|cffffd100Guild (2)|r", "Pim, Level 18", "|cff40c7ebTessa|r, Level 23",
+                                                 "|cff66c2ffClick to fit this zone in the picture.|r"], list(barrens.mark.lines.values())
+    assert ns.SocialState().areasRead, "a town's name was matched without reading which zone it lies in"
+    # (Durotar's name is not written on this stand-in's globe: its mark is over the middle of the zone)
+    assert ns.G.NameAt("Durotar") is None and ns.G.NameAt("The Barrens") is not None
+    x, y, _z = ns.G.Seen(durotar.mark.zone.mid, ns.GlobeState().look.r)
+    assert abs(durotar.x - x) < 0.01 and abs(durotar.y - y - 13) < 0.01, "Durotar's mark is not over the middle of the zone"
+    frames(40)
+    assert len(asks()) == 1 and stub.friendAsks == 0, ("the roster was not asked for once", asks(), stub.friendAsks)
+    frames(1000)                                 # (16 seconds)
+    assert len(asks()) == 2 and asks()[1] - asks()[0] >= 15, ("the roster asked for more often than the game allows", asks())
+    ns.Set("globeFriends", True)
+    ms = marks("social")
+    barrens, durotar = named(ms, "The Barrens"), named(ms, "Durotar")
+    assert barrens.text == "3" and durotar.text == "3", (barrens.text, durotar.text)
+    assert [round(v, 2) for v in barrens.mark.tint.values()] == [1, 0.86, 0.45]
+    assert list(barrens.mark.lines.values()) == ["|cffffd100Guild (2)|r", "Pim, Level 18", "|cff40c7ebTessa|r, Level 23",
+                                                 "|cffffd100Friends (1)|r", "|cffc79c6eSam|r, Level 30",
+                                                 "|cff66c2ffClick to fit this zone in the picture.|r"], list(barrens.mark.lines.values())
+    assert list(durotar.mark.lines.values()) == ["|cffffd100Guild (1)|r", "|cffc79c6eBrom|r, Level 12",
+                                                 "|cffffd100Friends (2)|r", "Vex", "|cff40c7ebWren|r, Level 14",
+                                                 "|cff66c2ffClick to fit this zone in the picture.|r"], list(durotar.mark.lines.values())
+    frames(1000)
+    assert stub.friendAsks >= 1, "the friends list was not asked for"
+    ns.Set("globeGuild", False)
+    ms = marks("social")
+    barrens = named(ms, "The Barrens")
+    assert barrens.text == "2" and [round(v, 2) for v in barrens.mark.tint.values()] == [0.51, 0.77, 1]
+    assert list(barrens.mark.lines.values())[:3] == ["|cffffd100Friends (2)|r", "|cffc79c6eSam|r, Level 30", "|cff40c7ebTessa|r, Level 23"], \
+        list(barrens.mark.lines.values())
+    n = len(asks())
+    frames(1000)
+    assert len(asks()) == n, "the roster asked for though guild members are not shown"
+    ns.Set("globeGuild", True)
+
+    # pointing at one lists them; a click turns and fits the globe to its zone
+    durotar = named(marks("social"), "Durotar")
+    stub.cursor[1], stub.cursor[2] = durotar.x, durotar.y + ns.GlobeState().lift
+    frames(2)
+    assert stub.tip.title == "Durotar" and list(stub.tip.lines.values())[1] == "|cffc79c6eBrom|r, Level 12", stub.tip.title
+    reach = durotar.mark.zone.reach
+    click()
+    frames(90)
+    st = ns.GlobeState()
+    assert abs(st.look.r / fit_radius(reach) - 1) < 0.01, ("a click did not fit Durotar", st.look.r, fit_radius(reach))
+    point_at(*RAZOR_HILL)
+    frames(2)
+    assert zone_state()[0].name == "Durotar", "the globe was not turned to Durotar"
+
+    # the game says a list changed: the marks follow
+    go(NAME_AT[0], NAME_AT[1], 700)
+    lua.execute("STUB.guild[3].zone = 'The Barrens'")
+    stub.Fire("GUILD_ROSTER_UPDATE", True)
+    frames(200)
+    ms = marks("social")
+    assert named(ms, "The Barrens").text == "4" and named(ms, "Durotar").text == "2", [(m.name, m.text) for m in ms]
+    lua.execute("STUB.friends[4].area = 'Razor Hill'")       # (still Durotar: nothing changes)
+    lua.execute("STUB.friends[2].connected = false STUB.bnet[4].gameAccountInfo.isOnline = false")
+    stub.Fire("FRIENDLIST_UPDATE")
+    frames(200)
+    ms = marks("social")
+    assert named(ms, "The Barrens").text == "3" and named(ms, "Durotar").text == "2", [(m.name, m.text) for m in ms]
+
+    # on the far side of the globe they are hidden; Next Mark turns to one, and Fit presses it
+    go(-9000, -500, 700, 0)
+    assert not marks("social"), "marks seen through the globe"
+    go(NAME_AT[0], NAME_AT[1], 700)
+    for _ in range(30):
+        ns.GlobeKey("next")
+        frames(90)
+        middle = [m for m in marks("social") if abs(m.x) < 1.5 and abs(m.y - 13) < 1.5]
+        if middle:
+            break
+    assert middle and middle[0].name == "The Barrens" and stub.tip.title == "The Barrens", ("Next Mark did not come to it", stub.tip.title)
+    reach = middle[0].mark.zone.reach
+    ns.GlobeKey("fit")
+    frames(90)
+    st = ns.GlobeState()
+    assert abs(st.look.r / fit_radius(reach) - 1) < 0.01, ("Fit did not press the mark", st.look.r, fit_radius(reach))
+    view.scripts["OnMouseWheel"](view, 1)        # (the mouse takes the pointer back)
+    frames(60)
+    go(NAME_AT[0], NAME_AT[1], 700)
+
+    # closed, nothing is asked for; out of a guild, nothing of one is shown or asked for
+    n = len(asks())
+    ns.Toggle()
+    frames(1200)
+    assert len(asks()) == n, "the roster asked for with the globe closed"
+    ns.Toggle()
+    frames(60)
+    assert len(asks()) == n + 1 and all(b - a >= 15 for a, b in zip(asks(), asks()[1:])), asks()
+    lua.execute("STUB.inGuild = false")
+    stub.Fire("PLAYER_GUILD_UPDATE")
+    frames(200)
+    ms = marks("social")
+    assert named(ms, "The Barrens").text == "1" and named(ms, "Durotar").text == "2", [(m.name, m.text) for m in ms]
+    n = len(asks())
+    frames(1000)
+    assert len(asks()) == n, "the roster asked for out of a guild"
+    lua.execute("STUB.inGuild = true")
+    # what this game client may not have: each missing piece shows less, and nothing breaks
+    lua.execute("STUB.kept = { C_Club.GetClubMembers, C_FriendList.GetFriendInfoByIndex, WOW_PROJECT_ID, C_GuildInfo.GuildRoster }")
+    lua.execute("C_Club.GetClubMembers, C_GuildInfo.GuildRoster = nil, nil")
+    ns.Marks.Changed("social")
+    ms = marks("social")
+    assert named(ms, "The Barrens").text == "1" and named(ms, "Durotar").text == "2", "guild members without their list"
+    lua.execute("WOW_PROJECT_ID = nil")
+    ns.Marks.Changed("social")
+    ms = marks("social")
+    assert named(ms, "The Barrens").text == "1" and named(ms, "Durotar").text == "1", "Battle.net friends shown with no way to tell their game"
+    lua.execute("C_FriendList.GetFriendInfoByIndex = nil")
+    ns.Marks.Changed("social")
+    frames(1000)
+    assert not marks("social"), "people shown with every list gone"
+    lua.execute("C_Club.GetClubMembers, C_FriendList.GetFriendInfoByIndex, WOW_PROJECT_ID, C_GuildInfo.GuildRoster = unpack(STUB.kept, 1, 4)")
+    ns.Marks.Changed("social")
+    assert len(marks("social")) == 2
+    ns.Set("globeGuild", False)
+    ns.Set("globeFriends", False)
+    assert not marks("social"), "switched off, they stayed"
+    lua.execute("STUB.guild, STUB.friends, STUB.bnet = {}, {}, {}")
+    go(-1200, -2800, 900)                        # (as the picture was)
+    chat()
+
     step("while you are dead: your corpse and the spirit healer")
     assert not marks("death")
     lua.execute("STUB.dead = true STUB.corpse = { ui = 1414, x = -1500, y = -2900 } STUB.release = { ui = 1414, x = -430, y = -2400 }")
@@ -1718,10 +1978,11 @@ def main():
     ns.GlobeKey("show")
     assert stub.menu.title == "Show"
     boxes = {k.text: k for k in stub.menu.kids.values()}
-    for text in ("Your Route", "Quests", "Places", "Your Group", "Flight Points", "Boats And Zeppelins", "Herb And Ore Nodes",
-                 "Rares And Treasures", "Other Addons' Pins", "Names", "Coordinates", "Unexplored Land Left Blank"):
+    for text in ("Your Route", "Quests", "Places", "Your Group", "Guild Members", "Friends", "Flight Points", "Boats And Zeppelins",
+                 "Herb And Ore Nodes", "Rares And Treasures", "Other Addons' Pins", "Names", "Coordinates",
+                 "Fog Of War", "Zones Colored By Level"):
         assert text in boxes and boxes[text].selected, (text, "is not in the menu as a tick box")
-    assert boxes["Rares And Treasures"].selected() is True and boxes["Unexplored Land Left Blank"].selected() is False
+    assert boxes["Rares And Treasures"].selected() is True and boxes["Fog Of War"].selected() is False
     boxes["Rares And Treasures"].click()
     assert ns.Get("globeRares") is False and boxes["Rares And Treasures"].selected() is False, "a tick did not turn the setting off"
     boxes["Rares And Treasures"].click()
@@ -1822,7 +2083,7 @@ def main():
     lua.execute("STUB.questie:RemoveAllWorldMapIcons('Questie')")
     assert not marks("pins")
 
-    step("unexplored land: blank paper over what you have not discovered, clearing as you discover it")
+    step("fog of war: fog over what you have not discovered, clearing as you discover it")
     assert not [d for d in state()[1] if d["layer"] == "cover"]
     ns.Set("globeExplore", True)
     frames(80)
@@ -1835,16 +2096,64 @@ def main():
     stub.Fire("MAP_EXPLORATION_UPDATED")
     go(-1500, -3000, 700)
     frames(80)
+    assert ns.ExploreState().known == 0 and not [d for d in state()[1] if d["layer"] == "cover"], \
+        "land covered though the game has given no list for any zone yet"
+    # one piece of Durotar discovered, as at a new character's start: the game is telling, and gives no list at all
+    # for the zones never entered. They are covered, each under one sheet; Durotar piece by piece
+    durotar = sorted(covers[1411][1].pieces.keys())
+    lua.execute("STUB.explored = { [1411] = { { ... } } }", durotar[0] // 4096, durotar[0] % 4096)
+    rest = len(durotar) - 1
+    stub.Fire("MAP_EXPLORATION_UPDATED")
+    frames(80)
     look, drawn, labels = state()
     es = ns.ExploreState()
     assert es.zones == len(covers) and es.known == es.zones, (es.zones, es.known)
-    assert es.shown == es.zones, ("an undiscovered zone is not under one sheet", es.shown)
+    assert es.shown == es.zones - 1 + rest, ("a zone never entered is not under one sheet", es.shown)
     assert holding(drawn, 0, 0, layer="cover", fdid="Interface\\AddOns\\" + GLOBE + "\\Art\\Covers\\cover_1413"), "no paper over the Barrens"
     within_globe(look, [d for d in drawn if d["layer"] == "cover"])
-    go(-1500, -3000, 2400)                       # (closer in, the sheet gives way to the zone's own pieces)
-    assert ns.ExploreState().shown > es.zones, "zoomed in, still one sheet a zone"
+    go(-1500, -3000, 2400)                       # (closer in too, a zone never entered is under its one sheet)
+    assert ns.ExploreState().shown == es.shown, "zoomed in, a zone never entered is no longer under one sheet"
+    assert holding(state()[1], 0, 0, layer="cover", fdid="Interface\\AddOns\\" + GLOBE + "\\Art\\Covers\\cover_1413")
+    # the fog is thin (Fog Opacity, 30% as it comes)
+    assert ns.Get("globeFog") == 30 and abs(ns.ExploreState().fog - 0.3) < 1e-9, ns.ExploreState().fog
+    ns.Set("globeFog", 55)
+    frames(3)
+    assert abs(ns.ExploreState().fog - 0.55) < 1e-9, "the fog does not follow Fog Opacity"
+    ns.Set("globeFog", 30)
+    # zoomed in to the ground: over land you have not discovered the painted map stays, under its fog
+    go(-1500, -3000, 5000)
+    drawn = state()[1]
+    assert ns.ExploreState().veiled > 0, "no ground picture is kept off undiscovered land"
+    assert not holding(drawn, 0, 0, layer="ground"), "the ground shows over land not discovered"
+    assert holding(drawn, 0, 0, layer="detail"), "the painted map is not under the fog there"
+    assert holding(drawn, 0, 0, layer="cover"), "zoomed in to the ground, the fog is gone"
+    # (a piece of the Barrens discovered: the ground comes in over it, and fades out at its edge)
+    one = barrens.pieces[keys[0]]
+    px, py = EDGE - (one[6] + one[8] / 2) / 16 * TILE, EDGE - (one[5] + one[7] / 2) / 16 * TILE
+    go(px, py, 5000)
+    before = [d for d in state()[1] if d["layer"] == "ground"]
+    lua.execute("STUB.explored[1413] = { { ... } }", keys[0] // 4096, keys[0] % 4096)
+    stub.Fire("MAP_EXPLORATION_UPDATED")
+    frames(200)
+    after = [d for d in state()[1] if d["layer"] == "ground"]
+    assert len(after) > len(before), ("the ground did not come in over a piece just discovered", len(before), len(after))
+    edges = [d for d in after if d["fade"] and min(d["fade"][1], d["fade"][2]) < 0.99]
+    assert edges, "the ground ends without fading at the edge of what is discovered"
+    assert all(d["depth"] >= 2 for d in edges), "a ground piece that fades is larger than a quarter of its tile"
+    print("      the ground over one piece discovered: %d pieces, %d of them fading out; %d tiles kept off in part or whole" % (
+        len(after), len(edges), ns.ExploreState().veiled))
+    ns.Set("globeStyle", "minimap")              # (the minimap's pictures alone: nothing is kept off)
+    frames(5)
+    assert ns.ExploreState().veiled == 0, "the ground is kept off in the minimap style"
+    ns.Set("globeStyle", "parchment")
+    frames(5)
+    assert ns.ExploreState().veiled > 0
+    lua.execute("STUB.explored[1413] = nil")
+    stub.Fire("MAP_EXPLORATION_UPDATED")
+    frames(200)
     go(-1500, -3000, 700)
     found = [(k // 4096, k % 4096) for k in keys[:3]]
+    frames(120)                                  # (Durotar's first piece has cleared)
     lua.execute("STUB.explored[1413] = {}")
     for x, y in found:
         lua.execute("table.insert(STUB.explored[1413], { ... })", x, y)
@@ -1852,12 +2161,12 @@ def main():
     frames(70)                                   # (read again at most once a second)
     es2 = ns.ExploreState()
     assert es2.clearing == 3, ("the pieces just discovered are not fading", es2.clearing)
-    assert es2.shown == es.zones - 1 + len(keys), es2.shown     # (the Barrens' pieces, three of them fading)
+    assert es2.shown == es.zones - 2 + rest + len(keys), es2.shown     # (the Barrens' pieces, three of them fading)
     fading = [d for d in state()[1] if d["layer"] == "cover" and d["fdid"].endswith("cover_1413")]
     assert len(fading) >= len(keys)
     frames(120)
     es3 = ns.ExploreState()
-    assert es3.clearing == 0 and es3.shown == es.zones - 1 + len(keys) - 3, (es3.clearing, es3.shown)
+    assert es3.clearing == 0 and es3.shown == es.zones - 2 + rest + len(keys) - 3, (es3.clearing, es3.shown)
     lua.execute("STUB.artOf[1413] = 1")          # (another picture of the zone than the paper was cut for: left alone)
     stub.Fire("MAP_EXPLORATION_UPDATED")
     frames(70)
@@ -1867,6 +2176,185 @@ def main():
     ns.Set("globeExplore", False)
     frames(5)
     assert not [d for d in state()[1] if d["layer"] == "cover"], "switched off, the paper stayed"
+    assert ns.ExploreState().veiled == 0, "switched off, the ground is still kept off"
+    go(-1500, -3000, 5000)
+    assert holding(state()[1], 0, 0, layer="ground"), "switched off, the ground does not show"
+    go(-1500, -3000, 700)
+
+    step("zones colored by level: a thin wash over each zone as its levels become known, in the color of the levels by its name")
+    assert ns.Get("globeLevels") is False, "the zones are colored as it comes"
+    COVER = "Interface\\AddOns\\" + GLOBE + "\\Art\\Covers\\cover_%d"
+    PAPER = (214 / 255, 196 / 255, 152 / 255)
+    GREY, GREEN, YELLOW, ORANGE, RED = (0.5, 0.5, 0.5), (0.25, 0.75, 0.25), (1, 0.82, 0), (1, 0.5, 0.25), (1, 0.1, 0.1)
+
+    def washed():
+        return [d for d in state()[1] if d["layer"] == "wash"]
+
+    def wash_of(ui):
+        return [d for d in washed() if d["fdid"] == COVER % ui]
+
+    def near(a, b):
+        return a is not None and len(a) == len(b) and all(abs(x - y) < 0.006 for x, y in zip(a, b))
+
+    def tint_of(colour):
+        return tuple(min(1, c / p) for c, p in zip(colour, PAPER))
+
+    def known():
+        return {ui: k for ui, k in ns.WashState().known.items()}
+
+    go(-1500, -3000, 700)
+    n = stub.levelAsks
+    frames(40)
+    assert not washed() and not ns.WashState().key and stub.levelAsks == n, "switched off, zones are washed or their levels asked for"
+    # the game answers nothing, or with numbers an addon may not read: asked again a few times, then left
+    ns.LevelsForget()
+    lua.execute("STUB.levelsMute = true")
+    ns.Set("globeLevels", True)
+    frames(7)                                    # (one tenth of a second: three zones)
+    ws = ns.WashState()
+    assert ws.zones == len(covers) and stub.levelAsks - n == 3 and ws.unknown == ws.zones, (ws.zones, stub.levelAsks - n, ws.unknown)
+    lua.execute("STUB.levelsMute = 'secret'")
+    frames(1300)
+    ws = ns.WashState()
+    assert ws.unknown == 0 and not known() and not washed() and not ws.key, ("zones washed with no levels", ws.unknown)
+    assert stub.levelAsks - n == ws.zones * 12, ("each zone was not asked for twelve times and no more", stub.levelAsks - n)
+    frames(60)
+    assert stub.levelAsks - n == ws.zones * 12, "zones the game gives nothing for are still asked for"
+    # this game client has no levels to give: nothing is washed, and nothing breaks
+    ns.LevelsForget()
+    lua.execute("STUB.levelsMute = false STUB.keptLevels = C_Map.GetMapLevels C_Map.GetMapLevels = nil")
+    frames(120)
+    assert ns.WashState().unknown == 0 and not washed() and not ns.WashState().key
+    lua.execute("C_Map.GetMapLevels = STUB.keptLevels")
+    # the levels as the game gives them: Durotar, Mulgore, the Barrens, Thousand Needles, Stonetalon, Dustwallow
+    ns.LevelsForget()
+    lua.execute("STUB.mapLevels = { [1411] = { 1, 10 }, [1412] = { 1, 10 }, [1413] = { 10, 25 }, [1441] = { 24, 35 }, "
+                "[1442] = { 15, 18 }, [1445] = { 35, 45 } }")
+    n = stub.levelAsks
+    frames(7)                                    # (the first three, by the game's number: Durotar, Mulgore, the Barrens)
+    ws = ns.WashState()
+    assert stub.levelAsks - n == 3 and sorted(known()) == [1411, 1412, 1413] and ws.unknown == ws.zones - 3, (sorted(known()), ws.unknown)
+    assert wash_of(1413) and not wash_of(1441), "a zone is not washed as soon as its levels are known, or one is before"
+    frames(120)
+    ws = ns.WashState()
+    assert ws.unknown == 0 and sorted(known()) == [1411, 1412, 1413, 1441, 1442, 1445], sorted(known())
+    assert stub.levelAsks - n == ws.zones, ("a zone's levels were asked for more than once", stub.levelAsks - n)
+    # at level 20: the Barrens yellow (within), Durotar grey, Stonetalon green, Thousand Needles orange, Dustwallow red
+    for ui, colour in ((1413, YELLOW), (1411, GREY), (1412, GREY), (1442, GREEN), (1441, ORANGE), (1445, RED)):
+        assert near(tuple(known()[ui].colour.values()), colour), (ui, tuple(known()[ui].colour.values()))
+    look, drawn, labels = state()
+    wash = [d for d in drawn if d["layer"] == "wash"]
+    assert {d["fdid"] for d in wash} <= {COVER % ui for ui in known()}, "a zone the game gives no levels for is washed"
+    under = holding(drawn, 0, 0, layer="wash", fdid=COVER % 1413)
+    assert under and all(near(d["tint"], tint_of(YELLOW)) for d in wash_of(1413)), "the Barrens are not washed yellow"
+    assert all(near(d["tint"], tint_of(GREY)) for d in wash_of(1411)) and wash_of(1411), "Durotar is not washed grey"
+    assert all(d["tint"] is None for d in drawn if d["layer"] != "wash"), "the map itself is tinted"
+    within_globe(look, wash)
+    assert ws.alpha == 0.42, ws.alpha
+    # over the map, the ground and the fog; under the paper's age, the lines, the marks and the names
+    shown = [t for t in stub.allTextures.values() if t.shown and t.sub is not None and (t.icon or "").startswith(COVER[:-2])]
+    assert len(shown) == len(wash) and all(t.layer == "ARTWORK" and t.sub == 3 for t in shown), [(t.layer, t.sub) for t in shown]
+    ns.Set("globeExplore", True)
+    lua.execute("STUB.explored = { [1411] = { { ... } } }", durotar[0] // 4096, durotar[0] % 4096)
+    stub.Fire("MAP_EXPLORATION_UPDATED")
+    frames(80)
+    drawn = state()[1]
+    assert holding(drawn, 0, 0, layer="cover", fdid=COVER % 1413) and holding(drawn, 0, 0, layer="wash", fdid=COVER % 1413), \
+        "over fog, the wash is gone (or the fog is)"
+    subs = {t.sub for t in stub.allTextures.values() if t.shown and t.sub is not None and (t.icon or "").startswith(COVER[:-2])}
+    assert subs == {2, 3}, ("the wash is not over the fog", subs)
+    ns.Set("globeExplore", False)
+    # the key to the colours, in the picture's corner
+    ws = ns.WashState()
+    assert ws.key, "no key to the colours"
+    rows = [(r.word, tuple(r.colour.values())) for r in ws.rows.values()]
+    assert rows == [("Far Above", RED), ("Above", ORANGE), ("Your Level", YELLOW), ("Below", GREEN), ("Far Below", GREY)], rows
+    # a level gained (the game says so before UnitLevel does): every zone is coloured again
+    stub.level = 44
+    stub.Fire("PLAYER_LEVEL_UP", 45)
+    frames(3)
+    for ui, colour in ((1413, GREY), (1445, YELLOW), (1441, GREY)):
+        assert near(tuple(known()[ui].colour.values()), colour), (ui, tuple(known()[ui].colour.values()))
+    assert all(near(d["tint"], tint_of(GREY)) for d in wash_of(1413)), "a level gained, and the Barrens are washed as before"
+    stub.level = 45                              # (UnitLevel catches up, and is believed again)
+    ns.G.Changed()
+    frames(3)
+    stub.level = 20
+    stub.Fire("PLAYER_LEVEL_UP")
+    frames(3)
+    assert all(near(d["tint"], tint_of(YELLOW)) for d in wash_of(1413))
+    # it fades out toward the ground, and the key goes with it
+    go(-1500, -3000, 600 * 4.5)
+    ws = ns.WashState()
+    assert 0.05 < ws.alpha < 0.4 and washed() and ws.key, ("it does not fade as you zoom in", ws.alpha)
+    go(-1500, -3000, 600 * 6.5)
+    ws = ns.WashState()
+    assert ws.alpha == 0 and not washed() and not ws.key, "zoomed in to the ground, the wash or its key stayed"
+    go(-1500, -3000, 700)
+    # Minimap Pictures: washed the same
+    ns.Set("globeStyle", "minimap")
+    frames(5)
+    assert wash_of(1413) and ns.WashState().key, "no wash over the minimap's pictures"
+    ns.Set("globeStyle", "parchment")
+    # a city's own flat map: no wash, no key; back on the globe, both again
+    assert ns.FlatOpen(1454)
+    frames(5)
+    assert not state()[1] and not ns.WashState().key, "a wash, or its key, on a city's flat map"
+    ns.FlatClose()
+    frames(90)
+    go(-1500, -3000, 700)
+    assert wash_of(1413) and ns.WashState().key
+    # by its key, by /globe levels, and in the Show menu
+    ns.GlobeKey("levels")
+    frames(3)
+    assert ns.Get("globeLevels") is False and not washed() and not ns.WashState().key, "the key did not switch it off"
+    view.scripts["OnMouseWheel"](view, 1)        # (the mouse takes the pointer back)
+    frames(60)
+    go(-1500, -3000, 700)
+    slash("levels")
+    assert ns.Get("globeLevels") is True and "Zones are colored by level." in chat()
+    slash("levels")
+    assert ns.Get("globeLevels") is False and "Zones are no longer colored by level." in chat()
+    ns.GlobeKey("show")
+    box = [k for k in stub.menu.kids.values() if k.text == "Zones Colored By Level"][0]
+    box.click()
+    view.scripts["OnMouseWheel"](view, 1)
+    frames(60)
+    go(-1500, -3000, 700)
+    assert ns.Get("globeLevels") is True and box.selected() is True and wash_of(1413)
+
+    # what it costs, with every zone of the game's given levels: pieces and milliseconds, with and without
+    ns.LevelsForget()
+    lua.eval("function(ns) for _, e in pairs(ns.COVERS) do STUB.mapLevels[e.ui] = { e.ui % 50 + 1, e.ui % 50 + 9 } end end")(ns)
+    frames(120)
+    assert len(known()) == len(covers)
+
+    def cost(wx, wy, r, map_id=1):
+        go(wx, wy, r, map_id)
+        out = []
+        for on in (False, True):
+            ns.Set("globeLevels", on)
+            best = None
+            for _ in range(6):
+                ns.G.Changed()
+                frames(1)
+                ms = ns.GlobeState().ms
+                best = ms if best is None else min(best, ms)
+            out.append((len(state()[1]), len(washed()), best))
+        return out
+
+    for words, where in (("the whole globe", (-1500, -3000, ns.GlobeState().rmin)), ("a continent", (-1500, -3000, 330)),
+                         ("a zone", (-1500, -3000, 700)), ("closer in", (-1500, -3000, 1800))):
+        (pieces0, _none, ms0), (pieces1, wash1, ms1) = cost(*where)
+        print("      %s: %d pieces in %.1f ms; with the wash %d pieces (%d of them the wash) in %.1f ms"
+              % (words, pieces0, ms0, pieces1, wash1, ms1))
+        assert pieces1 - pieces0 == wash1 and 0 < wash1 <= 120, ("the wash costs too many pieces", words, wash1)
+    ns.Set("globeLevels", False)
+    frames(3)
+    assert not washed() and not ns.WashState().key, "switched off, the wash stayed"
+    lua.execute("STUB.mapLevels = {}")
+    ns.LevelsForget()
+    chat()
 
     step("light and movement: candlelight, more at night; the Maelstrom turning; cloud shadows; a ring from your place")
     fx = ns.EffectsState
@@ -2213,8 +2701,17 @@ def main():
     world_map.Hide(world_map)
     ns.Set("globeMapKey", True)
     assert dict(stub.overrides) == {"M": "PatchwerkForever_Thread_GlobeMapKey", "PADBACK": "PatchwerkForever_Thread_GlobeMapKey"}, dict(stub.overrides)
+    # (opened by the map key, the globe is turned and zoomed to where you are, wherever it was left)
+    ns.Toggle(True)
+    go(-9000, -100, 700, 0)
+    ns.Toggle(False)
+    assert not window.shown
     key_button.scripts["OnClick"](key_button)
     assert window.shown, "the map key did not open the globe"
+    frames(120)
+    x, y, z = ns.GlobeWhere(1, stub.player.x, stub.player.y)
+    assert z > 0.99 and abs(x) < 6 and abs(y) < 6 and ns.G.look.r >= 2400 - 1e-6, (
+        "opened by the map key, the globe is not at your place", x, y, z, ns.G.look.r)
     key_button.scripts["OnClick"](key_button)
     assert not window.shown, "the map key did not close the globe"
     lua.execute("STUB.bound = { 'N' }")

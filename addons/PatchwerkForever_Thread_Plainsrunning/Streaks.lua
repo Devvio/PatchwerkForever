@@ -6,10 +6,11 @@
 -- rings and a glow may all show at once, over the darkened edges.
 --
 -- The speed streaks: lines of light rush outward from a point a little above the middle of the screen
--- (where the way ahead meets the horizon, the camera being behind you), longer, thicker and faster the
--- further out they are, as things going past do. A clear space is kept in the middle, so you still see
--- your character and where you are going. Each streak is a Line (a texture drawn between two points),
--- the picture Media/streak (made by tools/media.py): faint at its inner end and bright toward its outer.
+-- (where the way ahead meets the horizon, the camera being behind you; Way.lua may lean it sideways
+-- toward where your route goes next), longer, thicker and faster the further out they are, as things
+-- going past do. A clear space is kept in the middle, so you still see your character and where you
+-- are going. Each streak is a Line (a texture drawn between two points), the picture Media/streak
+-- (made by tools/media.py): faint at its inner end and bright toward its outer.
 --
 -- The other effects are in Effects.lua; each puts itself in ns.effects.
 local ADDON, ns = ...
@@ -149,7 +150,9 @@ function ns.StreaksStep(elapsed, on, ratio)
 	overlay:Show()
 
 	local w, h, reach = Size()
-	local cx, cy = 0, h * ns.Get('streakUp') / 100
+	-- (the point they come from: the middle, moved up by Vertical Offset, and sideways toward where
+	-- your route goes next with Wind Shows The Way: Way.lua)
+	local cx, cy = ns.WayOffset and ns.WayOffset(elapsed, w) or 0, h * ns.Get('streakUp') / 100
 	local inner = reach * ns.Get('streakClear') / 100
 
 	if ns.Get('streaks') then
@@ -174,6 +177,7 @@ function ns.StreaksStep(elapsed, on, ratio)
 end
 
 -- for the checks outside the game
+function ns.StreaksOrigin() return look.cx, look.cy end
 function ns.StreaksShown()
 	local n = 0
 	for _, s in ipairs(streaks) do

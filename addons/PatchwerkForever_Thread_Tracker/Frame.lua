@@ -18,12 +18,20 @@
 -- click does); `mark` draws a bar beside it (the quest being followed); `small` makes it a quiet
 -- heading inside the section (a zone's name); `oneLine` keeps its title to one line, cut short with
 -- an ellipsis (a guide's later steps); `drag = fn(block)` lets it be dragged with the left button
--- (fn is called as the drag starts; Drag.lua does the rest). Of a line: `clock` marks words that
+-- (fn is called as the drag starts; Drag.lua does the rest); `noteR`, `noteG`, `noteB` color its
+-- note, and `noteCounts` makes a change of its note a change of the block (a count, not a distance,
+-- which changes as you walk); `drop = fn()` is asked first at a left-click, and when a drag from
+-- the bags is let go on it: it gives true when it took what the cursor holds, and then the click
+-- does nothing more (the collect list); `share = { title =, tip = { 'line', ... }, click = fn }`
+-- puts a small mark at the right of its title, three dots, with a tooltip and a click of its own
+-- (a quest someone in your party lacks). Of a line: `clock` marks words that
 -- change by themselves (a timer), which do not count as a change of the block; `plain` writes it
 -- without the dash of an objective (a note, such as who in your party has the quest). Of a
 -- section: `menu = fn(head)` is called on a right-click of its heading (a left-click still folds
--- it). Sections are drawn in the order of `order`. ns.Refresh() asks for the list to be drawn
--- again; it is done at most ten times a second.
+-- it); `drop = fn()` is asked first at a left-click of its heading, as a block's is, and
+-- `tip = { 'line', ... }` is what its tooltip says in place of the line on folding. Sections are
+-- drawn in the order of `order`. ns.Refresh() asks for the list to be drawn again; it is done at
+-- most ten times a second.
 --
 -- One more thing may stand above the sections, inside the list: ns.AddTop(fn), where
 -- fn(content, x, y, width, size) places itself at that spot and gives back how tall it is (0 when
@@ -296,11 +304,24 @@ local function HideTip(owner)
 	tip:Hide()
 end
 
--- (a heading's: folding, and its menu where it has one)
+-- (a heading's: folding, or what its section says a click does now, and its menu where it has one)
 local function HeadTip(head)
-	local lines = { Saved().folded[head.id] and 'Click to expand.' or 'Click to collapse.' }
-	if head.menu then lines[2] = 'Right-click for more options.' end
+	local lines = {}
+	if type(head.tip) == 'table' then
+		for i, line in ipairs(head.tip) do lines[i] = line end
+	else
+		lines[1] = Saved().folded[head.id] and 'Click to expand.' or 'Click to collapse.'
+	end
+	if head.menu then lines[#lines + 1] = 'Right-click for more options.' end
 	ShowTip(head, head.title:GetText() or '', lines)
+end
+
+-- What the cursor holds is put down on a heading or a block: by a click with it, or by letting go
+-- of a drag from the bags. Its `drop` says whether it took it (the collect list takes an item).
+local function Dropped(self)
+	local drop = self.drop
+	if drop == nil and self.data then drop = self.data.drop end
+	return type(drop) == 'function' and ns.Try('a drop on the tracker', drop, self) == true
 end
 
 local function BlockTip(block)
@@ -326,10 +347,13 @@ local function Head(i)
 				if self.menu then ns.Try('the menu of a heading', self.menu, self) end
 				return
 			end
+			-- (a click with something its section takes puts that down; it does not fold the section)
+			if Dropped(self) then return end
 			local folded = Saved().folded
 			folded[self.id] = not folded[self.id] or nil
 			ns.Refresh()
 		end)
+		head:SetScript('OnReceiveDrag', function(self) Dropped(self) end)
 		-- (the tooltip is written again at each drawing while the mouse is over it: Render)
 		head:SetScript('OnEnter', function(self)
 			self.tipping = true
@@ -363,6 +387,76 @@ local function Stitch(head, width, r, g, b)
 	for i = n + 1, #head.stitches do head.stitches[i]:Hide() end
 end
 
+-- A block's share mark (its `share`): three dots, one and then two, the sign for sharing, drawn in the
+-- color of the party's line. A button of its own over the block, with its own tooltip and click.
+local function ShareTip(mark)
+	local share = mark.block.data and mark.block.data.share
+	if share and type(share.tip) == 'table' then ShowTip(mark, share.title or '', share.tip) else HideTip(mark) end
+end
+
+local function ShareMark(block)
+	local mark = CreateFrame('Button', nil, block)
+	mark.block = block
+	mark:RegisterForClicks('LeftButtonUp')
+	mark.over = mark:CreateTexture(nil, 'BACKGROUND')
+	mark.over:SetAllPoints(mark)
+	mark.over:SetColorTexture(1, 1, 1, 0.15)
+	mark.over:Hide()
+	mark.dots = {}
+	for n = 1, 3 do
+		mark.dots[n] = mark:CreateTexture(nil, 'ARTWORK')
+		mark.dots[n]:SetColorTexture(0.55, 0.75, 1, 1)
+	end
+	mark:SetScript('OnClick', function(self)
+		local share = self.block.data and self.block.data.share
+		if share and share.click then ns.Try('a click on the tracker', share.click) end
+	end)
+	mark:SetScript('OnEnter', function(self)
+		self.over:Show()
+		self.tipping = true
+		ShareTip(self)
+	end)
+	mark:SetScript('OnLeave', function(self)
+		self.over:Hide()
+		self.tipping = nil
+		HideTip(self)
+	end)
+	return mark
+end
+
+-- Shows a block's share mark at the right end of its title's row, or hides it. Returns the room it takes.
+local function PlaceShare(block, data, size)
+	local mark = block.share
+	if not data.share then
+		if mark then
+			mark:Hide()
+			mark.over:Hide()
+			mark.tipping = nil
+		end
+		return 0
+	end
+	if not mark then
+		mark = ShareMark(block)
+		block.share = mark
+	end
+	local side = size + 2
+	local dot = math.max(2, math.floor(side / 4))
+	mark:SetSize(side, side)
+	mark:ClearAllPoints()
+	mark:SetPoint('TOPRIGHT', block, 'TOPRIGHT', 0, 0)
+	-- (one dot at the left, half way down; two at the right, above and below it)
+	local spots = { { 1, math.floor((side - dot) / 2) }, { side - dot - 1, 1 }, { side - dot - 1, side - dot - 1 } }
+	for n, at in ipairs(spots) do
+		mark.dots[n]:SetSize(dot, dot)
+		mark.dots[n]:ClearAllPoints()
+		mark.dots[n]:SetPoint('TOPLEFT', mark, 'TOPLEFT', at[1], -at[2])
+		mark.dots[n]:Show()
+	end
+	mark:Show()
+	if mark.tipping then ShareTip(mark) end
+	return side + 4
+end
+
 local function Block(i)
 	local block = blocks[i]
 	if not block then
@@ -385,9 +479,12 @@ local function Block(i)
 		block:SetScript('OnClick', function(self, button)
 			-- (the button let go at the end of a drag is not also a click, whichever the game sends first)
 			if ns.Dragging() or ns.DragJustEnded() then return end
+			-- (a left-click with something the block takes puts that down, and is not also a click)
+			if button ~= 'RightButton' and Dropped(self) then return end
 			local data = self.data
 			if data and data.click then ns.Try('a click on the tracker', data.click, button, self) end
 		end)
+		block:SetScript('OnReceiveDrag', function(self) Dropped(self) end)
 		block:SetScript('OnDragStart', function(self)
 			local data = self.data
 			if data and data.drag then ns.Try('dragging in the tracker', data.drag, self) end
@@ -427,11 +524,15 @@ local function Fill(block, data, width, size)
 	Font(block.title, small and size - 1 or size + 1)
 	Font(block.note, size - 1)
 	block.note:SetText(data.note or '')
-	block.note:SetTextColor(0.7, 0.7, 0.7)
+	block.note:SetTextColor(data.noteR or 0.7, data.noteG or 0.7, data.noteB or 0.7)
 	local noteWide = (data.note and data.note ~= '') and (#data.note * (size - 1) * 0.6 + 6) or 0
+	-- (the share mark stands at the right end of the title's row, and the note to its left)
+	local shareWide = PlaceShare(block, data, size)
+	block.note:ClearAllPoints()
+	block.note:SetPoint('TOPRIGHT', block, 'TOPRIGHT', -shareWide, 0)
 	-- (set both ways: blocks are used again for other rows)
 	block.title:SetWordWrap(not data.oneLine)
-	block.title:SetWidth(math.max(40, width - noteWide))
+	block.title:SetWidth(math.max(40, width - noteWide - shareWide))
 	block.title:SetText(data.title or '')
 	block.title:SetTextColor(data.r or 1, data.g or 0.82, data.b or 0)
 	local h = Tall(block.title, size + 1)
@@ -481,7 +582,7 @@ local function Fill(block, data, width, size)
 	else
 		block.mark:Hide()
 	end
-	block:EnableMouse(data.click ~= nil or data.drag ~= nil)
+	block:EnableMouse(data.click ~= nil or data.drag ~= nil or data.drop ~= nil)
 	if not data.click then block.over:Hide() end
 	-- (only a block that can be dragged takes a drag: on the others a click that moves a little is still a click)
 	if data.drag then block:RegisterForDrag('LeftButton') else block:RegisterForDrag() end
@@ -494,6 +595,7 @@ end
 -- as its timer runs.)
 local function Words(data)
 	local parts = { data.title or '' }
+	if data.noteCounts then parts[#parts + 1] = tostring(data.note) end
 	for _, line in ipairs(data.lines or {}) do
 		if not line.clock then parts[#parts + 1] = tostring(line.text) .. (line.done and '*' or '') end
 	end
@@ -584,7 +686,7 @@ local function Render()
 			-- (a long name, a guide's, is cut short of the note beside it, not written over it)
 			head.title:SetWordWrap(false)
 			head.title:SetWidth(math.max(40, inner - (note ~= '' and (#note * (size - 1) * 0.6 + 8) or 0)))
-			head.menu = data.menu
+			head.menu, head.drop, head.tip = data.menu, data.drop, data.tip
 			if head.tipping then HeadTip(head) end
 			head:ClearAllPoints()
 			head:SetPoint('TOPLEFT', content, 'TOPLEFT', PAD, -y)

@@ -21,6 +21,10 @@
 --     short   a short trip through them: the nearest first, each next the nearest to the one before
 --             (the base's Guides.ShortOrder, as My Route's Order For Me). Worked out again only when
 --             a quest comes, goes or is done, so the rows do not swap as you walk.
+--     party   the quests someone in your party is on too come first, under a heading of their own,
+--             in the order "zone" would list them; then the rest, as "zone" lists them. Alone, or
+--             with no such quest, it is "zone".
+-- A quest that someone in your party is not on, and that can be shared, wears a share mark (Party.lua).
 -- A quest that is ready can leave the list for a short group of its own at the foot (a setting); with
 -- the order "ready" that group comes first instead.
 local ADDON, ns = ...
@@ -140,6 +144,14 @@ local function Progress(have, need)
 	local t = (part - 0.5) * 2
 	return 1 - 0.55 * t, 0.85 + 0.05 * t, 0.3 + 0.15 * t
 end
+ns.Progress = Progress       -- (the collect list colors its counts the same way)
+
+-- Who in your party is on a quest and who is not (ns.PartyOn), asked once a quest at a drawing: the
+-- party's line, the share mark and the order "party" all read it. Nothing when you are alone.
+local function Party(quest)
+	if quest.party == nil then quest.party = ns.PartyOn(quest.id) or false end
+	return quest.party or nil
+end
 
 local function Clock(seconds)
 	seconds = math.floor(seconds)
@@ -179,12 +191,13 @@ local function BlockOf(quest, brief)
 			clock = true, plain = true }
 	end
 	if ns.Get('party') and not brief then
-		local with = ns.PartyLine(quest.id)
+		local with = ns.PartyLine(Party(quest))
 		if with then lines[#lines + 1] = { text = with, r = 0.55, g = 0.75, b = 1, plain = true } end
 	end
 	local chosen = ns.Base.Choice:Is('quest', quest.id)
 	return { key = quest.id, title = title, r = r, g = g, b = b, lines = lines, mark = quest.followed,
 		note = ns.Get('distance') and ns.YardsText(quest.yards) or nil,
+		share = ns.ShareMark(quest.id, Party(quest)),
 		tip = { chosen and 'Click to stop routing to this quest.' or 'Click to route to this quest.',
 			'Shift-click for quest details.', 'Right-click for more options.' },
 		click = function(button, block) ns.QuestClick(quest, button, block) end }
@@ -234,6 +247,29 @@ local function ZoneHeading(name)
 	return { key = 'zone:' .. name, title = name, small = true, r = r * 0.85, g = g * 0.85, b = b * 0.85 }
 end
 
+-- Quests by zone: the zones' names, the one you are in first and the others in the quest log's order
+-- (zones: that order), and each zone's quests, nearest first.
+local function ByZone(list, zones)
+	local here = Ask(GetRealZoneText) or Ask(GetZoneText)
+	local byZone, names = {}, {}
+	for _, quest in ipairs(list) do
+		local zone = quest.zone or 'Elsewhere'
+		if not byZone[zone] then
+			byZone[zone] = {}
+			names[#names + 1] = zone
+		end
+		table.insert(byZone[zone], quest)
+	end
+	local rank = {}
+	for i, zone in ipairs(zones) do rank[zone] = i end
+	table.sort(names, function(a, b)
+		if (a == here) ~= (b == here) then return a == here end
+		return (rank[a] or 999) < (rank[b] or 999)
+	end)
+	for _, zone in ipairs(names) do table.sort(byZone[zone], Nearer) end
+	return names, byZone
+end
+
 ns.AddSection('quests', 50, function()
 	ns.questOrder = {}
 	if not ns.Get('quests') then return nil end
@@ -263,23 +299,27 @@ ns.AddSection('quests', 50, function()
 	elseif order == 'short' then
 		for _, quest in ipairs(Trip(open)) do blocks[#blocks + 1] = BlockOf(quest) end
 	else
-		-- by zone: the one you are in first, the others in the quest log's order
-		local here = Ask(GetRealZoneText) or Ask(GetZoneText)
-		local byZone, names = {}, {}
-		for _, quest in ipairs(open) do
-			local zone = quest.zone or 'Elsewhere'
-			if not byZone[zone] then
-				byZone[zone] = {}
-				names[#names + 1] = zone
+		local rest, split = open, false
+		if order == 'party' then
+			-- the quests someone in your party is on too: first, under a heading of their own, in the
+			-- order the zones would list them
+			local shared = {}
+			rest = {}
+			for _, quest in ipairs(open) do
+				local party = Party(quest)
+				if party and #party.on > 0 then shared[#shared + 1] = quest else rest[#rest + 1] = quest end
 			end
-			table.insert(byZone[zone], quest)
+			if #shared > 0 then
+				split = true
+				blocks[#blocks + 1] = ZoneHeading('Party\'s Quests')
+				local names, byZone = ByZone(shared, data.zones)
+				for _, zone in ipairs(names) do
+					for _, quest in ipairs(byZone[zone]) do blocks[#blocks + 1] = BlockOf(quest) end
+				end
+			end
 		end
-		local rank = {}
-		for i, zone in ipairs(data.zones) do rank[zone] = i end
-		table.sort(names, function(a, b)
-			if (a == here) ~= (b == here) then return a == here end
-			return (rank[a] or 999) < (rank[b] or 999)
-		end)
+		-- by zone: the one you are in first, the others in the quest log's order
+		local names, byZone = ByZone(rest, data.zones)
 		if order == 'ready' then
 			local first = {}
 			for _, quest in ipairs(open) do
@@ -294,8 +334,8 @@ ns.AddSection('quests', 50, function()
 				if not (order == 'ready' and quest.done) then list[#list + 1] = quest end
 			end
 			if #list > 0 then
-				table.sort(list, Nearer)
-				if #names > 1 or order == 'ready' then blocks[#blocks + 1] = ZoneHeading(zone) end
+				-- (under the party's quests a zone's name always stands, so their group has an end)
+				if #names > 1 or order == 'ready' or split then blocks[#blocks + 1] = ZoneHeading(zone) end
 				for _, quest in ipairs(list) do blocks[#blocks + 1] = BlockOf(quest) end
 			end
 		end

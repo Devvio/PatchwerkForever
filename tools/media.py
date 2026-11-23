@@ -22,6 +22,10 @@ out from a formula in this file: none is copied from anywhere.
     seed      a grass seed: a soft head trailing a fine tail (Plainsrunning)
     warp      a thin ring, for the warp rings (Plainsrunning)
     edgeglow  a glow hugging the edges of the screen, clear in the middle (Plainsrunning)
+    leaf      a leaf, pointed at both ends, with a fainter midrib (Sparkle's Falling Leaves)
+    ember     a rising spark: a bright head trailing a short tail below it (Sparkle's Embers)
+    coin      a coin face on, with a rim and a highlight (Sparkle's Coin Glints; turned by narrowing it)
+    rays      twelve soft rays round a middle (Sparkle's Sun Rays)
 """
 import math
 import os
@@ -156,12 +160,47 @@ def edgeglow(x, y):
     return clamp((d - 0.55) / 0.5) ** 1.7
 
 
+def leaf(x, y):
+    """Lying corner to corner, pointed at both ends, with a fainter line down its middle."""
+    c = math.sqrt(0.5)
+    u, v = (x * c + y * c) / 0.95, (-x * c + y * c)
+    if abs(u) >= 1:
+        return 0.0
+    half = 0.36 * (1 - u * u) ** 0.9
+    body = clamp((half - abs(v)) / 0.06)
+    rib = 1 - 0.35 * math.exp(-(v / 0.025) ** 2) * clamp((0.9 - abs(u)) * 5)
+    return body * rib
+
+
+def ember(x, y):
+    """Rising: the bright head at the top, a short tail fading below it."""
+    head = math.exp(-((x / 0.3) ** 2 + ((y - 0.45) / 0.2) ** 2))
+    tail = math.exp(-(x / (0.06 + 0.1 * clamp((y + 0.9) / 1.35))) ** 2) * clamp((y + 0.9) / 1.35) ** 1.6 * clamp((0.5 - y) * 4)
+    return clamp(head + 0.7 * tail) * clamp((1 - abs(x)) * 6) * clamp((1 - abs(y)) * 8)
+
+
+def coin(x, y):
+    r = math.hypot(x, y)
+    body = clamp((0.86 - r) / 0.05)
+    rim = math.exp(-((r - 0.74) / 0.05) ** 2)
+    shine = math.exp(-(((x + 0.3) / 0.28) ** 2 + ((y - 0.3) / 0.28) ** 2))
+    return clamp(body * 0.62 + 0.3 * rim + 0.35 * shine * body)
+
+
+def rays(x, y):
+    r = math.hypot(x, y)
+    a = math.atan2(y, x)
+    ray = (0.5 + 0.5 * math.cos(12 * a)) ** 6
+    return ray * math.exp(-(r / 0.62) ** 2) * clamp((1 - r) * 4) * clamp(r / 0.12)
+
+
 SHAPES = {"star": (star, 128, 128), "glow": (glow, 128, 128), "ring": (ring, 128, 128), "beam": (beam, 64, 256),
           "arcs": (arcs, 128, 128), "bracket": (bracket, 64, 64), "dot": (dot, 32, 32),
           "glint": (glint, 64, 64), "mote": (mote, 32, 32),
           "streak": (streak, 256, 32), "vignette": (vignette, 128, 128),
           "wisp": (wisp, 128, 16), "speck": (speck, 32, 32), "seed": (seed, 64, 32), "warp": (warp, 256, 256),
-          "edgeglow": (edgeglow, 128, 128)}
+          "edgeglow": (edgeglow, 128, 128),
+          "leaf": (leaf, 64, 64), "ember": (ember, 32, 64), "coin": (coin, 64, 64), "rays": (rays, 128, 128)}
 
 
 def draw(shape, width, height):
@@ -192,9 +231,12 @@ def write_tga(path, rows):
             f.write(b"".join(bytes((255, 255, 255, a)) for a in row))
 
 
-def main():
+def main(only=None):
+    """Draws every picture, or only those named on the command line (python media.py leaf ember)."""
     os.makedirs(PREVIEW, exist_ok=True)
     for name, (shape, width, height) in SHAPES.items():
+        if only and name not in only:
+            continue
         rows = draw(shape, width, height)
         os.makedirs(out(name), exist_ok=True)
         write_tga(os.path.join(out(name), name + ".tga"), rows)
@@ -206,4 +248,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    main(sys.argv[1:] or None)

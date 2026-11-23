@@ -13,6 +13,9 @@
 	<Binding name="PATCHWERKFOREVER_THREAD_GATHER" category="BINDING_CATEGORY_PatchwerkForever">
 		if PatchwerkForever_Thread_Routes_Gather then PatchwerkForever_Thread_Routes_Gather() end
 	</Binding>
+	<Binding name="PATCHWERKFOREVER_THREAD_DISCOVER" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Routes_Discover then PatchwerkForever_Thread_Routes_Discover() end
+	</Binding>
 	<Binding name="PATCHWERKFOREVER_THREAD_FOCUS_NEXT" category="BINDING_CATEGORY_PatchwerkForever">
 		if PatchwerkForever_Thread_Routes_FocusNext then PatchwerkForever_Thread_Routes_FocusNext() end
 	</Binding>

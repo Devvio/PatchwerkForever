@@ -15,6 +15,10 @@
 -- With none of these (a continent you have opened no flight map on, and the game saying nothing),
 -- no flight point counts as known and routes go on foot. That is said once, with what to do.
 --
+-- The flight point search (Discover.lua) asks here for the points you lack, and takes only a flight
+-- map's word for it: until one has been opened on a continent, a point you have not discovered cannot
+-- be told from one that was never read.
+--
 -- Kept in PatchwerkForever_Thread_RoutesDB.taxi, by character:
 --     { known = { [flight point] = true or false }, seen = { [continent] = true }, gameWrong = true }
 local ADDON, ns = ...
@@ -100,6 +104,28 @@ function ns.FlightMissing(name)
 		end
 	end
 	return false
+end
+
+-- The flight points of your side on a continent that you have not discovered: { point, ... }, each as
+-- the map data has it ({ id, name, cell x, cell y, sides, walked to or not, ... }). Then whether a
+-- flight map has been opened on that continent: only then is a point that is not known one you lack,
+-- and not one that was never read (the world map's word is not taken for this). Then whether the
+-- continent has flight points of your side at all. For the flight point search (Discover.lua).
+function ns.FlightsLacking(map)
+	local mine, side = Mine(), Side()
+	local lacking, any = {}, false
+	for _, p in ipairs(Points(map)) do
+		if not side or tostring(p[5]):find(side, 1, true) then
+			any = true
+			if mine.known[p[1]] ~= true then lacking[#lacking + 1] = p end
+		end
+	end
+	return lacking, mine.seen[map] == true, any
+end
+
+-- Whether a flight point is remembered as one you have (asked every second while a search is on).
+function ns.FlightHave(id)
+	return Mine().known[id] == true
 end
 
 local function Changed()

@@ -6,6 +6,10 @@
 -- ring and a beam of light are drawn on that marker (Marker.lua). Reaching a checkpoint lights the next;
 -- the time, the split at each checkpoint and your best run are kept (Race.lua).
 --
+-- A course carries a rule, On Foot or Anything Goes, and keeps a best run for each (Courses.lua, Race.lua).
+-- A course can be raced by a party or raid at the same time: one invites, the others join, the start is
+-- given once for all, and each checkpoint's time goes to the group (Together.lua).
+--
 -- An addon cannot draw in the world itself. The game's marker for a tracked pin is the one place in the
 -- world an addon is told the screen position of (C_Navigation.GetFrame), which is why there is one
 -- checkpoint marker at a time.
@@ -27,6 +31,11 @@ ns.settings = {
 		desc = 'A race uses your map pin for the next checkpoint. Put back the pin you had before the race when it ends; disabled, the pin is cleared.' },
 	{ key = 'chat', default = true, name = 'Split Times In Chat',
 		desc = 'Also write each checkpoint\'s time, and the result, in chat.' },
+	{ key = 'rule', default = 'any', name = 'Rule For New Courses',
+		choices = { { 'any', 'Anything Goes' }, { 'foot', 'On Foot' } },
+		desc = 'The rule a course you make starts with. On Foot: a run during which you are mounted or on a flight path does not count. /race rule changes the rule of a course you have.' },
+	{ key = 'autoJoin', default = false, name = 'Join Party Races Automatically',
+		desc = 'When a party or raid member invites the group to race a course you have, join without being asked. Not while you are racing or making a course.' },
 
 	-- the marker drawn on the next checkpoint
 	{ page = 'Races: Marker', voice = 'A ring on the ground. Patchwerk runs through it. Patchwerk is very proud.' },
@@ -59,6 +68,9 @@ local function Help()
 	ns.Print('Race commands (/race or /pfr):')
 	ns.Print('  /race start [name]: race a course (the last one, without a name)')
 	ns.Print('  /race stop: stop racing')
+	ns.Print('  /race together [name]: invite your party or raid to race a course at the same time')
+	ns.Print('  /race go: start the race you invited your group to (/race together again does the same)')
+	ns.Print('  /race join: join the race you were invited to')
 	ns.Print('  /race new <name>: start a new course where you stand')
 	ns.Print('  /race mark: place a checkpoint where you stand')
 	ns.Print('  /race undo: take the last checkpoint back')
@@ -67,7 +79,9 @@ local function Help()
 	ns.Print('  /race list: list your courses')
 	ns.Print('  /race best [name]: show the best run on a course')
 	ns.Print('  /race delete <name>: delete a course')
-	ns.Print('  /race reset <name>: forget the best run on a course')
+	ns.Print('  /race reset <name>: forget the best run on a course, under its rule')
+	-- (no "foot|any" here: a bar begins an escape code in a chat line)
+	ns.Print('  /race rule <foot or any> [name]: set a course\'s rule, On Foot or Anything Goes (the last one, without a name)')
 	ns.Print('  /race share [name] [player]: send a course to your party, or to one player')
 	ns.Print('  /race accept: keep a course you were sent')
 	ns.Print('  /race config: open the options')
@@ -88,8 +102,16 @@ SlashCmdList.PATCHWERKFOREVER_RACES = function(text)
 		ns.Try('saving the course', ns.CourseSave)
 	elseif word == 'cancel' then
 		ns.Try('the new course', ns.CourseCancel)
+	elseif word == 'go' and ns.TogetherBusy() then
+		ns.Try('the race', ns.TogetherGo)               -- (a race together: its start; otherwise the same as start)
 	elseif word == 'start' or word == 'go' then
 		ns.Try('the race', ns.RaceStart, rest)
+	elseif word == 'together' or word == 'party' then
+		ns.Try('the race', ns.RaceTogether, rest)
+	elseif word == 'join' then
+		ns.Try('the race', ns.TogetherJoin)
+	elseif word == 'rule' then
+		ns.Try('the courses', ns.CourseRule, rest)
 	elseif word == 'stop' then
 		ns.Try('the race', ns.RaceStop)
 	elseif word == 'list' then
@@ -122,6 +144,10 @@ BINDING_HEADER_PATCHWERKFOREVER_RACES = ns.TITLE
 BINDING_NAME_PATCHWERKFOREVER_RACES_MARK = 'Place Checkpoint'
 BINDING_NAME_PATCHWERKFOREVER_RACES_START = 'Start Last Race'
 BINDING_NAME_PATCHWERKFOREVER_RACES_STOP = 'Stop Race'
+BINDING_NAME_PATCHWERKFOREVER_RACES_TOGETHER = 'Race Together'
+BINDING_NAME_PATCHWERKFOREVER_RACES_JOIN = 'Join Race'
 function PatchwerkForever_Thread_Races_Mark() ns.Try('placing a checkpoint', ns.CourseMark) end
 function PatchwerkForever_Thread_Races_Start() ns.Try('the race', ns.RaceStart, '') end
 function PatchwerkForever_Thread_Races_Stop() ns.Try('the race', ns.RaceStop) end
+function PatchwerkForever_Thread_Races_Together() ns.Try('the race', ns.RaceTogether, '') end
+function PatchwerkForever_Thread_Races_Join() ns.Try('the race', ns.TogetherJoin) end

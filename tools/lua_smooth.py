@@ -95,6 +95,10 @@ def check(ground, before, after):
         wrong.append("an end, a link or a flight moved")
     path = cells_walked(before)
     wet = {cell for cell in path if ground.kind(*cell) == SWIM}
+    # (and where the unsmoothed line itself touches deep water: a step from one cell of a bridge's deck to the next
+    # across their corner clips the water beside the bridge, which is no new swimming in the smoothed line)
+    wet |= {(math.floor(x + 0.5), math.floor(y + 0.5)) for x, y, _length in samples(before)
+            if ground.kind(math.floor(x + 0.5), math.floor(y + 0.5)) == SWIM}
     swum_before = sum(length for x, y, length in samples(before) if ground.kind(math.floor(x + 0.5), math.floor(y + 0.5)) == SWIM)
     how_far, swum_after, off, new = {}, 0.0, 0, 0
     farthest = 0.0

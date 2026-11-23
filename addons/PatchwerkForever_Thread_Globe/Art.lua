@@ -72,6 +72,6 @@ ns.ART = {
 	{ file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\decor_maelstrom', kind = 'decor', lat = 0.0500, lon = 0.0000, size = 0.4000 },
 }
 
--- the brass ring and stand round the ball: in parts of the picture's side, the middle of its hole (across
+-- the brass ring round the ball, and its stand where the picture has one: in parts of the picture's side, the middle of its hole (across
 -- and down), the hole's radius, and the top and bottom of what is drawn
-ns.RING = { file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\ring', cx = 0.5, cy = 0.3561, inner = 0.2468, top = 0.0098, bottom = 0.9834 }
+ns.RING = { file = 'Interface\\AddOns\\' .. ADDON .. '\\Art\\ring', cx = 0.5, cy = 0.4625, inner = 0.2887, top = 0.0078, bottom = 0.9668 }

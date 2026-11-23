@@ -12,6 +12,8 @@
 -- A run is a destination like any other (its source is 'gather'), so the trail, the step said on
 -- screen and a wrong turn all work as they do for a pin. While one is on, your guide and your quests
 -- are not followed; a pin of your own still comes first, and the run goes on once the pin is gone.
+-- A flight point search (Discover.lua) is a side path of the same kind, and there is one at a time:
+-- starting a run ends a search, and starting a search ends a run.
 --
 -- This is offered through the base (its Gather service), which is how the tracker lists the spots
 -- and starts a run without knowing this addon. /thread gather does the same from the chat.
@@ -178,6 +180,8 @@ local function Start(mode, name)
 	noWay = {}
 	Go()
 	if had and not state and Choice.Set then Choice:Set(had.kind, had.id) end
+	-- (a flight point search is a side path too: a run that has started ends it; Discover.lua)
+	if state and ns.DiscoverStop then ns.DiscoverStop() end
 	return state ~= nil
 end
 
@@ -193,6 +197,7 @@ end
 -- Once a second: a spot reached is noted and the next one gone to.
 local function Watch()
 	if not state then return end
+	if ns.CorpseActive and ns.CorpseActive() then return end  -- (a ghost goes to its corpse first: the run waits; Corpse.lua)
 	local dest = ns.dest
 	if dest then                                          -- on the way; or a pin of your own, which comes first
 		-- a spot no way was found to (Route.lua) is not waited at: it is left out for now, and the next is gone to
@@ -230,6 +235,8 @@ local offered = {
 		if not state then return nil end
 		return { mode = state.mode, name = state.name, going = state.going and state.going[3] or nil }
 	end,
+	-- a spot another tool tells of (base 2.9.0: Sparkle (Thread)'s herbs and ore you passed)
+	Note = function(name, kind, map, x, y) return ns.NodesNote and ns.NodesNote(name, kind, map, x, y) or false end,
 }
 if ns.Base.Gather and ns.Base.Gather.Offer then
 	ns.Base.Gather:Offer(offered)

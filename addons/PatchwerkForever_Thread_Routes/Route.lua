@@ -375,10 +375,12 @@ function ns.Plan(announce)
 			Fail(announce, why)
 			if dead then
 				-- said in chat once for a destination (dest.wait is set from the first time on); where you
-				-- asked, Fail has said it. Not for a node of a gathering run: each is a destination of its
-				-- own and the run goes on to the next by itself (Gather.lua), so the line would come once a
-				-- node; the step text says it
-				if not (announce or dest.wait) and dest.source ~= 'gather' and ns.Get('notify') then ns.Print(why) end
+				-- asked, Fail has said it. Not for a node of a gathering run or a flight point of a search:
+				-- each is a destination of its own and the run goes on to the next by itself (Gather.lua,
+				-- Discover.lua), so the line would come once a node; the step text says it
+				if not (announce or dest.wait) and dest.source ~= 'gather' and dest.source ~= 'discover' and ns.Get('notify') then
+					ns.Print(why)
+				end
 				-- (the first whole search to find no way is said under the destination's words, also where
 				-- those went out earlier with nothing under them: a search given up before it began, one
 				-- made on a flight path, or a way that was lost after a wrong turn)
@@ -525,21 +527,34 @@ end
 ---------------------------------------------------------------------------
 -- Destinations
 ---------------------------------------------------------------------------
+-- Your own map pin: asked of the base, which keeps it while the game's waypoint is lent to mark the way
+-- ahead (WayAhead.lua, the base's Marker.lua); asked of the game with an older base.
 local function PinPlace()
-	if not (C_Map and C_Map.HasUserWaypoint and C_Map.HasUserWaypoint()) then return nil end
-	local point = C_Map.GetUserWaypoint()
+	local marker = ns.Base.Marker
+	local point
+	if marker and marker.Pin then
+		point = marker:Pin()
+	else
+		if not (C_Map and C_Map.HasUserWaypoint and C_Map.HasUserWaypoint()) then return nil end
+		point = C_Map.GetUserWaypoint()
+	end
 	if not (point and point.uiMapID and point.position) then return nil end
 	local map, world = C_Map.GetWorldPosFromMapPos(point.uiMapID, point.position)
 	if not world then return nil end
 	local x, y = world:GetXY()
 	return map, x, y
 end
+ns.PinPlace = PinPlace            -- (Corpse.lua: whether the pin that waited still stands once you are alive)
 
--- source: nil for a place you chose (the pin, /thread to), or what chose it for you ('rxp' or 'quest': Sources.lua).
+-- source: nil for a place you chose (the pin, /thread to), or what chose it for you ('rxp' or 'quest':
+-- Sources.lua; 'gather': Gather.lua; 'discover': Discover.lua; 'corpse': Corpse.lua).
 -- more: what else is known of it (Sources.lua): lines, the words that describe it on screen; kind, what
 -- a guide's step asks for; walkOnly, to be gone to on foot; quiet, its words have been on screen
 -- already and are not shown again.
 function ns.SetDestination(map, x, y, pin, announce, source, more)
+	-- A ghost on the way to its corpse: nothing else is gone to until you are alive again. A pin or
+	-- a spot of your own given meanwhile is kept for then (Corpse.lua).
+	if source ~= 'corpse' and ns.CorpseHolds and ns.CorpseHolds(map, x, y, pin, announce, source, more) then return end
 	local dest = { map = map, x = x, y = y, pin = pin, source = source, fresh = true }
 	for key, value in pairs(more or {}) do
 		dest[key] = value
@@ -551,7 +566,8 @@ function ns.SetDestination(map, x, y, pin, announce, source, more)
 	-- tell them apart by route.dest)
 	Changed()
 	-- the way to a guide's next step may have been found already, while you were on the step before
-	local ready = ns.Ahead and ns.Ahead.Take(dest)
+	-- (never taken for the way to your corpse: that one is on foot, and a way found ahead may fly)
+	local ready = source ~= 'corpse' and ns.Ahead and ns.Ahead.Take(dest)
 	if ready then
 		job = nil
 		lastPlan = GetTime()
@@ -576,11 +592,17 @@ function ns.Stop(announce)
 	Changed()
 	if not announce then return end
 	-- what was stopped is said: only a guide's step or a quest is left alone afterwards (Sources.lua),
-	-- and with a pin, a spot or a gathering run gone your guide or quest is routed to at the next look
+	-- and with a pin, a spot, a gathering run or a flight point search gone your guide or quest is
+	-- routed to at the next look. The way to your corpse, stopped, leaves nothing routed while you
+	-- are a ghost (Corpse.lua).
 	if not had then
 		ns.Print('No active route.')
+	elseif had.source == 'corpse' then
+		ns.Print('Routing to your corpse stopped. Start Routing (/thread go) routes to it again.')
 	elseif had.source == 'gather' then
 		ns.Print('Gathering stopped.')
+	elseif had.source == 'discover' then
+		ns.Print('Flight point search stopped.')
 	elseif had.pin then
 		ns.Print('Routing to your map pin stopped.')
 	elseif not had.source then
@@ -591,6 +613,8 @@ function ns.Stop(announce)
 end
 
 function ns.Go()
+	-- (a ghost with the way to its corpse leading: that is what is routed to, again if you had stopped it)
+	if ns.CorpseGo and ns.CorpseGo() then return end
 	local map, x, y = PinPlace()
 	if not map then
 		if ns.GoToSource and ns.GoToSource() then return end
@@ -646,7 +670,12 @@ local function PinChanged(announce)
 	end
 end
 
-ns.On('USER_WAYPOINT_UPDATED', function() PinChanged(true) end)
+ns.On('USER_WAYPOINT_UPDATED', function()
+	-- (the pin moved to mark the way ahead, or yours given back when that ends, is no news of yours)
+	local marker = ns.Base.Marker
+	if marker and marker.Quiet and (marker:Quiet() or marker:IsOurs()) then return end
+	PinChanged(true)
+end)
 -- A pin already on the map is taken up at login and after a reload only. After any other loading
 -- screen it would be one you had reached or stopped, routed to all over again.
 ns.On('PLAYER_ENTERING_WORLD', function(isInitialLogin, isReloadingUi)

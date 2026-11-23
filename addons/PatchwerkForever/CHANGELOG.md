@@ -1,5 +1,12 @@
 # Patchwerk Forever
 
+## 2.9.0
+
+- **Lists on the options pages**: a tool's page can now hold a list, a line for each entry with a button or two at its right, eight lines a page with Previous and Next under them. Sparkle (Thread) 1.5.0 uses it for its ignore list (Remove) and for the chests and nodes you passed (Add To Route, Forget).
+- **The game's waypoint lent to the route planner** (`Marker.lua`): Routes (Thread) 1.4.0 can put the game's waypoint marker on its trail just ahead of you (Mark The Way Ahead). Your map pin and the quest you track are kept while it is lent and given back when the route ends, when the setting is disabled, and at logout; a pin you set or a quest you track meanwhile is yours, and is gone to.
+- For addon authors: `PatchwerkForever.Marker` holds the lent waypoint. A tool that reads the player's map pin or tracked quest asks `Marker:Pin()` and `Marker:Quest()` in place of the game; the route planner calls `Place(map, x, y, info)` and `Release()`; `Active()`, `IsOurs()`, `Info()`, `Quiet()` and `OnChange(fn)` say how it stands.
+- For addon authors: a tool's setting entry `{ list = function, empty = 'words' }` makes such a list; `list()` gives `{ { text =, buttons = { { text =, click = fn } } }, ... }`. `PatchwerkForever.Gather:Note(name, kind, map, x, y)` hands a spot another tool saw to the gathering provider (Routes (Thread) 1.4.0 keeps it as one of its herb and ore spots). The API is 6.
+
 ## 2.8.0
 
 - **The family's addons are named the other way round**: the name first and the kind after it, in brackets. Patchwerk Forever: Routes (Thread), Patchwerk Forever: Console Port (Stitch), and so on; they were Thread (Routes), Stitch (Console Port). Their options pages are named the same way, and the list of the family on the first page too.

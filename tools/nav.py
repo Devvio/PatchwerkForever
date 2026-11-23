@@ -65,8 +65,9 @@ def world_of(gx, gy):
 class Ground:
     """The cells of a map, a tile at a time."""
 
-    def __init__(self, path):
-        info = load(path)
+    def __init__(self, path, walls=True):
+        # (walls: with the buildings' walls laid on the terrain, where walls.py has found them)
+        info = load(path, walls)
         self.map = info["map"]
         self.tiles = {key: cells for key, (cells, _heights) in info["tiles"].items()}
         self.heights = {key: heights for key, (_cells, heights) in info["tiles"].items()}

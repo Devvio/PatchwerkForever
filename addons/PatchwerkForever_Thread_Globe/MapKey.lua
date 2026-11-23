@@ -1,7 +1,9 @@
 -- Globe (Thread): the globe in place of the game's world map.
 --
 -- With the setting The Map Key Opens The Globe (off as it comes):
---   the map key     every key the game's Toggle World Map is bound to opens and closes the globe. The
+--   the map key     every key the game's Toggle World Map is bound to opens and closes the globe. It
+--                   opens turned and zoomed to where you are, as the game's map opens on your zone
+--                   (opened any other way, the globe is as it was left). The
 --                   game's own binding is left as it is: a binding of ours is laid over the same keys
 --                   (SetOverrideBindingClick), which the game allows outside combat only, so it is
 --                   put on and taken off between fights.
@@ -20,7 +22,14 @@ local WIDE = 520                      -- the globe's window shows its World Map 
 local owner = CreateFrame('Frame')
 local key = CreateFrame('Button', 'PatchwerkForever_Thread_GlobeMapKey', UIParent)
 key:Hide()
-key:SetScript('OnClick', function() ns.Try('the globe', ns.Toggle) end)
+key:SetScript('OnClick', function()
+	ns.Try('the globe', function()
+		-- (about to open: turned to where you are first, so the window opens there)
+		local window = G.Frames()
+		if not (window and window:IsShown()) then ns.LookAtMe() end
+		ns.Toggle()
+	end)
+end)
 
 local laid = {}                       -- the keys ours is laid over
 local waiting = false                 -- to be done once the fight is over

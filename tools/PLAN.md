@@ -572,6 +572,44 @@ These get simpler and better once the planner is ours:
 - **Testing.** Everything up to milestone 4 can be verified here. In-game behaviour (drawing, waypoints,
   combat restrictions) cannot.
 
+## Walls and floors (2026-11-22)
+
+The user saw routes in cities run straight through buildings, "less accurate" than before. Two causes:
+
+- The planner's ground was the terrain alone, so a building was never in the way.
+- This client's Orgrimmar (and three more places on Kalimdor, and some on the Eastern Kingdoms) is one
+  great new model whose streets are its own floor; the terrain under it is flat and empty, some 24 yards
+  down. `wmo.py` read nothing from these models (their triangle flags are in `MPY2`, four bytes each,
+  not `MOPY`), so the planner walked the empty terrain under the city in straight lines.
+
+What was done, all in the tools (the addon's Lua and the data's format are unchanged):
+
+- `wmo.py` reads `MPY2` (and `MOVX`). Every model on the three maps now gives its triangles.
+- `walls.py` (new) lays the models on the ground's cells: a walk over each structure from the open ground,
+  over terrain and floors on links.py's one-yard grid; terrain it does not reach is shut, floor it does
+  reach is ground. By the ground cell: a way where half of it is one open piece, wall where a wall cuts
+  it or runs along its edge with nothing leading across (the cell with more open ground gives way, so
+  a narrow street stays), wall for a small patch with no way out. Under a city (a model larger than
+  links.py's `BIG` over placeholder terrain: `FLAT` of the dry terrain cells under it are dead flat, and
+  `CITY` of its floor is walked more than `ABOVE` yards over that terrain. Orgrimmar, Stormwind, and the
+  grounds of Razorfen, Stratholme and Dire Maul; not Darnassus, Ironforge or Timbermaw Hold, which stand
+  on shaped land) nothing the model covers is ground but its own walked floor. walls_<id>.txt lists
+  every great model with both shares and the verdict. Where floors lie one over the
+  other the wider one is the cell's. The words at the head of walls.py say it all.
+- A wall is written as STEEP and a floor as WALK, with the floor's height, into `world/walls_<id>.bin`;
+  `world.load` (and so `nav.Ground`) lays it on the terrain for every tool. `walls=False` gives the
+  terrain alone: links.py, build_nav.py and lifts.py look for links on that, and globe_art.py paints it.
+- The order is now: `world.py` (terrain), `build_nav.py` (the terrain's graph), `links.py` (links, also
+  to `world/links_<id>.bin`), `walls.py` (walls and floors; builds `nav_<id>_linked.bin` again from the
+  ground with its walls, and lays the links on it), `crossings.py` (stops on the new ground), `pack.py`.
+  walls.py takes about 7 minutes a continent.
+- Checked with pictures of Orgrimmar and with every flight point and test place before and after (a
+  scratch script: the way from a hub to each, on the old graph and the new).
+
+Not done: scenery models (tents, carts, trees) are not building models and are not read; two floors
+one over the other are one cell; a level reached only by a lift is not ground until the lift is told
+by hand (hand_links.txt), as Thunder Bluff's are.
+
 ## Order and size
 
 Milestones 1 to 4 are the first usable version: roughly one working session each, 4 being the largest.

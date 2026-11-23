@@ -3,12 +3,23 @@
 -- The game tells an addon whether a party member is on a quest (C_QuestLog.IsUnitOnQuest). It does
 -- not tell how far along they are. So:
 --
---   * Under a quest, the names of the party members on it: for anyone, whatever they run.
+--   * Under a quest, the names of the party members on it: for anyone, whatever they run
+--     (ns.PartyOn reads who is and who is not; the list of quests asks it once a quest at a drawing).
 --   * How far along, only for party members who run this tracker too. Each tracker tells the
 --     others, over the game's own channel for addons, how far its player is on each quest they
 --     track: the quest's number and a percentage, to the party only, and only when it changes.
 --     That telling is a setting ("Share Progress With Their Trackers"); unticked, nothing is sent
 --     and what others send is not shown.
+--
+--   * On a quest that someone in your party is not on, and that the game lets you share
+--     (C_QuestLog.IsPushableQuest), a small share mark: pointing at it names who is not on the quest,
+--     a click shares it (ns.ShareQuest, Actions.lua). A setting. The game does not say who has done a
+--     quest before: a member who has already turned it in is named as not on it too.
+--   * The quests someone in your party is on can be listed first (an order of the quest list:
+--     Quests.lua). Both of these read what is already known here; nothing more is told to the party.
+--
+-- A name or an answer about a party member that the game hides in a fight (a "secret" value) counts
+-- as not known: that member is then neither on a quest nor off it.
 --
 -- Not in a raid: only in a party of five.
 local ADDON, ns = ...
@@ -38,25 +49,67 @@ local function Short(name)
 	return type(name) == 'string' and (name:match('^([^%-]+)') or name) or nil
 end
 
--- The line under a quest: "With Thrag 60%, Mokra", or nothing.
-function ns.PartyLine(quest)
+-- Who in your party is on a quest, and who is not:
+--     { on = { { name =, percent = how far along, where their tracker says }, ... }, off = { name, ... } }
+-- or nothing when you are not in a party. A member is on it when their tracker says how far along
+-- they are, or when the game says so. A member the game does not answer about (no such function on
+-- this client, an error, a hidden answer or name) is in neither list, and one who is offline is not
+-- in `off`: a quest cannot be shared with them.
+function ns.PartyOn(quest)
 	if not InParty() then return nil end
 	local share = ns.Get('partyShare')
-	local names = {}
+	local asks = C_QuestLog and C_QuestLog.IsUnitOnQuest
+	local info = { on = {}, off = {} }
 	for i = 1, Ask(rawget(_G, 'GetNumSubgroupMembers')) or 0 do
 		local unit = 'party' .. i
-		local name = Short(Ask(UnitName, unit))
+		local name = Ask(UnitName, unit)
+		name = ns.Plain(name) and Short(name) or nil
 		if name then
 			local percent = share and theirs[name] and theirs[name][quest]
 			if percent then
-				names[#names + 1] = ('%s %d%%'):format(name, percent)
-			elseif Ask(C_QuestLog.IsUnitOnQuest, unit, quest) then
-				names[#names + 1] = name
+				info.on[#info.on + 1] = { name = name, percent = percent }
+			elseif type(asks) == 'function' then
+				local ok, on = pcall(asks, unit, quest)
+				if ok and not ns.Secret(on) then
+					if on then
+						info.on[#info.on + 1] = { name = name }
+					else
+						-- (offline only when the game plainly says so)
+						local there = Ask(rawget(_G, 'UnitIsConnected'), unit)
+						if ns.Secret(there) or there ~= false then info.off[#info.off + 1] = name end
+					end
+				end
 			end
 		end
 	end
-	if #names == 0 then return nil end
+	return info
+end
+
+-- The line under a quest: "With Thrag 60%, Mokra", or nothing. info: what ns.PartyOn gave.
+function ns.PartyLine(info)
+	if not (type(info) == 'table' and #info.on > 0) then return nil end
+	local names = {}
+	for i, one in ipairs(info.on) do
+		names[i] = one.percent and ('%s %d%%'):format(one.name, one.percent) or one.name
+	end
 	return 'With ' .. table.concat(names, ', ')
+end
+
+-- "Thrag is not on this quest.", "Thrag and Mokra are not on this quest."
+local function Lacking(names)
+	if #names == 1 then return names[1] .. ' is not on this quest.' end
+	return table.concat(names, ', ', 1, #names - 1) .. ' and ' .. names[#names] .. ' are not on this quest.'
+end
+
+-- The share mark of a quest's row (a block's `share`: Frame.lua), or nothing: there while the
+-- setting is on, someone in your party is not on the quest, and the game says it can be shared.
+-- info: what ns.PartyOn gave (nothing when you are alone, so no mark then).
+function ns.ShareMark(quest, info)
+	if not (type(info) == 'table' and #info.off > 0 and ns.Get('shareMark')) then return nil end
+	local can = Ask(C_QuestLog.IsPushableQuest, quest)
+	if not (ns.Plain(can) and can) then return nil end
+	return { title = 'Share Quest', tip = { Lacking(info.off), 'Click to share this quest with your party.' },
+		click = function() ns.ShareQuest(quest) end }
 end
 
 ---------------------------------------------------------------------------

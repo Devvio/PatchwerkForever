@@ -1,5 +1,45 @@
 # Patchwerk Forever: Routes (Thread)
 
+## 1.4.0
+
+Two new things to be led to, and map data that knows the game's buildings. Works with Patchwerk Forever 2.6.0 or later, as before. The three map data addons are 1.4.0 too, with new data.
+
+### The way ahead, marked in the world
+- **Mark The Way Ahead** (Routes: Trail, on): the game's waypoint marker, and its arrow at the edge of the screen, stand on the trail about 40 yards ahead of you and move on as you walk, so the way round walls and through gates shows in the world, not only on the maps. Near the end the marker stands on the destination; where the trail takes a flight, a boat or a zeppelin, it stands where that leaves. Not on a flight path, aboard, or in an instance.
+- Your map pin and the quest you track are lent for it, through Patchwerk Forever 2.9.0. The route still goes where they say, and they are given back when the route ends, when you disable the setting, and at logout. A pin you set or a quest you choose while it is lent is yours and is gone to. Sparkle (Thread) 1.5.0 lights the marker up with its Waypoint sparkle.
+
+### With Sparkle (Thread)
+- **Herbs and ore you walked past** are added to the spots on the minimap and the maps, with Sparkle (Thread) 1.5.0 and Patchwerk Forever 2.9.0 (Sparkle's Share Herb And Ore Spots With Routes). Until you gather at one yourself it shows with the game's plain herb or ore icon. A gathering run goes to them as to the others.
+
+### Cities and buildings
+- **Routes go round buildings.** The map data now knows the walls of the game's buildings. A route no longer runs through a house, a tower or a town wall; it goes through the gates and doorways.
+- **Orgrimmar, Stormwind and the other cities built as one piece are walked on their own streets.** The planner did not know these cities' floors and used the empty ground under them, so a route crossed the city in a straight line. Their streets, ramps and bridges are now the ground.
+- **Piers, docks and bridges** are ground too: a route walks along a pier instead of swimming under it, and the trail to a boat ends on the dock.
+- **The Deeprun Tram.** In Stormwind the trail leads through the city to the station.
+- The grounds before Razorfen Kraul, Razorfen Downs, Dire Maul and Stratholme, built the same way, are walked too.
+- A place inside a small building, or on a level reached only by a lift the planner does not know, is routed to the nearest ground outside.
+- Not known: tents, carts, trees and other small scenery. Where one floor lies over another (a walkway over a street), only the wider one is known.
+
+### The way back to your corpse
+- **While you are a ghost, the route leads to your corpse**, before everything else, your map pin included. The step text says "To your corpse". New setting **Route To My Corpse**, under Destinations, on by default.
+- What the route followed before is followed again once you are alive, as it was: a gathering run, a flight point search, a quest or list you selected, your focus, your map pin. A pin or `/thread to` spot given while dead waits, and the chat says so.
+- The way is on foot: a ghost takes no flight, boat, zeppelin or tram. A corpse on another continent is not routed to.
+- The route does not cross water as a ghost can. What water costs is part of the map data, so the trail is the way a living character would walk, and so is the time shown.
+- A corpse with no location on the map (it lies in an instance, or the game does not say) is not routed to; the chat says why once for each death, and your other routes go on. Nothing is said on a battleground or in an arena.
+- **Stop Routing** as a ghost stops the way to the corpse and leaves nothing routed until you are alive; **Start Routing** leads to the corpse again.
+
+### Finding the flight points you lack
+- **`/thread discover`** leads to the nearest flight point of your faction that your character has not discovered, and when that one is discovered goes on to the next nearest, until none is left on the continent or `/thread discover stop`. The step text says "Discover the flight point at Ratchet"; when the last is found, the chat says all flight points on this continent are known.
+- It needs a flight map opened at a flight master on the continent first: until then a flight point you have not discovered cannot be told from one that was never read. Without one the search does not start, and says so.
+- The way to a flight point is found as any other, and may fly between flight points you have.
+- At the flight point the search waits for the game to say it is discovered. A point with no route to it (the flight masters inside Ironforge and the Undercity among them) and one you walk away from without discovering it are left out, and named when the search ends.
+- It is a side path, like a gathering run: one at a time (starting it ends a gathering run and lets a selected quest go, and the other way round), a map pin of your own still comes first, and **Start Routing** ends it.
+- New key binding **Toggle Flight Point Search**.
+
+### Also
+- `/thread quest` says when the way to your corpse or a flight point search is what is followed.
+- For addon authors: `PatchwerkForever.Following` is told two new kinds, `corpse` and `discover`. Tracker (Thread) marks no quest or guide line for either.
+
 ## 1.3.0
 
 - **Now named Patchwerk Forever: Routes (Thread)**: the name comes first and what kind of addon it is after it, in brackets (it was Thread (Routes)). The options page is named the same way.

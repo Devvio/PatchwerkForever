@@ -11,6 +11,8 @@ local MARKS = {
 	{ 'globeQuests', 'Quests' },
 	{ 'globePlaces', 'Places' },
 	{ 'globePeople', 'Your Group' },
+	{ 'globeGuild', 'Guild Members' },
+	{ 'globeFriends', 'Friends' },
 	{ 'globeFlights', 'Flight Points' },
 	{ 'globeCrossings', 'Boats And Zeppelins' },
 	{ 'globeNodes', 'Herb And Ore Nodes' },
@@ -19,7 +21,8 @@ local MARKS = {
 	false,
 	{ 'globeNames', 'Names' },
 	{ 'globeCoords', 'Coordinates' },
-	{ 'globeExplore', 'Unexplored Land Left Blank' },
+	{ 'globeExplore', 'Fog Of War' },
+	{ 'globeLevels', 'Zones Colored By Level' },
 	{ 'globeAge', 'Aged Paper' },
 }
 local LIGHT = {

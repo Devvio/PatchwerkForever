@@ -78,7 +78,9 @@ end
 function ns.RouteAddPin()
 	local list = MyRoute()
 	if not list then return end
-	local pin = C_Map and ns.Ask(C_Map.GetUserWaypoint)
+	local marker = ns.Base.Marker
+	local pin
+	if marker and marker.Pin then pin = marker:Pin() else pin = C_Map and ns.Ask(C_Map.GetUserWaypoint) end
 	if not (type(pin) == 'table' and pin.uiMapID and pin.position) then
 		ns.Print('Place a map pin first.')
 		return

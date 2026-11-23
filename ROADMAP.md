@@ -160,3 +160,80 @@ Everything here is a proposal to pick from and reorder. Sizes are rough: **S** a
   1.0.0, named in the base's README and in Routes' and Tracker's, an icon and logo of the family's kind.
   Every project's zip is built and the uploads tried dry. Left to the user: the Globe's CurseForge
   project (`release/NEW-PROJECTS.md`), the projects' new names on the site, and the word to upload.
+- **2026-11-22: two new features for each Thread tool**, asked for as proposals and then all built in
+  one run after an interview (quiet features on, what changes something you already see off). Checked
+  offline; none of it tried in the game yet.
+  - **Routes 1.4.0**: the way back to your corpse while you are a ghost (on foot, before everything;
+    the planner is not told a ghost walks on water), and `/thread discover`, a search for the flight
+    points you lack.
+  - **Sparkle 1.4.0**: corpses with loot and skinnable corpses as two new kinds, and Herbs And Ore I
+    Cannot Gather (Show, Dim, Hide). Whether the interact key points at corpses on Forever is the
+    first thing to see.
+  - **Tracker 1.6.0**: a Collect section (an item against a number; added by dropping the item on it
+    or from a recipe's Collect What Is Missing, no command), a share mark on quests a party member
+    lacks, and the order Party's Quests First.
+  - **Immersive Plainsrunning 1.3.0**: Mounts, Travel Forms and Flight Paths as three more sources
+    for every race (each off; the name stays), and Wind Shows The Way with Routes. The list of forms
+    and spells is taken from classic and is to be checked.
+  - **Races 0.2.0 (beta)**: course rules (On Foot or Anything Goes, a best run for each) and racing
+    together (an invitation, a shared start, gaps at each checkpoint, placings). Needs a second player.
+  - **Globe 1.1.0**: zones colored by level as a wash with a key, guild members and friends as one
+    mark a zone, and the new ring (`border.png`: a ring with the four compass points, no stand).
+  - The base is unchanged (2.8.0). Its `Following.lua` comment does not yet list the two kinds Routes
+    now tells it, `corpse` and `discover`; to be added with the base's next change.
+- **2026-11-22: three things the user saw in the game**, put right the same day, in the versions above
+  (none of them uploaded yet). Checked offline; not tried in the game.
+  - **Routes: the trail went through buildings in cities.** The planner knew the terrain only, and this
+    client's Orgrimmar and Stormwind are one model each whose streets lie well above flat, empty
+    terrain (and `wmo.py` could not read them: their triangle flags are in a newer chunk). New
+    `tools/walls.py` lays the building models on the ground as walls and floors (`tools/PLAN.md`,
+    "Walls and floors"); the three map data addons carry the new ground, with no change to their format
+    or to the Lua planner. Not known: small scenery, a second floor over the first, levels reached only
+    by a lift.
+  - **Globe: the outline under the pointer and the undiscovered land.** Zone edges are smoothed before
+    the outline is drawn, at four points a pixel; the blank paper over undiscovered land is cut at two
+    pixels a chunk, rounded, and follows the coast (`GLOBE-BLUEPRINT.md`). Pictures and data only.
+  - **Tracker: shown in dungeons and raids.** Hide In Dungeons And Raids is off to begin with.
+- **2026-11-22: the Globe's fog of war, and cheaper drawing** (Globe 1.1.0, not uploaded). Checked
+  offline; not tried in the game.
+  - Only the zones the character had entered were covered: the game gives no list at all for the
+    others. No list now means nothing discovered, once the game has given a list for any zone.
+  - The cover is fog, not blank paper, thinning to mist at its edges; the setting is **Fog Of War**.
+  - About half the work for each drawing while the globe is turned or zoomed (`GLOBE-BLUEPRINT.md`,
+    "Fog for blank paper, and cheaper drawing").
+  - After the user's look in the game: the fog is thin (**Fog Opacity**, 30%), and zoomed in to the
+    ground the minimap's pictures come in only over discovered land, the painted map staying over the
+    rest (`GLOBE-BLUEPRINT.md`, "Thin fog, and the painted map as the fog of war close in").
+- **2026-11-23: Sparkle 1.5.0, from the proposals of the same day** (the debug probe, the eight quick
+  wins and the five larger features), with base 2.9.0 and small parts in Routes 1.4.0 and Tracker 1.6.0
+  (none of them uploaded). Checked offline; none of it tried in the game yet.
+  - **The probe**: `/sparkle debug` prints the pointed object's tooltip, line by line with colors, and
+    whether the game ties it to a quest. One evening with it at an herb above your skill, a quest object,
+    a corpse, your fishing bobber and a quest giver says what Sparkle could read next (node skill, quest
+    progress, the bobber, quest givers: still proposals).
+  - **Sparkles**: a Show tick box for each kind (ROADMAP S2); Sparkle Distance (the game's reach,
+    `SoftTargetInteractRange`, only raised, put back as the other game settings are) and Brighter When
+    Near (the distance from Routes' remembered spots); Fade While Gathering; Quest Corpses
+    (`UnitIsRelatedToActiveQuest`); four themed effects drawn by `media.py` and a Themed Preset; Use
+    This Look For All and Preview All Types; a fade-area height for when mounted.
+  - **The waypoint**: a kind of its own, a light beam on the game's waypoint marker
+    (`C_Navigation.GetFrame`, as Races uses it) with the quest's name and distance, brighter as you
+    come nearer. A destination the game draws no marker for has none.
+  - **Alerts**: an Alert Sound for each kind (the game's own sounds) and Rumble On Gamepad
+    (`C_GamePad.SetVibration`, in Forever's API docs) (ROADMAP N9).
+  - **Wisps**: By Item Quality, Celebrate Rare Loot, Coins Fly To Your Bag, Quest Items Fly To The
+    Tracker (Tracker gained `PatchwerkForever_Thread_Tracker_QuestBlock`).
+  - **Passed**: chests, herbs and ore you walked away from, listed with Add To Route (My Route) and
+    Forget; herbs and ore handed to Routes through the base's new `Gather:Note`.
+  - **The ignore list on its own page** with a Remove button for each (ROADMAP S1), on the base's new
+    list row (`Look.xml`, `PatchwerkForeverListTemplate`; API 6).
+  - **Then, the same day, the waypoint reworked** after the user's first look: the beam stayed stuck on
+    screen where the game had no valid place for its marker (it now asks `HasValidScreenPosition` and
+    `GetTargetState`, as the game's own marker does), and it was to follow the route. Routes 1.4.0's
+    **Mark The Way Ahead** moves the game's pin along its trail, about 40 yards ahead of you; the base's
+    new `Marker.lua` lends the pin and tracked quest and gives them back, and Routes, Tracker, Globe and
+    Sparkle read your own pin and quest from it. To look at first: whether moving the pin every 10 yards
+    is smooth in the game, and whether tracking the pin keeps the quest you track or clears it.
+  - To look at first in the game: whether a gamepad rumbles (and with Console Port), how far the game
+    lets Sparkle Distance reach, the list rows on the options pages, the waypoint beam's height on the
+    game's marker, and whether `GetLootSlotInfo`'s icon matches `ITEM_PUSH`'s.

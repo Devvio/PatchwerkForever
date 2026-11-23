@@ -1,4 +1,4 @@
-"""The land you have not discovered, as paper to lay over it (GLOBE-BLUEPRINT.md, G10).
+"""The land you have not discovered, as fog to lay over it (GLOBE-BLUEPRINT.md, G10).
 
     python globe_explore.py     writes Art/Covers/cover_<map>.blp, Covers.lua and world/look_covers_<id>.png
 
@@ -6,21 +6,32 @@ The game's world map leaves a place blank until you have been there: each zone's
 with pieces laid over it (WorldMapOverlay), one for each place or few places, and the game tells an addon
 which pieces of a zone's map you have (C_MapExplorationInfo.GetExploredMapTextures: each by where it lies
 on the map's picture). The globe has no such pieces: its land is our own picture. So this works out, for
-every piece of every zone's map, which of our 33-yard terrain chunks it stands for, and makes a soft
-paper-coloured picture of just those chunks. The globe lays that over the land until the game says you
-have the piece.
+every piece of every zone's map, which of our 33-yard terrain chunks it stands for, and makes a picture
+of fog over just those chunks. The globe lays that over the land until the game says you have the piece.
+
+The fog is one field of billows over the whole continent (mist), so it runs on unbroken from piece to
+piece and zone to zone; a picture is its part of that, whole over the piece and thinning out to mist
+for a few chunks past its edge (it was blank paper with a clean edge until 2026-11-22; the user asked
+for fog). A picture has FINE pixels a chunk. The game knows a place's piece only by the chunk, so the
+edge between two pieces is a staircase of chunk corners: it is rounded first. The coast is taken from
+the land of the detail pictures, and the fog thins out over the water there, so the coast stays.
 
 Which chunks a piece stands for:
     1. those whose own area (or an area above it) is one the piece is for;
     2. of the rest of the zone's chunks, those inside the piece's hit rectangle on the map (the smallest
        such piece, where several overlap);
     3. of what is left, those nearest a piece's rectangle.
-So every chunk of a zone with pieces belongs to one, and a zone you have never entered is wholly paper.
+So every chunk of a zone with pieces belongs to one, and a zone you have never entered is wholly fog.
 A zone whose map has no pieces (a city) is never covered.
 
-Each zone's pictures share one file (cells side by side): one for the whole zone at half the detail, drawn
-while you have none of it and the globe is far out, and one for each piece. A picture's colour is the
-paper's everywhere; only how much of it shows differs, down to nothing over water, so the coast stays.
+Each zone's pictures share one file (cells side by side): the fog over the whole zone, drawn while you
+have none of it; the zone's flat shape in one colour, paper's (the level wash tints it, Wash.lua); and
+the fog over each piece.
+
+Zoomed in to the ground, the globe keeps its painted map over land you have not discovered, where it
+would show the minimap's pictures. For that Covers.lua also says whose piece the land is at each
+corner of a quarter of a terrain tile (POINTS to a tile; `points`): a ground picture can only fade
+evenly between such corners, and a quarter tile (133 yards) is about as wide as the fog's own mist.
 
 Read from the game (numbers only): WorldMapOverlay, UiMapXMapArt, UiMapAssignment, AreaTable.
 """
@@ -34,15 +45,27 @@ from PIL import Image
 from blp import write_blp
 from casc import Storage
 from db2 import Table
-from globe_art import ADDON, WORLD, area_parents, continent_areas, continent_base
+from globe_art import ADDON, PER, WORLD, area_parents, continent_areas, continent_base, continent_cells, soft
 
 MAPS = (0, 1, 2991)
 OVERLAYS, MAP_ART, ASSIGNED = 1134579, 1957217, 1957219
 LAYER = (1002.0, 668.0)       # a zone map's picture, in its own pixels (what a piece's place is counted in)
-PAPER = (214, 196, 152)       # the colour of blank paper
-PAD = 3                       # chunks kept clear round a picture's own, for its soft edge
+PAPER = (214, 196, 152)       # the colour of blank paper (the flat shape of a zone, which the level wash tints)
+FOG_LIGHT = (236, 238, 241)   # the fog: the tops of its billows,
+FOG_DEEP = (178, 185, 196)    # and the hollows between them
+BILLOWS = ((15, 1.0), (7, 0.55), (3.2, 0.28))     # the fog's billows: (how wide, chunks; how strong)
+RELIEF = 0.8                  # how strongly a billow is lit from the upper left
+MIST = 2.4                    # past a piece's edge (and GROW, as the paper was) the fog thins out to mist over
+                              # about twice this (chunks), further where a billow is thick, sooner where thin
+SHORE = 0.5                   # at the shore it thins out over the water, as unevenly
+FINE = 1                      # pixels a chunk in a picture (33 yards a pixel: fog is soft, and wants no more)
+EDGE = 0.55                   # how far an edge between two pieces is rounded (chunks; a zone's is in globe_art.py)
+GROW = 0.6                    # a piece's paper reaches this far past its edge (chunks), so two leave no seam
+FADE = 0.4                    # and fades to nothing over about three times this (chunks)
+PAD = 6                       # chunks kept clear round a picture's own, for the mist at its edge
 GUTTER = 2                    # pixels between two pictures in a file
-SIDES = (64, 128, 256, 512, 1024)
+POINTS = 4                    # to a terrain tile's side: the corners at which the ground is told whose piece it is
+SIDES = (64, 128, 256, 512, 1024, 2048)
 
 
 def floats(values):
@@ -68,18 +91,110 @@ def tables(store):
     return pieces, art_map, zones
 
 
-def soften(mask):
-    """A mask grown by a chunk and blurred, so two pictures side by side leave no seam between them."""
-    m = mask.astype(np.float32)
-    g = m.copy()
-    g[1:] = np.maximum(g[1:], m[:-1])
-    g[:-1] = np.maximum(g[:-1], m[1:])
-    g[:, 1:] = np.maximum(g[:, 1:], m[:, :-1])
-    g[:, :-1] = np.maximum(g[:, :-1], m[:, 1:])
-    for _ in range(2):
-        p = np.pad(g, 1, mode="edge")
-        g = (p[:-2, 1:-1] + p[2:, 1:-1] + p[1:-1, :-2] + p[1:-1, 2:] + 4 * g) / 8
-    return g
+def rounded(grid):
+    """A zone's pieces (the piece's index + 1 a chunk, 0 outside the zone) at FINE pixels a chunk, the
+    staircases of chunk corners rounded: the zone's own edge first, then within it each pixel goes to the
+    piece that is strongest there once each is blurred a little."""
+    fine = np.kron(grid, np.ones((FINE, FINE), grid.dtype))
+    inside = soft((fine > 0).astype(np.float32), EDGE * FINE) > 0.5
+    out = np.zeros(fine.shape, grid.dtype)
+    best = np.zeros(fine.shape, np.float32)
+    for i in np.unique(grid):
+        if i:
+            strength = soft((fine == i).astype(np.float32), EDGE * FINE)
+            win = strength > best
+            out[win], best[win] = i, strength[win]
+    out[~inside] = 0
+    return out
+
+
+def paper(mask):
+    """How much of the paper shows over a piece (FINE pixels a chunk): all of it over the piece and to GROW
+    chunks past its edge, so two pieces side by side leave no seam between them, then fading to nothing."""
+    grown = soft(mask.astype(np.float32), GROW * FINE) > 0.16           # (0.16: one blur's width past the edge)
+    return soft(grown.astype(np.float32), FADE * FINE)
+
+
+def blur(a, sigma):
+    """A Gaussian blur of a square array of any values (soft() keeps eight bits only), wrapping round."""
+    fy = np.fft.fftfreq(a.shape[0])[:, None]
+    fx = np.fft.rfftfreq(a.shape[1])[None, :]
+    return np.fft.irfft2(np.fft.rfft2(a) * np.exp(-2 * (np.pi * sigma) ** 2 * (fx * fx + fy * fy)), s=a.shape).astype(np.float32)
+
+
+def mist(map_id):
+    """The fog over a whole continent, FINE pixels a chunk, so that it runs on unbroken from one piece to the
+    next and from zone to zone: (its colour a pixel, 0 to 255; how thick it is there, 0 to 1, for its edges)."""
+    side = 1024 * FINE
+    rng = np.random.default_rng(7700 + map_id)
+    n = np.zeros((side, side), np.float32)
+    for wide, strong in BILLOWS:
+        layer = blur(rng.random((side, side), dtype=np.float32), wide * FINE / 2.5)
+        n += strong * (layer - layer.mean()) / layer.std()
+    n /= n.std()
+    thick = 0.5 + 0.5 * np.tanh(n * 0.9)
+    # (lit from the upper left: a billow's near side bright, its far side in its own shade)
+    lit = thick - np.roll(np.roll(thick, -FINE, 0), -FINE, 1)
+    value = np.clip(0.52 + (thick - 0.5) * 0.5 - lit * RELIEF, 0, 1)
+    value = value * value * (3 - 2 * value)
+    colour = np.zeros((side, side, 3), np.float32)
+    for k in range(3):
+        colour[..., k] = FOG_DEEP[k] + (FOG_LIGHT[k] - FOG_DEEP[k]) * value
+    return colour.astype(np.uint8), thick
+
+
+def step(a, low, high):
+    t = np.clip((a - low) / (high - low), 0, 1)
+    return t * t * (3 - 2 * t)
+
+
+def fog(mask, thick, land):
+    """How much of the fog shows over a piece (FINE pixels a chunk): all of it over the piece and to GROW chunks
+    past its edge (two pieces side by side leave no seam, whatever the billows), then thinning out to mist,
+    the thick of a billow reaching further than the thin. Over the water it thins out at the shore, so the
+    coast stays."""
+    grown = soft(mask.astype(np.float32), GROW * FINE) > 0.16
+    # (1 over the piece and to its grown edge, falling away outside it)
+    near = np.clip(soft(grown.astype(np.float32), MIST * FINE) * 2, 0, 1)
+    show = step(near * (0.55 + 0.9 * thick), 0.1, 0.55)
+    return show * step(soft(land, 0.8 * FINE) + SHORE * (thick - 0.5), 0.08, 0.7)
+
+
+def fine_land(map_id, base):
+    """How dry a continent is, FINE pixels a chunk (0 to 1): the land of the detail pictures where they have
+    any (so the paper ends at the painted shore), the chunks' own elsewhere; softened by a pixel."""
+    out = np.kron(np.clip((1 - base["water"]) * 1.5, 0, 1), np.ones((FINE, FINE), np.float32))
+    land, _heights, _zone, has, (tx0, ty0, _bx0, _bx1, _by0, _by1) = continent_cells(map_id, base)
+    n = PER // 16 // FINE
+    h, w = land.shape
+    dry = land.astype(np.float32).reshape(h // n, n, w // n, n).mean(axis=(1, 3))
+    side = 16 * FINE                                        # (a terrain tile, in these pixels)
+    for ty, tx in zip(*np.nonzero(has)):
+        y, x = (ty - ty0) * side, (tx - tx0) * side
+        out[ty * side:(ty + 1) * side, tx * side:(tx + 1) * side] = dry[y:y + side, x:x + side]
+    return np.clip(soft(out, 0.6) * 1.5, 0, 1)
+
+
+def points(owner):
+    """Whose piece the land is at each corner of a quarter tile: of the chunks round the corner (as many
+    each way as lie between two corners), the owner most of them have. owner: a continent's chunks, 0 none."""
+    per = 16 // POINTS
+    half = per // 2
+    across = 64 * POINTS + 1
+    padded = np.pad(owner, half)
+    stack = np.stack([padded[dy::per, dx::per][:across, :across] for dy in range(per) for dx in range(per)])
+    counts = np.stack([(stack == one).sum(axis=0) for one in stack])
+    return np.take_along_axis(stack, counts.argmax(axis=0)[None], 0)[0]
+
+
+def runs(row):
+    """A row as 'count,value,count,value,...' from its first column to its last value that is not 0."""
+    filled = np.nonzero(row)[0]
+    if not len(filled):
+        return ""
+    row = row[:filled[-1] + 1]
+    starts = np.concatenate(([0], np.nonzero(np.diff(row))[0] + 1, [len(row)]))
+    return ",".join("%d,%d" % (b - a, row[a]) for a, b in zip(starts[:-1], starts[1:]))
 
 
 def pack(cells):
@@ -176,18 +291,20 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
     for old in os.listdir(out_dir):
         os.remove(os.path.join(out_dir, old))
-    lua = ["-- Globe (Thread): the paper laid over land you have not discovered. Written by tools/globe_explore.py",
+    lua = ["-- Globe (Thread): the fog laid over land you have not discovered. Written by tools/globe_explore.py",
            "-- (python globe_explore.py), from the game's own list of the pieces of each zone's map.",
            "local _, ns = ...", "",
            "-- By the game's number for a zone map's picture (C_Map.GetMapArtID):",
            "--   ui, map     the zone's map, and its continent's map number",
            "--   file, w, h  the file its pictures share, and its size (pixels)",
-           "--   whole       the picture of the whole zone: { x, y, w, h (in the file), column, row, columns, rows",
+           "--   whole       the fog over the whole zone: { x, y, w, h (in the file), column, row, columns, rows",
            "--               (the chunks it lies over: 16 to a terrain tile) }",
+           "--   shape       the zone's flat shape in one colour, smaller (the level wash tints it): the same eight figures",
            "--   pieces      by where a piece lies on the zone's map (x * 4096 + y): the same eight figures",
            "ns.COVERS = {"]
     total, files, made = 0, 0, 0
-    looks = {}
+    looks, lands, mists = {}, {}, {}
+    owned, owners = {}, {}        # by continent: the piece each chunk is of (a count into owners, 0 none)
     for art in sorted(pieces, key=lambda a: art_map.get(a, 0)):
         ui = art_map.get(art)
         zone = zones.get(ui)
@@ -201,50 +318,72 @@ def main():
             print("map %d (art %d): no chunk of ours is in this zone, left out" % (ui, art))
             continue
         (r0, r1, c0, c1), grid = found
-        land = np.clip((1 - base["water"][r0:r1, c0:c1]) * 1.5, 0, 1)
-        cells, where, keys = [], [], []
+        # (room all round the zone's own rectangle, for the paper's soft edge)
+        room = (min(PAD, r0), min(PAD, 1024 - r1), min(PAD, c0), min(PAD, 1024 - c1))
+        grid = np.pad(grid, (room[:2], room[2:]))
+        r0, r1, c0, c1 = r0 - room[0], r1 + room[1], c0 - room[2], c1 + room[3]
+        fine = rounded(grid)
+        if m not in lands:
+            lands[m] = fine_land(m, base)
+            mists[m] = mist(m)
+        here = (slice(r0 * FINE, r1 * FINE), slice(c0 * FINE, c1 * FINE))
+        land, colour, thick = lands[m][here], mists[m][0][here], mists[m][1][here]
+        cells, tones, where, keys = [], [], [], []
 
-        def cell(mask, half=False):
+        def cell(mask, shape=False):
+            # (cut on whole chunks: a picture's place on the globe is counted in them)
             rows, cols = np.nonzero(mask)
-            a0, a1 = max(0, rows.min() - PAD), min(mask.shape[0], rows.max() + 1 + PAD)
-            b0, b1 = max(0, cols.min() - PAD), min(mask.shape[1], cols.max() + 1 + PAD)
-            if half:                                        # (an even number of chunks each way)
-                a1 += (a1 - a0) % 2
-                b1 += (b1 - b0) % 2
-                a1, b1 = min(a1, mask.shape[0] - (mask.shape[0] - a0) % 2), min(b1, mask.shape[1] - (mask.shape[1] - b0) % 2)
-            show = soften(mask[a0:a1, b0:b1]) * land[a0:a1, b0:b1]
-            if half:
+            a0, a1 = max(0, rows.min() // FINE - PAD), min(grid.shape[0], rows.max() // FINE + 1 + PAD)
+            b0, b1 = max(0, cols.min() // FINE - PAD), min(grid.shape[1], cols.max() // FINE + 1 + PAD)
+            cut = (slice(a0 * FINE, a1 * FINE), slice(b0 * FINE, b1 * FINE))
+            if shape:                                       # (the zone's flat shape, a pixel a chunk, in paper's colour)
+                show = paper(mask[cut]) * land[cut]
                 h, w = show.shape
-                show = show.reshape(h // 2, 2, w // 2, 2).mean(axis=(1, 3))
+                show = show.reshape(h // FINE, FINE, w // FINE, FINE).mean(axis=(1, 3))
+                tone = np.zeros(show.shape + (3,), np.uint8)
+                tone[...] = PAPER
+            else:
+                show = fog(mask[cut], thick[cut], land[cut])
+                tone = colour[cut]
             # (a clear edge all round, so a picture stretched over its chunks ends in nothing)
             show[0], show[-1], show[:, 0], show[:, -1] = 0, 0, 0, 0
             cells.append(show)
+            tones.append(tone)
             where.append((b0 + c0, a0 + r0, b1 - b0, a1 - a0))
 
-        cell(grid > 0, half=True)
+        cell(fine > 0)
         keys.append(None)
+        cell(fine > 0, shape=True)
+        keys.append(None)
+        mine = []
         for i, p in enumerate(pieces[art]):
-            if (grid == i + 1).any():
-                cell(grid == i + 1)
+            if (fine == i + 1).any():
+                cell(fine == i + 1)
                 keys.append(p["at"][0] * 4096 + p["at"][1])
-        if len(cells) < 2:
+                mine.append((i, keys[-1]))
+        if len(cells) < 3:
             continue
+        whose, named = owned.setdefault(m, np.zeros((1024, 1024), np.int32)), owners.setdefault(m, [])
+        for i, key in mine:
+            named.append((art, key))
+            whose[r0:r1, c0:c1][grid == i + 1] = len(named)
         w, h, at = pack(cells)
         rgba = np.zeros((h, w, 4), np.uint8)
-        rgba[..., 0], rgba[..., 1], rgba[..., 2] = PAPER
-        for show, (x, y) in zip(cells, at):
+        rgba[..., :3] = np.array(FOG_LIGHT) // 2 + np.array(FOG_DEEP) // 2
+        for show, tone, (x, y) in zip(cells, tones, at):
+            rgba[y:y + show.shape[0], x:x + show.shape[1], :3] = tone
             rgba[y:y + show.shape[0], x:x + show.shape[1], 3] = np.clip(show * 255, 0, 255).astype(np.uint8)
         name = "cover_%d" % ui
         total += write_blp(os.path.join(out_dir, name + ".blp"), rgba)
-        files, made = files + 1, made + len(cells) - 1
+        files, made = files + 1, made + len(cells) - 2
 
         def eight(i):
             return "{ %d, %d, %d, %d, %d, %d, %d, %d }" % ((at[i][0], at[i][1], cells[i].shape[1], cells[i].shape[0]) + where[i])
 
-        lua.append("\t[%d] = { ui = %d, map = %d, file = 'Covers\\\\%s', w = %d, h = %d, whole = %s, pieces = {" % (
-            art, ui, m, name, w, h, eight(0)))
+        lua.append("\t[%d] = { ui = %d, map = %d, file = 'Covers\\\\%s', w = %d, h = %d, whole = %s, shape = %s, pieces = {" % (
+            art, ui, m, name, w, h, eight(0), eight(1)))
         row = []
-        for i in range(1, len(cells)):
+        for i in range(2, len(cells)):
             row.append("[%d] = %s," % (keys[i], eight(i)))
             if len(row) == 3 or i == len(cells) - 1:
                 lua.append("\t\t" + " ".join(row))
@@ -255,7 +394,27 @@ def main():
         colours[0] = 0
         patch = look[r0:r1, c0:c1]
         patch[grid > 0] = colours[grid[grid > 0]]
-        print("map %d (art %d): %d pieces of %d have chunks; file %d x %d" % (ui, art, len(cells) - 1, len(pieces[art]), w, h))
+        print("map %d (art %d): %d pieces of %d have chunks; file %d x %d" % (ui, art, len(cells) - 2, len(pieces[art]), w, h))
+    lua.append("}")
+    lua += ["",
+            "-- By continent (the game's map number), whose piece the land is at each corner of a quarter of a",
+            "-- terrain tile (the ground is not drawn over land you have not discovered):",
+            "--   per     such corners to a tile's side",
+            "--   owners  the pieces, as picture, piece, picture, piece, ... (the keys of ns.COVERS and of its pieces)",
+            "--   row0    the row of corners that rows begins at (0 is the continent's upper edge)",
+            "--   rows    each row of corners from column 0 on, as runs 'count,owner,count,owner,...': owner counts",
+            "--           into owners (its pair), 0 is no piece",
+            "ns.COVER_POINTS = {"]
+    for m in sorted(owned):
+        at = points(owned[m])
+        filled = np.nonzero(at.any(axis=1))[0]
+        lua.append("\t[%d] = { per = %d, row0 = %d, owners = {" % (m, POINTS, filled[0]))
+        for i in range(0, len(owners[m]), 10):
+            lua.append("\t\t" + " ".join("%d, %d," % pair for pair in owners[m][i:i + 10]))
+        lua.append("\t}, rows = {")
+        for j in range(filled[0], filled[-1] + 1):
+            lua.append("\t\t'%s'," % runs(at[j]))
+        lua.append("\t} },")
     lua.append("}")
     with open(os.path.join(ADDON, "Covers.lua"), "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(lua) + "\n")

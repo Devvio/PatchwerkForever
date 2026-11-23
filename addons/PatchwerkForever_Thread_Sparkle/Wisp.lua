@@ -5,14 +5,20 @@
 -- short tail and, if wanted, the item's picture riding along, and the bag glows as it lands.
 --
 -- Where it starts: the loot window, while it is open; else the place on screen of the herb, vein,
--- chest or quest object the sparkle was last on, if that was only a moment ago (Sparkle.lua keeps it in
--- ns.spot); else a little below the middle of the screen, where your character stands.
+-- chest, quest object or corpse the sparkle was last on, if that was only a moment ago (Sparkle.lua
+-- keeps it in ns.spot, with its kind, whose color the wisp then takes); else a little below the middle
+-- of the screen, where your character stands.
 -- Where it lands: the bag's own button on the bag bar; else the open bags; else the backpack's button;
 -- else the lower right corner (a UI that hides the bag bar, such as Console Port's).
 --
 -- Only what you loot or gather is carried, unless the setting says everything: an item bought, taken
 -- from the mail, the bank or a trade is not, since the window for it is open. Nothing here is a
 -- protected frame: these are plain pictures, so it works in a fight as well.
+--
+-- 1.5.0: what the loot window says of each item (GetLootSlotInfo: its quality, whether it is for a quest)
+-- is kept by its icon, so the wisp can take the item's quality color, fly bigger for a Rare one, and
+-- carry a quest item to its quest in the tracker (Tracker (Thread)'s PatchwerkForever_Thread_Tracker_QuestBlock,
+-- else the game's ObjectiveTrackerFrame). Looted money flies to the backpack as a gold wisp.
 local ADDON, ns = ...
 if not ns.linked then return end
 
@@ -25,6 +31,13 @@ local GLOW = 0.45             -- seconds the bag glows
 local LOOTED = 2.5            -- seconds after the loot window closes that an item still counts as looted
 local FRESH = 5               -- seconds the place of a sparkle counts as where a thing was
 local FALLBACK = 'ffffe680'   -- the wisp's color when the thing it came from is not known
+local RARE = 3                -- the item quality from which loot is celebrated (Rare)
+local GRAND = 1.5             -- how much bigger a celebrated wisp is, and its bag's flare
+local GOLD = 'ffffd24d'       -- the coins' wisp
+local COIN = 'Interface\\Icons\\INV_Misc_Coin_01'    -- the game's own coin icon, shown riding on it
+-- The quality colors, where the game cannot be asked for them (C_Item.GetItemQualityColor).
+local QUALITY = { [0] = { 0.62, 0.62, 0.62 }, { 1, 1, 1 }, { 0.12, 1, 0 }, { 0, 0.44, 0.87 }, { 0.64, 0.21, 0.93 },
+	{ 1, 0.5, 0 }, { 0.9, 0.8, 0.5 } }
 
 local sin, random = math.sin, math.random
 local Fade, Plain = ns.Fade, ns.Plain           -- (Sparkle.lua's)
@@ -91,6 +104,20 @@ end
 local BUTTONS = { [0] = 'MainMenuBarBackpackButton', 'CharacterBag0Slot', 'CharacterBag1Slot', 'CharacterBag2Slot',
 	'CharacterBag3Slot', 'CharacterReagentBag0Slot' }
 local OPEN = { 'ContainerFrameCombinedBags', 'ContainerFrame1' }
+
+-- Where a quest item lands (Quest Items Fly To The Tracker): its quest in Tracker (Thread)'s list, else
+-- the game's own tracker; nothing when neither shows.
+local function Tracker(questID)
+	local block = rawget(_G, 'PatchwerkForever_Thread_Tracker_QuestBlock')
+	if type(block) == 'function' then
+		local ok, frame = pcall(block, questID)
+		if ok and frame then
+			local x, y = Middle(frame)
+			if x then return x, y end
+		end
+	end
+	return Middle(rawget(_G, 'ObjectiveTrackerFrame'))
+end
 
 local function Land(bag)
 	local x, y = Middle(rawget(_G, BUTTONS[tonumber(bag) or 0] or ''))
@@ -184,17 +211,17 @@ local function Fly(w, now)
 		w.land:Hide()
 		return true
 	end
-	-- landed: the bag glows a moment
+	-- landed: the bag glows a moment (a celebrated one flares wider, for longer)
 	w.glow:Hide(); w.core:Hide(); w.icon:Hide()
 	for _, speck in ipairs(w.tail) do speck:Hide() end
-	local g = (t - w.long) / GLOW
+	local g = (t - w.long) / (GLOW * (w.grand and GRAND or 1))
 	if g >= 1 then Hide(w) return false end
 	w.land:Show()
-	Put(w.land, w.bx, w.by, size * (0.8 + 0.9 * g), 0.9 * (1 - g))
+	Put(w.land, w.bx, w.by, size * (0.8 + (w.grand and 1.6 or 0.9) * g), 0.9 * (1 - g))
 	return true
 end
 
-local function Colour(w, r, g, b)
+local function Tint(w, r, g, b)
 	w.glow:SetVertexColor(r, g, b)
 	w.land:SetVertexColor(r, g, b)
 	w.core:SetVertexColor(1, 1, 1)
@@ -235,21 +262,50 @@ end
 
 local last = 0                -- when the last wisp was sent off, to space out several at once
 
+-- An item quality's color: the game's, else this file's.
+local function QualityColour(quality)
+	local items = rawget(_G, 'C_Item')
+	local get = type(items) == 'table' and items.GetItemQualityColor
+	if type(get) == 'function' then
+		local ok, r, g, b = pcall(get, quality)
+		if ok and type(r) == 'number' and type(g) == 'number' and type(b) == 'number' then return r, g, b end
+	end
+	local c = QUALITY[quality]
+	if c then return c[1], c[2], c[3] end
+	return nil
+end
+
+-- The wisp's color by Color Mode. kind: the kind of thing it came from; item: what is known of the item
+-- ({ quality =, quest = }), or nothing; colour: one given outright (the coins).
+local function Colour(kind, item, colour)
+	if colour then return ns.RGB(colour) end
+	local mode = ns.Get('wispColour')
+	if mode == 'kind' and kind then
+		return ns.RGB(ns.Get('look.' .. kind .. '.colour') or FALLBACK)
+	end
+	if mode == 'quality' and item then
+		if item.quest then return ns.RGB(ns.Get('look.quest.colour') or FALLBACK) end
+		if type(item.quality) == 'number' then
+			local r, g, b = QualityColour(item.quality)
+			if r then return r, g, b end
+		end
+	end
+	return ns.RGB(ns.Get('wispFixed') or FALLBACK)
+end
+
 -- Sends a wisp from (ax, ay) to (bx, by). kind: the kind of thing it came from, for its color; icon:
--- the item's picture.
-local function Launch(ax, ay, bx, by, kind, icon)
+-- the item's picture; item: what the loot window said of it ({ quality =, quest = }); colour: a color
+-- given outright.
+local function Launch(ax, ay, bx, by, kind, icon, item, colour)
 	Sky()
 	local now = GetTime()
 	local leave = now > last + STAGGER and now or last + STAGGER
 	last = leave
-	local size = ns.Get('wispSize') or 70
+	local grand = item and type(item.quality) == 'number' and item.quality >= RARE and ns.Get('wispRare') and true or false
+	local size = (ns.Get('wispSize') or 70) * (grand and GRAND or 1)
 	local long = FLIGHT * 100 / (ns.Get('wispSpeed') or 100)
-	local r, g, b
-	if ns.Get('wispColour') == 'kind' and kind then
-		r, g, b = ns.RGB(ns.Get('look.' .. kind .. '.colour') or FALLBACK)
-	else
-		r, g, b = ns.RGB(ns.Get('wispFixed') or FALLBACK)
-	end
+	local r, g, b = Colour(kind, item, colour)
+	ns.lastWisp = { bx = bx, by = by, size = size, grand = grand, r = r, g = g, b = b, icon = icon }   -- (for the checks)
 	-- the curve bends up and to one side, a little differently each time
 	local dx, dy = bx - ax, by - ay
 	local far = (dx * dx + dy * dy) ^ 0.5
@@ -261,10 +317,10 @@ local function Launch(ax, ay, bx, by, kind, icon)
 	local cx, cy = mx + nx * far * math.abs(side) + dx * side * 0.2, my + ny * far * math.abs(side) + far * 0.12
 	local function Go(w)
 		w.ax, w.ay, w.bx, w.by, w.cx, w.cy = ax, ay, bx, by, cx, cy
-		w.start, w.long, w.size = leave > GetTime() and leave or GetTime(), long, size
+		w.start, w.long, w.size, w.grand = leave > GetTime() and leave or GetTime(), long, size, grand
 		w.showIcon = ns.Get('wispIcon') and icon ~= nil
 		if w.showIcon then w.icon:SetTexture(icon) end
-		Colour(w, r, g, b)
+		Tint(w, r, g, b)
 		w.flying = true
 	end
 	local free
@@ -279,15 +335,63 @@ local function Launch(ax, ay, bx, by, kind, icon)
 	sky:Show()
 end
 
+-- What the loot window holds, by each item's icon: [icon] = { { quality =, quest =, questID = }, ... }.
+-- The game says only the bag and the icon of an item that goes into a bag, so an item is known again by
+-- its icon; two of one icon in one window may swap colors, which does no harm.
+local slots = {}
+
+local function Read()
+	slots = {}
+	local info, count = rawget(_G, 'GetLootSlotInfo'), rawget(_G, 'GetNumLootItems')
+	if type(info) ~= 'function' or type(count) ~= 'function' then return end
+	local ok, n = pcall(count)
+	if not (ok and Plain(n) and type(n) == 'number') then return end
+	for slot = 1, n do
+		local got, texture, _, _, _, quality, _, quest, questID = pcall(info, slot)
+		if got and Plain(texture) and texture ~= nil then
+			local list = slots[texture] or {}
+			list[#list + 1] = { quality = Plain(quality) and quality or nil, quest = Plain(quest) and quest == true or false,
+				questID = Plain(questID) and questID or nil }
+			slots[texture] = list
+		end
+	end
+end
+
+-- What the loot window said of an item with this icon, taken off the list (nothing when not known).
+local function Took(icon)
+	local list = icon ~= nil and slots[icon]
+	if not list or #list == 0 then return nil end
+	return table.remove(list, 1)
+end
+
 -- An item has gone into a bag.
 local function Pushed(bag, icon)
 	if not Wanted() then return end
 	local ax, ay, kind = Start()
 	-- (a few items from one loot window leave from about the same place, not one on top of another)
 	ax, ay = ax + (random() - 0.5) * 24, ay + (random() - 0.5) * 16
-	local bx, by = Land(bag)
 	if not Plain(icon) then icon = nil end
-	Launch(ax, ay, bx, by, kind, icon)
+	local item = Took(icon)
+	local bx, by
+	-- (a quest item flies to its quest in the tracker, Quest Items Fly To The Tracker)
+	if item and item.quest and ns.Get('wispQuest') then bx, by = Tracker(item.questID) end
+	if not bx then bx, by = Land(bag) end
+	Launch(ax, ay, bx, by, kind, icon, item)
+end
+
+-- Money has come in (Coins Fly To Your Bag): looted coins fly to the backpack.
+local money
+local function Money()
+	local get = rawget(_G, 'GetMoney')
+	if type(get) ~= 'function' then return end
+	local ok, now = pcall(get)
+	if not (ok and Plain(now) and type(now) == 'number') then return end
+	local was = money
+	money = now
+	if not (was and now > was) or not ns.Get('wispMoney') or Barred() or Busy() or not Looted() then return end
+	local ax, ay = Start()
+	local bx, by = Land(0)
+	Launch(ax, ay, bx, by, nil, COIN, nil, GOLD)
 end
 
 -- How many wisps are in the air, and how many wait for a free one (for the checks in tools/lua_races.py).
@@ -335,8 +439,9 @@ local function Listen(event, fn)
 end
 
 ns.Try('listening for ITEM_PUSH', ns.On, 'ITEM_PUSH', function(bag, icon) ns.Try('the loot wisp', Pushed, bag, icon) end)
-Listen('LOOT_READY', function() looting = true end)
-Listen('LOOT_OPENED', function() looting = true end)
+Listen('LOOT_READY', function() looting = true; ns.Try('the loot wisp', Read) end)
+Listen('LOOT_OPENED', function() looting = true; ns.Try('the loot wisp', Read) end)
+Listen('PLAYER_MONEY', function() ns.Try('the coins\' wisp', Money) end)
 Listen('LOOT_CLOSED', function() looting, closed = false, GetTime() end)
 
 -- the windows that put things in your bags without looting: opened, closed
@@ -352,4 +457,8 @@ for name, pair in pairs(WINDOWS) do
 	Listen(pair[1], function() busy[name] = true end)
 	Listen(pair[2], function() busy[name] = nil end)
 end
-ns.On('PLAYER_ENTERING_WORLD', function() busy, looting = {}, false end)
+ns.On('PLAYER_ENTERING_WORLD', function()
+	busy, looting = {}, false
+	money = nil
+	ns.Try('the coins\' wisp', Money)                  -- (what you have now, to tell what comes in)
+end)

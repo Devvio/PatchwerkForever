@@ -8,7 +8,9 @@
 --
 -- Run.lua watches the buff and fades the interface (all of it, or all but the parts you keep);
 -- Streaks.lua and Effects.lua draw the effects at full speed; Camera.lua pulls the camera back;
--- Records.lua keeps each character's run records.
+-- Records.lua keeps each character's run records. Sources.lua lets a mount, a travel form or a flight
+-- stand in for the buff (each off until enabled, for every race); Way.lua leans the effects toward
+-- where the route of Routes (Thread) goes next (off until enabled).
 --
 -- How the interface is faded: the alpha of UIParent, the frame every window, bar and frame of the game's
 -- interface hangs from. Alpha may be changed in a fight, on protected frames too; nothing is hidden,
@@ -36,6 +38,17 @@ ns.settings = {
 	{ key = 'fadeLeft', default = 0, min = 0, max = 60, step = 5, name = 'Hidden Interface Opacity', parent = 'enabled', percent = true,
 		desc = 'How much of the interface is left when it is fully faded. 0% hides it completely.' },
 
+	-- a mount, a travel form, a flight (Sources.lua): for every race, each off until enabled
+	{ header = true, name = 'Other Ways Of Going Fast' },
+	{ key = 'otherMounts', default = false, name = 'Mounts', parent = 'enabled',
+		desc = 'Speed mode also runs while you are mounted and moving, on any race. A mount has no stacks: the interface fades once you have kept moving for a few seconds.' },
+	{ key = 'otherForms', default = false, name = 'Travel Forms', parent = 'enabled',
+		desc = 'Speed mode also runs while you are moving in Travel Form, Aquatic Form or Ghost Wolf, or under Aspect of the Cheetah or Aspect of the Pack, on any race.' },
+	{ key = 'otherFlights', default = false, name = 'Flight Paths', parent = 'enabled',
+		desc = 'Speed mode also runs while you are on a flight, on any race. A flight then fades the interface instead of bringing it back.' },
+	{ key = 'otherWait', default = 5, min = 0, max = 30, step = 1, name = 'Seconds Before Fading', parent = 'enabled',
+		desc = 'How long you must keep moving on a mount, in a travel form or on a flight before the interface begins to fade. It then fades about as fast as it does while Plainsrunning stacks up at a run, and the effects come in once it is gone.' },
+
 	{ header = true, name = 'Bring The Interface Back' },
 	{ key = 'combatShow', default = true, name = 'In Combat',
 		desc = 'Bring the interface back at once when a fight starts, and keep it while the fight lasts.' },
@@ -48,7 +61,7 @@ ns.settings = {
 	{ key = 'moveTime', default = 5, min = 0, max = 10, step = 1, name = 'Seconds Moving Again', parent = 'stillShow',
 		desc = 'Once the interface has come back for standing still, how long you must move again before it fades away again (while the buff lasts).' },
 	{ key = 'deadShow', default = true, name = 'When You Die Or Take A Flight',
-		desc = 'Bring the interface back when you die or take a flight.' },
+		desc = 'Bring the interface back when you die or take a flight. With Flight Paths enabled, a flight fades the interface instead.' },
 
 	{ header = true, name = 'Keep While Faded' },
 	{ key = 'keepMinimap', default = false, name = 'Keep The Minimap',
@@ -74,6 +87,11 @@ ns.settings = {
 		desc = 'Move the point the streaks, dust and rings rush out from up (positive) or down, in percent of the screen height. It should sit on the horizon ahead of you.' },
 	{ page = E, key = 'streakClear', default = 30, min = 0, max = 70, step = 5, name = 'Clear Middle', percent = true,
 		desc = 'How much of the middle of the screen is kept free of streaks and dust, so you can see your character and the way ahead.' },
+	-- (Way.lua)
+	{ page = E, key = 'wayWind', default = false, name = 'Wind Shows The Way',
+		desc = 'While you follow a route of Routes (Thread), the point the effects rush out from leans left or right toward where the route goes next, so you can follow it with the interface gone. Does nothing without Routes (Thread), on a flight, or where the game does not say which way you face, as in instances.' },
+	{ page = E, key = 'wayReach', default = 15, min = 5, max = 30, step = 5, name = 'How Far It Leans', parent = 'wayWind', percent = true,
+		desc = 'How far to the side the point may move, in percent of the screen width. A turn to come moves it part of the way; a route beside or behind you moves it all the way.' },
 
 	{ page = E, header = true, name = 'Speed Streaks' },
 	{ page = E, key = 'streaks', default = true, name = 'Show Speed Streaks',
@@ -155,7 +173,7 @@ ns.settings = {
 ---------------------------------------------------------------------------
 local function Help()
 	ns.Print('Speed mode commands (/plains or /pfplains):')
-	ns.Print('  /plains status: what speed mode is doing now')
+	ns.Print('  /plains status: what speed mode is doing now, and what it is running on')
 	ns.Print('  /plains on, /plains off: turn speed mode on or off')
 	ns.Print('  /plains show: bring the interface back until this run ends')
 	ns.Print('  /plains test: pretend to run for fifteen seconds')

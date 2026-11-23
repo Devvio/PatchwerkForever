@@ -11,6 +11,9 @@
 --                the name, the smaller place the pointer is over (a town, a camp, a pass); and at the
 --                picture's lower edge your coordinates and the pointer's, on the zone's own map
 --
+-- A map's levels and their colour are also what Wash.lua colours the zones by (ns.MapLevels,
+-- ns.LevelColour): asked the same way, kept in the same place, coloured by the same rule.
+--
 -- With keys or a gamepad the pointer is the middle of the picture, here as everywhere: the place named
 -- and the coordinates shown are those at the cross, and Next Mark steps through these marks too.
 local ADDON, ns = ...
@@ -23,6 +26,7 @@ local ZONE_FROM = VIEW * 1.2          -- places, and the smaller place's name, a
 local POI_ICONS = 'Interface\\Minimap\\POIIcons'      -- the game's sheet of place icons
 local GREY, PALE = { 0.6, 0.6, 0.6 }, { 0.62, 0.86, 1 }
 local TRIES = 12                      -- how often a zone's levels are asked for before it is left without
+local WITHIN = { r = 1, g = 0.82, b = 0 }             -- the colour of levels you are within (the game's yellow)
 
 local function Ask(fn, ...)
 	if type(fn) ~= 'function' then return nil end
@@ -274,54 +278,87 @@ local function Pointed()
 	return nil
 end
 
-local levels, tried = {}, {}          -- by a zone's own number: { least, most }, or false where the game gives none
+local levels, asked = {}, {}          -- by one of the game's zone maps: { least, most }, or false where the game gives none
+local mapOf, sought = {}, {}          -- by a zone's own number: the game's map of it (false: not to be found)
 
--- A zone's levels come from the game's own map of it, found at the point pointed at. Right at a
--- border that map can be the next zone's: then nothing is kept, and it is asked again a little later.
+-- The levels of one of the game's zone maps: { least, most }; false where the game gives none (a city)
+-- or has not answered after being asked TRIES times; nil while it has not answered yet.
+local function MapLevels(ui)
+	if levels[ui] ~= nil then return levels[ui] end
+	if type(C_Map.GetMapLevels) ~= 'function' then
+		levels[ui] = false
+		return false
+	end
+	local least, most = Ask(C_Map.GetMapLevels, ui)
+	if Plain(least) and Plain(most) and type(least) == 'number' and type(most) == 'number' then
+		levels[ui] = least > 0 and most >= least and { least, most } or false
+	else
+		asked[ui] = (asked[ui] or 0) + 1
+		if asked[ui] >= TRIES then levels[ui] = false end
+	end
+	return levels[ui]
+end
+ns.MapLevels = MapLevels
+
+-- The levels of the zone pointed at. Its map among the game's is found at the point pointed at. Right
+-- at a border that map can be the next zone's: then nothing is kept, and it is looked for again a
+-- little later.
 local function Levels(hover)
 	local id = hover.zone.id
-	if levels[id] ~= nil then return levels[id] end
-	if type(C_Map.GetMapLevels) ~= 'function' then
-		levels[id] = false
-		return false
+	local ui = mapOf[id]
+	if ui == nil then
+		sought[id] = (sought[id] or 0) + 1
+		if sought[id] > TRIES or type(C_Map.GetMapLevels) ~= 'function' then
+			mapOf[id] = false
+			return false
+		end
+		local p = Pointed()
+		local zone = p and Marks.ZoneMap(p)
+		local info = zone and Ask(C_Map.GetMapInfo, zone)
+		if not (type(info) == 'table' and info.name == G.ZoneName(hover.zone)) then return nil end
+		mapOf[id], ui = zone, zone
 	end
-	tried[id] = (tried[id] or 0) + 1
-	if tried[id] > TRIES then
-		levels[id] = false
-		return false
-	end
-	local p = Pointed()
-	local zone = p and Marks.ZoneMap(p)
-	local info = zone and Ask(C_Map.GetMapInfo, zone)
-	if not (type(info) == 'table' and info.name == G.ZoneName(hover.zone)) then return nil end
-	local least, most = Ask(C_Map.GetMapLevels, zone)
-	levels[id] = type(least) == 'number' and type(most) == 'number' and least > 0 and most >= least and { least, most } or false
-	return levels[id]
+	if not ui then return false end
+	return MapLevels(ui)
 end
 
--- The colour of a zone's levels: as a quest of its lowest level would be while you are below them, as
--- one a little under its highest once you are above them, and yellow while you are within them.
+-- Your level. (When you gain one the game says so a moment before UnitLevel does: the level it names
+-- is kept, and counts until UnitLevel has caught up.)
+local grown
+local function MyLevel()
+	local mine = Ask(rawget(_G, 'UnitLevel'), 'player')
+	if not (Plain(mine) and type(mine) == 'number') then mine = nil end
+	if grown and mine and mine >= grown then grown = nil end       -- (UnitLevel has caught up)
+	return grown or mine
+end
+ns.MyLevel = MyLevel
+
+-- The colour of a zone's levels (red, green, blue): as a quest of its lowest level would be while you
+-- are below them, as one a little under its highest once you are above them, and yellow while you are
+-- within them.
 local function LevelColour(least, most)
-	local mine = UnitLevel and UnitLevel('player')
+	local mine = MyLevel()
 	local c
-	if type(mine) == 'number' and type(GetQuestDifficultyColor) == 'function' then
+	if mine and type(GetQuestDifficultyColor) == 'function' then
 		if mine < least then
-			c = GetQuestDifficultyColor(least)
+			c = Ask(GetQuestDifficultyColor, least)
 		elseif mine > most then
-			c = GetQuestDifficultyColor(math.max(1, most - 2))
+			c = Ask(GetQuestDifficultyColor, math.max(1, most - 2))
 		end
 	end
-	if type(c) ~= 'table' or not (c.r and c.g and c.b) then c = { r = 1, g = 0.82, b = 0 } end
-	local function Part(v) return math.floor(math.max(0, math.min(1, v)) * 255 + 0.5) end
-	return ('|cff%02x%02x%02x'):format(Part(c.r), Part(c.g), Part(c.b))
+	if type(c) ~= 'table' or not (type(c.r) == 'number' and type(c.g) == 'number' and type(c.b) == 'number') then c = WITHIN end
+	return c.r, c.g, c.b
 end
+ns.LevelColour = LevelColour
 
 -- The words at the top of the picture for the zone pointed at (Globe.lua asks, and shows them).
 function ns.ZoneWords(hover, name)
 	local range = Levels(hover)
 	if not range then return name end
 	local least, most = range[1], range[2]
-	return ('%s %s(%s)|r'):format(name, LevelColour(least, most), least == most and tostring(most) or (least .. '-' .. most))
+	local function Part(v) return math.floor(math.max(0, math.min(1, v)) * 255 + 0.5) end
+	local r, g, b = LevelColour(least, most)
+	return ('%s |cff%02x%02x%02x(%s)|r'):format(name, Part(r), Part(g), Part(b), least == most and tostring(most) or (least .. '-' .. most))
 end
 
 local function AreaName(hover)
@@ -342,7 +379,7 @@ ns.GlobeOn('paint', function(r)
 	if name and not areaText then
 		local _, _, canvas = G.Frames()
 		areaText = canvas:CreateFontString(nil, 'OVERLAY', 'GameFontHighlight')
-		areaText:SetFont('Fonts\\FRIZQT__.TTF', 13, 'OUTLINE')
+		ns.GlobeText(areaText, 'Fonts\\FRIZQT__.TTF', 13)
 		areaText:SetTextColor(1, 1, 1)
 		areaText:SetPoint('TOP', G.ZoneText(), 'BOTTOM', 0, -2)
 	end
@@ -382,14 +419,17 @@ local function Coordinates()
 	return table.concat(parts, '    ')
 end
 
-local since, asked = 0, 0
+local since, again, settled = 0, 0, {}
 ns.GlobeOn('frame', function(elapsed)
-	since, asked = since + (elapsed or 0), asked + (elapsed or 0)
+	since, again = since + (elapsed or 0), again + (elapsed or 0)
 	-- (a zone's levels not found yet are asked for again, and its name written again once they are)
-	if asked > 0.25 then
-		asked = 0
+	if again > 0.25 then
+		again = 0
 		local hover = G.Hover()
-		if hover and levels[hover.zone.id] == nil and Levels(hover) ~= nil then G.Changed() end
+		if hover and not settled[hover.zone.id] and Levels(hover) ~= nil then
+			settled[hover.zone.id] = true
+			G.Changed()
+		end
 	end
 	if since < 0.1 then return end
 	since = 0
@@ -399,7 +439,7 @@ ns.GlobeOn('frame', function(elapsed)
 	if text ~= '' and not coordsText then
 		local _, view, canvas = G.Frames()
 		coordsText = canvas:CreateFontString(nil, 'OVERLAY', 'GameFontHighlightSmall')
-		coordsText:SetFont('Fonts\\FRIZQT__.TTF', 11, 'OUTLINE')
+		ns.GlobeText(coordsText, 'Fonts\\FRIZQT__.TTF', 11)
 		coordsText:SetPoint('BOTTOM', view, 'BOTTOM', 0, 8)
 	end
 	if coordsText then
@@ -409,7 +449,16 @@ ns.GlobeOn('frame', function(elapsed)
 end)
 
 -- (your level changes how a zone's levels are coloured)
-Marks.On('PLAYER_LEVEL_UP', function() G.Changed() end)
+Marks.On('PLAYER_LEVEL_UP', function(level)
+	if Plain(level) and type(level) == 'number' then grown = level end
+	G.Changed()
+end)
+
+-- For the checks outside the game: what is known of the zones' levels is forgotten (Wash.lua adds
+-- its own part).
+function ns.LevelsForget()
+	levels, asked, mapOf, sought, settled, grown = {}, {}, {}, {}, {}, nil
+end
 
 -- For the checks outside the game.
 function ns.PlacesState()

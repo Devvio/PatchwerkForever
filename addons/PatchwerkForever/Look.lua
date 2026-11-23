@@ -148,6 +148,141 @@ function PatchwerkForeverHeaderMixin:Init(initializer)
 end
 
 ---------------------------------------------------------------
+-- The list row (PatchwerkForeverListTemplate, 266 high; 2.9.0)
+---------------------------------------------------------------
+-- A tool's list on its page: a line of words for each entry, with
+-- up to two buttons at its right ("Remove", "Add To Route"), eight
+-- lines a page and Previous and Next under them. What it lists is
+-- asked of the tool (data.list(), giving { { text =, buttons =
+-- { { text =, click = fn }, ... } }, ... }) as the row is shown, a
+-- moment after a button is pressed, and twice a second while it
+-- shows, so a list changed from the chat is up to date too.
+local LIST_LINES, LINE_TALL, LIST_EVERY = 8, 26, 0.5;
+local BUTTON_WIDE = 116;
+
+PatchwerkForeverListMixin = {};
+
+local function ListButton(parent, text, width)
+	local button = CreateFrame('Button', nil, parent, 'UIPanelButtonTemplate');
+	button:SetSize(width or BUTTON_WIDE, 22)
+	if text then button:SetText(text) end;
+	return button;
+end
+
+local function Enable(button, on)
+	if button.SetEnabled then button:SetEnabled(on) end;
+end
+
+function PatchwerkForeverListMixin:OnLoad()
+	self.Title = Writing(self, 13, true);
+	self.Title:SetPoint('TOPLEFT', self, 'TOPLEFT', 37, -6)
+	self.Title:SetTextColor(ns.GOLD[1], ns.GOLD[2], ns.GOLD[3])
+	self.lines = {};
+	for i = 1, LIST_LINES do
+		local line = CreateFrame('Frame', nil, self);
+		line:SetHeight(LINE_TALL - 2)
+		line:SetPoint('TOPLEFT', self, 'TOPLEFT', 37, -26 - ( i - 1 ) * LINE_TALL)
+		line:SetPoint('TOPRIGHT', self, 'TOPRIGHT', -24, -26 - ( i - 1 ) * LINE_TALL)
+		line.Text = Writing(line, 12, true);
+		line.Text:SetPoint('LEFT', line, 'LEFT', 0, 0)
+		line.Text:SetPoint('RIGHT', line, 'RIGHT', -( BUTTON_WIDE * 2 + 12 ), 0)
+		line.Text:SetWordWrap(false)
+		line.Text:SetTextColor(ns.CREAM[1], ns.CREAM[2], ns.CREAM[3])
+		line.buttons = {};
+		for b = 1, 2 do
+			local button = ListButton(line);
+			button:SetPoint('RIGHT', line, 'RIGHT', -( b - 1 ) * ( BUTTON_WIDE + 6 ), 0)
+			button:SetScript('OnClick', function(pressed)
+				if ( type(pressed.click) == 'function' ) then
+					local ok, problem = pcall(pressed.click);
+					if not ok then geterrorhandler()(problem) end;
+				end
+				self:Refresh()
+			end)
+			line.buttons[b] = button;
+		end
+		self.lines[i] = line;
+	end
+	self.Empty = Writing(self, 12, true);
+	self.Empty:SetPoint('TOPLEFT', self, 'TOPLEFT', 37, -30)
+	self.Empty:SetPoint('TOPRIGHT', self, 'TOPRIGHT', -24, -30)
+	self.Empty:SetWordWrap(true)
+	self.Empty:SetTextColor(ns.CREAM[1], ns.CREAM[2], ns.CREAM[3])
+	self.Previous = ListButton(self, 'Previous', 96);
+	self.Previous:SetPoint('BOTTOMLEFT', self, 'BOTTOMLEFT', 37, 6)
+	self.Previous:SetScript('OnClick', function() self.page = ( self.page or 1 ) - 1; self:Refresh() end)
+	self.Next = ListButton(self, 'Next', 96);
+	self.Next:SetPoint('BOTTOMLEFT', self, 'BOTTOMLEFT', 139, 6)
+	self.Next:SetScript('OnClick', function() self.page = ( self.page or 1 ) + 1; self:Refresh() end)
+	self.Page = Writing(self, 12, true);
+	self.Page:SetPoint('BOTTOMLEFT', self, 'BOTTOMLEFT', 247, 11)
+	self.Page:SetTextColor(ns.CREAM[1], ns.CREAM[2], ns.CREAM[3])
+	self.wait = 0;
+	self:SetScript('OnShow', function(row) row:Refresh() end)
+	self:SetScript('OnUpdate', function(row, elapsed)
+		row.wait = row.wait - ( elapsed or 0 );
+		if ( row.wait > 0 ) then return end;
+		row:Refresh()
+	end)
+end
+
+function PatchwerkForeverListMixin:Init(initializer)
+	self.data = initializer:GetData() or {};
+	self.page = 1;
+	self.Title:SetText(self.data.name or '')
+	self:Refresh()
+end
+
+function PatchwerkForeverListMixin:Refresh()
+	self.wait = LIST_EVERY;
+	local data = self.data;
+	if not data then return end;
+	local rows = {};
+	if ( type(data.list) == 'function' ) then
+		local ok, got = pcall(data.list);
+		if ( ok and type(got) == 'table' ) then rows = got end;
+	end
+	local pages = math.max(1, math.ceil(#rows / LIST_LINES));
+	self.page = math.max(1, math.min(pages, self.page or 1));
+	local first = ( self.page - 1 ) * LIST_LINES;
+	for i, line in ipairs(self.lines) do
+		local entry = rows[first + i];
+		if ( type(entry) == 'table' ) then
+			line.Text:SetText(tostring(entry.text or ''))
+			for b, button in ipairs(line.buttons) do
+				local given = type(entry.buttons) == 'table' and entry.buttons[b];
+				if ( type(given) == 'table' and type(given.text) == 'string' ) then
+					button:SetText(given.text)
+					button.click = given.click;
+					button:Show()
+				else
+					button.click = nil;
+					button:Hide()
+				end
+			end
+			line:Show()
+		else
+			line:Hide()
+		end
+	end
+	if ( #rows == 0 ) then
+		self.Empty:SetText(data.empty or '')
+		self.Empty:Show()
+	else
+		self.Empty:Hide()
+	end
+	local paged = pages > 1;
+	for _, part in ipairs({ self.Previous, self.Next, self.Page }) do
+		if paged then part:Show() else part:Hide() end;
+	end
+	if paged then
+		self.Page:SetText(('Page %d of %d'):format(self.page, pages))
+		Enable(self.Previous, self.page > 1)
+		Enable(self.Next, self.page < pages)
+	end
+end
+
+---------------------------------------------------------------
 -- Putting them on a page
 ---------------------------------------------------------------
 -- puts something that is not a setting on a page: { category =, layout = }
@@ -181,6 +316,15 @@ function ns.PlaceHeader(page, name)
 	if CreateSettingsListSectionHeaderInitializer then
 		ns.PlaceOn(page, CreateSettingsListSectionHeaderInitializer(name))
 	end
+end
+
+-- A tool's list (2.9.0), its name written over it. Where the game does not know our row
+-- the list is left out (the tool's chat commands do the same work) and false is given.
+function ns.PlaceList(page, def)
+	if not Ready('PatchwerkForeverListTemplate') then return false end;
+	ns.PlaceOn(page, Settings.CreateElementInitializer('PatchwerkForeverListTemplate',
+		{ name = def.name, list = def.list, empty = def.empty }))
+	return true;
 end
 
 -- A page's intro: its name, the picture of the addon it belongs to, and a line in Patchwerk's voice.

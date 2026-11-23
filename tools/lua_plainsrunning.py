@@ -9,13 +9,20 @@ Show Interface key, /plains show, the buff ending, the preview, speed mode disab
 of the same name (never taken for the buff), the other effects turned on and off one by one, the parts
 of the interface kept (and a protected one left alone in a fight), the camera going back and coming in
 (also at the game's furthest zoom), the run records (a first run, a record beaten, a run seen from the
-middle, a mounted stretch, the preview not counted, reset), and a problem in the middle of a run (the
-interface put back). It fails loudly on any Lua error, and on any alpha out of range.
+middle, a mounted stretch, the preview not counted, reset), the other ways of going fast (a mount, a
+travel form by its number, by the stance bar and by an aura, a flight; each off at first, on any race,
+the wait, a long stop, Plainsrunning winning, auras hidden in a fight, functions missing, a problem),
+the wind showing the way (no service, no route, a turn to either side, a route behind, the place or the
+facing unknown or secret, another continent, a flight, how seldom the trail is read, a problem), and a
+problem in the middle of a run (the interface put back). It fails loudly on any Lua error, and on any
+alpha out of range.
 
 What this proves: the addon's own code runs and does sensible things with the stand-in's answers.
-What it cannot prove: how the effects look, that every window of Forever brings the interface back, or
-that the game lets the parts kept ignore the interface's alpha. That is for the game.
+What it cannot prove: how the effects look, that every window of Forever brings the interface back,
+that the game lets the parts kept ignore the interface's alpha, that Forever's travel forms and aspects
+have the numbers and names assumed, or what speed it gives for a flight. That is for the game.
 """
+import math
 import os
 import sys
 
@@ -114,6 +121,37 @@ STUB.otherLayer.cx, STUB.otherLayer.cy, STUB.otherLayer.width, STUB.otherLayer.h
 PlayerFrame, TargetFrame = CreateFrame('Frame'), CreateFrame('Frame')
 PlayerFrame.protected, TargetFrame.protected = true, true
 ChatFrame1, ChatFrame1Tab = CreateFrame('Frame'), CreateFrame('Frame')
+-- shapeshift forms: the form's number, and the stance bar ({ { spell =, active = }, ... })
+STUB.form, STUB.stance = nil, {}
+function GetShapeshiftFormID() return STUB.form end
+function GetNumShapeshiftForms() return #STUB.stance end
+function GetShapeshiftFormInfo(i)
+    local s = assert(STUB.stance[i], 'no such stance button')
+    return 'icon', s.active, true, s.spell
+end
+-- an aura by its name; STUB.aurasSecret: the game hands a secret over instead of an aura
+C_UnitAuras.GetAuraDataBySpellName = function(unit, name, filter)
+    assert(unit == 'player' and type(name) == 'string' and filter == 'HELPFUL')
+    if STUB.aurasSecret then return SECRET end
+    for _, a in ipairs(STUB.auras) do if a.name == name then return a end end
+end
+local ByID = C_UnitAuras.GetPlayerAuraBySpellID
+C_UnitAuras.GetPlayerAuraBySpellID = function(id)
+    if STUB.aurasSecret then return SECRET end
+    return ByID(id)
+end
+-- Routes (Thread), as far as the base's Trails service is concerned: the trail you are on (STUB.trail)
+-- and a leg ahead of it leading somewhere else; STUB.listed counts how often it is asked
+STUB.trail, STUB.listed = nil, 0
+STUB.provider = {
+    List = function()
+        STUB.listed = STUB.listed + 1
+        if STUB.listFails then error('the route said no') end
+        return { STUB.trail, { follow = false, pieces = { { map = 1, how = 'walk', points = { { 0, 0 }, { 0, -900 } } } } } }
+    end,
+    Crossings = function() return {} end,
+    NodesAround = function() end,
+}
 """
 
 
@@ -203,7 +241,7 @@ def main():
     # every slider whose tooltip once said "in percent" shows a percent sign; the bindings in the family's section
     defs = [d for d in ns.settings.values() if d.key]
     assert not any(d.desc.endswith(", in percent.") for d in defs), [d.key for d in defs if d.desc.endswith(", in percent.")]
-    assert sum(1 for d in defs if d.percent) == 13, [d.key for d in defs if d.percent]
+    assert sum(1 for d in defs if d.percent) == 14, [d.key for d in defs if d.percent]
     bindings = open(os.path.join(ADDONS, PLAINS, "Bindings.xml"), encoding="utf-8").read()
     assert bindings.count('category="BINDING_CATEGORY_PatchwerkForever"') == 2 and "ADDONS" not in bindings
     slash("help")
@@ -597,6 +635,507 @@ def main():
     chat()
     buff(0)
     stub.race = "Tauren"
+
+    # ------------------------------------------------------------------ other ways of going fast
+    def other():
+        source, running, looking = ns.OtherState()
+        return source, running, looking
+
+    def auras(*more):
+        # the passive, always there, and whatever else: (spell number, name)
+        listed = [{"spellId": 1259918, "name": "Plainsrunning", "applications": 0}]
+        listed += [{"spellId": spell, "name": name, "applications": 0} for spell, name in more]
+        stub.auras = lua.table_from([lua.table_from(a) for a in listed])
+        stub.Fire("UNIT_AURA", "player")
+
+    def fades(why):
+        # from standing: the wait, then the climb to 30, then the effects
+        run(4.5)
+        assert alpha() == 1 and not other()[1], (why, "faded before Seconds Before Fading", alpha(), other())
+        run(1.5)
+        assert 0.8 < alpha() < 1 and other()[1], (why, "not fading once the wait was over", alpha(), other())
+        run(11.5)
+        assert alpha() == 0 and streaks() == (40, 1), (why, alpha(), streaks())
+
+    step("other ways of going fast: each off at first; a Human on a mount: nothing looks, nothing fades")
+    assert [d.default for d in defs if d.key in ("otherMounts", "otherForms", "otherFlights")] == [False, False, False]
+    assert "Other Ways Of Going Fast" in list(stub.headers.values())
+    stub.race = "Human"
+    stub.mounted, stub.speed = True, 14.0
+    stub.player.taxi, stub.form = True, 3
+    auras((5118, "Aspect of the Cheetah"))
+    run(30)
+    assert alpha() == 1 and not state()[2] and other() == (None, False, False), (alpha(), state(), other())
+    stub.player.taxi, stub.form = False, None
+    auras()
+
+    step("Mounts: five seconds of riding, then it fades as the stacks would, and the effects come in")
+    _, db = ns.RecordsState()
+    runs = db.runs
+    ns.Set("otherMounts", True)
+    assert other()[2], "nothing looking with a source enabled"
+    fades("a mount")
+    assert G.STUB.zoom == 18, ("the camera did not go back", G.STUB.zoom)
+    slash("")
+    text = chat()
+    assert "Running on a mount" in text and "Other sources enabled: Mounts." in text, text
+
+    step("on a mount, standing still: back after five seconds; moving again: away after five, at once")
+    stub.speed = 0
+    run(4.5)
+    assert alpha() == 0
+    run(1.0)
+    assert alpha() == 1 and other()[1], (alpha(), other())
+    stub.speed = 14.0
+    run(4.5)
+    assert alpha() == 1
+    run(1.5)
+    assert alpha() == 0, alpha()
+
+    step("on a mount: a fight, a window, the Show key and /plains show bring it back as ever")
+    stub.combat = True
+    stub.Fire("PLAYER_REGEN_DISABLED")
+    assert alpha() == 1, "not back at once in a fight"
+    stub.speed = G.SECRET                                    # (the speed kept secret: the last one known counts)
+    run(1.0)
+    assert alpha() == 1 and other()[1], (alpha(), other())
+    stub.combat, stub.speed = False, 14.0
+    stub.Fire("PLAYER_REGEN_ENABLED")
+    run(1.0)
+    assert alpha() == 0
+    G.WorldMapFrame.shown = True
+    run(0.5)
+    assert alpha() == 1
+    G.WorldMapFrame.shown = False
+    run(1.0)
+    assert alpha() == 0
+    G.PatchwerkForever_Thread_Plainsrunning_Peek("down")
+    run(0.4)
+    assert alpha() == 1
+    G.PatchwerkForever_Thread_Plainsrunning_Peek("up")
+    run(1.0)
+    assert alpha() == 0
+    slash("show")
+    run(0.5)
+    assert alpha() == 1 and "Interface back until this run ends" in chat()
+
+    step("dismounted: everything as it was, nothing runs; /plains show is forgotten with the run")
+    stub.mounted = False
+    run(1.5)
+    assert alpha() == 1 and state() == (0, 0, False) and other() == (None, False, True), (alpha(), state(), other())
+    assert G.STUB.zoom == 15, G.STUB.zoom
+    slash("show")
+    assert "Speed mode is not running right now" in chat()
+    slash("")
+    text = chat()
+    assert "Not running" in text and "Other sources enabled: Mounts." in text, text
+    stub.mounted = True
+    run(17.5)
+    assert alpha() == 0, alpha()
+
+    step("a stop of ten seconds ends the run on a mount: the next one waits and climbs again")
+    stub.speed = 0
+    run(10.5)
+    assert alpha() == 1 and not other()[1], (alpha(), other())
+    stub.speed = 14.0
+    fades("a mount, after a long stop")
+
+    step("Seconds Before Fading: none, and ten")
+    stub.mounted = False
+    run(1.0)
+    ns.Set("otherWait", 0)
+    stub.mounted = True
+    run(0.6)
+    assert alpha() < 1 and other()[1], (alpha(), other())
+    stub.mounted = False
+    run(1.0)
+    ns.Set("otherWait", 10)
+    stub.mounted = True
+    run(9.5)
+    assert alpha() == 1 and not other()[1]
+    run(1.5)
+    assert alpha() < 1 and other()[1]
+    ns.Set("otherWait", 5)
+
+    step("speed mode disabled: nothing looks; a mount the game has no word for: nothing happens")
+    slash("off")
+    run(0.5)
+    assert alpha() == 1 and other() == (None, False, False), (alpha(), other())
+    slash("on")
+    assert other()[2]
+    is_mounted = G.IsMounted
+    G.IsMounted = None
+    run(8)
+    assert alpha() == 1 and other() == (None, False, True), (alpha(), other())
+    G.IsMounted = lua.eval("function() return SECRET end")   # (or keeps secret)
+    run(8)
+    assert alpha() == 1 and not other()[1]
+    G.IsMounted = is_mounted
+    chat()
+
+    step("a Tauren on a mount with Plainsrunning too: Plainsrunning's stacks win, and its records are its own")
+    stub.race = "Tauren"
+    run(17.5)
+    assert alpha() == 0 and other()[1]
+    buff(15)
+    run(1.5)
+    assert abs(alpha() - (1 - 6 / 21)) < 1e-6, alpha()
+    slash("")
+    text = chat()
+    assert "Plainsrunning: 15 stacks" in text and "Running on" not in text, text
+    buff(0)
+    run(1.5)
+    assert alpha() == 0, "the mount did not take over when the buff ended"
+    stub.mounted = False
+    run(1.5)
+    assert alpha() == 1 and not state()[2]
+    _, db = ns.RecordsState()
+    assert db.runs == runs, "a run on a mount counted in the run records"
+    ns.Set("otherMounts", False)
+    assert not other()[2]
+    stub.race = "Human"
+    stub.Fire("UNIT_AURA", "player")
+
+    step("Travel Forms: by the form's number")
+    stub.speed = 9.8
+    ns.Set("otherForms", True)
+    run(8)
+    assert alpha() == 1 and not other()[1], "a travel form seen where there is none"
+    stub.form = 3
+    fades("Travel Form")
+    slash("")
+    assert "Running on a travel form" in chat()
+    stub.form = 1                                            # (cat form is no travel form)
+    run(1.0)
+    assert alpha() == 1 and not other()[1], (alpha(), other())
+    stub.form = None
+
+    step("Travel Forms: by the stance bar's active button (Ghost Wolf), a form's number unknown here")
+    stub.stance = lua.table_from([lua.table_from({"spell": 768, "active": False}), lua.table_from({"spell": 2645, "active": True})])
+    run(6)
+    assert alpha() < 1 and other() == ("a travel form", True, True), (alpha(), other())
+    stub.stance[2].active = False
+    run(1.0)
+    assert alpha() == 1 and not other()[1]
+    stub.stance[1].active = True                             # (the other button, no travel form)
+    run(8)
+    assert alpha() == 1 and not other()[1]
+    stub.stance = lua.table()
+
+    step("Travel Forms: an aspect, an aura and no form; by its number, then by its name under another number")
+    auras((5118, "Aspect of the Cheetah"))
+    run(6)
+    assert alpha() < 1 and other()[1], (alpha(), other())
+    auras()
+    run(1.0)
+    assert alpha() == 1 and not other()[1]
+    auras((1399998, "Aspect of the Pack"))
+    run(6)
+    assert alpha() < 1 and other()[1], (alpha(), other())
+
+    step("in a fight the game may hide auras: an aspect not found there is still taken to be on; after the fight it is read again")
+    ns.Set("combatShow", False)
+    run(12)
+    assert alpha() == 0
+    stub.combat = True
+    stub.Fire("PLAYER_REGEN_DISABLED")
+    auras()
+    run(3)
+    assert alpha() == 0 and other()[1], ("the aspect was lost with the auras hidden", alpha(), other())
+    stub.aurasSecret = True                                  # (or it hands secrets over)
+    stub.Fire("UNIT_AURA", "player")
+    run(3)
+    assert alpha() == 0 and other()[1], (alpha(), other())
+    stub.aurasSecret = False
+    stub.combat = False
+    stub.Fire("PLAYER_REGEN_ENABLED")
+    run(1.0)
+    assert alpha() == 1 and not other()[1], (alpha(), other())
+    ns.Set("combatShow", True)
+
+    step("Travel Forms where the game has no way to ask for forms: a form is looked for as an aura; with no auras either: nothing")
+    forms = (G.GetShapeshiftFormID, G.GetNumShapeshiftForms, G.GetShapeshiftFormInfo)
+    G.GetShapeshiftFormID, G.GetNumShapeshiftForms, G.GetShapeshiftFormInfo = None, None, None
+    auras((783, "Travel Form"))
+    run(6)
+    assert alpha() < 1 and other()[1], (alpha(), other())
+    unit_auras = G.C_UnitAuras
+    G.C_UnitAuras = None
+    stub.Fire("UNIT_AURA", "player")
+    run(1.0)
+    assert alpha() == 1 and not other()[1]
+    run(8)
+    assert alpha() == 1 and other() == (None, False, True), (alpha(), other())
+    G.C_UnitAuras = unit_auras
+    G.GetShapeshiftFormID, G.GetNumShapeshiftForms, G.GetShapeshiftFormInfo = forms
+    auras()
+    G.GetShapeshiftFormID = lua.eval("function() return SECRET end")     # (a form kept secret: as it was, none)
+    run(8)
+    assert alpha() == 1 and not other()[1]
+    G.GetShapeshiftFormID = forms[0]
+    ns.Set("otherForms", False)
+    chat()
+
+    step("a flight with Flight Paths off: it brings a Tauren's interface back, as ever")
+    stub.race = "Tauren"
+    stub.speed = 11.0
+    buff(30)
+    run(1.5)
+    assert alpha() == 0
+    stub.player.taxi = True
+    run(0.5)
+    assert alpha() == 1
+    slash("")
+    assert "you are dead or on a flight" in chat()
+    step("Flight Paths on: the flight fades it instead, for the Tauren with stacks")
+    ns.Set("otherFlights", True)
+    run(1.5)
+    assert alpha() == 0, alpha()
+    buff(0)
+    stub.player.taxi = False
+    run(1.0)
+    assert alpha() == 1 and not state()[2]
+
+    step("Flight Paths on any race: the wait, the fade, the effects, though the game gives no speed on a flight; no standing still up there")
+    stub.race = "Human"
+    stub.Fire("UNIT_AURA", "player")
+    stub.speed = 0
+    stub.player.taxi = True
+    fades("a flight")
+    run(12)
+    assert alpha() == 0 and streaks() == (40, 1), ("a flight taken for standing still", alpha(), streaks())
+    slash("")
+    assert "Running on a flight" in chat()
+    stub.dead = True                                         # (dying still brings it back)
+    run(0.5)
+    assert alpha() == 1
+    stub.dead = False
+    run(1.0)
+    assert alpha() == 0
+    step("landed: everything back; a flight the game keeps secret is no flight")
+    stub.player.taxi = False
+    run(1.5)
+    assert alpha() == 1 and state() == (0, 0, False) and other() == (None, False, True), (alpha(), state(), other())
+    on_taxi = G.UnitOnTaxi
+    G.UnitOnTaxi = lua.eval("function() return SECRET end")
+    run(8)
+    assert alpha() == 1 and not other()[1]
+    G.UnitOnTaxi = on_taxi
+    ns.Set("otherFlights", False)
+    assert not other()[2]
+    stub.race = "Tauren"
+    stub.speed = 11.0
+    chat()
+
+    # ------------------------------------------------------------------ the wind shows the way
+    trails = G.PatchwerkForever.Trails
+    W, H = 1002, 668                                         # the stand-in's screen
+
+    def origin():
+        x, y = ns.StreaksOrigin()
+        return x, y
+
+    def route(*pieces):
+        # each piece: (continent, how, [(x, y), ...]); none: no route
+        if pieces:
+            stub.trail = lua.eval("{ follow = true, alpha = 1, pieces = { %s } }" % ", ".join(
+                "{ map = %d, how = '%s', points = { %s } }" % (m, how, ", ".join("{ %s, %s }" % p for p in points))
+                for m, how, points in pieces))
+        else:
+            stub.trail = None
+        trails.Changed(trails)
+
+    def leans(share, why):
+        x, y = origin()
+        assert abs(x - share * 0.15 * W) < 0.5 and abs(y - 0.05 * H) < 1e-6, (why, x, y, list(ns.WayState()))
+
+    step("the wind shows the way: off at first; on, with no Routes (Thread): the effects come from the middle")
+    assert [d.default for d in defs if d.key == "wayWind"] == [False]
+    stub.player.x, stub.player.y, stub.player.map, stub.player.facing = 0, 0, 1, 0      # (facing north)
+    ns.Set("rings", True)
+    buff(30)
+    run(2)
+    assert alpha() == 0 and origin() == (0, 0.05 * H), origin()
+    ns.Set("wayWind", True)
+    run(2)
+    assert origin() == (0, 0.05 * H) and stub.listed == 0, (origin(), stub.listed)
+
+    step("Routes (Thread) there, the setting off: the trail is never asked for; on, with no route: the middle")
+    trails.Offer(trails, stub.provider)
+    ns.Set("wayWind", False)
+    route((1, "walk", [(0, 0), (20, 0), (20, 300)]))
+    run(3)
+    assert origin() == (0, 0.05 * H) and stub.listed == 0, (origin(), stub.listed)
+    route()
+    ns.Set("wayWind", True)
+    run(2)
+    assert origin() == (0, 0.05 * H) and stub.listed >= 1, (origin(), stub.listed)
+
+    step("a route straight ahead: the middle")
+    route((1, "walk", [(0, 0), (300, 0)]))
+    run(2)
+    leans(0, "straight ahead")
+
+    step("a turn to the left ahead (the route goes west): the point eases to the left, part of the way; the rings come from it")
+    route((1, "walk", [(0, 0), (20, 0), (20, 300)]))
+    run(0.2)
+    x = origin()[0]
+    assert -0.7 * 0.15 * W < x < 0, ("jumped, or not moving", x)
+    run(3)
+    leans(-0.7071, "a turn to the left")                     # (40 yards on along it is 45 degrees to the left)
+    rings = [t.x for t in G.STUB.allTextures.values() if t.shown and str(t.icon).endswith("warp")]
+    assert len(rings) == 4 and all(abs(x - origin()[0]) < 1e-6 for x in rings), rings
+
+    step("a turn to the right; further along the trail than where it was read; and facing the way it goes")
+    route((1, "walk", [(0, 0), (20, 0), (20, -300)]))
+    run(3)
+    leans(0.7071, "a turn to the right")
+    stub.player.x = 10                                       # (40 yards on from here: 10 north, 30 east)
+    run(3)
+    leans(0.9487, "from further along")
+    stub.player.facing = -math.pi / 2                        # (facing east: it is nearly straight ahead now)
+    run(3)
+    leans(-0.3162, "facing east")
+    stub.player.x, stub.player.facing = 0, 0
+
+    step("a route behind you: all the way to the nearer side, and no further")
+    route((1, "walk", [(0, 0), (-300, 10)]))
+    run(3)
+    leans(-1, "behind, a little to the left")
+    route((1, "walk", [(0, 0), (-300, -10)]))
+    seen = []
+    for _ in range(30):
+        run(0.1)
+        seen.append(origin()[0])
+    assert all(a < b + 1e-9 for a, b in zip(seen, seen[1:])) and max(abs(x) for x in seen) <= 0.15 * W + 1e-6, seen
+    leans(1, "behind, a little to the right")
+
+    step("How Far It Leans 30%, and Vertical Offset 10%: both hold")
+    ns.Set("wayReach", 30)
+    ns.Set("streakUp", 10)
+    run(0.1)
+    x, y = origin()
+    assert abs(x - 0.30 * W) < 0.5 and abs(y - 0.10 * H) < 1e-6, (x, y)
+    ns.Set("wayReach", 15)
+    ns.Set("streakUp", 5)
+
+    step("the trail is read when it changes and every couple of seconds, not every moment")
+    before = stub.listed
+    run(10)
+    assert 4 <= stub.listed - before <= 6, stub.listed - before
+
+    step("where you are or which way you face not known (an instance, a secret), or no such function: the middle")
+    facing, position = G.GetPlayerFacing, G.UnitPosition
+    for why, name, code in (
+            ("no facing", "GetPlayerFacing", "function() return nil end"),
+            ("a secret facing", "GetPlayerFacing", "function() return SECRET end"),
+            ("facing fails", "GetPlayerFacing", "function() error('no') end"),
+            ("no place", "UnitPosition", "function() return nil end"),
+            ("a secret place", "UnitPosition", "function() return SECRET, SECRET, 0, 1 end"),
+            ("no GetPlayerFacing", "GetPlayerFacing", None),
+            ("no UnitPosition", "UnitPosition", None)):
+        G[name] = lua.eval(code) if code else None
+        run(3)
+        leans(0, why)
+        G.GetPlayerFacing, G.UnitPosition = facing, position
+        run(3)
+        leans(1, why + ", and known again")
+
+    step("on another continent than the trail's, at its end, and a route that begins with a flight: the middle")
+    stub.player.map = 0
+    run(3)
+    leans(0, "another continent")
+    stub.player.map = 1
+    route((1, "walk", [(-300, 0), (-3, 0)]))                 # (it ends three yards behind you)
+    run(3)
+    leans(0, "at the trail's end")
+    route((1, "fly", [(0, 0), (-300, -10)]))
+    run(3)
+    leans(0, "a flight first")
+    assert ns.WayState()[2] == 0
+
+    step("a walk to the flight master and then a flight: the wind leads to the flight master and no further")
+    route((1, "walk", [(0, 0), (30, 0)]), (1, "fly", [(30, 0), (30, 5000)]))
+    run(3)
+    leans(0, "the flight master straight ahead")
+    route((1, "walk", [(0, 0), (0, 30)]), (1, "link", [(0, 30), (-30, 30)]), (0, "walk", [(-30, 30), (-30, -900)]))
+    run(3)
+    assert ns.WayState()[2] == 3                             # (a dock is walked too; the other continent is not)
+    leans(-1, "the dock to the left, and round the corner")
+
+    step("on a flight (Flight Paths on): no lean, there is no steering it")
+    route((1, "walk", [(0, 0), (-300, -10)]))
+    run(3)
+    leans(1, "before the flight")
+    ns.Set("otherFlights", True)
+    stub.player.taxi = True
+    run(3)
+    assert alpha() == 0
+    leans(0, "on a flight")
+    stub.player.taxi = False
+    ns.Set("otherFlights", False)
+    run(3)
+    leans(1, "after the flight")
+
+    step("the route cannot be read (the base says so once): the middle; no service on this base: the middle")
+    stub.listFails = True
+    run(3)
+    leans(0, "the route failing")
+    assert "Reading the route failed and was skipped" in chat(problems_ok=True)
+    stub.listFails = False
+    run(3)
+    leans(1, "the route read again")
+    G.PatchwerkForever.Trails = None
+    run(3)
+    leans(0, "no Trails service")
+    G.PatchwerkForever.Trails = trails
+    run(3)
+    leans(1, "the service back")
+
+    step("the setting off: the middle at once")
+    ns.Set("wayWind", False)
+    run(0.05)
+    assert origin() == (0, 0.05 * H), origin()
+    ns.Set("wayWind", True)
+    run(3)
+    leans(1, "on again")
+
+    step("a problem in the wind's way: said once, the effects go on from the middle, speed mode goes on")
+    has = trails.Has
+    trails.Has = lua.eval("function() error('the base said no') end")
+    run(1)
+    text = chat(problems_ok=True)
+    assert text.count("Wind Shows The Way stopped after a problem") == 1, text
+    assert alpha() == 0 and streaks() == (40, 1) and origin() == (0, 0.05 * H), (alpha(), streaks(), origin())
+    trails.Has = has
+    run(1)
+    assert origin() == (0, 0.05 * H)
+    ns.Set("wayWind", False)
+    ns.Set("rings", False)
+    route()
+    stub.player.facing = 1.0
+    buff(0)
+    run(1.5)
+    assert alpha() == 1 and not state()[2]
+    chat()
+
+    step("a problem looking for a flight or a mount: said once, the other sources stop, the interface stays, Plainsrunning goes on")
+    ns.Set("otherMounts", True)
+    ns.Set("otherFlights", True)
+    stub.mounted = True
+    on_flight = ns.OnFlight
+    ns.OnFlight = lua.eval("function() error('the game said no') end")
+    run(1)
+    text = chat(problems_ok=True)
+    assert text.count("Mounts, travel forms and flights no longer start speed mode, because of a problem") == 1, text
+    assert "Speed mode stopped" not in text, text
+    ns.OnFlight = on_flight
+    run(20)
+    assert alpha() == 1 and other() == (None, False, False) and not state()[2], (alpha(), other(), state())
+    stub.mounted = False
+    ns.Set("otherMounts", False)
+    ns.Set("otherFlights", False)
+    chat()
 
     step("a problem in the middle of a run: the interface back, speed mode stopped, said once")
     buff(30)

@@ -22,6 +22,8 @@ ns.settings = {
 	{ header = true, name = 'Destinations' },
 	{ key = 'auto', default = true, name = 'Route To Map Pin',
 		desc = 'Automatically route to a pin you place on the world map.' },
+	{ key = 'corpse', default = true, name = 'Route To My Corpse',
+		desc = 'While you are a ghost, route to your corpse on foot before anything else, your map pin included. What the route followed before resumes when you are alive. Not routed when the corpse has no location on the map (in an instance) or is on another continent. The route does not cross water as a ghost can.' },
 	{ key = 'rxp', default = true, name = 'Follow Guide',
 		desc = 'With no map pin, route to the current step of your guide addon (RestedXP) and continue to the next as you progress.' },
 	{ key = 'rxpTravel', default = true, name = 'Use Guide Travel Steps', parent = 'rxp',
@@ -35,7 +37,7 @@ ns.settings = {
 		desc = 'The quest with the game\'s quest arrow always comes first. Without one, route either to the nearest tracked quest or to none.' },
 	{ key = 'sourceFirst', default = 'rxp', name = 'Route Priority',
 		choices = { { 'rxp', 'Guide First' }, { 'quest', 'Tracked Quest First' } },
-		desc = 'With the focus on Auto: which to follow when both your guide and a tracked quest have a destination. The other is used when the first has none you can reach. A gathering run, your map pin or coordinates, a quest or list you selected in the tracker, and a focus other than Auto always come before both.' },
+		desc = 'With the focus on Auto: which to follow when both your guide and a tracked quest have a destination. The other is used when the first has none you can reach. Your corpse, a gathering run or flight point search, your map pin or coordinates, a quest or list you selected in the tracker, and a focus other than Auto always come before both.' },
 	{ header = true, name = 'Focus And My Route' },
 	{ key = 'focusButton', default = true, name = 'Focus Button On The World Map',
 		desc = 'Show a button at the top right of the world map to choose what the route follows (Auto, a guide, your tracked quests or My Route), edit My Route, and add your map pin to My Route.' },
@@ -67,6 +69,8 @@ ns.settings = {
 		desc = 'Draw the route on the world map.' },
 	{ page = 'Routes: Trail', key = 'minimap', default = true, name = 'Show On Minimap',
 		desc = 'Draw the route on the minimap.' },
+	{ page = 'Routes: Trail', key = 'wayAhead', default = true, name = 'Mark The Way Ahead',
+		desc = 'Put the game\'s waypoint marker, and its arrow at the edge of the screen, on the trail a little way ahead of you, moving on as you walk, so the way round walls and through gates shows in the world (Sparkle (Thread) can light it up). Your own map pin and the quest you track are lent for it: the trail still goes where they say, and they are given back when the route ends, when you disable this, and at logout. Needs Patchwerk Forever 2.9.0.' },
 	{ page = 'Routes: Trail', header = true, name = 'Line' },
 	{ page = 'Routes: Trail', key = 'trailStyle', default = 'solid', name = 'Line Style',
 		choices = { { 'solid', 'Solid' }, { 'dashes', 'Dashed' }, { 'dots', 'Dotted' } },
@@ -89,7 +93,7 @@ ns.settings = {
 	{ page = 'Routes: Trail', key = 'trailRide', colour = true, default = 'ff66e6c8', name = 'Boat And Zeppelin Color',
 		desc = 'Color of boat, zeppelin and tram crossings.' },
 	{ page = 'Routes: Trail', key = 'trailChosen', colour = true, default = 'ffff8c42', name = 'Selected Route Color',
-		desc = 'Color of walking sections on a route you selected yourself: a quest or list selected in the tracker, or a gathering run. Your main route (guide or tracked quests) uses the walking color.' },
+		desc = 'Color of walking sections on a route you selected yourself: a quest or list selected in the tracker, a gathering run or a flight point search. Your main route (guide or tracked quests) uses the walking color.' },
 
 	-- the step, said on screen
 	{ page = 'Routes: Step Text', voice = 'Big words in the sky, so Patchwerk does not forget why he is walking.' },
@@ -122,6 +126,7 @@ local function Help()
 	ns.Print('  /thread focus auto, rxp, dj, quests or route: follow your guide and quests (Auto), RestedXP, the Dungeon Journal, tracked quests only, or My Route')
 	ns.Print('  /thread step: show the step text again (Show Step Text Again)')
 	ns.Print('  /thread gather: route to the nearest recorded herb or ore node, then the next (gather round, gather <name>, gather list, gather stop; Toggle Gathering Run)')
+	ns.Print('  /thread discover: route to the nearest flight point you have not discovered, then the next (discover stop; Toggle Flight Point Search)')
 	ns.Print('  /thread config: open the options')
 	ns.Print('  /thread where: show your position as the planner sees it')
 	ns.Print('  /thread flights: list the flight points you know on this continent, and how that is known')
@@ -166,6 +171,8 @@ SlashCmdList.PATCHWERKFOREVER_THREAD = function(text)
 		ns.Try('flights', ns.FlightsSay)
 	elseif word == 'gather' then
 		ns.Try('gather', ns.GatherSay, rest)
+	elseif word == 'discover' then
+		ns.Try('discover', ns.DiscoverSay, rest)
 	else
 		Help()
 	end
@@ -179,6 +186,7 @@ BINDING_NAME_PATCHWERKFOREVER_THREAD_GO = 'Start Routing'
 BINDING_NAME_PATCHWERKFOREVER_THREAD_STOP = 'Stop Routing'
 BINDING_NAME_PATCHWERKFOREVER_THREAD_STEP = 'Show Step Text Again'
 BINDING_NAME_PATCHWERKFOREVER_THREAD_GATHER = 'Toggle Gathering Run'
+BINDING_NAME_PATCHWERKFOREVER_THREAD_DISCOVER = 'Toggle Flight Point Search'
 BINDING_NAME_PATCHWERKFOREVER_THREAD_FOCUS_NEXT = 'Next Focus'
 BINDING_NAME_PATCHWERKFOREVER_THREAD_FOCUS_AUTO = 'Focus: Auto'
 BINDING_NAME_PATCHWERKFOREVER_THREAD_FOCUS_RXP = 'Focus: RestedXP'
@@ -190,6 +198,7 @@ function PatchwerkForever_Thread_Routes_Stop() ns.Try('stop', ns.Stop, true) end
 function PatchwerkForever_Thread_Routes_Step() ns.Try('step', ns.FloatAgain) end
 -- (one key starts a run and, pressed again, ends it)
 function PatchwerkForever_Thread_Routes_Gather() ns.Try('gather', ns.GatherSay, ns.GatherActive() and 'stop' or '', true) end
+function PatchwerkForever_Thread_Routes_Discover() ns.Try('discover', ns.DiscoverSay, ns.DiscoverActive() and 'stop' or '', true) end
 function PatchwerkForever_Thread_Routes_FocusNext() ns.Try('focus', ns.FocusNext) end
 -- id: 'auto', 'rxp', 'fdj', 'quests' or 'route' (Focus.lua)
 function PatchwerkForever_Thread_Routes_Focus(id) ns.Try('focus', ns.FocusTo, id) end

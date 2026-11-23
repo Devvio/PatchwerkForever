@@ -477,7 +477,9 @@ local function Paint(r)
 			if m.text then
 				if not w.fs then
 					w.fs = canvas:CreateFontString(nil, 'OVERLAY', 'GameFontHighlightSmall')
-					w.fs:SetFont('Fonts\\FRIZQT__.TTF', 11, 'OUTLINE')
+					-- (an outline and no shadow: with both, the number looks pushed off the middle of its mark)
+					ns.GlobeText(w.fs, 'Fonts\\FRIZQT__.TTF', 11, 'always')
+					w.fs:SetJustifyH('CENTER')
 				end
 				w.fs:SetText(m.text)
 				w.fs:ClearAllPoints()

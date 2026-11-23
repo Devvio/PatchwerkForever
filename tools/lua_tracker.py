@@ -18,12 +18,16 @@ quest untracked in the log let go, the quest list that cannot be read, an empty 
 and the quest arrow the game places on accept. Then the focus and My Route: the focus buttons, the My Route section, its menus,
 adding from a quest, a Dungeon Journal stop and a key, dragging a stop (the drag handlers called with
 stand-in pointer positions), the My Route window, Next and Previous walking My Route, and the
-Shortest Trip order. A key binding is pressed by running its own entry of Bindings.xml. It fails
-loudly on any Lua error.
+Shortest Trip order. Then the collect list (an item on the cursor and the box that asks how many,
+the counts with and without the bank, a tracked recipe's missing reagents, a gathering run from a
+row, its menus, a client without the cursor's functions, values the game hides) and the party's
+quests (the share mark and its tooltip, the order Party's Quests First, the Share Quest With Party
+binding, a client that will not say who is on a quest). A key binding is pressed by running its own
+entry of Bindings.xml. It fails loudly on any Lua error.
 
 What this proves: the tracker's own code runs and does sensible things with the stand-in's answers.
-What it cannot prove: that the game's real quest log, its real tracker, its secure buttons, RestedXP
-or a real party answer as the stand-ins do, or how any of it looks.
+What it cannot prove: that the game's real quest log, its real tracker, its secure buttons, RestedXP,
+the real cursor or a real party answer as the stand-ins do, or how any of it looks.
 """
 import math
 import os
@@ -332,6 +336,8 @@ def main():
     route_window()
     route_walk()
     shortest_trip()
+    collect()
+    party_quests()
     print("all steps ran")
 
 
@@ -357,15 +363,15 @@ def first_login():
     assert pages == ["Tracker (Thread)", "Tracker: Appearance", "Tracker: Guide", "Tracker: More", "Tracker: Quests"], pages
     mine = [x for x in s.stub.settings.values() if x.variable.startswith(TRACKER + "_")]
     count = {page: sum(1 for x in mine if x.page == page) for page in pages}
-    assert count == {"Tracker (Thread)": 9, "Tracker: Quests": 12, "Tracker: Guide": 8, "Tracker: More": 7, "Tracker: Appearance": 9}, count
+    assert count == {"Tracker (Thread)": 9, "Tracker: Quests": 13, "Tracker: Guide": 8, "Tracker: More": 9, "Tracker: Appearance": 9}, count
     assert sorted(b.text for b in s.stub.buttons.values()) == ["Reset", "Reset", "Unlock"], sorted(b.text for b in s.stub.buttons.values())
     # each page opens with its name and a line in Patchwerk's voice, and is grouped under stitched headings
     heads = list(s.stub.headers.values())
     assert heads == ["General", "Size", "Position", "Visibility", "Quest List", "Quest Details", "Party",
-                     "Automation", "Guide Steps", "Focus", "My Route", "Quest Item Bar", "Recipes", "Gathering", "Dungeons", "Scale And Font", "Colors", "Defaults"], heads
+                     "Automation", "Guide Steps", "Focus", "My Route", "Quest Item Bar", "Recipes", "Collect", "Gathering", "Dungeons", "Scale And Font", "Colors", "Defaults"], heads
     intros = {i.name: i.voice for i in s.stub.intros.values()}
     assert sorted(intros) == pages and intros["Tracker: Quests"] == "So many jobs. Patchwerk does the near one first.", intros
-    assert s.stub.Rows() == 23, "a row of our own could not be made"
+    assert s.stub.Rows() == 24, "a row of our own could not be made"
     names = [x.name for x in mine]
     assert "Hide Default Tracker" in names and "Font Size" in names and "Hide RestedXP Window" in names, names
     # every entry of Bindings.xml has a name in the Key Bindings list, and what it runs is there to be run
@@ -374,7 +380,7 @@ def first_login():
                               "PATCHWERKFOREVER_TRACKER_PREV", "CLICK PatchwerkForeverTrackerNearestItem:LeftButton",
                               "PATCHWERKFOREVER_TRACKER_BACK", "PATCHWERKFOREVER_TRACKER_ROUTE_ADD",
                               "PATCHWERKFOREVER_TRACKER_ROUTE_UP", "PATCHWERKFOREVER_TRACKER_ROUTE_DOWN",
-                              "PATCHWERKFOREVER_TRACKER_ROUTE_OPEN"], list(BINDINGS)
+                              "PATCHWERKFOREVER_TRACKER_ROUTE_OPEN", "PATCHWERKFOREVER_TRACKER_SHARE"], list(BINDINGS)
     for name, code in BINDINGS.items():
         assert isinstance(s.g["BINDING_NAME_" + name], str), name + " has no name in the Key Bindings list"
         if name.startswith("CLICK "):
@@ -389,6 +395,7 @@ def first_login():
     assert label["PATCHWERKFOREVER_TRACKER_SCROLL_UP"] == "Scroll Tracker Up", label
     assert label["PATCHWERKFOREVER_TRACKER_SCROLL_DOWN"] == "Scroll Tracker Down", label
     assert label["PATCHWERKFOREVER_TRACKER_BACK"] == "Undo Skipped Guide Step", label
+    assert label["PATCHWERKFOREVER_TRACKER_SHARE"] == "Share Quest With Party", label
     for unwanted in ("Skip Guide Step", "Previous Guide Step"):
         assert unwanted not in label.values(), unwanted + " was not asked for"
     # the tooltips that say how: each names the key bindings as the Key Bindings list has them
@@ -406,6 +413,10 @@ def first_login():
     # what changes something of the game's or another addon's by itself, and what steps back, starts off
     for key in ("followNearest", "guideHide", "dungeon", "fadeCombat", "fadeIdle", "hideInstance"):
         assert ns.Get(key) is False, key + " is on to begin with"
+    # the collect list, its bank count and the share mark start on; the party's quests are not first unless chosen
+    for key in ("collect", "collectBank", "shareMark"):
+        assert ns.Get(key) is True, key + " is off to begin with"
+    assert ns.Get("order") == "zone"
     assert s.items() == ([], None) and s.g.PatchwerkForeverTrackerNearestItem.attributes.type is None
 
     s = Session(LOG + FLAT)
@@ -545,6 +556,10 @@ def first_login():
     step("the game's tracker: let back in a dungeon, where ours steps aside for it; never touched in a fight, as it was when ours goes")
     s.stub.instance = True
     s.fire("ZONE_CHANGED_NEW_AREA")
+    # (as it comes, ours is shown in a dungeon as everywhere, and the game's stays hidden)
+    assert ns.Quiet() and game.frame.alpha == 0, "the game's tracker came back in a dungeon with nothing asking for it"
+    assert s.shown() is not None and ns.AsideInInstance() is False, "ours stepped aside in a dungeon with nothing asking for it"
+    s.setting("quietInstance", True)
     assert not ns.Quiet() and game.frame.alpha == 1 and game.block.mouse is True, "not let back in a dungeon"
     assert s.shown() is None and ns.AsideInInstance() is True, "both trackers are shown in a dungeon"
     s.setting("quietInstance", False)
@@ -1024,10 +1039,14 @@ def guide():
     s.tick()
     s.turn()
     assert ns.Quiet("RXPFrame") and s.shown()[0].startswith("# The Barrens 12-14")
-    # in a dungeon, where ours steps aside for the game's tracker, RestedXP's window is back too
+    # in a dungeon ours is shown as everywhere, so RestedXP's window stays quiet there
     s.stub.instance = True
     s.fire("ZONE_CHANGED_NEW_AREA")
+    assert s.shown() is not None and ns.Quiet("RXPFrame") and window.alpha == 0, "RestedXP's window came back in a dungeon with ours still shown"
+    # where ours steps aside for the game's tracker (Keep Default Tracker In Instances), RestedXP's window is back too
+    s.setting("quietInstance", True)
     assert s.shown() is None and not ns.Quiet("RXPFrame") and window.alpha == 1 and piece.mouse is True, "RestedXP's window stayed hidden with ours gone"
+    s.setting("quietInstance", False)
     s.stub.instance = False
     s.fire("ZONE_CHANGED_NEW_AREA")
     assert ns.Quiet("RXPFrame") and window.alpha == 0 and s.shown()[0].startswith("# The Barrens 12-14")
@@ -1306,7 +1325,7 @@ def recipes():
     s.click("Linen Bandage")
     assert s.stub.openedRecipe == 3275
     s.click("Linen Bandage", "RightButton")
-    assert [e.text for e in s.stub.menu.entries.values()] == ["Open Recipe", "Untrack Recipe"]
+    assert [e.text for e in s.stub.menu.entries.values()] == ["Open Recipe", "Collect What Is Missing", "Untrack Recipe"]
     s.stub.Press("Untrack Recipe")
     s.turn()
     assert s.shown()[:2] == ["# Quests | 4/25", "The Barrens"], "a recipe no longer tracked is still listed"
@@ -1499,6 +1518,8 @@ def dungeon_and_fades():
     assert frame.alpha == 1
     s.stub.instance = True
     s.fire("ZONE_CHANGED_NEW_AREA")
+    assert s.shown() is not None, "it hides in a dungeon with nothing asking for it"
+    s.setting("quietInstance", True)
     assert s.shown() is None, "both trackers are shown in a dungeon"
     s.setting("quietInstance", False)
     assert s.shown() is not None, "it hides in a dungeon with nothing asking for it"
@@ -2616,6 +2637,619 @@ def shortest_trip():
     ns.ForgetTrip()
     s.fire("QUEST_POI_UPDATE")
     assert quests()[:3] == ["[13] The Forgotten Pools", "[4] Thwarting Kolkar Aggression", "[13] Raptor Thieves"], quests()
+    assert s.chat() == []
+
+
+# Routes (Thread)'s offer of gathering, as the base takes it: the kinds of node near you (STUB.near)
+# and a run. For after the login: the base must be there to take it.
+OFFER = """
+    STUB.near = { { name = 'Peacebloom', kind = 'h', yards = 40.2 }, { name = 'Rich Thorium Vein', kind = 'o', yards = 90 },
+        { name = 'Copper Vein', kind = 'o', yards = 210 } }
+    PatchwerkForever.Gather:Offer({
+        Near = function(count)
+            local out = {}
+            for i = 1, math.min(count, #STUB.near) do out[i] = STUB.near[i] end
+            return out
+        end,
+        Start = function(mode, name) STUB.run = { mode = mode, name = name, going = name or 'Copper Vein' }; return true end,
+        Stop = function() STUB.run = nil end,
+        State = function() return STUB.run end,
+    })
+"""
+
+# A value the game hides in a fight: reading, comparing or counting with it is an error, and only
+# issecretvalue may be asked about it. (As near as a stand-in gets: the real thing is a number or a
+# string that fails the same way.)
+HIDDEN = """
+    local function no() error('a hidden value was read') end
+    STUB.hidden = setmetatable({}, { __index = no, __newindex = no, __eq = no, __lt = no, __le = no, __add = no, __sub = no,
+        __concat = no, __call = no, __tostring = no, __len = no })
+    function issecretvalue(value) return rawequal(value, STUB.hidden) end
+"""
+
+ITEMS = """
+    STUB.itemNames[2589] = 'Linen Cloth'; STUB.itemNames[2770] = 'Copper Ore'; STUB.itemNames[2447] = 'Peacebloom'
+    STUB.itemNames[2320] = 'Coarse Thread'; STUB.itemNames[10620] = 'Thorium Ore'
+    STUB.bags[2589] = 14
+"""
+
+
+def collected(s):
+    """This character's collect list as saved: [(item, goal), ...]."""
+    db = s.g.PatchwerkForever_Thread_TrackerDB
+    mine = db.collect[s.stub.guid] if db.collect is not None else None
+    return [(one.id, one.goal) for one in mine.values()] if mine is not None else []
+
+
+def collect():
+    step("the collect list: nothing listed and nothing held, no section; an item on the cursor shows the heading to drop it on")
+    s = Session(LOG + ITEMS)
+    ns = s.load()
+    tip = s.stub.tip
+    assert not any("Collect" in t for t in s.shown()) and ns.CollectBox() == (None, False)
+    s.lua.execute("STUB.Pick(2589)")
+    s.turn()
+    got = s.show()
+    assert "# Collect | " in got and got[-1] == "Drop an item here to collect it.", got
+    assert ns.CollectBox()[1] is True
+    head = ns.HeadOf("Collect")
+    head.scripts.OnEnter(head)
+    assert list(tip.lines.values()) == ["Collect", "Click to collect the item you are holding."], list(tip.lines.values())
+    head.scripts.OnLeave(head)
+    line = s.block("Drop an item here")
+    assert line.mouse is True, "the line under the heading does not take the item"
+    line.scripts.OnEnter(line)
+    assert list(tip.lines.values())[1:] == ["Click to collect the item you are holding."], list(tip.lines.values())
+    line.scripts.OnLeave(line)
+
+    step("a click on the heading with the item: it is put back, a box asks how many; Escape adds nothing")
+    head.scripts.OnClick(head, "LeftButton")
+    s.turn()
+    box = ns.CollectBox()[0]
+    assert s.stub.cursorItem is None, "the item is still on the cursor"
+    assert box.shown and box.item == 2589 and box.words.text == "Linen Cloth", (box.shown, box.item, box.words.text)
+    assert box.edit.text == "20" and box.edit.focus and box.edit.numeric and box.edit.autoFocus is False
+    assert box.strata == "DIALOG" and "PatchwerkForeverTrackerCollect" in list(s.g.UISpecialFrames.values())
+    assert s.g.PatchwerkForever_Thread_TrackerDB.folded.collect is None, "the click with an item folded the section"
+    assert not any("Collect" in t for t in s.shown()), "the heading stayed with nothing listed and nothing held"
+    box.edit.scripts.OnEscapePressed(box.edit)
+    box.scripts.OnHide(box)                        # (the game runs this as the box goes)
+    assert not box.shown and box.item is None and not box.edit.focus and collected(s) == []
+    assert s.chat() == []
+
+    step("a drag from the bags let go on the line: the box again; Enter adds the row, with the count as a note colored by progress")
+    s.lua.execute("STUB.Pick(2589)")
+    s.turn()
+    line = s.block("Drop an item here")
+    line.scripts.OnReceiveDrag(line)
+    s.turn()
+    assert box.shown and box.item == 2589 and s.stub.cursorItem is None
+    # nothing typed, or none: the box stays and nothing is added
+    for text in ("", "0"):
+        box.edit.SetText(box.edit, text)
+        box.edit.scripts.OnEnterPressed(box.edit)
+        assert box.shown and collected(s) == [], "a row with no number was added"
+    box.edit.SetText(box.edit, "20")
+    box.edit.scripts.OnEnterPressed(box.edit)
+    s.turn()
+    assert not box.shown and collected(s) == [(2589, 20)], collected(s)
+    assert s.chat() == ["Tracker: Added to Collect: Linen Cloth (20)."]
+    got = s.show()
+    assert got[:2] == ["# Quests | 4/25", "# Collect | 1"] and got[-1] == "Linen Cloth | 14/20", got
+    row = s.block("Linen Cloth")
+    plain, done = list(ns.RGB(ns.Get("lookLine"))), list(ns.RGB(ns.Get("lookDone")))
+    count = list(row.note.colour.values())
+    assert not near(count, plain) and count[1] > 0.8 and count[0] < 1, "fourteen of twenty is not on its way to green: %r" % count
+    assert near(list(row.title.colour.values()), list(ns.RGB(ns.Get("lookTitle"))))
+    s.setting("progress", False)
+    assert near(list(s.block("Linen Cloth").note.colour.values()), plain), "the count is colored with Color Objectives By Progress off"
+    s.setting("progress", True)
+    # the tooltip: nothing to gather, so only the menu
+    row.scripts.OnEnter(row)
+    assert list(tip.lines.values()) == ["Linen Cloth", "Right-click for more options."], list(tip.lines.values())
+    row.scripts.OnLeave(row)
+    s.click("Linen Cloth")                          # a left-click does nothing special
+    assert not box.shown and collected(s) == [(2589, 20)] and s.chat() == []
+
+    step("the counts follow your bags and your bank; the bank is left out when asked; a count that changes flashes")
+    s.turn()
+    s.lua.execute("STUB.bags[2589] = 15")
+    s.fire("BAG_UPDATE_DELAYED")
+    assert s.shown()[-1] == "Linen Cloth | 15/20" and s.block("Linen Cloth").glow.shown, "a count that changed did not flash"
+    s.lua.execute("STUB.bank[2589] = 3")
+    s.fire("PLAYERBANKSLOTS_CHANGED", 4)
+    assert s.shown()[-1] == "Linen Cloth | 18/20", s.shown()
+    s.setting("collectBank", False)
+    assert s.shown()[-1] == "Linen Cloth | 15/20", "the bank was counted with Count Items In The Bank off"
+    s.setting("collectBank", True)
+    s.lua.execute("STUB.bags[2589] = 17")
+    s.fire("BAG_UPDATE_DELAYED")
+    row = s.block("Linen Cloth")
+    assert s.shown()[-1] == "Linen Cloth | 20/20", s.shown()
+    assert near(list(row.note.colour.values()), done) and near(list(row.title.colour.values()), done), "a row that is complete does not look it"
+    s.lua.execute("STUB.bags[2589] = 30")
+    s.fire("BAG_UPDATE_DELAYED")
+    assert s.shown()[-1] == "Linen Cloth | 33/20", "a complete row left by itself"
+
+    step("a row's menu: Change Count asks again with the number it has, Okay sets it; an item listed and dropped again gets the new number")
+    s.click("Linen Cloth", "RightButton")
+    assert s.stub.menu.title == "Linen Cloth" and menu_texts(s) == ["Change Count", "Remove"], menu_texts(s)
+    s.stub.Press("Change Count")
+    assert box.shown and box.edit.text == "20" and box.item == 2589
+    box.edit.SetText(box.edit, "40")
+    box.okay.scripts.OnClick(box.okay)
+    s.turn()
+    assert not box.shown and collected(s) == [(2589, 40)] and s.shown()[-1] == "Linen Cloth | 33/40"
+    assert s.chat() == ["Tracker: Count changed in Collect: Linen Cloth (40)."]
+    s.lua.execute("STUB.Pick(2589)")
+    s.turn()
+    row = s.block("Linen Cloth")
+    row.scripts.OnEnter(row)
+    assert list(tip.lines.values())[1:] == ["Click to collect the item you are holding.", "Right-click for more options."]
+    row.scripts.OnLeave(row)
+    s.click("Linen Cloth")
+    assert box.shown and box.edit.text == "40" and s.stub.cursorItem is None, "a click on a row with an item did not take it"
+    box.edit.SetText(box.edit, "30")
+    box.cancel.scripts.OnClick(box.cancel)
+    assert not box.shown and collected(s) == [(2589, 40)], "Cancel changed the number"
+    s.stub.Press("Change Count")
+    box.edit.SetText(box.edit, "40")
+    box.edit.scripts.OnEnterPressed(box.edit)       # the same number: nothing to say
+    s.turn()
+    assert s.chat() == [] and collected(s) == [(2589, 40)]
+
+    step("in a fight: the item is still put back and the box still asks; nothing of the game's secure kind is touched")
+    s.stub.combat = True
+    s.lua.execute("STUB.Pick(2770)")
+    s.turn()
+    head = ns.HeadOf("Collect")
+    head.scripts.OnClick(head, "LeftButton")
+    assert box.shown and box.item == 2770 and box.edit.text == "20" and s.stub.cursorItem is None
+    box.edit.SetText(box.edit, "10")
+    box.edit.scripts.OnEnterPressed(box.edit)
+    s.turn()
+    s.stub.combat = False
+    assert collected(s) == [(2589, 40), (2770, 10)] and s.shown()[-2:] == ["Linen Cloth | 33/40", "Copper Ore | 0/10"], s.shown()
+    assert list(s.stub.secureInCombat.values()) == [] and len(s.stub.touchedInCombat) == 0
+    assert s.chat() == ["Tracker: Added to Collect: Copper Ore (10)."]
+    # (a left-click on the heading with nothing held still folds it)
+    head.scripts.OnClick(head, "LeftButton")
+    s.turn()
+    assert "# Collect | 2  +" in s.shown() and "Copper Ore | 0/10" not in s.shown()
+    # folded, the heading still takes an item
+    s.lua.execute("STUB.Pick(2447)")
+    s.turn()
+    head.scripts.OnReceiveDrag(head)
+    assert box.shown and box.item == 2447 and s.g.PatchwerkForever_Thread_TrackerDB.folded.collect is True
+    box.edit.SetText(box.edit, "5")
+    box.edit.scripts.OnEnterPressed(box.edit)
+    head.scripts.OnClick(head, "LeftButton")
+    s.turn()
+    assert s.shown()[-3:] == ["Linen Cloth | 33/40", "Copper Ore | 0/10", "Peacebloom | 0/5"], s.shown()
+    s.chat()
+
+    step("without Routes (Thread) a click on a herb's row does nothing; with it, a herb or an ore with a node near you starts a run")
+    s.click("Peacebloom")
+    assert s.chat() == [] and not any(t.startswith(">") for t in s.shown())
+    s.lua.execute(OFFER)
+    s.setting("gather", False)                      # (the Gathering section off: the rows of Collect are told apart by name alone)
+    row = s.block("Peacebloom")
+    row.scripts.OnEnter(row)
+    assert list(tip.lines.values()) == ["Peacebloom", "Click to route to the nearest node, and on to the next.",
+                                        "Right-click for more options."], list(tip.lines.values())
+    row.scripts.OnLeave(row)
+    row = s.block("Linen Cloth")
+    row.scripts.OnEnter(row)
+    assert list(tip.lines.values()) == ["Linen Cloth", "Right-click for more options."], "cloth is offered for gathering"
+    row.scripts.OnLeave(row)
+    Choice = s.g.PatchwerkForever.Choice
+    s.click("Raptor Thieves")
+    assert Choice.Is(Choice, "quest", 869)
+    s.click("Copper Ore")
+    assert s.stub.run.mode == "kind" and s.stub.run.name == "Copper Vein", "the ore's row did not start a run for its vein"
+    assert "> Copper Ore | 0/10" in s.shown() and Choice.Get(Choice) is None, s.shown()
+    row = s.block("Copper Ore")
+    row.scripts.OnEnter(row)
+    assert list(tip.lines.values())[1] == "Click to stop.", list(tip.lines.values())
+    row.scripts.OnLeave(row)
+    s.click("Copper Ore")
+    assert s.stub.run is None and not any(t.startswith(">") for t in s.shown()), "a second click did not stop the run"
+    s.click("Peacebloom")
+    assert s.stub.run.name == "Peacebloom" and "> Peacebloom | 0/5" in s.shown()
+    s.click("Linen Cloth")                          # (cloth grows nowhere: the herb's run is left on)
+    assert s.stub.run.name == "Peacebloom"
+    s.click("Peacebloom")
+    assert s.stub.run is None
+    # an ore whose metal is not the first word of its node's name; and no node near, no run
+    s.lua.execute("STUB.Pick(10620)")
+    s.turn()
+    head = ns.HeadOf("Collect")
+    head.scripts.OnClick(head, "LeftButton")
+    box.edit.scripts.OnEnterPressed(box.edit)
+    s.turn()
+    s.click("Thorium Ore")
+    assert s.stub.run.name == "Rich Thorium Vein", s.stub.run.name
+    s.click("Thorium Ore")
+    s.lua.execute("STUB.near = { STUB.near[1] }")
+    s.turn()
+    s.click("Copper Ore")
+    assert s.stub.run is None, "a run was started for an ore with no node near"
+    # with the Gathering section on as well, both rows of a run wear the bar
+    s.lua.execute("STUB.near[2] = { name = 'Copper Vein', kind = 'o', yards = 210 }")
+    s.setting("gather", True)
+    s.click("Copper Ore")
+    assert "> Copper Ore | 0/10" in s.shown() and "> Copper Vein | 210 yd" in s.shown(), s.shown()
+    s.click("Copper Ore")
+    s.setting("gather", False)
+    s.chat()
+
+    step("a tracked recipe's menu, Collect What Is Missing: what its row shows too few of, with what it needs; the higher number is kept")
+    s.lua.execute("""
+        STUB.recipes = { { id = 3275, name = 'Heavy Linen Bandage', needs = { { 2589, 60 }, { 2320, 2 }, { 2770, 4 }, { 2447, 1 } } } }
+        STUB.bags[2320] = 1; STUB.bags[2447] = 3
+    """)
+    s.fire("TRACKED_RECIPE_UPDATE")
+    assert "  - 33/60 Linen Cloth" in s.shown() and "  - 3/1 Peacebloom" in s.shown(), s.shown()
+    s.click("Heavy Linen Bandage", "RightButton")
+    s.stub.Press("Collect What Is Missing")
+    s.turn()
+    # cloth: listed at 40, needs 60, raised; thread: new; copper ore: listed at 10, needs 4, kept; peacebloom: enough, left as it is
+    assert collected(s) == [(2589, 60), (2770, 10), (2447, 5), (10620, 20), (2320, 2)], collected(s)
+    assert s.chat() == ["Tracker: Added to Collect: 2 items for Heavy Linen Bandage."]
+    assert "Linen Cloth | 33/60" in s.shown() and s.shown()[-1] == "Coarse Thread | 1/2", s.shown()
+    s.stub.Press("Collect What Is Missing")
+    assert s.chat() == ["Tracker: Collect already lists what is missing for Heavy Linen Bandage."] and len(collected(s)) == 5
+    s.lua.execute("STUB.bags[2589] = 80; STUB.bags[2320] = 2; STUB.bags[2770] = 4")
+    s.fire("BAG_UPDATE_DELAYED")
+    s.click("Heavy Linen Bandage", "RightButton")
+    s.stub.Press("Collect What Is Missing")
+    assert s.chat() == ["Tracker: Nothing is missing for Heavy Linen Bandage."] and len(collected(s)) == 5
+    s.setting("recipes", False)
+
+    step("Remove on a row; Remove Completed and Clear on the heading, Clear after a yes")
+    s.click("Thorium Ore", "RightButton")
+    s.stub.Press("Remove")
+    s.turn()
+    assert s.chat() == ["Tracker: Removed from Collect: Thorium Ore."] and not ns.BlockOf("Thorium Ore")
+    got = s.show()
+    assert got[-4:] == ["Linen Cloth | 83/60", "Copper Ore | 4/10", "Peacebloom | 3/5", "Coarse Thread | 2/2"], got
+    head = ns.HeadOf("Collect")
+    head.scripts.OnEnter(head)
+    assert list(tip.lines.values()) == ["Collect", "Click to collapse.", "Right-click for more options."], list(tip.lines.values())
+    head.scripts.OnLeave(head)
+    head.scripts.OnClick(head, "RightButton")
+    assert s.stub.menu.title == "Collect" and menu_texts(s) == ["Remove Completed", "Clear"], menu_texts(s)
+    s.stub.Press("Remove Completed")
+    s.turn()
+    assert s.chat() == ["Tracker: Removed from Collect: 2 completed items."]
+    assert collected(s) == [(2770, 10), (2447, 5)] and "# Collect | 2" in s.shown(), collected(s)
+    head = ns.HeadOf("Collect")
+    head.scripts.OnClick(head, "RightButton")
+    assert menu_texts(s) == ["Clear"], "Remove Completed is offered with nothing complete"
+    s.stub.Press("Clear")
+    assert s.stub.asked.text == "Remove all items from Collect?", s.stub.asked.text
+    s.stub.Answer(False)
+    assert len(collected(s)) == 2
+    s.stub.Press("Clear")
+    s.stub.Answer(True)
+    s.turn()
+    assert collected(s) == [] and not any("Collect" in t for t in s.shown()) and s.chat() == ["Tracker: Collect cleared."]
+
+    step("Show Collect List off: no section, and an item on the cursor shows none; no command adds to it")
+    ns.CollectSet(2447, 5)
+    s.turn()
+    assert "# Collect | 1" in s.shown()
+    s.chat()
+    s.setting("collect", False)
+    assert not any("Collect" in t for t in s.shown())
+    s.lua.execute("STUB.Pick(2589)")
+    s.turn()
+    assert not any("Collect" in t for t in s.shown()), "the drop target is shown with the list switched off"
+    s.setting("collect", True)                      # (switched on with the item still held: the heading takes it)
+    assert "# Collect | 1" in s.shown() and ns.CollectBox()[1] is True
+    s.g.ClearCursor()
+    s.turn()
+    text = s.slash("collect 2589 20")
+    assert collected(s) == [(2447, 5)] and not any("ollect" in t for t in text), "a command for the collect list was not asked for"
+
+    step("the list is each character's own, and is there after a reload")
+    s.stub.guid = "Player-1-0002"
+    s.fire("BAG_UPDATE_DELAYED")
+    assert not any("Collect" in t for t in s.shown()), "another character sees this one's list"
+    ns.CollectSet(2589, 20)
+    s.stub.guid = "Player-1-0001"
+    s.fire("BAG_UPDATE_DELAYED")
+    assert collected(s) == [(2447, 5)] and s.shown()[-1] == "Peacebloom | 3/5", s.shown()
+    s.chat()
+    s = Session(LOG + ITEMS + """
+        PatchwerkForever_Thread_TrackerDB = { collect = { ['Player-1-0001'] = { { id = 2589, goal = 20 }, 'not a row', { id = 'x', goal = 1 },
+            { id = 2770 }, { id = 4306, goal = 8 } }, ['Player-1-0002'] = { { id = 2447, goal = 5 } } } }
+    """)
+    ns = s.load()
+    # (what is not a row is passed over; an item the game has not been told yet is asked for, and named when it comes)
+    assert s.shown()[-2:] == ["Linen Cloth | 14/20", "item 4306 | 0/8"] and "# Collect | 2" in s.shown(), s.shown()
+    assert s.stub.askedFor == 4306
+    s.lua.execute("STUB.itemNames[4306] = 'Silk Cloth'")
+    s.fire("GET_ITEM_INFO_RECEIVED", 4306, True)
+    assert s.shown()[-1] == "Silk Cloth | 0/8", s.shown()
+    assert s.chat() == []
+
+    step("a client without the cursor's functions, the game's own typing box or its yes-or-no box: nothing breaks")
+    s = Session(LOG + ITEMS + "STUB.noTemplate = { InputBoxTemplate = true, UIPanelButtonTemplate = true }")
+    ns = s.load()
+    s.lua.execute("STUB.Pick(2589)")
+    s.turn()
+    head = ns.HeadOf("Collect")
+    s.lua.execute("STUB.put = ClearCursor; ClearCursor = nil")
+    head.scripts.OnClick(head, "LeftButton")        # (it cannot be put back: the box asks all the same)
+    box = ns.CollectBox()[0]
+    assert box.shown and box.item == 2589 and box.edit.font == "GameFontHighlight" and box.edit.numeric, "no box without the game's template"
+    box.edit.SetText(box.edit, "20")
+    box.edit.scripts.OnEnterPressed(box.edit)
+    s.lua.execute("ClearCursor = STUB.put; ClearCursor()")
+    s.turn()
+    assert collected(s) == [(2589, 20)]
+    s.lua.execute("STUB.info = GetCursorInfo; GetCursorInfo = nil; STUB.Pick(2770)")
+    s.turn()
+    assert ns.CollectBox()[1] is False, "an item is taken to be held with no way to ask"
+    head = ns.HeadOf("Collect")
+    head.scripts.OnClick(head, "LeftButton")
+    s.turn()
+    assert not box.shown and "# Collect | 1  +" in s.shown(), "with nothing known to be held, a click on the heading does not fold it"
+    head.scripts.OnClick(head, "LeftButton")
+    s.lua.execute("GetCursorInfo = STUB.info; ClearCursor(); StaticPopup_Show = nil")
+    s.turn()
+    head.scripts.OnClick(head, "RightButton")
+    s.stub.Press("Clear")
+    s.turn()
+    assert collected(s) == [] and s.chat() == ["Tracker: Added to Collect: Linen Cloth (20).", "Tracker: Collect cleared."]
+
+    step("what the game hides in a fight (a count, a name, what the cursor holds) is taken as not known, without an error")
+    s = Session(LOG + ITEMS + HIDDEN + "PatchwerkForever_Thread_TrackerDB = { collect = { ['Player-1-0001'] = { { id = 2589, goal = 20 } } } }")
+    ns = s.load()
+    assert s.shown()[-1] == "Linen Cloth | 14/20"
+    s.lua.execute("STUB.count = C_Item.GetItemCount; C_Item.GetItemCount = function() return STUB.hidden end")
+    s.fire("BAG_UPDATE_DELAYED")
+    assert s.shown()[-1] == "Linen Cloth | 0/20", s.shown()
+    s.lua.execute("C_Item.GetItemCount = STUB.count; C_Item.GetItemNameByID = function() return STUB.hidden end")
+    s.fire("BAG_UPDATE_DELAYED")
+    assert s.shown()[-1] == "item 2589 | 14/20", s.shown()
+    s.lua.execute("C_Item.GetItemNameByID = function(id) return STUB.itemNames[id] end")
+    s.lua.execute("GetCursorInfo = function() return STUB.hidden, STUB.hidden end; STUB.Fire('CURSOR_CHANGED', false, 1, 0, 0)")
+    s.turn()
+    assert ns.CollectBox() == (None, False)
+    s.lua.execute("GetCursorInfo = function() return 'item', STUB.hidden end; STUB.Fire('CURSOR_CHANGED', false, 1, 0, 0)")
+    s.turn()
+    head = ns.HeadOf("Collect")
+    head.scripts.OnReceiveDrag(head)
+    assert ns.CollectBox() == (None, False) and collected(s) == [(2589, 20)]
+    # no count function at all: nothing is had
+    s.lua.execute("C_Item.GetItemCount = nil")
+    s.fire("BAG_UPDATE_DELAYED")
+    assert s.shown()[-1] == "Linen Cloth | 0/20", s.shown()
+    assert s.chat() == []
+
+
+def share_marks(s):
+    """The quests shown with a share mark, by the words of their rows."""
+    out = []
+    for block in s.ns.ShownBlocks().values():
+        if block.share is not None and block.share.shown:
+            out.append(block.title.text)
+    return out
+
+
+def party_quests():
+    step("in a party: a share mark on each quest someone is not on and the game lets you share; pointing at it names them")
+    s = Session(LOG + PLACES + """
+        STUB.party = { { name = 'Thrag', quests = { [869] = true } }, { name = 'Mokra-Somewhere', quests = {} } }
+        STUB.thieves.pushable = true; STUB.pools.pushable = true; STUB.zhevra.pushable = true
+    """)
+    ns = s.load()
+    tip = s.stub.tip
+    got = s.show()
+    assert got[2:5] == ["[13] The Forgotten Pools | 50 yd", "  - Explore the waters of the Forgotten Pools", "[13] Raptor Thieves | 112 yd"], got
+    # (Kolkar cannot be shared; the Zhevra, ready to turn in, can)
+    assert share_marks(s) == ["[13] The Forgotten Pools", "[13] Raptor Thieves", "[13] The Zhevra"], share_marks(s)
+    mark = s.block("Raptor Thieves").share
+    assert mark.kind == "Button" and mark.mouse is True and len(mark.dots) == 3 and all(d.shown for d in mark.dots.values())
+    mark.scripts.OnEnter(mark)
+    assert list(tip.lines.values()) == ["Share Quest", "Mokra is not on this quest.", "Click to share this quest with your party."], list(tip.lines.values())
+    assert tip.shown and same(s, tip.owner, mark)
+    mark.scripts.OnLeave(mark)
+    assert not tip.shown
+    mark = s.block("Forgotten Pools").share
+    mark.scripts.OnEnter(mark)
+    assert list(tip.lines.values())[1] == "Thrag and Mokra are not on this quest.", list(tip.lines.values())
+    # (the tooltip follows while the mouse stays on the mark)
+    s.lua.execute("STUB.party[3] = { name = 'Zug', quests = {} }")
+    s.fire("GROUP_ROSTER_UPDATE")
+    assert list(tip.lines.values())[1] == "Thrag, Mokra and Zug are not on this quest.", list(tip.lines.values())
+    mark.scripts.OnLeave(mark)
+    s.lua.execute("STUB.party[3] = nil")
+    s.fire("GROUP_ROSTER_UPDATE")
+    # the mark takes room at the right of the title's row, and the distance moves to its left
+    s.setting("distance", False)
+    assert s.block("Raptor Thieves").title.width == 244 - 18 and s.block("Thwarting Kolkar").title.width == 244, s.block("Raptor Thieves").title.width
+    s.setting("distance", True)
+
+    step("a click on the mark shares the quest and says so; the row's own click is not set off; nothing new is told to the party")
+    told = len(s.stub.told)
+    Choice = s.g.PatchwerkForever.Choice
+    mark = s.block("Raptor Thieves").share
+    mark.scripts.OnClick(mark, "LeftButton")
+    s.turn()
+    assert s.stub.shared == 869 and Choice.Get(Choice) is None and s.stub.focus == 0
+    assert s.chat() == ["Tracker: Sharing quest \"Raptor Thieves\" with your party."]
+    assert len(s.stub.told) == told and all(t[0] in "nm" and re.fullmatch(r"[nm][\d:,]*", t) for t in s.stub.told.values()), list(s.stub.told.values())
+    # the quest's menu still shares, as before
+    s.click("Forgotten Pools", "RightButton")
+    assert "Share Quest" in menu_texts(s)
+    s.stub.Press("Share Quest")
+    assert s.stub.shared == 870
+
+    step("no mark when everyone is on it, for a member who is offline, alone, in a raid, or with Show Share Mark off")
+    s.lua.execute("STUB.party[2].quests[869] = true")
+    s.fire("UNIT_QUEST_LOG_CHANGED", "party2")
+    assert share_marks(s) == ["[13] The Forgotten Pools", "[13] The Zhevra"], share_marks(s)
+    assert "  With Thrag, Mokra" in s.shown()
+    s.lua.execute("STUB.party[2].quests[869] = nil; STUB.party[2].offline = true")
+    s.fire("GROUP_ROSTER_UPDATE")
+    assert "[13] Raptor Thieves" not in share_marks(s), "a mark for a member who is offline"
+    mark = s.block("Forgotten Pools").share
+    mark.scripts.OnEnter(mark)
+    assert list(tip.lines.values())[1] == "Thrag is not on this quest.", list(tip.lines.values())
+    mark.scripts.OnLeave(mark)
+    s.lua.execute("STUB.party[2].offline = nil")
+    s.setting("shareMark", False)
+    assert share_marks(s) == []
+    s.setting("shareMark", True)
+    assert len(share_marks(s)) == 3
+    # (it does not hang on the party's line being shown)
+    s.setting("party", False)
+    assert len(share_marks(s)) == 3 and not any("With" in t for t in s.shown())
+    s.setting("party", True)
+    s.stub.raid = True
+    s.fire("GROUP_ROSTER_UPDATE")
+    assert share_marks(s) == [], "share marks in a raid"
+    s.stub.raid = False
+    s.lua.execute("STUB.kept = STUB.party; STUB.party = {}")
+    s.fire("GROUP_ROSTER_UPDATE")
+    assert share_marks(s) == [], "share marks with no party"
+    s.lua.execute("STUB.party = STUB.kept")
+    s.fire("GROUP_ROSTER_UPDATE")
+    assert len(share_marks(s)) == 3
+
+    step("a member whose tracker says how far along they are is on the quest, whatever the game says")
+    s.fire("CHAT_MSG_ADDON", "PFTracker", "n870:40", "PARTY", "Mokra-Somewhere")
+    assert "  With Mokra 40%" in s.shown()
+    mark = s.block("Forgotten Pools").share
+    mark.scripts.OnEnter(mark)
+    assert list(tip.lines.values())[1] == "Thrag is not on this quest.", list(tip.lines.values())
+    mark.scripts.OnLeave(mark)
+
+    step("Sort Order, Party's Quests First: the quests someone in your party is on, as By Zone would list them, then the rest by zone")
+    order = [x for x in s.stub.settings.values() if x.variable == TRACKER + "_order"][0]
+    assert ("party", "Party's Quests First") in [(c.value, c.label) for c in order.choices.values()]
+    assert order.default == "zone", "the party's quests are first without being asked for"
+    plain = [t for t in s.shown() if not t.startswith("  ")]
+    assert plain == ["# Quests | 4/25", "The Barrens", "[13] The Forgotten Pools | 50 yd", "[13] Raptor Thieves | 112 yd",
+                     "Durotar", "[4] Thwarting Kolkar Aggression | 1953 yd", "Ready To Turn In", "[13] The Zhevra | 5 yd"], plain
+    s.lua.execute("STUB.party[1].quests[786] = true")
+    s.setting("order", "party")
+    plain = [t for t in s.show() if not t.startswith("  ")]
+    # (Mokra's tracker said the pools, Thrag is on the thieves and on Kolkar: all three, the zone you are in first)
+    assert plain == ["# Quests | 4/25", "Party's Quests", "[13] The Forgotten Pools | 50 yd", "[13] Raptor Thieves | 112 yd",
+                     "[4] Thwarting Kolkar Aggression | 1953 yd", "Ready To Turn In", "[13] The Zhevra | 5 yd"], plain
+    s.fire("CHAT_MSG_ADDON", "PFTracker", "n", "PARTY", "Mokra-Somewhere")
+    plain = [t for t in s.shown() if not t.startswith("  ")]
+    assert plain == ["# Quests | 4/25", "Party's Quests", "[13] Raptor Thieves | 112 yd", "[4] Thwarting Kolkar Aggression | 1953 yd",
+                     "The Barrens", "[13] The Forgotten Pools | 50 yd", "Ready To Turn In", "[13] The Zhevra | 5 yd"], plain
+    assert list(ns.questOrder.values()) == [869, 786, 870, 845]
+    # Route To Next Quest follows the order shown
+    s.press("PATCHWERKFOREVER_TRACKER_NEXT")
+    assert Choice.Is(Choice, "quest", 869)
+    s.press("PATCHWERKFOREVER_TRACKER_NEXT")
+    assert Choice.Is(Choice, "quest", 786)
+    Choice.Clear(Choice)
+    s.lua.execute("STUB.focus = 0")
+    s.chat()
+    # with the ready ones not grouped apart, one the party is on is among the party's
+    s.lua.execute("STUB.party[2].quests[845] = true")
+    s.setting("readyGroup", False)
+    plain = [t for t in s.shown() if not t.startswith("  ")]
+    assert plain == ["# Quests | 4/25", "Party's Quests", "[13] The Zhevra | 5 yd", "[13] Raptor Thieves | 112 yd",
+                     "[4] Thwarting Kolkar Aggression | 1953 yd", "The Barrens", "[13] The Forgotten Pools | 50 yd"], plain
+    s.setting("readyGroup", True)
+    # alone, or with no quest the party is on, it is By Zone
+    s.lua.execute("STUB.kept = STUB.party; STUB.party = {}")
+    s.fire("GROUP_ROSTER_UPDATE")
+    plain = [t for t in s.shown() if not t.startswith("  ")]
+    assert plain == ["# Quests | 4/25", "The Barrens", "[13] The Forgotten Pools | 50 yd", "[13] Raptor Thieves | 112 yd",
+                     "Durotar", "[4] Thwarting Kolkar Aggression | 1953 yd", "Ready To Turn In", "[13] The Zhevra | 5 yd"], plain
+    s.lua.execute("STUB.party = { { name = 'Thrag', quests = {} } }")
+    s.fire("GROUP_ROSTER_UPDATE")
+    assert "Party's Quests" not in s.shown() and "The Barrens" in s.shown()
+    s.lua.execute("STUB.party = STUB.kept; STUB.party[2].quests[845] = nil")
+    s.setting("order", "zone")
+    assert s.chat() == []
+
+    step("the key binding Share Quest With Party: the quest under the quest arrow, else the quest you chose; what stands in the way is said")
+    share = "PATCHWERKFOREVER_TRACKER_SHARE"
+    s.stub.shared = None
+    s.press(share)
+    assert s.stub.shared is None and s.chat() == ["Tracker: No quest selected. Put the quest arrow on a quest, then try again."]
+    s.lua.execute("STUB.focus = 869")
+    s.press(share)
+    assert s.stub.shared == 869 and s.chat() == ["Tracker: Sharing quest \"Raptor Thieves\" with your party."]
+    s.lua.execute("STUB.focus = 0")
+    Choice.Set(Choice, "quest", 870)
+    s.press(share)
+    assert s.stub.shared == 870, "the quest you chose was not the one shared"
+    Choice.Clear(Choice)
+    s.lua.execute("STUB.focus = 786")
+    s.stub.shared = None
+    s.chat()
+    s.press(share)
+    assert s.stub.shared is None and s.chat() == ["Tracker: Quest \"Thwarting Kolkar Aggression\" cannot be shared."]
+    s.lua.execute("STUB.focus = 869; STUB.kept = STUB.party; STUB.party = {}")
+    s.press(share)
+    assert s.stub.shared is None and s.chat() == ["Tracker: You are not in a party."]
+    s.lua.execute("STUB.party = STUB.kept")
+    # the game's older way of sharing, where its newer one is not there; and neither
+    s.lua.execute("QuestUtil.ShareQuest = nil; function QuestLogPushQuest(index) STUB.pushed = index end")
+    s.press(share)
+    assert s.stub.pushed == s.g.C_QuestLog.GetLogIndexForQuestID(869) and len(s.chat()) == 1
+    s.lua.execute("QuestLogPushQuest = nil")
+    s.press(share)
+    assert s.chat() == ["Tracker: The quest could not be shared on this client."]
+    s.lua.execute("STUB.focus = 0")
+
+    step("a client that will not say who is on a quest, or whether one can be shared: no marks, no error; a hidden name or answer is not known")
+    s = Session(LOG + PLACES + HIDDEN + """
+        STUB.party = { { name = 'Thrag', quests = { [869] = true } }, { name = 'Mokra', quests = {} } }
+        STUB.thieves.pushable = true; STUB.pools.pushable = true
+        PatchwerkForever_Thread_TrackerDB = { settings = { order = 'party' } }
+    """)
+    ns = s.load()
+    assert share_marks(s) == ["[13] Raptor Thieves", "[13] The Forgotten Pools"], share_marks(s)
+    s.lua.execute("STUB.on = C_QuestLog.IsUnitOnQuest; C_QuestLog.IsUnitOnQuest = nil")
+    s.fire("GROUP_ROSTER_UPDATE")
+    assert share_marks(s) == [] and "Party's Quests" not in s.shown() and not any("With" in t for t in s.shown()), s.shown()
+    s.lua.execute("C_QuestLog.IsUnitOnQuest = function() error('not here') end")
+    s.fire("GROUP_ROSTER_UPDATE")
+    assert share_marks(s) == [] and "Party's Quests" not in s.shown()
+    # the answer about one member hidden: only the other is known not to be on it
+    s.lua.execute("C_QuestLog.IsUnitOnQuest = function(unit, id) if unit == 'party1' then return STUB.hidden end return STUB.on(unit, id) end")
+    s.fire("GROUP_ROSTER_UPDATE")
+    assert share_marks(s) == ["[13] The Forgotten Pools", "[13] Raptor Thieves"] and "Party's Quests" not in s.shown(), share_marks(s)
+    mark = s.block("Raptor Thieves").share
+    mark.scripts.OnEnter(mark)
+    assert list(s.stub.tip.lines.values())[1] == "Mokra is not on this quest.", list(s.stub.tip.lines.values())
+    mark.scripts.OnLeave(mark)
+    # a member's name hidden: that member is left out
+    s.lua.execute("""
+        C_QuestLog.IsUnitOnQuest = STUB.on
+        STUB.name = UnitName
+        function UnitName(unit) if unit == 'party2' then return STUB.hidden end return STUB.name(unit) end
+    """)
+    s.fire("GROUP_ROSTER_UPDATE")
+    assert share_marks(s) == ["[13] The Forgotten Pools"] and "  With Thrag" in s.shown(), share_marks(s)
+    s.lua.execute("UnitName = STUB.name; STUB.can = C_QuestLog.IsPushableQuest; C_QuestLog.IsPushableQuest = function() return STUB.hidden end")
+    s.fire("GROUP_ROSTER_UPDATE")
+    assert share_marks(s) == []
+    s.lua.execute("STUB.focus = 869")
+    s.press("PATCHWERKFOREVER_TRACKER_SHARE")
+    assert s.stub.shared is None and s.chat() == ["Tracker: Quest \"Raptor Thieves\" cannot be shared."]
+    s.lua.execute("C_QuestLog.IsPushableQuest = nil")
+    s.fire("GROUP_ROSTER_UPDATE")
+    assert share_marks(s) == []
+    s.press("PATCHWERKFOREVER_TRACKER_SHARE")
+    assert s.stub.shared is None and s.chat() == ["Tracker: Quest \"Raptor Thieves\" cannot be shared."]
+    # no way to ask whether a member is online: taken to be
+    s.lua.execute("C_QuestLog.IsPushableQuest = STUB.can; UnitIsConnected = nil")
+    s.fire("GROUP_ROSTER_UPDATE")
+    assert share_marks(s) == ["[13] Raptor Thieves", "[13] The Forgotten Pools"], share_marks(s)
     assert s.chat() == []
 
 

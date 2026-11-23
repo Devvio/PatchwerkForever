@@ -178,7 +178,7 @@ end
 
 -- The quest under the game's arrow; else the quest you clicked; else the quest selected in the quest log.
 local function QuestAtHand()
-	local id = C_SuperTrack and Ask(C_SuperTrack.GetSuperTrackedQuestID)
+	local id = (ns.Base.Marker and ns.Base.Marker.Quest) and ns.Base.Marker:Quest() or (C_SuperTrack and Ask(C_SuperTrack.GetSuperTrackedQuestID))
 	if type(id) == 'number' and id > 0 then return id end
 	local pick = ns.Base.Choice:Get()
 	if pick and pick.kind == 'quest' then return pick.id end
@@ -186,6 +186,7 @@ local function QuestAtHand()
 	if type(id) == 'number' and id > 0 then return id end
 	return nil
 end
+ns.QuestAtHand = QuestAtHand  -- (Share Quest With Party picks its quest the same way: Actions.lua)
 
 -- For the key binding "Add Quest To My Route".
 function ns.RouteAddAtHand()
@@ -215,7 +216,9 @@ end
 
 -- Your map pin as a stop, named after the map it is on.
 function ns.RouteAddPin()
-	local pin = C_Map and Ask(C_Map.GetUserWaypoint)
+	-- (your own pin: kept by the base while the game's is lent to Routes to mark the way ahead)
+	local pin
+	if ns.Base.Marker and ns.Base.Marker.Pin then pin = ns.Base.Marker:Pin() else pin = C_Map and Ask(C_Map.GetUserWaypoint) end
 	local position = type(pin) == 'table' and pin.position
 	local x, y
 	if type(position) == 'table' then

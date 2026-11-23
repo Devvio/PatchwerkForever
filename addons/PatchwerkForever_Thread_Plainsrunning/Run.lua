@@ -7,14 +7,20 @@
 -- How far the interface should be faded follows from the stacks: none below Start Fading At, all of it
 -- at Fully Hidden At, a step for every stack between. It is not faded at all while one of the reasons
 -- to bring it back holds (a fight, a window open, standing still, dead or on a flight, the Show key held,
--- /plains show, speed mode disabled). It moves there gently: a stack's step fades in over most of a
--- second; coming back takes a quarter of a second, and a fight brings it back at once.
+-- /plains show, speed mode disabled; a flight does not bring it back while Flight Paths is enabled).
+-- It moves there gently: a stack's step fades in over most of a second; coming back takes a quarter
+-- of a second, and a fight brings it back at once.
 --
 -- Safety: the interface is only ever made see-through (UIParent's alpha), never hidden, so a click in a
 -- fight still works, a /reload always brings it back, and should anything here go wrong the alpha found
 -- is put back and speed mode stops until the next /reload.
 --
--- Only for Tauren: on any other race nothing is read and nothing runs (the preview still plays).
+-- Plainsrunning is only for Tauren: on any other race the buff is never read. The other ways of going
+-- fast (a mount, a travel form, a flight: Sources.lua; each off until enabled, for every race) have no
+-- stacks, so Sources.lua counts some for them, and they are taken here for the buff's whenever the buff
+-- has none of its own. So there is one way through the fade and the effects, and Plainsrunning wins
+-- when both apply. With none of them enabled nothing runs on a race that is not Tauren (the preview
+-- still plays).
 -- Numbers the game keeps secret (your speed, an aura's stacks, while it restricts them, as in a fight)
 -- are never counted with: a secret speed counts as the last one known, a secret aura changes nothing.
 --
@@ -28,6 +34,7 @@ if not ns.linked then return end
 
 local FADE_IN, FADE_OUT = 0.8, 0.25        -- seconds for a whole fade, going away and coming back
 local RUN_SPEED = 7                        -- yards a second, running unbuffed
+local FLIGHT_PACE = 2                      -- a flight counts as at least this many times running speed
 
 local fade = 0                 -- how far the interface is faded now: 0 not at all .. 1 all the way
 local base                     -- UIParent's alpha before this addon touched it (nil: not touching it)
@@ -112,9 +119,29 @@ local function TestStacks(now)
 	return 0
 end
 
+-- @return the stacks that count now, and what they come from when it is not Plainsrunning ('a mount',
+-- 'a travel form', 'a flight': Sources.lua)
 local function Stacks(now)
 	if test then return TestStacks(now) end
-	return stacks
+	if stacks > 0 then return stacks end                 -- (Plainsrunning wins)
+	if ns.OtherStacks then return ns.OtherStacks(now) end
+	return 0
+end
+
+-- whether a run on another source is going on
+local function OtherRun()
+	return ns.OtherStacks ~= nil and ns.OtherStacks(GetTime()) > 0
+end
+
+local function OnFlight()
+	local taxi = rawget(_G, 'UnitOnTaxi') and UnitOnTaxi('player')
+	return Plain(taxi) and true or false
+end
+ns.OnFlight = OnFlight
+
+-- a flight that fades the interface instead of bringing it back (Flight Paths, in Sources.lua)
+local function FlightFades()
+	return ns.Get('otherFlights') and OnFlight()
 end
 
 -- yards a second (while the game keeps it secret, the last speed known)
@@ -162,8 +189,9 @@ local function InFight()
 end
 
 -- standing still and moving again, followed every moment whatever else keeps the interface
+-- (on a flight that fades the interface there is no standing still, whatever speed the game gives)
 local function Moving(now)
-	if Speed() > 0.1 then
+	if Speed() > 0.1 or FlightFades() then
 		stillSince = nil
 		movingSince = movingSince or now
 	else
@@ -187,7 +215,7 @@ local function Kept(now)
 	if held then return 'you typed /plains show' end
 	if ns.Get('combatShow') and InFight() then return 'you are in combat' end
 	if ns.Get('deadShow') and ( ( rawget(_G, 'UnitIsDeadOrGhost') and UnitIsDeadOrGhost('player') )
-		or ( rawget(_G, 'UnitOnTaxi') and UnitOnTaxi('player') ) ) then
+		or ( OnFlight() and not ns.Get('otherFlights') ) ) then
 		return 'you are dead or on a flight'
 	end
 	if ns.Get('windowShow') then
@@ -350,7 +378,11 @@ local function Step(elapsed)
 	end
 	Apply()
 	local full = streaks and fade >= 0.999
-	local drawing = ns.StreaksStep and ns.StreaksStep(elapsed, full, Speed() / RUN_SPEED)
+	-- (a flight has no pace of your own to match: should the game give a low speed for it, or none,
+	-- Match My Speed would take the effects away)
+	local ratio = Speed() / RUN_SPEED
+	if ratio < FLIGHT_PACE and FlightFades() then ratio = FLIGHT_PACE end
+	local drawing = ns.StreaksStep and ns.StreaksStep(elapsed, full, ratio)
 	local camera = ns.CameraStep and ns.CameraStep(now, full)
 	-- nothing left to do: stop running until the buff changes (too few stacks to fade or for effects)
 	local n = Stacks(now)
@@ -363,7 +395,8 @@ end
 
 local function Wake()
 	if broken then return end
-	if not ( ns.IsTauren() or test or fade > 0 or Keeping() ) then return end    -- (not a Tauren: nothing to do)
+	-- (not a Tauren, and no run on a mount, in a travel form or on a flight: nothing to do)
+	if not ( ns.IsTauren() or test or fade > 0 or Keeping() or OtherRun() ) then return end
 	driver:Show()
 end
 ns.Wake = Wake
@@ -392,12 +425,20 @@ local function Read()
 	if now == nil then return end                    -- (secret just now: as it was)
 	local before = stacks
 	stacks = now
-	if stacks <= 0 and before > 0 then
+	if stacks <= 0 and before > 0 and not OtherRun() then
 		held = false                                     -- (/plains show lasts one run)
 		resting = false
 	end
 	if ns.RecordsAura and stacks ~= before then ns.RecordsAura(stacks, before) end
 	if stacks > 0 or fade > 0 or Keeping() then Wake() end
+end
+
+-- A run on a mount, in a travel form or on a flight is over (told by Sources.lua): as when the buff ends.
+function ns.OtherOver()
+	if stacks <= 0 then
+		held = false
+		resting = false
+	end
 end
 
 ns.On('UNIT_AURA', function(unit)
@@ -436,7 +477,8 @@ end
 
 function ns.ShowForThisRun()
 	if Stacks(GetTime()) <= 0 then
-		ns.Print('You have no Plainsrunning right now; the interface is not hidden.')
+		ns.Print(( ns.OtherEnabled and ns.OtherEnabled() ) and 'Speed mode is not running right now; the interface is not hidden.'
+			or 'You have no Plainsrunning right now; the interface is not hidden.')
 		return
 	end
 	held = true
@@ -446,15 +488,27 @@ end
 
 function ns.Say()
 	local now = GetTime()
-	local n = Stacks(now)
-	if not ns.IsTauren() then
-		ns.Print('Speed mode is for Tauren, and this character is not one, so it does nothing here. The preview still plays: /plains test.')
+	local n, other = Stacks(now)
+	local tauren = ns.IsTauren()
+	local also = ns.OtherEnabled and ns.OtherEnabled()       -- ('Mounts, Flight Paths', or nil with none enabled)
+	if not ( tauren or also ) then
+		ns.Print('Plainsrunning is for Tauren, and this character is not one, so speed mode does nothing here until you enable Mounts, Travel Forms or Flight Paths in the options (/plains config). The preview still plays: /plains test.')
 		return
 	end
 	local _, _, why = Wanted(now)
-	ns.Print(( 'Speed mode is %s. Plainsrunning: %s. Interface faded %d%%.' ):format(
+	-- what speed mode is running on: Plainsrunning with its stacks, or another source by its name
+	local on
+	if other then
+		on = 'Running on ' .. other
+	elseif n > 0 then
+		on = 'Plainsrunning: ' .. n .. ( n == 1 and ' stack' or ' stacks' )
+	else
+		on = tauren and 'Plainsrunning: none' or 'Not running'
+	end
+	ns.Print(( 'Speed mode is %s. %s. Interface faded %d%%.' ):format(
 		broken and 'stopped after a problem (/reload)' or ( ns.Get('enabled') and 'enabled' or 'disabled' ),
-		n > 0 and ( n .. ( n == 1 and ' stack' or ' stacks' ) ) or 'none', math.floor(fade * 100 + 0.5)))
+		on, math.floor(fade * 100 + 0.5)))
+	if also then ns.Print('Other sources enabled: ' .. also .. '.') end
 	if why then ns.Print('The interface is kept because ' .. why .. '.') end
 end
 

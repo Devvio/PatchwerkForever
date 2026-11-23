@@ -30,4 +30,7 @@
 	<Binding name="PATCHWERKFOREVER_TRACKER_ROUTE_OPEN" category="BINDING_CATEGORY_PatchwerkForever">
 		if PatchwerkForever_Thread_Tracker_RouteOpen then PatchwerkForever_Thread_Tracker_RouteOpen() end
 	</Binding>
+	<Binding name="PATCHWERKFOREVER_TRACKER_SHARE" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Tracker_Share then PatchwerkForever_Thread_Tracker_Share() end
+	</Binding>
 </Bindings>

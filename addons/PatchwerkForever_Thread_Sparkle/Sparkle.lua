@@ -13,6 +13,23 @@
 -- veins the names of the nodes you have gathered count as well, when Routes (Thread) is installed
 -- (it remembers them).
 --
+-- A dead creature the game points at sparkles too (1.4.0), as a kind of its own, when it has loot for
+-- you (the game's UnitHasLootInteraction, which its own gamepad action bar asks of "softinteract"), and
+-- as another when it can be skinned and the character has Skinning. No function says a corpse can be
+-- skinned: it is read from the cursor the game would show (the skinning one) and from the corpse's
+-- tooltip (the game's own word, UNIT_SKINNABLE_LEATHER). A living creature or a person never sparkles.
+--
+-- An herb for a character without Herbalism, or a vein for one without Mining, can be dimmed or hidden
+-- (Herbs And Ore I Cannot Gather). The professions are asked of the game's profession book; until the
+-- game says what they are, everything shows. Skill level is not looked at: nothing tells an addon
+-- plainly that a node needs more skill than the character has.
+--
+-- 1.5.0 added: a Show tick box for each kind; Sparkle Distance (the game's reach, SoftTargetInteractRange,
+-- only ever raised and put back as the other settings are); Brighter When Near (how far the node is,
+-- from the spots Routes remembers); Fade While Gathering; quest corpses (UnitIsRelatedToActiveQuest);
+-- four themed effects; and the probe in /sparkle debug (the tooltip's lines). The waypoint's sparkle
+-- is Waypoint.lua, the alerts Cue.lua, what you passed Passed.lua.
+--
 -- The effects are drawn from the addon's own pictures (Media, made by the tools' media.py).
 --
 -- While Enable Sparkles is on, two of the game's own settings are turned on, because without them
@@ -31,17 +48,36 @@ local UNIT = 'softinteract'
 local MEDIA = 'Interface\\AddOns\\' .. ADDON .. '\\Media\\'
 local NEEDS = { SoftTargetNameplateInteract = '1', SoftTargetIconGameObject = '1' }
 local INTERACT, INTERACT_ON = 'SoftTargetInteract', '3'   -- (Enum.SoftTargetEnableFlags.Any)
+local RANGE = 'SoftTargetInteractRange'   -- how far away the game picks an object (Sparkle Distance raises it)
+local REACH_ASSUMED = 20      -- yards taken as the game's reach where it does not say
+local REACH_MOST = 60         -- and never more than this, whatever it says
+local NEAR_FULL = 4           -- yards nearer than which a sparkle is at full brightness (Brighter When Near)
+local NEAR_LEAST = 0.4        -- how bright it is at the far edge of the reach, against full
+local NEAR_EVERY = 0.25       -- seconds between two looks at how far away the node is
+local NODE_SLACK = 8          -- yards a remembered spot may lie past the reach (it is where you stood to gather)
+local GATHER_FADE = 0.25      -- how bright the sparkle and name are while you gather from the object (Fade While Gathering)
 local FONTS = { friz = 'Fonts\\FRIZQT__.TTF', arial = 'Fonts\\ARIALN.TTF', morpheus = 'Fonts\\MORPHEUS.TTF',
 	skurri = 'Fonts\\SKURRI.TTF' }
 local OUTLINES = { none = '', thin = 'OUTLINE', thick = 'THICKOUTLINE' }
 local TEST_SECONDS = 6        -- how long a preview sparkle stays after the last change
 local LINGER = 10             -- how long the fade area's oval stays after the last change, or after the options close
 local REMEMBER = 20           -- seconds an object still counts as targeted after the game lets go of it (time to type)
+local DIM = 0.3               -- how bright a dimmed sparkle and name are (Herbs And Ore I Cannot Gather), against 1
+local KEEP = 10               -- seconds the character's professions are kept before the game is asked again
+local LOOTED = 0.5            -- seconds after the loot window closes that a corpse is looked at once more
 -- The names the preview writes: a real object of each kind, so the preview reads as the real thing does.
 local PREVIEW_NAMES = { herb = 'Peacebloom', ore = 'Copper Vein', loot = 'Battered Chest', quest = 'Quest Object',
-	other = 'Mailbox' }
--- How /sparkle status names each kind.
-local TYPES = { herb = 'Herb', ore = 'Ore', loot = 'Chest', quest = 'Quest Object', other = 'Other Object' }
+	questcorpse = 'Bristleback Quilboar', corpse = 'Kobold Vermin', skin = 'Mottled Boar', other = 'Mailbox', waypoint = 'Waypoint (120 yd)' }
+ns.PREVIEW_NAMES = PREVIEW_NAMES
+-- How /sparkle status names each kind. ('dead': a corpse with nothing for you, which never sparkles.)
+local TYPES = { herb = 'Herb', ore = 'Ore', loot = 'Chest', quest = 'Quest Object', other = 'Other Object',
+	questcorpse = 'Quest Corpse', corpse = 'Corpse With Loot', skin = 'Skinnable Corpse', dead = 'Corpse', waypoint = 'Waypoint' }
+-- Each kind's heading on the Appearance page, for the reasons /sparkle status gives.
+local HEADINGS = {}
+for _, kind in ipairs(ns.KINDS) do HEADINGS[kind[1]] = kind[2] end
+-- The professions that matter here: the game's name for each (in Enum.Profession, and as it is said),
+-- and its skill line where the game cannot be asked for it.
+local CRAFTS = { herb = { 'Herbalism', 182 }, ore = { 'Mining', 186 }, skin = { 'Skinning', 393 } }
 -- Words in a cursor's name, and what they mean. The first found wins, so "questinteract" is a quest
 -- before it is a plain interaction. ("Unable..." forms, for a thing out of reach or not yet yours to
 -- use, hold the same words.)
@@ -62,6 +98,17 @@ local function Plain(value)
 	return value ~= nil and not (issecretvalue and issecretvalue(value))
 end
 ns.Plain = Plain
+
+-- What one of the game's yes-or-no functions says, when it says so plainly: true or false. Nil when
+-- this client does not have the function, when it fails, or when it keeps its answer secret (unit
+-- data can be secret in combat).
+local function Says(name, ...)
+	local fn = rawget(_G, name)
+	if type(fn) ~= 'function' then return nil end
+	local ok, value = pcall(fn, ...)
+	if not (ok and Plain(value)) then return nil end
+	return value == true
+end
 
 ---------------------------------------------------------------------------
 -- What kind of thing
@@ -268,6 +315,58 @@ local EFFECTS = {
 				end
 			end
 		end },
+	-- The themed ones (1.5.0): an effect drawn for one kind of thing.
+	-- Leaves drifting down past the thing, swaying and turning as they fall: herbs.
+	leaves = { pieces = { { 'a', 'leaf' }, { 'b', 'leaf' }, { 'c', 'leaf' }, { 'd', 'leaf' }, { 'e', 'leaf' } },
+		tick = function(m, p, t, s, a)
+			for i, key in ipairs(LETTERS) do
+				local piece = p[key]
+				if piece then
+					local n, u = Turn(t, 2.6 + 0.4 * i, i * 0.31)
+					Spot(piece, m, (Chance(i, n) - 0.5) * s * 0.7 + sin(t * 1.3 + i * 1.9) * s * 0.08,
+						s * 0.32 - u * s * 0.6, s * (0.13 + 0.04 * Chance(i + 4, n)), a * 0.85 * sin(u * PI))
+					piece:SetRotation(t * (0.8 + 0.3 * i) * (i % 2 == 0 and 1 or -1))
+				end
+			end
+		end },
+	-- Sparks rising fast from a warm glow and flickering out: ore.
+	embers = { pieces = { { 'g', 'glow' }, { 'a', 'ember' }, { 'b', 'ember' }, { 'c', 'ember' }, { 'd', 'ember' }, { 'e', 'ember' } },
+		tick = function(m, p, t, s, a)
+			Put(p.g, m, s * 0.5, a * (0.22 + 0.06 * sin(t * 7)))
+			for i, key in ipairs(LETTERS) do
+				local piece = p[key]
+				if piece then
+					local n, u = Turn(t, 1.1 + 0.25 * i, i * 0.23)
+					Spot(piece, m, (Chance(i, n) - 0.5) * s * 0.5 + sin(t * 3 + i) * s * 0.04, -s * 0.1 + u * s * 0.55,
+						s * (0.07 + 0.03 * Chance(i + 2, n)) * (1 - 0.5 * u),
+						a * 0.9 * (1 - u) * (u < 0.1 and u / 0.1 or 1) * (0.7 + 0.3 * sin(t * 15 + i)))
+				end
+			end
+		end },
+	-- Coins turning over in the air, each catching the light, and now and then a glint: chests.
+	coins = { pieces = { { 'a', 'coin' }, { 'b', 'coin' }, { 'c', 'coin' }, { 'd', 'coin' }, { 'e', 'glint' } }, white = { e = true },
+		tick = function(m, p, t, s, a)
+			for i = 1, 4 do
+				local piece = p[LETTERS[i]]
+				local n, u = Turn(t, 2.2 + 0.3 * i, i * 0.41)
+				local size = s * 0.14
+				local wide = size * math.max(0.15, math.abs(cos(t * 3 + i * 1.3)))
+				piece:SetSize(wide, size)
+				piece:SetAlpha(Fade(a * 0.9 * sin(u * PI)))
+				piece:ClearAllPoints()
+				piece:SetPoint('CENTER', m, 'CENTER', (Chance(i, n) - 0.5) * s * 0.6, (Chance(i + 7, n) - 0.5) * s * 0.3 + u * s * 0.12)
+			end
+			local n, u = Turn(t, 1.9, 0.5)
+			local flare = u < 0.25 and sin(u / 0.25 * PI) or 0
+			Spot(p.e, m, (Chance(5, n) - 0.5) * s * 0.5, (Chance(6, n) - 0.5) * s * 0.3, s * (0.08 + 0.12 * flare), a * 0.8 * flare)
+		end },
+	-- Rays of light turning slowly round a soft glow, two wheels of them the opposite ways: quest objects.
+	rays = { pieces = { { 'b', 'glow' }, { 'a', 'rays' }, { 'c', 'rays' } },
+		tick = function(m, p, t, s, a)
+			Put(p.b, m, s * 0.5, a * 0.45)
+			Put(p.a, m, s * 1.1, a * (0.45 + 0.15 * sin(t * 1.3)), t * 0.15)
+			Put(p.c, m, s * 0.8, a * (0.35 + 0.15 * sin(t * 1.7 + 1)), -t * 0.22)
+		end },
 	none = { pieces = {}, tick = function() end },
 }
 
@@ -314,7 +413,9 @@ local function Body()
 	if zoom < NEAREST then return nil end
 	local scale = UIParent:GetEffectiveScale()
 	local w, h = UIParent:GetWidth() * scale, UIParent:GetHeight() * scale
-	local tall = BODY_YARDS / zoom * (ns.Get('sparkleBehindSize') or 100) / 100
+	local mounted = Says('IsMounted') == true
+	local height = mounted and (ns.Get('sparkleBehindMount') or 160) or (ns.Get('sparkleBehindSize') or 100)
+	local tall = BODY_YARDS / zoom * height / 100
 	if tall > 0.95 then tall = 0.95 end
 	local hh = tall * h / 2
 	local hw = hh * (ns.Get('sparkleBehindWide') or 50) / 100
@@ -336,7 +437,7 @@ local function Covered(m)
 end
 
 -- Fades a mark by how far it is over your character. Where the game will not say where the mark is,
--- it stays as bright as it was.
+-- it stays as bright as it was. (dim: a mark that is dimmed anyway stays so.)
 local function Tuck(m)
 	local ok, covered = pcall(Covered, m)
 	if not ok or type(covered) ~= 'number' then
@@ -346,7 +447,7 @@ local function Tuck(m)
 	end
 	m.covered = covered
 	local left = (ns.Get('sparkleBehindLeft') or 0) / 100
-	m:SetAlpha(Fade(1 - covered * (1 - left)))
+	m:SetAlpha(Fade((1 - covered * (1 - left)) * (m.dim or 1)))
 end
 
 -- Keeps where on screen the thing pointed at is (in pixels), and what kind it is, for the wisp that
@@ -360,12 +461,81 @@ local function Spotted(m)
 	ns.spot = spot
 end
 
+---------------------------------------------------------------------------
+-- How near the thing is (Brighter When Near)
+---------------------------------------------------------------------------
+-- Nothing tells an addon where a thing in the world is. Herbs and veins come back in the same places,
+-- though, and Routes (Thread), when it is installed, remembers where you stood each time you gathered
+-- one (its saved nodes: { [map] = { { x, y, name }, ... } }, in world coordinates, as the game gives
+-- your own place). The nearest remembered spot of the same name is taken to be the node in front of
+-- you, while it is within the game's reach. The waypoint has a distance from the game (Waypoint.lua).
+
+-- How far away the game picks a thing, in yards: its own setting, which Sparkle Distance may raise.
+local function Reach()
+	local r = tonumber(GetCVar and GetCVar(RANGE))
+	if not r or r <= 0 then r = REACH_ASSUMED end
+	return r > REACH_MOST and REACH_MOST or r
+end
+ns.Reach = Reach
+
+-- Your place in the world: x, y and the map; nothing where the game keeps it to itself (in an instance).
+local function Here()
+	if not UnitPosition then return nil end
+	local x, y, _, map = UnitPosition('player')
+	if not (Plain(x) and Plain(y) and Plain(map) and type(x) == 'number' and type(y) == 'number') then return nil end
+	return x, y, map
+end
+ns.Here = Here
+
+-- The spots of this name Routes remembers around you: { map =, list = { node, ... } }, or nothing.
+local function Spots(name)
+	local routes = rawget(_G, 'PatchwerkForever_Thread_RoutesDB')
+	local nodes = type(routes) == 'table' and type(routes.nodes) == 'table' and routes.nodes
+	local px, py, map = Here()
+	if not (nodes and px and type(name) == 'string') then return nil end
+	local list = nodes[map]
+	if type(list) ~= 'table' then return nil end
+	local far = Reach() + NODE_SLACK + 40          -- (a little more: you may walk on and come nearer)
+	local out = {}
+	for i = 1, #list do
+		local node = list[i]
+		if type(node) == 'table' and node[3] == name and type(node[1]) == 'number' and type(node[2]) == 'number'
+			and math.abs(node[1] - px) < far and math.abs(node[2] - py) < far then
+			out[#out + 1] = node
+		end
+	end
+	return #out > 0 and { map = map, list = out } or nil
+end
+
+-- How far away the nearest of those spots is, in yards; nothing when none is within the game's reach
+-- (then the node in front of you is one not remembered).
+local function Yards(spots)
+	local px, py, map = Here()
+	if not (spots and px and map == spots.map) then return nil end
+	local best
+	for _, node in ipairs(spots.list) do
+		local d = ((node[1] - px) ^ 2 + (node[2] - py) ^ 2) ^ 0.5
+		if not best or d < best then best = d end
+	end
+	if best and best > Reach() + NODE_SLACK then return nil end
+	return best
+end
+
+-- How bright a sparkle so far away is, against full (NEAR_LEAST at the edge of `reach`, 1 up close);
+-- 1 when the distance is not known.
+local function Nearness(yards, reach)
+	if type(yards) ~= 'number' then return 1 end
+	local u = Fade((yards - NEAR_FULL) / math.max(1, (reach or Reach()) - NEAR_FULL))
+	return 1 - (1 - NEAR_LEAST) * u
+end
+ns.Nearness = Nearness
+
 local function NewMark()
 	local m = CreateFrame('Frame', nil, UIParent)
 	m:SetSize(100, 100)
 	m:EnableMouse(false)
 	m:Hide()
-	m.pieces, m.time, m.effect, m.age = {}, 0, nil, ARRIVE
+	m.pieces, m.time, m.effect, m.age, m.near, m.nearAt = {}, 0, nil, ARRIVE, 1, 0
 	m.name = m:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
 	m:SetScript('OnUpdate', function(self, elapsed)
 		local look = self.look
@@ -373,7 +543,21 @@ local function NewMark()
 		self.time = self.time + elapsed * look.speed
 		self.age = self.age + elapsed
 		local arrived = Arrived(self)
-		look.def.tick(self, self.parts, self.time, look.size, look.bright * arrived)
+		-- (nearer is brighter and a little larger: Brighter When Near, where the distance is known)
+		if self.spots and ns.Get('sparkleNear') then
+			self.nearAt = self.nearAt - elapsed
+			if self.nearAt <= 0 then
+				self.nearAt = NEAR_EVERY
+				self.yards = Yards(self.spots)
+				self.near = Nearness(self.yards)
+			end
+		elseif self.Distance and ns.Get('sparkleNear') then
+			self.near = self:Distance()
+		else
+			self.near, self.yards = 1, nil
+		end
+		local near = self.near or 1
+		look.def.tick(self, self.parts, self.time, look.size * (0.7 + 0.3 * near), look.bright * arrived * near)
 		if self.arriving then
 			self.name:SetAlpha(arrived)
 			self.arriving = arrived < 1
@@ -391,8 +575,11 @@ local function Look(kind)
 	local r, g, b = ns.RGB(ns.Get(key .. 'colour'))
 	return { effect = effect, def = EFFECTS[effect] or EFFECTS.star, r = r, g = g, b = b,
 		size = ns.Get(key .. 'size') or 110, bright = (ns.Get(key .. 'bright') or 100) / 100,
-		height = ns.Get(key .. 'height') or -40, speed = (ns.Get(key .. 'speed') or 100) / 100 }
+		height = ns.Get(key .. 'height') or -40, speed = (ns.Get(key .. 'speed') or 100) / 100,
+		sound = ns.Get(key .. 'sound') or 'none' }
 end
+ns.Look = Look
+ns.EFFECTS = EFFECTS
 
 -- Dresses a mark in a look: the pictures of its effect shown and tinted, the others hidden.
 local function Dress(m, look)
@@ -477,6 +664,8 @@ local function Write(m, anchor, text, look)
 	fs:SetText(text)
 	fs:Show()
 end
+-- (for the waypoint's sparkle, Waypoint.lua, which is made and dressed as an object's is)
+ns.NewMark, ns.Dress, ns.WriteName, ns.Arrive, ns.Tuck = NewMark, Dress, Write, Arrive, Tuck
 
 ---------------------------------------------------------------------------
 -- The thing pointed at
@@ -503,6 +692,161 @@ local function IsThing(unit)
 	end
 	local guid = UnitGUID(unit)
 	return type(guid) == 'string' and Plain(guid) and guid:sub(1, 10) == 'GameObject'
+end
+
+---------------------------------------------------------------------------
+-- What the character can gather
+---------------------------------------------------------------------------
+-- A profession's skill line: asked of the game, else the number it has had since the first game.
+local function SkillLine(craft)
+	local trade, enum = rawget(_G, 'C_TradeSkillUI'), rawget(_G, 'Enum')
+	local get = type(trade) == 'table' and trade.GetProfessionSkillLineID
+	local which = type(enum) == 'table' and type(enum.Profession) == 'table' and enum.Profession[craft[1]]
+	if type(get) == 'function' and which ~= nil then
+		local ok, id = pcall(get, which)
+		if ok and Plain(id) and type(id) == 'number' and id > 0 then return id end
+	end
+	return craft[2]
+end
+
+-- The skill lines of the professions in the game's profession book, as the book itself asks for them
+-- (GetProfessions gives a number for each profession the character has, GetProfessionInfo its skill
+-- line): [skill line] = true. Nothing when the book lists none, or one of them cannot be read.
+local function Book(ok, ...)
+	if not ok then return nil end
+	local info = rawget(_G, 'GetProfessionInfo')
+	local lines, any = {}, false
+	for i = 1, select('#', ...) do                         -- (any of them can be nil)
+		local index = select(i, ...)
+		if index ~= nil then
+			if not Plain(index) then return nil end
+			local line = select(8, pcall(info, index))        -- (pcall's true first, then the skill line seventh)
+			if not (Plain(line) and type(line) == 'number') then return nil end
+			lines[line], any = true, true
+		end
+	end
+	return any and lines or nil
+end
+
+-- The same from the character's skills, for a character with no profession in the book: once the game
+-- lists any skill at all it knows them, and a skill asked for by its line has a rank only when the
+-- character has it. { herb =, ore =, skin = }, or nothing while the game lists no skills.
+local function Skills()
+	local skills = rawget(_G, 'C_SkillInfo')
+	local count = type(skills) == 'table' and skills.GetNumSkillLines
+	local byLine = type(skills) == 'table' and skills.GetSkillLineInfoByID
+	if type(count) ~= 'function' or type(byLine) ~= 'function' then return nil end
+	local ok, lines = pcall(count)
+	if not (ok and Plain(lines) and type(lines) == 'number' and lines > 0) then return nil end
+	local out = {}
+	for kind, craft in pairs(CRAFTS) do
+		local got, info = pcall(byLine, SkillLine(craft))
+		local rank = got and type(info) == 'table' and info.rank
+		out[kind] = Plain(rank) and type(rank) == 'number' and rank > 0
+	end
+	return out
+end
+
+-- Which of the three professions the character has: { herb =, ore =, skin = }, each true or false.
+-- Nil while the game does not say (just after login, or on a client with neither way of asking); then
+-- nothing is dimmed or hidden. Kept a few seconds, and forgotten when the character's skills change.
+local have, haveAt = nil, 0
+local function Professions()
+	if have and GetTime() - haveAt <= KEEP then return have end
+	have, haveAt = nil, GetTime()
+	local list = rawget(_G, 'GetProfessions')
+	local lines = type(list) == 'function' and type(rawget(_G, 'GetProfessionInfo')) == 'function' and Book(pcall(list))
+	if lines then
+		have = {}
+		for kind, craft in pairs(CRAFTS) do have[kind] = lines[SkillLine(craft)] == true end
+	else
+		have = Skills()
+	end
+	return have
+end
+
+-- An herb or a vein the character has no profession for, by Herbs And Ore I Cannot Gather: 'dim' or
+-- 'hide'. Nil when it shows as ever: the character has the profession, the setting is Show, or the
+-- game has not yet said what the professions are.
+local function Cannot(kind)
+	if kind ~= 'herb' and kind ~= 'ore' then return nil end
+	local how = ns.Get('sparkleCannot')
+	if how ~= 'dim' and how ~= 'hide' then return nil end
+	local has = Professions()
+	if not has or has[kind] then return nil end
+	return how
+end
+
+---------------------------------------------------------------------------
+-- A corpse
+---------------------------------------------------------------------------
+-- Is the game pointing at a dead creature (not a person, and not one alive)? Only when the game says
+-- so plainly: where it will not say, it is taken not to be one, and nothing sparkles, as before 1.4.0.
+local function Dead(unit)
+	return Says('UnitIsDead', unit) == true and Says('UnitIsPlayer', unit) == false
+end
+
+-- Does the corpse have loot for you? Asked as the game's own gamepad action bar asks it of the thing
+-- the interact key points at; on a client without that, by the creature itself (CanLootUnit: whether
+-- it has loot, and whether it is yours to take).
+local function HasLoot(unit)
+	local has = Says('UnitHasLootInteraction', unit)
+	if has ~= nil then return has end
+	local can, guid = rawget(_G, 'CanLootUnit'), UnitGUID(unit)
+	if type(can) ~= 'function' or not (Plain(guid) and type(guid) == 'string') then return false end
+	local ok, hasLoot, canLoot = pcall(can, guid)
+	return ok and Plain(hasLoot) and Plain(canLoot) and hasLoot == true and canLoot == true
+end
+
+-- Does a line of the unit's tooltip, as the game would write it, hold this word?
+local function TooltipSays(get, unit, word)
+	local data = get(unit)
+	local lines = Plain(data) and type(data) == 'table' and data.lines
+	if not Plain(lines) or type(lines) ~= 'table' then return false end
+	for _, line in ipairs(lines) do
+		local text = type(line) == 'table' and line.leftText
+		if Plain(text) and type(text) == 'string' and text:find(word, 1, true) then return true end
+	end
+	return false
+end
+
+-- Can the corpse be skinned? No function says so. The cursor the game would show over it does (the
+-- skinning one has "skin" in its name), and so does its tooltip, which has a line of its own for it
+-- in the game's own word. (The tooltip is read under pcall: what it holds for a unit in combat, and
+-- whether that can be gone through, is not known.)
+local function Skinnable(unit, cursor)
+	if type(cursor) == 'string' and cursor:lower():find('skin', 1, true) then return true end
+	local word, tips = rawget(_G, 'UNIT_SKINNABLE_LEATHER'), rawget(_G, 'C_TooltipInfo')
+	local get = type(tips) == 'table' and tips.GetUnit
+	if type(word) ~= 'string' or word == '' or type(get) ~= 'function' then return false end
+	local ok, yes = pcall(TooltipSays, get, unit, word)
+	return ok and yes == true
+end
+
+-- The corpse the game points at: its kind ('corpse': it has loot for you; 'skin': it can be skinned;
+-- 'dead': neither), why it is not to sparkle (nil when it is), and the cursor's name for /sparkle
+-- debug. Nothing at all when the game is not pointing at a corpse.
+local function Corpse(unit)
+	if not Dead(unit) then return nil end
+	local cursor = Cursor()
+	if HasLoot(unit) then
+		-- (one that belongs to a quest of yours: the boar whose pelt you need, 1.5.0)
+		if Says('UnitIsRelatedToActiveQuest', unit) == true then return 'questcorpse', nil, cursor end
+		return 'corpse', not ns.Get('sparkleCorpse') and 'Sparkle On Corpses With Loot is disabled' or nil, cursor
+	end
+	if Skinnable(unit, cursor) then
+		local has = Professions()
+		if not ns.Get('sparkleSkin') then return 'skin', 'Sparkle On Skinnable Corpses is disabled', cursor end
+		if not has then return 'skin', 'the game has not yet said whether this character has Skinning', cursor end
+		if not has.skin then return 'skin', 'this character does not have Skinning', cursor end
+		return 'skin', nil, cursor
+	end
+	return 'dead', 'it has no loot for you', cursor
+end
+
+-- Is the game pointing at something a sparkle could be on: a thing in the world, or a corpse?
+local function Pointed()
+	return IsThing(UNIT) or Dead(UNIT)
 end
 
 -- The nameplate of the thing pointed at. Asking for it by "softinteract" is usually enough; where that
@@ -570,6 +914,21 @@ local function Needs(on)
 			db.sparkleWas[name] = nil
 		end
 	end
+	-- Sparkle Distance (1.5.0): the game's reach only ever raised, never lowered below its own value,
+	-- and that value kept to be put back, as the others are.
+	local want = on and tonumber(ns.Get('sparkleReach'))
+	local was, now = db.sparkleWas[RANGE], GetCVar(RANGE)
+	if want and now ~= nil then
+		local own = tonumber(was or now)
+		local target = own and own > want and own or want
+		if tonumber(now) ~= target then
+			if was == nil then db.sparkleWas[RANGE] = now end
+			pcall(SetCVar, RANGE, tostring(target))
+		end
+	elseif was ~= nil then
+		pcall(SetCVar, RANGE, was)
+		db.sparkleWas[RANGE] = nil
+	end
 end
 
 -- The game can turn one of the two settings off by itself (its Interact Key Icons option does), and
@@ -598,27 +957,70 @@ end
 -- an object from long ago. lost: when the game let go of it.
 local last
 
+-- Is this kind's Show tick box on (Sparkle: Appearance)? Kinds without one (corpses) always are.
+local function Shown(kind)
+	return ns.Get('look.' .. kind .. '.show') ~= false
+end
+ns.Shown = Shown
+
+-- While you gather from the thing pointed at or loot it: { name =, at = }, the thing a cast was aimed at
+-- (by its name) until the cast ends, and the thing pointed at when the loot window opened until it
+-- closes; never longer than WORKING seconds, should the game not say it has ended.
+local working, looting = nil, nil
+local WORKING = 15
+
+local function Gathering(name)
+	for _, busy in ipairs({ working or false, looting or false }) do
+		if busy and busy.name == name and GetTime() - busy.at < WORKING then return true end
+	end
+	return false
+end
+
 local function Update()
-	if not IsThing(UNIT) then
+	-- a thing in the world, as ever; or a corpse, with its kind and why it is not to sparkle
+	local kind, known, cursor, why
+	local corpse = not IsThing(UNIT)
+	if corpse then
+		kind, why, cursor = Corpse(UNIT)
+		known = true
+	else
+		kind, known, cursor = Kind()
+	end
+	if not kind then                                      -- a living creature, a person, or nothing
 		if last and not last.lost then last.lost = GetTime() end
+		if ns.PassedSee then ns.PassedSee(nil) end
 		return Hide()
 	end
 	local barred = Barred()
-	local kind, known, cursor = Kind()
 	local plate = Plate()
 	local name = UnitName(UNIT)
 	if not Plain(name) or type(name) ~= 'string' then name = nil end
 	local ignored = Ignored(name)
-	local wanted = Wanted(kind, known) and not ignored
+	local cannot = Cannot(kind)                           -- (an herb or a vein you cannot gather: 'dim' or 'hide')
+	local hidden = kind ~= 'dead' and not Shown(kind)      -- (its Show tick box is off)
+	local wanted
+	if corpse then
+		wanted = why == nil and not ignored and not hidden
+	else
+		wanted = Wanted(kind, known) and cannot ~= 'hide' and not ignored and not hidden
+	end
 	last = { name = name, kind = kind, known = known, cursor = cursor, plate = plate ~= nil, barred = barred,
-		shown = not barred and wanted and plate ~= nil, ignored = ignored, time = GetTime() }
+		shown = not barred and wanted and plate ~= nil, ignored = ignored, cannot = cannot, corpse = corpse, why = why,
+		hidden = hidden, time = GetTime() }
+	if ns.PassedSee then ns.PassedSee(last) end
 	if barred or not wanted then return Hide() end
 	if not plate then
 		Recheck()
 		return Hide()
 	end
 	if not live then live = NewMark() end
-	if not live:IsShown() or live.thing ~= name then Arrive(live) end
+	local fresh = not live:IsShown() or live.thing ~= name
+	if fresh then
+		Arrive(live)
+		-- (where the node is, for Brighter When Near: the spots Routes remembers of this name)
+		live.spots = (kind == 'herb' or kind == 'ore') and Spots(name) or nil
+		live.near, live.nearAt, live.yards = 1, 0, nil
+	end
 	live.thing, live.kind, live.spotted = name, kind, true
 	local look = Look(kind)
 	Dress(live, look)
@@ -626,11 +1028,15 @@ local function Update()
 	live:ClearAllPoints()
 	live:SetPoint('CENTER', plate, 'CENTER', 0, look.height)
 	Write(live, plate, name, look)
+	-- (the mark's own opacity dims the effect and the name alike: a herb you cannot gather, and while you
+	-- gather from it)
+	live.dim = (cannot == 'dim' and DIM or 1) * (Gathering(name) and ns.Get('sparkleGathering') and GATHER_FADE or 1)
 	live.behind = ns.Get('sparkleBehind') and true or false
+	if fresh and ns.Cue then ns.Cue(kind, name, look) end
 	if live.behind then
 		Tuck(live)
 	else
-		live:SetAlpha(1)
+		live:SetAlpha(live.dim)
 	end
 	live:Show()
 end
@@ -638,12 +1044,13 @@ end
 local function Refresh()
 	ns.Try('the sparkle', Update)
 end
+ns.Barred, ns.Says = Barred, Says
 
--- The object targeted now, or until a moment ago: its name; nil when there is none.
+-- The object (or corpse) targeted now, or until a moment ago: its name; nil when there is none.
 local function Targeted()
 	Refresh()
 	if not (last and last.name) then return nil end
-	if IsThing(UNIT) or (last.lost and GetTime() - last.lost <= REMEMBER) then return last.name end
+	if Pointed() or (last.lost and GetTime() - last.lost <= REMEMBER) then return last.name end
 	return nil
 end
 
@@ -702,11 +1109,71 @@ function ns.SparkleTest(kind, keep)
 	test:SetPoint('CENTER', spot, 'CENTER', 0, look.height)
 	Write(test, spot, PREVIEW_NAMES[kind] or kind, look)
 	test:Show()
+	-- (its alert sound too, when the button was pressed: not each time a setting changes)
+	if not keep and ns.CuePlay then ns.CuePlay(look.sound) end
 	testing = testing + 1
 	local mine = testing
 	C_Timer.After(TEST_SECONDS, function()
 		if mine == testing then test:Hide() end
 	end)
+end
+
+-- Preview All Types: every kind's sparkle in a row across the screen for a few seconds, each with its
+-- real name, so they can be compared.
+local row, rows = {}, 0
+local GAP = 150               -- pixels from one preview's middle to the next
+function ns.SparkleTestAll()
+	if test then test:Hide() end
+	local count = #ns.KINDS
+	for i, kind in ipairs(ns.KINDS) do
+		local m = row[i]
+		if not m then
+			m = NewMark()
+			m.anchor = CreateFrame('Frame', nil, UIParent)
+			m.anchor:SetSize(1, 1)
+			row[i] = m
+		end
+		local look = Look(kind[1])
+		Arrive(m)
+		m.kind = kind[1]
+		Dress(m, look)
+		m.anchor:ClearAllPoints()
+		m.anchor:SetPoint('CENTER', UIParent, 'CENTER', (i - (count + 1) / 2) * GAP, 160)
+		m:SetParent(UIParent)
+		m:SetFrameStrata('DIALOG')
+		m:ClearAllPoints()
+		m:SetPoint('CENTER', m.anchor, 'CENTER', 0, kind[1] == 'waypoint' and look.height or 0)
+		Write(m, m.anchor, PREVIEW_NAMES[kind[1]] or kind[2], look)
+		m:Show()
+	end
+	rows = rows + 1
+	local mine = rows
+	C_Timer.After(TEST_SECONDS, function()
+		if mine ~= rows then return end
+		for _, m in ipairs(row) do m:Hide() end
+	end)
+end
+
+-- Use This Look For All: every other kind gets this kind's effect, size, brightness, speed and (between
+-- the kinds that hang from a nameplate) vertical offset; colors, sounds and Show stay as they were.
+local SHARED = { 'effect', 'size', 'bright', 'speed', 'height' }
+function ns.SparkleCopyLook(from)
+	local name
+	for _, kind in ipairs(ns.KINDS) do
+		if kind[1] == from then name = kind[2] end
+	end
+	for _, kind in ipairs(ns.KINDS) do
+		local k = kind[1]
+		if k ~= from then
+			for _, part in ipairs(SHARED) do
+				-- (the waypoint hangs from the game's marker, not a nameplate: its offset is its own)
+				if not (part == 'height' and (k == 'waypoint' or from == 'waypoint')) then
+					ns.Set('look.' .. k .. '.' .. part, ns.Get('look.' .. from .. '.' .. part))
+				end
+			end
+		end
+	end
+	ns.Print(('Every object type now looks like %s. Each keeps its own color, alert sound and Show setting.'):format(name or from))
 end
 
 -- While the options are open the preview follows the settings. Changes made in the same moment are
@@ -791,12 +1258,23 @@ end
 
 -- Gives every kind of object one of the subtle effects (the button on the first page). Only the effect
 -- is changed: colors, sizes and the rest stay as you set them.
-local SUBTLE = { herb = 'glints', ore = 'glints', loot = 'shimmer', quest = 'ripple', other = 'fireflies' }
+local SUBTLE = { herb = 'glints', ore = 'glints', loot = 'shimmer', quest = 'ripple', questcorpse = 'ripple', corpse = 'shimmer',
+	skin = 'glints', other = 'fireflies', waypoint = 'beam' }
 function ns.SparkleSubtle()
 	for _, kind in ipairs(ns.KINDS) do
 		ns.Set('look.' .. kind[1] .. '.effect', SUBTLE[kind[1]] or 'shimmer')
 	end
-	ns.Print('Subtle preset applied: glints on herbs and ore, a faint shimmer on chests, a ground ripple on quest objects, fireflies on the rest. Change any of them under ' .. ns.APPEARANCE .. '.')
+	ns.Print('Subtle preset applied: glints on herbs, ore and skinnable corpses, a faint shimmer on chests and corpses with loot, a ground ripple on quest objects and quest corpses, fireflies on the rest, a light beam on the waypoint. Change any of them under ' .. ns.APPEARANCE .. '.')
+end
+
+-- Apply Themed Preset (1.5.0): an effect drawn for each kind.
+local THEMED = { herb = 'leaves', ore = 'embers', loot = 'coins', quest = 'rays', questcorpse = 'rays', corpse = 'coins',
+	skin = 'leaves', other = 'glow', waypoint = 'beam' }
+function ns.SparkleThemed()
+	for _, kind in ipairs(ns.KINDS) do
+		ns.Set('look.' .. kind[1] .. '.effect', THEMED[kind[1]] or 'glow')
+	end
+	ns.Print('Themed preset applied: falling leaves on herbs and skinnable corpses, embers on ore, coin glints on chests and corpses with loot, sun rays on quest objects and quest corpses, a soft glow on the rest, a light beam on the waypoint. Change any of them under ' .. ns.APPEARANCE .. '.')
 end
 
 ---------------------------------------------------------------------------
@@ -882,6 +1360,19 @@ local function Count()
 	return count
 end
 
+-- The ignore list on its options page (the base's list, 2.9.0): a row for each name, A to Z, each
+-- with a Remove button.
+function ns.IgnoreRows()
+	local names = {}
+	for name in pairs(IgnoreList()) do names[#names + 1] = name end
+	table.sort(names)
+	local rows = {}
+	for i, name in ipairs(names) do
+		rows[i] = { text = name, buttons = { { text = 'Remove', click = function() Remove(name) end } } }
+	end
+	return rows
+end
+
 -- /sparkle clear, and the button once it has asked: empties the list at once.
 function ns.IgnoreClear()
 	local count = Count()
@@ -919,6 +1410,13 @@ end
 local function WhyNot(was)
 	if was.barred then return was.barred end
 	if was.ignored then return 'it is on the ignore list' end
+	if was.why then return was.why end                    -- (a corpse: no loot for you, no Skinning, its setting off)
+	if was.hidden then
+		return ('Show is off for %s on %s'):format(HEADINGS[was.kind] or was.kind, ns.APPEARANCE)
+	end
+	if was.cannot == 'hide' then
+		return ('this character does not have %s and Herbs And Ore I Cannot Gather is set to Hide'):format(CRAFTS[was.kind][1])
+	end
 	if was.kind == 'other' and was.known and not ns.Get('sparkleAll') then
 		return 'Include All Interactable Objects is disabled'
 	end
@@ -934,17 +1432,23 @@ local function WhyNot(was)
 	return nil
 end
 
--- One plain sentence: the object, its kind, and whether it sparkles and why not.
+-- One plain sentence: the object or corpse, its kind, and whether it sparkles (dimmed, and why) and why not.
 local function Told(was)
 	local why = WhyNot(was)
-	return ('%s (%s): %s.'):format(was.name or 'An object whose name is not available', TYPES[was.kind] or was.kind,
-		why and ('not sparkling: ' .. why) or 'sparkling')
+	local how = 'sparkling'
+	if why then
+		how = 'not sparkling: ' .. why
+	elseif was.cannot == 'dim' then
+		how = ('sparkling, dimmed: this character does not have %s and Herbs And Ore I Cannot Gather is set to Dim'):format(CRAFTS[was.kind][1])
+	end
+	return ('%s (%s): %s.'):format(was.name or (was.corpse and 'A corpse whose name is not available' or 'An object whose name is not available'),
+		TYPES[was.kind] or was.kind, how)
 end
 
 -- /sparkle status: what the game is pointing at just now, and why it does or does not sparkle.
 function ns.SparkleSay()
 	Refresh()
-	if IsThing(UNIT) and last then
+	if Pointed() and last then
 		ns.Print(Told(last))
 	else
 		ns.Print('No object is targeted right now.')
@@ -976,6 +1480,7 @@ function ns.SparkleSay()
 			ns.Print(('Fade Behind Character: enabled; camera distance %.0f yards.'):format(zoom))
 		end
 	end
+	if ns.WaypointSay then ns.WaypointSay() end
 end
 
 -- /sparkle debug: the raw values, for a bug report.
@@ -986,15 +1491,71 @@ function ns.SparkleDebug()
 		parts[#parts + 1] = name .. ' ' .. tostring(GetCVar and GetCVar(name))
 	end
 	ns.Print('Game interact settings: ' .. table.concat(parts, ', ') .. '.')
+	local has = Professions()
+	if has then
+		ns.Print(('Professions: Herbalism %s, Mining %s, Skinning %s.'):format(has.herb and 'yes' or 'no',
+			has.ore and 'yes' or 'no', has.skin and 'yes' or 'no'))
+	else
+		ns.Print('Professions: not available.')
+	end
 	Refresh()
 	if not last then
 		ns.Print('Nothing targeted since login.')
 		return
 	end
-	ns.Print(('Last object: %s; targeted now: %s; type %s (%s); cursor %s; nameplate %s; shown %s; ignored %s; hidden by: %s.')
-		:format(tostring(last.name), tostring(IsThing(UNIT)), last.kind, last.known and 'known' or 'guessed',
+	ns.Print(('Last object: %s; targeted now: %s; type %s (%s); cursor %s; nameplate %s; shown %s; ignored %s; cannot gather: %s; hidden by: %s.')
+		:format(tostring(last.name), tostring(Pointed()), last.kind, last.known and 'known' or 'guessed',
 			tostring(last.cursor), last.plate and 'yes' or 'no', tostring(last.shown), tostring(last.ignored),
-			tostring(last.barred or 'nothing')))
+			tostring(last.cannot or 'no'), tostring(last.barred or last.why or (last.hidden and 'its Show setting') or 'nothing')))
+	-- The probe (1.5.0): what the game's tooltip says of the thing pointed at now, line by line with the
+	-- color of each where it is not the usual white or gold (a red "Requires Herbalism (150)" says the
+	-- skill is too low), and what the game says of it otherwise. Read for what Sparkle could learn next.
+	if not Pointed() then
+		ns.Print('Tooltip: point at an object or corpse and type /sparkle debug again to see what its tooltip says.')
+		return
+	end
+	local lines = ns.TooltipLines(UNIT)
+	if lines then
+		ns.Print('Tooltip: ' .. (#lines > 0 and table.concat(lines, ' / ') or 'no lines') .. '.')
+	else
+		ns.Print('Tooltip: not available for this object.')
+	end
+	local related = Says('UnitIsRelatedToActiveQuest', UNIT)
+	local guid = UnitGUID(UNIT)
+	ns.Print(('Related to an active quest: %s; GUID %s; distance %s; reach %d yards.'):format(
+		related == nil and 'not available' or (related and 'yes' or 'no'),
+		Plain(guid) and tostring(guid) or 'not available',
+		live and live:IsShown() and live.yards and ('%.1f yards (from Routes)'):format(live.yards) or 'not known', Reach()))
+end
+
+-- Is a color the tooltip's usual white or gold? (Those are not worth printing.)
+local function Usual(r, g, b)
+	return (r > 0.95 and g > 0.95 and b > 0.95) or (r > 0.95 and g > 0.78 and g < 0.86 and b < 0.05)
+end
+
+-- The tooltip's lines for a unit, each as "words" or "words {r g b}"; nothing when the game gives none.
+function ns.TooltipLines(unit)
+	local tips = rawget(_G, 'C_TooltipInfo')
+	local get = type(tips) == 'table' and tips.GetUnit
+	if type(get) ~= 'function' then return nil end
+	local ok, data = pcall(get, unit)
+	if not (ok and Plain(data) and type(data) == 'table' and type(data.lines) == 'table') then return nil end
+	local out = {}
+	for _, line in ipairs(data.lines) do
+		local words = type(line) == 'table' and line.leftText
+		if Plain(words) and type(words) == 'string' and words ~= '' then
+			local right = line.rightText
+			if Plain(right) and type(right) == 'string' and right ~= '' then words = words .. ' | ' .. right end
+			local c = line.leftColor
+			local r, g, b = type(c) == 'table' and c.r, type(c) == 'table' and c.g, type(c) == 'table' and c.b
+			if Plain(r) and Plain(g) and Plain(b) and type(r) == 'number' and type(g) == 'number' and type(b) == 'number'
+				and not Usual(r, g, b) then
+				words = ('%s {%.2f %.2f %.2f}'):format(words, r, g, b)
+			end
+			out[#out + 1] = words
+		end
+	end
+	return out
 end
 
 ---------------------------------------------------------------------------
@@ -1012,6 +1573,40 @@ end)
 ns.On('PLAYER_ENTERING_WORLD', Refresh)
 ns.On('PLAYER_REGEN_DISABLED', function() fighting = true; Refresh() end)
 ns.On('PLAYER_REGEN_ENABLED', function() fighting = false; Refresh() end)
+-- (a game that does not know an event refuses to listen for it: then that is simply not watched)
+-- A corpse can change while the game goes on pointing at it: looted, it has nothing more for you, or is
+-- one to skin now. The game says when a creature's loot changes; and after the loot window closes a
+-- corpse still pointed at is looked at again, at once and a moment later.
+pcall(ns.On, 'UNIT_LOOT', Refresh)
+pcall(ns.On, 'LOOT_CLOSED', function()
+	looting = nil
+	Refresh()
+	if last and last.corpse and not last.lost then C_Timer.After(LOOTED, Refresh) end
+end)
+-- the character's skills changed: a profession learned or dropped
+pcall(ns.On, 'SKILL_LINES_CHANGED', function() have = nil; Refresh() end)
+-- Fade While Gathering: a cast aimed at the thing pointed at (the game names its target as it is sent),
+-- until it ends; and the loot window while it is open.
+pcall(ns.On, 'UNIT_SPELLCAST_SENT', function(unit, target)
+	if unit ~= 'player' or not (Plain(target) and type(target) == 'string') then return end
+	if last and last.name == target and not last.lost then
+		working = { name = target, at = GetTime() }
+		Refresh()
+	end
+end)
+for _, event in ipairs({ 'UNIT_SPELLCAST_STOP', 'UNIT_SPELLCAST_FAILED', 'UNIT_SPELLCAST_INTERRUPTED',
+	'UNIT_SPELLCAST_SUCCEEDED', 'UNIT_SPELLCAST_CHANNEL_STOP' }) do
+	pcall(ns.On, event, function(unit)
+		if unit == 'player' and working then
+			working = nil
+			Refresh()
+		end
+	end)
+end
+pcall(ns.On, 'LOOT_OPENED', function()
+	looting = last and last.name and not last.lost and { name = last.name, at = GetTime() } or nil
+	Refresh()
+end)
 ns.On('PLAYER_LOGIN', function()
 	Needs(ns.Get('sparkle'))
 end)
@@ -1020,7 +1615,7 @@ end)
 ns.On('PLAYER_LOGOUT', function() Needs(false) end)
 ns.OnSetting(function(key, value)
 	if key == 'sparkle' then Needs(value) end
-	if key == 'sparkleKeyboard' then Needs(ns.Get('sparkle')) end
+	if key == 'sparkleKeyboard' or key == 'sparkleReach' then Needs(ns.Get('sparkle')) end
 	if key:find('^sparkle') or key:find('^look%.') or key:find('^name') then Refresh() end
 	Follow(key)
 	if where and where:IsShown() and key:find('^sparkleBehind.') then Linger() end

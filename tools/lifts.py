@@ -131,7 +131,7 @@ def write(lines, path=os.path.join(HERE, "hand_links.txt")):
 
 def main():
     store = Storage(r"G:/Games/World of Warcraft", "wowf")
-    grounds = {m: Ground("world/map_%d.bin" % m) for m in MAPS if os.path.exists("world/map_%d.bin" % m)}
+    grounds = {m: Ground("world/map_%d.bin" % m, walls=False) for m in MAPS if os.path.exists("world/map_%d.bin" % m)}
     lines, said = find(store, grounds)
     print("\n".join(said + [""] + lines))
     if sys.argv[1:] == ["write"]:

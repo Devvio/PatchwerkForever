@@ -1,5 +1,31 @@
 # Patchwerk Forever: Tracker (Thread)
 
+## 1.6.0
+
+A collect list, and the quests your party shares. Works with Patchwerk Forever 2.6.0.
+
+### With Routes (Thread)'s Mark The Way Ahead
+- The quest the game's arrow is on, and your map pin (Add Map Pin To My Route), are read from Patchwerk Forever 2.9.0 when it has them, so they stay yours while Routes has lent the game's waypoint to mark the way ahead.
+
+### With Sparkle (Thread)
+- A quest item you loot flies into its quest's line in the tracker with Sparkle (Thread) 1.5.0 (its **Quest Items Fly To The Tracker**), and the line lights up as its count goes up.
+
+### Collect
+- **A new section, Collect**: any item against a number you set, such as "Linen Cloth 14/20". The count goes from red to green as it fills, as a quest's counts do; a row whose number is met is shown as complete and stays until you remove it. The list is kept for each character.
+- **Add an item by dropping it**: while you hold an item from your bags, the Collect heading is shown, even with nothing listed. Click the heading or a row with the item, or drag it there: the item goes back where it was and a small box asks how many. Enter or Okay adds it, Escape cancels. An item already listed gets the new number. It works in combat.
+- **Add what a recipe lacks**: a tracked recipe's right-click menu has Collect What Is Missing, which adds each reagent you have too few of with the number the recipe needs. An item already listed keeps the higher number.
+- **Clicks**: with Routes (Thread), a click on a herb or an ore with a node near you starts a gathering run for it, and a second click stops it. Right-click a row for Change Count and Remove, the heading for Remove Completed and Clear. There is no command for adding.
+- New options on Tracker: More: **Show Collect List** (enabled) and **Count Items In The Bank** (enabled).
+
+### Party
+- **A share mark** (three small dots at the right of a quest's name) on a quest that someone in your party is not on and that can be shared. Point at it to see who is not on the quest; click it to share the quest. No mark when you are alone, in a raid, when everyone is on the quest or when it cannot be shared. A member who has already turned the quest in is named too: the game does not say. New option on Tracker: Quests: **Show Share Mark** (enabled).
+- **Sort Order has a new choice, Party's Quests First**: the quests someone in your party is also on come first, under a heading of their own, in the order By Zone would list them, then the rest by zone. Outside a party it is the same as By Zone. It is not the default.
+- **New key binding, Share Quest With Party**: shares the quest under the quest arrow (picked as Add Quest To My Route picks its quest), and says in chat that it did or why it could not.
+- Nothing new is sent to your party's trackers for any of this.
+
+### Instances
+- **The tracker is shown in dungeons, raids and battlegrounds**, as it is everywhere. Until now it stepped aside there for the game's own tracker. **Keep Default Tracker In Instances** is now disabled by default; enable it to have the game's tracker there in place of this one, as before. If you had changed that option yourself, your choice is kept.
+
 ## 1.5.0
 
 - **Now named Patchwerk Forever: Tracker (Thread)**: the name comes first and what kind of addon it is after it, in brackets (it was Thread (Tracker)). The options page is named the same way.

@@ -1,5 +1,47 @@
 # Patchwerk Forever: Sparkle (Thread)
 
+## 1.5.0
+
+A sparkle on the waypoint you follow, sparkles from further away, alerts, and more for the loot wisps. Needs Patchwerk Forever 2.9.0 for the two lists on the options pages; with an older base everything else works and the lists are left out.
+
+### Sparkles
+- **The waypoint.** A new kind, **Waypoint**: a light beam on the game's own waypoint marker. With Patchwerk Forever: Routes (Thread) and its Mark The Way Ahead, that marker stands on the route's trail a little way ahead of you, so the beam follows the path you are on, with where it leads and how far under it ("Peacebloom (120 yd)"). Without Routes it stands over the quest you track or your map pin. It is drawn only where the game draws its own marker: not while the place is off screen, and not while the game has no valid place on screen for it (it no longer stays stuck on screen).
+- **Sparkle Distance** (Game Default, 15, 20, 30 or 40 yards): how far away the game picks an object for the interact key, and so how far away a sparkle can show. It only ever raises the game's own setting (`SoftTargetInteractRange`) and puts it back when disabled or at logout, as with the other game settings.
+- **Brighter When Near** (on): a sparkle is fainter and a little smaller at the far edge of the reach and full up close. For herbs and ore the distance comes from the nodes Patchwerk Forever: Routes (Thread) remembers; for the waypoint, from the game.
+- **Quest Corpses**: a corpse with loot for you that belongs to one of your quests has a look of its own (a ring in amber), so the boar whose pelt you need stands out.
+- **A Show tick box for each kind** on Sparkle: Appearance: turn chests or other objects off entirely. (Corpses keep theirs on the first page.)
+- **Fade While Gathering** (on): the sparkle and name fade while you gather from, open or loot the object.
+- **Four themed effects**: Falling Leaves, Embers, Coin Glints and Sun Rays, and **Apply Themed Preset**, which gives each kind the one drawn for it.
+- **Use This Look For All** under each kind, and **Preview All Types** at the top of the page, every kind side by side.
+- **Character Height On Mount** (Behind My Character): the fade area while mounted.
+
+### Alerts
+- **Alert Sound** for each kind (None to begin with): a sound of the game's own when that kind of sparkle appears, once for each object, again only after half a minute. Preview Sparkle plays it.
+- **Sparkle: Alerts**, a new page: **Rumble On Gamepad** (off), **Rumble For** (Types With An Alert Sound, or Every Sparkle), **Rumble Strength**, and **Preview Rumble**. Only while a gamepad is in use.
+
+### Loot wisps
+- **Color Mode: By Item Quality**: the item's quality color, and quest items in the Quest Objects color.
+- **Celebrate Rare Loot** (on): a Rare item or better flies with a bigger wisp, and the bag flares as it lands.
+- **Coins Fly To Your Bag** (on): looted money flies to your backpack as a small gold wisp.
+- **Quest Items Fly To The Tracker** (on): a quest item flies to its quest in Tracker (Thread)'s list, or to the game's tracker, and the line lights up as its count goes up.
+
+### What you passed
+- **Sparkle: Passed**, a new page. Chests, herbs and ore that sparkled and that you walked away from are remembered with where you were (**Remember What I Pass**, on), listed nearest first with **Add To Route** (puts it on My Route) and **Forget**. `/sparkle passed` lists them; `/sparkle passed route` puts the nearest chest on My Route.
+- **Share Herb And Ore Spots With Routes** (on): the herbs and ore you pass show on Routes (Thread)'s maps with the ones you gathered, and a gathering run can go to them. Needs Routes (Thread) 1.4.0.
+
+### The ignore list
+- **Sparkle: Ignore List**, a new page: every ignored object with a **Remove** button, a page at a time. **Clear Ignore List** moved there.
+
+### For bug reports
+- `/sparkle debug` also prints the tooltip of the object you point at, line by line, with the color of each line that is not white or gold, and whether the game ties it to one of your quests. `/sparkle status` has a line for the waypoint.
+
+## 1.4.0
+
+- **Corpses sparkle.** A dead creature the game's interact key points at sparkles when it has loot for you, and with a look of its own when it can be skinned and your character has Skinning. Two new options, both on to begin with: **Sparkle On Corpses With Loot** and **Sparkle On Skinnable Corpses**. Each kind has its own effect, color, size, brightness, height and speed on **Sparkle: Appearance**, with a Preview Sparkle button. A living creature or a player never sparkles. Hide In Combat, Hide In Instances and the ignore list apply to corpses too, and a loot wisp that leaves from a sparkling corpse takes that kind's color. Whether a corpse can be skinned is read from the game's cursor and the corpse's tooltip.
+- **Herbs And Ore I Cannot Gather**: Show (the default, as before), Dim (a much fainter sparkle and name) or Hide, for an herb when your character does not have Herbalism and for ore when it does not have Mining. Until the game has said what your professions are, everything shows. Skill level is not looked at.
+- `/sparkle status` names a corpse and says why it does not sparkle (no loot for you, no Skinning, its option disabled), and says when an herb or ore is dimmed or hidden. `/sparkle debug` lists the professions the game reports.
+- **Apply Subtle Preset** sets the two new kinds as well: a faint shimmer on corpses with loot, glints on skinnable corpses.
+
 ## 1.3.1
 
 - **Now named Patchwerk Forever: Sparkle (Thread)**: the name comes first and what kind of addon it is after it, in brackets (it was Thread (Sparkle)). The options page is named the same way.

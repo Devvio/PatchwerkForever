@@ -4,6 +4,18 @@ if not ns.linked then return end
 
 ns.TITLE = 'Patchwerk Forever: Tracker (Thread)'
 
+-- Some of what the game answers it hides in a fight (a "secret" value: a name, a count, an answer
+-- about a unit). Comparing one, or doing sums with it, is an error, so it is asked about first.
+-- ns.Secret: the value is hidden. ns.Plain: there is a value and it can be read.
+function ns.Secret(value)
+	local secret = rawget(_G, 'issecretvalue')
+	return type(secret) == 'function' and secret(value) and true or false
+end
+
+function ns.Plain(value)
+	return not ns.Secret(value) and value ~= nil
+end
+
 ---------------------------------------------------------------------------
 -- Settings: kept in PatchwerkForever_Thread_TrackerDB.settings
 ---------------------------------------------------------------------------
@@ -23,8 +35,8 @@ ns.settings = {
 		desc = 'Show the Patchwerk quest tracker. When disabled, the default quest tracker is used.' },
 	{ key = 'quiet', default = true, name = 'Hide Default Tracker', parent = 'on',
 		desc = 'Hide the default quest tracker while this one is shown, so quests are not listed twice. Disabling this option brings it back.' },
-	{ key = 'quietInstance', default = true, name = 'Keep Default Tracker In Instances', parent = 'quiet',
-		desc = 'In dungeons, raids and battlegrounds, show the default tracker in place of this one. It displays stage objectives, timers and scores there.' },
+	{ key = 'quietInstance', default = false, name = 'Keep Default Tracker In Instances', parent = 'quiet',
+		desc = 'In dungeons, raids and battlegrounds, show the default tracker in place of this one. It displays stage objectives, timers and scores there. Disabled by default: this tracker is shown in instances as it is everywhere.' },
 	{ header = true, name = 'Size' },
 	{ key = 'width', default = 260, min = 180, max = 500, step = 10, name = 'Width',
 		desc = 'Width of the tracker.' },
@@ -52,8 +64,9 @@ ns.settings = {
 		desc = 'List your tracked quests and their objectives.' },
 	{ page = QUESTS, key = 'order', default = 'zone', name = 'Sort Order',
 		choices = { { 'zone', 'By Zone (Current Zone First)' }, { 'near', 'By Distance' },
-			{ 'ready', 'Completed First, Then By Zone' }, { 'short', 'Shortest Trip' }, { 'game', 'Default Order' } },
-		desc = 'How quests are sorted. Shortest Trip lists them in a short path: the nearest first, then each next quest nearest to the one before. It is worked out again when a quest is added, removed or completed. Route To Next Quest and Route To Previous Quest follow the order shown.' },
+			{ 'ready', 'Completed First, Then By Zone' }, { 'short', 'Shortest Trip' }, { 'party', 'Party\'s Quests First' },
+			{ 'game', 'Default Order' } },
+		desc = 'How quests are sorted. Shortest Trip lists them in a short path: the nearest first, then each next quest nearest to the one before. It is worked out again when a quest is added, removed or completed. Party\'s Quests First lists the quests a party member is also on before the others, each group by zone; outside a party it is the same as By Zone. Route To Next Quest and Route To Previous Quest follow the order shown.' },
 	{ page = QUESTS, key = 'readyGroup', default = true, name = 'Group Completed Quests',
 		desc = 'Move quests that are ready to turn in to a separate group at the bottom of the list, or at the top when Sort Order is Completed First, Then By Zone. Your tracked quests are not changed.' },
 	{ page = QUESTS, header = true, name = 'Quest Details' },
@@ -74,6 +87,8 @@ ns.settings = {
 		desc = 'Show which party members are on each quest.' },
 	{ page = QUESTS, key = 'partyShare', default = true, name = 'Share Progress With Party', parent = 'party',
 		desc = 'Send your quest progress (quest and percent complete) to party members who also use this addon, and show theirs. The game does not provide party progress, so this only works between players running the addon.' },
+	{ page = QUESTS, key = 'shareMark', default = true, name = 'Show Share Mark',
+		desc = 'Show a small mark on a quest that a party member is not on and that can be shared. Point at the mark to see who is not on the quest; click it to share the quest with your party. A party member who has already turned the quest in also counts as not on it.' },
 	{ page = QUESTS, header = true, name = 'Automation' },
 	{ page = QUESTS, key = 'followNearest', default = false, name = 'Quest Arrow On Nearest Quest',
 		desc = 'When no guide is active and you have not selected a quest or a list, automatically put the quest arrow on your nearest tracked quest.' },
@@ -101,7 +116,7 @@ ns.settings = {
 	{ page = GUIDE, key = 'myRoute', default = true, name = 'Show My Route',
 		desc = 'List My Route, your own stops in your own order, above your quests. Right-click a quest and choose Add To My Route to add it; drag the stops to reorder them, or right-click the heading to open the My Route window.' },
 
-	-- item buttons, recipes, gathering, dungeons
+	-- item buttons, recipes, the collect list, gathering, dungeons
 	{ page = MORE, voice = 'Pockets, pots and flowers. All the small jobs.' },
 	{ page = MORE, header = true, name = 'Quest Item Bar' },
 	{ page = MORE, key = 'items', default = true, name = 'Show Quest Item Bar',
@@ -113,6 +128,11 @@ ns.settings = {
 	{ page = MORE, header = true, name = 'Recipes' },
 	{ page = MORE, key = 'recipes', default = true, name = 'Show Tracked Recipes',
 		desc = 'List tracked profession recipes with their reagents and how many you have.' },
+	{ page = MORE, header = true, name = 'Collect' },
+	{ page = MORE, key = 'collect', default = true, name = 'Show Collect List',
+		desc = 'List the items you are collecting, each with how many you have and how many you want. To add an item, pick it up from your bags and click the Collect header, which is shown while you hold an item, or right-click a tracked recipe and choose Collect What Is Missing.' },
+	{ page = MORE, key = 'collectBank', default = true, name = 'Count Items In The Bank', parent = 'collect',
+		desc = 'Include items in your bank in the counts of the Collect list. When disabled, only the items in your bags are counted.' },
 	{ page = MORE, header = true, name = 'Gathering' },
 	{ page = MORE, key = 'gather', default = true, name = 'Show Gathering Nodes',
 		desc = 'List the nearest herb and ore nodes you have gathered before. Click one to route to it. Requires Routes (Thread).' },
@@ -120,7 +140,7 @@ ns.settings = {
 		desc = 'Number of node types listed, nearest first.' },
 	{ page = MORE, header = true, name = 'Dungeons' },
 	{ page = MORE, key = 'dungeon', default = false, name = 'Show Dungeon Objectives (Experimental)',
-		desc = 'Show the current stage and objectives of a dungeon or scenario. Not yet tested in a dungeon. This tracker is shown in instances only while Keep Default Tracker In Instances is disabled.' },
+		desc = 'Show the current stage and objectives of a dungeon or scenario. Not yet tested in a dungeon. This tracker steps aside in instances while Keep Default Tracker In Instances is enabled.' },
 
 	-- how it looks
 	{ page = LOOK, voice = 'Patchwerk picked the colors himself. You can pick again.' },
@@ -211,6 +231,7 @@ BINDING_NAME_PATCHWERKFOREVER_TRACKER_ROUTE_ADD = 'Add Quest To My Route'
 BINDING_NAME_PATCHWERKFOREVER_TRACKER_ROUTE_UP = 'Move My Route Stop Up'
 BINDING_NAME_PATCHWERKFOREVER_TRACKER_ROUTE_DOWN = 'Move My Route Stop Down'
 BINDING_NAME_PATCHWERKFOREVER_TRACKER_ROUTE_OPEN = 'Open My Route'
+BINDING_NAME_PATCHWERKFOREVER_TRACKER_SHARE = 'Share Quest With Party'
 function PatchwerkForever_Thread_Tracker_Fold() ns.Try('fold', ns.Fold) end
 function PatchwerkForever_Thread_Tracker_Next() ns.Try('the next quest', ns.Cycle, 1) end
 function PatchwerkForever_Thread_Tracker_Previous() ns.Try('the previous quest', ns.Cycle, -1) end
@@ -221,5 +242,15 @@ function PatchwerkForever_Thread_Tracker_RouteAdd() ns.Try('My Route', ns.RouteA
 function PatchwerkForever_Thread_Tracker_RouteUp() ns.Try('My Route', ns.RouteNudge, -1) end
 function PatchwerkForever_Thread_Tracker_RouteDown() ns.Try('My Route', ns.RouteNudge, 1) end
 function PatchwerkForever_Thread_Tracker_RouteOpen() ns.Try('My Route', ns.OpenRoute) end
+function PatchwerkForever_Thread_Tracker_Share() ns.Try('sharing a quest', ns.ShareAtHand) end
+-- For another addon that wants to point at a quest in the list (Sparkle (Thread): a quest item you loot
+-- flies to its quest): the quest's block while it is shown, else nothing.
+function PatchwerkForever_Thread_Tracker_QuestBlock(questID)
+	if type(questID) ~= 'number' or type(ns.ShownBlocks) ~= 'function' then return nil end
+	for _, block in ipairs(ns.ShownBlocks()) do
+		if block.data and block.data.key == questID and block.IsVisible and block:IsVisible() then return block end
+	end
+	return nil
+end
 -- For a window that wants the list beside it while it is open (Globe (Thread)): a frame, or nil to put it back.
 function PatchwerkForever_Thread_Tracker_Dock(anchor) return ns.Try('the tracker', ns.Dock, anchor) and true or false end

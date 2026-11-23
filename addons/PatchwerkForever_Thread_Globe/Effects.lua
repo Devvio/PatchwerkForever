@@ -7,7 +7,7 @@
 --   your place    a ring spreads from where you are, every few seconds
 --   age           the paper of an old globe: stains, foxing, rubbed patches, and closer to, hairline
 --                 cracks, specks and the seams between the paper's twelve strips. Laid over the map, the
---                 ink drawings and the blank paper alike; gone by the time the ground shows
+--                 ink drawings and the fog alike; gone by the time the ground shows
 --
 -- Each has its setting. None of it is drawn again by the globe: a moving picture's pieces are given
 -- new parts of their texture where they lie (the Maelstrom's turned about its middle, the clouds' slid
@@ -137,9 +137,11 @@ ns.GlobeOn('pictures', function(r, shade, style)
 	end
 	local on = On('globeFxMove')
 	if (maelstrom and maelstrom.Moved ~= nil) ~= on then Moving(on) end
+	state.clouds = false
 	if not on or style ~= 'parchment' then return end
 	local alpha = CLOUDS * (1 - G.Smooth(CLOUDS_GONE[1], CLOUDS_GONE[2], r))
 	if alpha < 0.02 then return end
+	state.clouds = true
 	for _, pic in ipairs(sky) do G.Draw(pic, r, alpha, false) end
 end)
 
@@ -259,8 +261,11 @@ ns.GlobeOn('frame', function(elapsed)
 		state.drift = (state.drift + state.since / DRIFT) % 1
 		state.since = 0
 		if maelstrom and maelstrom.root then Walk(maelstrom.root, Turned) end
-		for _, pic in ipairs(sky or {}) do
-			if pic.root then Walk(pic.root, Slid) end
+		-- (the clouds only while they are drawn: zoomed in past them there is nothing to slide)
+		if state.clouds then
+			for _, pic in ipairs(sky or {}) do
+				if pic.root then Walk(pic.root, Slid) end
+			end
 		end
 	elseif state.since >= TICK then
 		state.since = 0

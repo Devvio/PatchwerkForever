@@ -501,7 +501,7 @@ def main():
     s = Session()
     s.addon(BASE)
     G = s.g.PatchwerkForever.Guides
-    assert s.g.PatchwerkForever.API == 5
+    assert s.g.PatchwerkForever.API == 6
     assert G.Read(G, 2) is None, "a guide with no guide addon running"
     assert G.Go(G, None, 3) is False, "a guide moved with no guide running"
     # a made-up guide addon's reader, behind one that fails: the failure is said once and the next is asked

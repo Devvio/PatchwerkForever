@@ -18,8 +18,10 @@ from a box.
     python links.py 0                              a whole map
     python links.py 0 -6300 -3500 -4500 -1500      only structures in this part (world X from, to; world Y from, to)
 
-reads world/nav_<id>.bin (ground only, left as it is), writes world/links_<id>.txt
-(every link, to read and check) and world/nav_<id>_linked.bin (the graph with the links).
+reads world/nav_<id>.bin (the terrain only, left as it is), writes world/links_<id>.txt
+(every link, to read and check), world/links_<id>.bin (the links, for walls.py) and
+world/nav_<id>_linked.bin (the terrain's graph with the links). walls.py comes after: it lays the
+buildings' walls on the ground and writes nav_<id>_linked.bin again, with the walls and these links.
 
 Not found here: lifts and boats (they are not building models), bridges that
 are small scenery models rather than building models, and doors: a walk through
@@ -31,6 +33,7 @@ it is boarded, where it is left, and how long the ride takes).
 import heapq
 import math
 import os
+import pickle
 import sys
 import time
 
@@ -456,7 +459,7 @@ def hand_links(ground, map_id, lines, path=None):
 def main(map_id, window=None):
     started = time.time()
     store = Storage(r"G:/Games/World of Warcraft", "wowf")
-    ground = Ground("world/map_%d.bin" % map_id)
+    ground = Ground("world/map_%d.bin" % map_id, walls=False)
     coarse = Coarse.open("world/nav_%d.bin" % map_id)
     models = placements(store, map_files(store)[map_id])
     found, kept, count = find(store, ground, coarse, models, window)
@@ -476,8 +479,10 @@ def main(map_id, window=None):
             joins += "; STEEP, check"
         lines.append("link %5.0f yd, rise %3.0f yd, %3d piece(s), model %d: world (%.0f, %.0f) <-> (%.0f, %.0f); %s; %s" % (
             f["yards"], f["rise"], f["pieces"], f["model"], ax, ay, bx, by, around, joins))
+    made = [(f["a"], f["b"], f["yards"] / 7.0 * PRICE, False) for f in kept]
     for name, a, b, seconds, oneway in hand_links(ground, map_id, lines):
         coarse.add_link(ground, a, b, seconds, oneway)
+        made.append((a, b, seconds, oneway))
     after = coarse.islands()[1]
     lines += ["", "walks not made into links (the ground joins the two ends already): %d" % sum(1 for f in found if f["why"]),
               "largest stretches before: %s" % before[:8],
@@ -487,6 +492,8 @@ def main(map_id, window=None):
         f.write("\n".join(lines) + "\n")
     if not window:
         coarse.save("world/nav_%d_linked.bin" % map_id)
+        with open("world/links_%d.bin" % map_id, "wb") as f:
+            pickle.dump(made, f, protocol=4)
     print("\n".join(lines))
     print("%.0fs" % (time.time() - started))
 

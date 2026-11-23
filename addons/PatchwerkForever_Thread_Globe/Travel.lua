@@ -265,8 +265,15 @@ end
 -- The map pin
 ---------------------------------------------------------------------------
 local function Pin()
-	if not (C_Map and C_Map.GetUserWaypoint) then return nil end
-	local ok, point = pcall(C_Map.GetUserWaypoint)
+	-- (your own pin: kept by the base while the game's is lent to Routes to mark the way ahead)
+	local marker = ns.Base and ns.Base.Marker
+	local ok, point
+	if marker and marker.Pin then
+		ok, point = pcall(marker.Pin, marker)
+	else
+		if not (C_Map and C_Map.GetUserWaypoint) then return nil end
+		ok, point = pcall(C_Map.GetUserWaypoint)
+	end
 	if not (ok and type(point) == 'table' and type(point.uiMapID) == 'number') then return nil end
 	local x, y = XY(point.position)
 	if not x then return nil end

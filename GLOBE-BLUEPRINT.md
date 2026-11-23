@@ -159,7 +159,7 @@ The list is taken from the world map's own code on Forever (`Blizzard_WorldMap.l
 | Quest areas, quest marks, quests on offer, hand-ins | The same, with Tracker (Thread)'s focus picked out | G8 |
 | Towns, landmarks, dungeon and raid entrances, graveyards | The same icons, named, thinned out by zoom | G9 |
 | Party and raid members; your corpse | The same | G9 |
-| Unexplored land left blank | The parchment blank where you have not been | G10 |
+| Fog of war | Fog over the land where you have not been (blank paper until 1.1.0) | G10 |
 | Rare creatures, treasures, events | The same marks | G11 |
 | The rest of the game's list (battlefield flags, vehicles, scenarios, dig sites, world quests, invasions and so on) | Each gone through in the audit below: drawn, or struck off with the reason | G14 |
 
@@ -261,7 +261,7 @@ Every entry of the world map's own list (`WorldMapMixin:AddStandardDataProviders
 
 | The world map's entry | On the globe |
 |---|---|
-| MapExploration | Drawn: blank paper over what is not discovered (G10) |
+| MapExploration | Drawn: fog over what is not discovered (G10) |
 | MapHighlight, AreaLabel | Drawn: the zone under the pointer outlined; its name, its levels, the smaller place (G4, G9) |
 | GroupMembers | Drawn (G9) |
 | Quest, QuestOffer | Drawn (G8) |
@@ -389,6 +389,96 @@ Asked "prepare for release to curseforge", the user said the Globe is part of it
 - **Icon and logo:** the prototype's blue ball is replaced by a patch of the family's kind, a globe on its stand (`globe` in `tools/art.py`). A prompt for a painted one is in `art/PROMPTS.md`; an `art/PatchwerkForever_Thread_Globe/icon.png` takes its place.
 - **The CurseForge project is the user's to make.** Its fields are in `release/NEW-PROJECTS.md`. Once its id and slug are in `tools/curseforge.json`, `python upload.py globe` sends the file.
 - **Not there yet:** pictures for the listing (screenshots are taken in the game), and `border.png`, so the stand is still what is drawn.
+
+## 1.1.0 (2026-11-22)
+
+- **The ring**: `border.png` (a brass ring with the four compass points, no stand) took `ring.png`'s
+  place. `tools/globe_art.py` cuts it as before and the globe lays itself out from `ns.RING`; the
+  suite works out what to expect from those numbers, with or without a stand. Where this document
+  speaks of the ring and stand, the stand is now only there when the picture has one.
+- **Zones colored by level** (`Wash.lua`): the whole-zone paper patch of the Covers, tinted by the rule
+  the hover text uses, in a layer of its own over the map and the blank paper and under the wear, the
+  marks and the names. Levels are asked a few zones at a time while the globe is open. Zones with no
+  cover patch (the cities, a few small areas) get no wash. Off by default.
+- **Guild members and friends** (`Social.lua`): a source of marks, one a zone with a count, from
+  `C_Club` (the guild) and `C_FriendList`. Both off by default.
+- Checked offline only.
+
+### Borders and blank paper, smoothed (2026-11-22)
+
+The game knows a place's zone, and its piece of a zone's map, only by the 33-yard chunk, so every edge taken
+from it is a staircase. Three things were stepped and are now smooth, all in the tools:
+
+- `globe_art.py`: `smooth_zones` blurs each zone a little and gives a pixel to the strongest (`ZONE_SOFT`),
+  before the borders are painted and the outlines traced. An outline is then rounded along its length
+  (`rounded`, `RING_ROUND`) and written four points to a pixel (`FINE`; `per` in Zones.lua is 256).
+- `globe_explore.py`: a piece's paper has two pixels a chunk (`FINE`), its edges rounded the same way
+  (`rounded`, `EDGE`), reaching a little past its edge so two leave no seam (`GROW`, `FADE`), and the
+  coast is the detail pictures' own land (`fine_land`). The whole zone's sheet has a pixel a chunk.
+  Art/Covers went from 2.3 MB to 7.5 MB. Nothing in the addon's Lua changed for any of this.
+
+### Fog for blank paper, and cheaper drawing (2026-11-22)
+
+Asked for by the user the same day: "adjust the Paper for the fog of war to look like fog instead of
+paper", and "frame drops while interacting".
+
+**The fog** (`globe_explore.py`, `Explore.lua`; the setting is now **Fog Of War**, its key still
+`globeExplore`).
+
+- One field of billows is made for each continent (`mist`: three sizes of blurred noise, `BILLOWS`, lit
+  a little from one side, `RELIEF`; pale blue-grey, `FOG_LIGHT` to `FOG_DEEP`), so the fog runs on
+  unbroken from piece to piece and zone to zone. A piece's picture is its part of that: whole over the
+  piece, thinning out to mist for a few chunks past its edge (`MIST`, further where the fog is thick),
+  and thinning over the water at the shore (`SHORE`).
+- A pixel a chunk again (`FINE = 1`): fog has no edge to keep sharp. Art/Covers is 5.3 MB.
+- A zone's file now holds three kinds of cell: `whole` (the fog over the whole zone), `shape` (the
+  zone's flat shape in paper's colour, which only the level wash uses: `Wash.lua` tints it), and the
+  pieces.
+- A zone of which nothing is discovered is under its one sheet at every zoom (it gave way to its pieces
+  close in, which showed the mist of each piece's edge as seams within a zone). That is one picture a
+  zone for most of a new character's world.
+- The fog of an undiscovered piece reaches a few chunks into a discovered neighbour, as mist.
+
+**The drawing** (`Globe.lua`, `Effects.lua`, `Explore.lua`). Measured first, in the offline stand-in with
+a sampling hook: three quarters of the time went to deciding what is seen and how finely to cut it
+(`Visit` and what it calls), and the aged paper, the wear and the cloud shadows tripled the number of
+pieces zoomed out. What was done:
+
+- Each layer is cut only as finely as it needs (`CURVES`: the soft overlays, the fog and the wash bend
+  with far fewer pieces than the map).
+- A piece keeps how far it reaches (`reach`, `chord`), so one wholly behind the globe or out of the
+  window is passed over with its whole tree at once; a zone's fog likewise (`G.InView`).
+- A corner is worked out once a drawing and shared by the pieces that meet at it (`Corner`); the eye's
+  basis is nine numbers, not a table (`Look`); no tables are made while drawing.
+- The cloud shadows are walked only while they are drawn (`state.clouds`).
+- Pieces that hold no texture any more are forgotten now and then (`Thin`, in `Tidy`).
+
+In the stand-in: the whole globe 857 pieces to 509 and about 9.4 ms a drawing to 5.5; a continent 1,578
+to 836 and 12.5 ms to about 5.5; a zone 6.5 ms to about 3.3; closer in 3.8 ms to 1.0. Not measured in
+the game.
+
+### Thin fog, and the painted map as the fog of war close in (2026-11-22)
+
+The user, on seeing the fog in the game: it "still doesnt look great. set the opacity of the fog down to
+maybe 30%", and "I want the custom map to also be part of the fog of war, but only at close zoom where
+the globe transitions to the ground maps". Read as: zoomed in, undiscovered land keeps the painted map
+where discovered land shows the minimap's pictures.
+
+- **Fog Opacity** (`globeFog`, a slider under Fog Of War, 10% to 100%, 30% as it comes): the alpha the
+  fog's patches are drawn with (`Explore.lua`). The pictures are as they were.
+- **The ground kept off undiscovered land.** A ground picture is the game's own file, so it cannot be cut
+  to a piece's shape; it can only be shown more or less, evenly between corners (`Fade`, as a tile at
+  the coast already fades out to sea). So `globe_explore.py` writes, in Covers.lua (`ns.COVER_POINTS`),
+  whose piece the land is at each corner of a quarter of a terrain tile (`POINTS = 4`; the owner most of
+  the 16 chunks round the corner have). `Explore.lua` gives each ground picture a `Fade` that is 1 at a
+  discovered corner (or no piece's) and 0 at an undiscovered one, and a `Cut` that says of each piece of
+  the picture: none of it shows (left out, no texture), cut it smaller (until it lies between four
+  corners), or cut it smaller while large (it fades toward one corner). `Globe.lua` asks `pic.Cut` once
+  a piece (`p.cut`) and has `G.Forget(pic)` to cut a picture afresh when what is discovered changes.
+  The edge of the ground is so a soft one about 133 yards wide, near the fog's own mist.
+- Only pictures for which something changed are touched (`pic.veil`, a bit a corner), and never within
+  a drawing (from the 'frame' hook). Parchment style only; with Fog Of War off the ground is as before.
+- A piece discovered while you look: its fog fades over 1.6 s, its ground comes in at once.
 
 ## Rules this keeps
 

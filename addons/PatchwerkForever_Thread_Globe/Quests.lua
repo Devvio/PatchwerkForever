@@ -51,7 +51,9 @@ local function Picked()
 	if type(info) == 'table' and type(info.quest) == 'number' then return info.quest end
 	local choice = type(Choice) == 'table' and Choice.Get and Choice:Get()
 	if type(choice) == 'table' and choice.kind == 'quest' then return choice.id end
-	local id = Ask(track.GetSuperTrackedQuestID)
+	-- (the quest you track is kept by the base while the game's waypoint is lent to Routes)
+	local marker = ns.Base and ns.Base.Marker
+	local id = (marker and marker.Quest) and marker:Quest() or Ask(track.GetSuperTrackedQuestID)
 	return type(id) == 'number' and id > 0 and id or nil
 end
 
@@ -226,7 +228,9 @@ Marks.Source('steps', {
 -- The Route button, and Tracker (Thread) beside the globe
 ---------------------------------------------------------------------------
 local function Pin()
-	local point = C_Map and Ask(C_Map.GetUserWaypoint)
+	local marker = ns.Base and ns.Base.Marker
+	local point
+	if marker and marker.Pin then point = marker:Pin() else point = C_Map and Ask(C_Map.GetUserWaypoint) end
 	if not (type(point) == 'table' and type(point.uiMapID) == 'number' and type(point.position) == 'table') then return nil end
 	local x, y = point.position.x, point.position.y
 	if point.position.GetXY then x, y = point.position:GetXY() end

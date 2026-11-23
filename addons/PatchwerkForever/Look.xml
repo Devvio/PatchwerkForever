@@ -13,4 +13,11 @@
 			<OnLoad method="OnLoad"/>
 		</Scripts>
 	</Frame>
+	<!-- a list with buttons on each line, a page at a time (2.9.0) -->
+	<Frame name="PatchwerkForeverListTemplate" mixin="PatchwerkForeverListMixin" virtual="true">
+		<Size y="266"/>
+		<Scripts>
+			<OnLoad method="OnLoad"/>
+		</Scripts>
+	</Frame>
 </Ui>
