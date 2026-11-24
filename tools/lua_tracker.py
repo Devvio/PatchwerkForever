@@ -121,7 +121,10 @@ class Session:
         self.said += len(new)
         new = [re.sub(r"\|c\w{8}|\|r", "", text) for text in new]
         # (the base's own line at a first login, saying where the options are, is the base's to check)
-        new = [text for text in new if not text.startswith("Patchwerk: Options are under")]
+        new = [text for text in new if not text.startswith("Patchwerk: Options: /patchwerk config")]
+        # (and, on a client made to lack the game's button template, that the options window falls back to the game's options)
+        if self.lua.eval("STUB.noTemplate and STUB.noTemplate.UIPanelButtonTemplate"):
+            new = [text for text in new if not text.startswith("Patchwerk: The options window could not be made")]
         for text in new:
             print("      chat: " + text)
         bad = [t for t in new if "a problem in" in t or "failed and was skipped" in t]
@@ -360,17 +363,19 @@ def first_login():
     assert game.module.mouse is False and game.block.mouse is False, "a click would still land on the game's tracker"
     assert game.item.mouse is True, "a piece the game protects was touched"
     pages = sorted(s.stub.pages.keys())
-    assert pages == ["Tracker (Thread)", "Tracker: Appearance", "Tracker: Guide", "Tracker: More", "Tracker: Quests"], pages
+    assert pages == ["Tracker (Thread)", "Tracker (Thread) > Appearance", "Tracker (Thread) > Guide", "Tracker (Thread) > More", "Tracker (Thread) > Quests"], pages
     mine = [x for x in s.stub.settings.values() if x.variable.startswith(TRACKER + "_")]
     count = {page: sum(1 for x in mine if x.page == page) for page in pages}
-    assert count == {"Tracker (Thread)": 9, "Tracker: Quests": 13, "Tracker: Guide": 8, "Tracker: More": 9, "Tracker: Appearance": 9}, count
+    assert count == {"Tracker (Thread)": 9, "Tracker (Thread) > Quests": 13, "Tracker (Thread) > Guide": 8, "Tracker (Thread) > More": 9, "Tracker (Thread) > Appearance": 9}, count
     assert sorted(b.text for b in s.stub.buttons.values()) == ["Reset", "Reset", "Unlock"], sorted(b.text for b in s.stub.buttons.values())
     # each page opens with its name and a line in Patchwerk's voice, and is grouped under stitched headings
     heads = list(s.stub.headers.values())
     assert heads == ["General", "Size", "Position", "Visibility", "Quest List", "Quest Details", "Party",
                      "Automation", "Guide Steps", "Focus", "My Route", "Quest Item Bar", "Recipes", "Collect", "Gathering", "Dungeons", "Scale And Font", "Colors", "Defaults"], heads
+    # (a folded page is "Sparkle (Thread) > Appearance" in the list; its intro still names it "Sparkle: Appearance")
+    named = lambda p: p if " > " not in p else p.split(" (")[0] + ": " + p.split(" > ")[1]
     intros = {i.name: i.voice for i in s.stub.intros.values()}
-    assert sorted(intros) == pages and intros["Tracker: Quests"] == "So many jobs. Patchwerk does the near one first.", intros
+    assert sorted(intros) == sorted(named(p) for p in pages) and intros["Tracker: Quests"] == "So many jobs. Patchwerk does the near one first.", intros
     assert s.stub.Rows() == 24, "a row of our own could not be made"
     names = [x.name for x in mine]
     assert "Hide Default Tracker" in names and "Font Size" in names and "Hide RestedXP Window" in names, names
@@ -405,10 +410,10 @@ def first_login():
     # (the arrow is left alone while a list is the selected route, as while a quest is: the tooltip says both)
     assert "have not selected a quest or a list" in tips["followNearest"], tips["followNearest"]
 
-    # a client that does not know our rows (their XML not read): the game's own headings, no intro, no error
+    # a client that does not know our rows' XML: the options window does not need it (2.10.0)
     s2 = Session(LOG + "STUB.noRows = true")
     s2.load()
-    assert s2.chat() == [] and len(s2.stub.rows) == 0 and len(s2.stub.settings) == len(s.stub.settings)
+    assert s2.chat() == [] and len(s2.stub.settings) == len(s.stub.settings)
     assert list(s2.stub.headers.values())[:2] == ["General", "Size"], "the game's own headings were not used"
     # what changes something of the game's or another addon's by itself, and what steps back, starts off
     for key in ("followNearest", "guideHide", "dungeon", "fadeCombat", "fadeIdle", "hideInstance"):
@@ -507,7 +512,7 @@ def first_login():
     s.fire("QUEST_WATCH_LIST_CHANGED")
 
     step("moving it: unlocked, dragged, locked; put back")
-    handle = [f for f in s.stub.frames.values() if f.scripts.OnDragStart][0]
+    handle = [f for f in s.stub.frames.values() if f.scripts.OnDragStart and not s.lua.eval("function(f) return f.parent == PatchwerkForeverOptions end")(f)][0]
     assert not handle.shown
     text = s.slash("move")
     assert handle.shown and any("Drag the bar above the tracker" in t for t in text)
@@ -601,7 +606,9 @@ def first_login():
     text = s.slash("")
     assert any("/tracker back" in t for t in text)
     s.slash("config")
-    assert s.stub.opened == 8, "the tracker's own settings page did not open"
+    O = s.g.PatchwerkForever.Options
+    assert O.IsShown(O) and O.Current(O)[0] == TRACKER, "the tracker's own options page did not open"
+    O.Close(O)
 
     step("Reset To Defaults: asks first, then every option is as it began; its place is left alone")
     s.setting("width", 400)
@@ -609,7 +616,7 @@ def first_login():
     s.setting("lookTitle", "ff00ff00")
     s.setting("fadeCombat", True)
     s.slash("move")
-    handle = [f for f in s.stub.frames.values() if f.scripts.OnDragStart][0]
+    handle = [f for f in s.stub.frames.values() if f.scripts.OnDragStart and not s.lua.eval("function(f) return f.parent == PatchwerkForeverOptions end")(f)][0]
     handle.scripts.OnDragStop(handle)
     s.slash("lock")
     [b for b in s.stub.buttons.values() if b.text == "Reset" and b.name != "Reset Position"][0].click()
@@ -1551,7 +1558,7 @@ def its_place():
     assert (first.points[1][4], first.points[1][5]) == (764, 700)
 
     step("moving it: wherever the game hangs it after a drag, a top corner is kept, and the list grows downward from it")
-    handle = [f for f in s.stub.frames.values() if f.scripts.OnDragStart][0]
+    handle = [f for f in s.stub.frames.values() if f.scripts.OnDragStart and not s.lua.eval("function(f) return f.parent == PatchwerkForeverOptions end")(f)][0]
     s.slash("move")
     # let go at the right of the screen, where the game hangs a tall frame from the middle of the right edge
     s.lua.execute("STUB.drop = { 'RIGHT', 'RIGHT', -30, 40 }")
@@ -1932,7 +1939,7 @@ def polish_details():
     for _ in range(40):
         s.stub.Frame()
     assert frame.alpha in (None, 1), "dimmed while unlocked"
-    handle = [f for f in s.stub.frames.values() if f.scripts.OnDragStart][0]
+    handle = [f for f in s.stub.frames.values() if f.scripts.OnDragStart and not s.lua.eval("function(f) return f.parent == PatchwerkForeverOptions end")(f)][0]
     assert handle.words.text == "Drag to move. Right-click to lock."
     s.stub.instance = True
     s.setting("hideInstance", True)

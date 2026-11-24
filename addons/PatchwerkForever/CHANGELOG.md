@@ -1,5 +1,17 @@
 # Patchwerk Forever
 
+## 2.10.0
+
+- **Patchwerk Forever's own options window.** Every option of the family is in one window of its own now, in parchment and leather, not in the game's options: `/patchwerk config`, the **Open Options** key binding, Patchwerk Forever in the minimap's addon list and each tool's own `config` command open it. The game's options keep one page, **Patchwerk Forever**, with a button that opens it.
+- **Down the left**, every part you have installed with its picture; a Thread tool's further pages fold under its first ("Sparkle (Thread)", then "Names", "Appearance", ...). Each page still opens with its full name ("Sparkle: Appearance") and Patchwerk's line. Patchwerk's own page, with everything that is sewn on, comes first.
+- **Search** across every part's options, by name and description: what is found is shown ready to change, under the name of the page it is on.
+- **The controls are the game's own**: tick boxes, sliders with a step button at each end, lists to pick from, color swatches with the game's color picker, buttons. A setting that only matters while a tick box is on is greyed out with it, and a value changed elsewhere (a command, a preset) shows within half a second.
+- **With a gamepad**: the game's own cursor moves through the window as through the game's options; it stops on a slider's step buttons, passes over what cannot be changed, and a control it comes to is scrolled into view. Console Port's cursor is told about the window by **Patchwerk Forever: Console Port (Stitch)** 2.3.0.
+- **Escape** or **Close** closes it. It cannot be opened in a fight and closes when one starts ("Options closed for combat."). Where it stood and the page you last looked at are kept for the account.
+- Your settings are not changed: they are kept where they always were. If the window cannot be made, the options are in the game's options as before, and a line in chat says why.
+- The first login now says "Options: /patchwerk config, or Options > AddOns > Patchwerk Forever."
+- For addon authors: `PatchwerkForever.Options`: `Open(addon, page)`, `Close()`, `IsShown()`, `Frame()` (the window, `PatchwerkForeverOptions`), `Book()` (the parts, pages and rows), `Current()` and `Search(text)`. A tool's settings are declared as before (`ns.settings`) and need no change. The API is 7.
+
 ## 2.9.0
 
 - **Lists on the options pages**: a tool's page can now hold a list, a line for each entry with a button or two at its right, eight lines a page with Previous and Next under them. Sparkle (Thread) 1.5.0 uses it for its ignore list (Remove) and for the chests and nodes you passed (Add To Route, Forget).

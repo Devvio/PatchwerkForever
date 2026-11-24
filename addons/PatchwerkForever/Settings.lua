@@ -3,16 +3,18 @@ local P = ns.P;
 ---------------------------------------------------------------
 -- Settings page
 ---------------------------------------------------------------
--- Patchwerk's pages in the game's options (Options > AddOns). The
--- first is a page drawn by us (Front.lua): the picture, what is
--- installed, the base's own switches. Beneath it each installed
--- Stitch has a page of the settings it added (AddSetting), a
--- heading per section, and our own tools have theirs (Tools.lua).
--- Every page opens with its name, its picture and a line in
--- Patchwerk's voice (Look.lua). Made at login, when every part
--- has loaded and added its own. Each control is a proxy onto
--- GetSetting / SetSetting: the values stay in
--- PatchwerkForeverDB.settings, changed here or with /patchwerk set.
+-- Since 2.10.0 the options are in the family's own window
+-- (Window.lua, Options.lua). The game's options (Options >
+-- AddOns) keep one page, Patchwerk Forever: the banner, a line
+-- in Patchwerk's voice and a button that opens the window.
+--
+-- Where the window cannot be made, the pages are made in the
+-- game's options as before 2.10.0 (BuildGamePages): the front
+-- page drawn by us (Front.lua), beneath it a page for each
+-- installed Stitch of the settings it added (AddSetting), a
+-- heading per section, and our own tools' pages (Tools.lua).
+-- Each control there is a proxy onto GetSetting / SetSetting:
+-- the values stay in PatchwerkForeverDB.settings either way.
 
 local TITLE = 'Patchwerk Forever';
 
@@ -25,7 +27,7 @@ end
 
 local settingsCategory;
 
-local function Build()
+local function BuildGamePages()
 	if not ( Settings and Settings.RegisterVerticalLayoutCategory and Settings.RegisterProxySetting
 	and Settings.CreateCheckbox and Settings.RegisterAddOnCategory and Settings.VarType ) then
 		return;
@@ -122,7 +124,63 @@ function ns.PageName(part)
 	return title;
 end
 
+-- The one page in the game's options: the banner, a line, and the button that opens the window.
+local door;
+local function Door()
+	door = CreateFrame('Frame');
+	door:Hide()
+	door.Banner = door:CreateTexture(nil, 'BACKGROUND');
+	door.Banner:SetTexture(ns.MEDIA .. 'banner')
+	door.Banner:SetPoint('TOPLEFT', door, 'TOPLEFT', 0, 0)
+	door.Banner:SetPoint('TOPRIGHT', door, 'TOPRIGHT', 0, 0)
+	door.Banner:SetHeight(200)
+	door.Title = ns.Writing(door, 30);
+	door.Title:SetPoint('TOPLEFT', door.Banner, 'TOPLEFT', 22, -26)
+	door.Title:SetText('Patchwerk Forever')
+	door.Title:SetTextColor(ns.GOLD[1], ns.GOLD[2], ns.GOLD[3])
+	door.Said = ns.Writing(door, 13, true);
+	door.Said:SetPoint('TOPLEFT', door.Title, 'BOTTOMLEFT', 1, -10)
+	door.Said:SetWidth(240)
+	door.Said:SetWordWrap(true)
+	door.Said:SetText('Patchwerk keeps every option in his own book now. One button, all the pages.')
+	door.Said:SetTextColor(ns.CREAM[1], ns.CREAM[2], ns.CREAM[3])
+	door.Open = CreateFrame('Button', nil, door, 'UIPanelButtonTemplate');
+	door.Open:SetSize(240, 30)
+	door.Open:SetPoint('TOPLEFT', door.Banner, 'BOTTOMLEFT', 6, -24)
+	door.Open:SetText('Open Patchwerk Forever Options')
+	door.Open:SetScript('OnClick', function() ns.OpenWindow() end)
+	door.Note = ns.Writing(door, 12, true);
+	door.Note:SetPoint('TOPLEFT', door.Open, 'BOTTOMLEFT', 2, -12)
+	door.Note:SetWidth(420)
+	door.Note:SetWordWrap(true)
+	door.Note:SetText('Also /patchwerk config, the Open Options key binding, or Patchwerk Forever in the minimap\'s addon list.')
+	door.Note:SetTextColor(0.7, 0.7, 0.7)
+	door:SetScript('OnSizeChanged', function(self, width)
+		if ( tonumber(width) and width > 100 ) then self.Banner:SetHeight(math.floor(width / 3)) end;
+	end)
+	return door;
+end
+
+local function Build()
+	local made, window = pcall(ns.MakeWindow);
+	if not ( made and window ) then
+		ns.Say('The options window could not be made (' .. tostring(window) .. '). The options are in the game\'s options instead.')
+		return BuildGamePages();
+	end
+	ns.Book()
+	if not ( Settings and Settings.RegisterCanvasLayoutCategory and Settings.RegisterAddOnCategory ) then return end;
+	local ok, category = pcall(Settings.RegisterCanvasLayoutCategory, Door(), TITLE);
+	if ( ok and category ) then
+		Settings.RegisterAddOnCategory(category)
+		settingsCategory = category;
+	end
+end
+
+-- The options: the family's window, else (where it could not be made) the game's options.
 function ns.OpenSettings()
+	if ( ns.WindowFrame and ns.WindowFrame() ) then
+		return ns.OpenWindow();
+	end
 	local category = settingsCategory;
 	if not ( category and Settings and Settings.OpenToCategory ) or InCombatLockdown() then
 		return false;
@@ -134,7 +192,7 @@ end
 ns.AtLogin(function()
 	local ok, err = pcall(Build);
 	if not ok then
-		ns.Say('The options pages could not be created (' .. tostring(err) .. '). /patchwerk set lists the options in chat.')
+		ns.Say('The options could not be created (' .. tostring(err) .. '). /patchwerk set lists the options in chat.')
 	end
 end)
 

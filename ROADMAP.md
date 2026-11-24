@@ -237,3 +237,16 @@ Everything here is a proposal to pick from and reorder. Sizes are rough: **S** a
   - To look at first in the game: whether a gamepad rumbles (and with Console Port), how far the game
     lets Sparkle Distance reach, the list rows on the options pages, the waypoint beam's height on the
     game's marker, and whether `GetLootSlotInfo`'s icon matches `ITEM_PUSH`'s.
+- **2026-11-24: Patchwerk Forever's own options window** (base 2.10.0, OPTIONS-BLUEPRINT.md, all five
+  milestones; the user found it working in the game the same day, and it was committed and uploaded). First, the same evening before: base 2.9.1
+  folded each tool's further pages under its first in the game's options list (never released; part
+  of 2.10.0). Then the window, from the user's answers: only our window (the game's options keep one
+  page with a button), the game's own controls on a parchment page and a leather column, a folding
+  list of parts and pages, a search across every part, the Stitches included, the art drawn by the user
+  (stand-ins from `tools/options_art.py` until then). Built from one book of parts, pages and rows
+  (`Options.lua`) that is read from what each part already declares, so no tool changed how it lists
+  its settings; `Window.lua` draws it. With it: Console Port (Stitch) 2.3.0 tells Console Port's cursor
+  about the window; Sparkle 1.5.1, Routes 1.4.1 and Immersive Plainsrunning 1.3.1 know it as they knew
+  the game's options window; Dungeon Journal (Stitch) 1.2.2 rewords one line. The test stand-in now
+  lists the book as the game's pages used to be listed (`STUB.FromBook`), so each addon's option checks
+  stand as they were. Still open: the user's own parchment and leather pictures in place of the stand-ins.

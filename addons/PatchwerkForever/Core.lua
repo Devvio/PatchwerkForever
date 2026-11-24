@@ -29,9 +29,9 @@ local addonName, ns = ...;
 -- API: raised when something is added that a part may need (2: the guides service, Guides.lua;
 -- 3: the gathering service, Gather.lua, and a guide step's items and skipping; 4: more than one
 -- guide at a time; 5: Focus.lua, MyRoute.lua and Choice:OnChange; 6: lists on a tool's pages and
--- Gather:Note). Something an older part simply does not use (Following.lua, a reader's Side) leaves
+-- Gather:Note; 7: the options window, Options). Something an older part simply does not use (Following.lua, a reader's Side) leaves
 -- it as it is.
-local P = { API = 6, Fixes = {}, Parts = {}, Settings = { list = {}, byKey = {} } };
+local P = { API = 7, Fixes = {}, Parts = {}, Settings = { list = {}, byKey = {} } };
 PatchwerkForever = P;
 ns.P = P;
 
@@ -343,7 +343,7 @@ local function Welcome()
 	local told = P:GetSaved('told');
 	if told.welcome then return end;
 	told.welcome = true;
-	Say('Options are under Options > AddOns > Patchwerk Forever.')
+	Say('Options: /patchwerk config, or Options > AddOns > Patchwerk Forever.')
 end
 
 local Loader = CreateFrame('Frame')
@@ -425,6 +425,7 @@ end
 -- The options, from the command, the key binding and the minimap's addon list alike.
 function ns.OpenOptions()
 	if P:OpenSettings() then return true end;
+	if ( ns.WindowFrame and ns.WindowFrame() ) then return false end;   -- (the window said why)
 	if InCombatLockdown() then
 		Say('Options cannot be opened in combat.')
 	else

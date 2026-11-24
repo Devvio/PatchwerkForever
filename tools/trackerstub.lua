@@ -64,7 +64,7 @@ local make = CreateFrame
 function CreateFrame(kind, name, parent, template)
 	-- (STUB.noTemplate = { [name] = true }: a template this client does not have)
 	assert(not (template and STUB.noTemplate and STUB.noTemplate[template]), 'no such template: ' .. tostring(template))
-	local frame = make(kind, name, parent)
+	local frame = make(kind, name, parent, template)
 	frame.kind, frame.mouse, frame.wheel, frame.children, frame.points = kind, kind == 'Button', false, {}, {}
 	if parent and parent.children then parent.children[#parent.children + 1] = frame end
 	if name then _G[name] = frame end

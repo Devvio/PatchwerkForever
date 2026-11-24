@@ -420,7 +420,7 @@ local function Why()
 		return 'Dungeon Journal is not running.';
 	end
 	if not ns:GetSetting('djList') then
-		return 'Route Dungeon Journal Quests is disabled (Options > AddOns > Patchwerk Forever > Dungeon Journal (Stitch)).';
+		return 'Route Dungeon Journal Quests is disabled (/patchwerk config, Dungeon Journal (Stitch)).';
 	end
 	local _, total, done, names, inside, skips = Stops(journal);
 	if ( #names == 0 ) then return 'No dungeon is tracked in the Dungeon Journal.' end;

@@ -1,5 +1,9 @@
 # Patchwerk Forever: Sparkle (Thread)
 
+## 1.5.1
+
+- The preview that follows the settings while the options are open (Preview Sparkle, the names, the fade area) works with Patchwerk Forever 2.10.0's own options window too, beside it where there is room.
+
 ## 1.5.0
 
 A sparkle on the waypoint you follow, sparkles from further away, alerts, and more for the loot wisps. Needs Patchwerk Forever 2.9.0 for the two lists on the options pages; with an older base everything else works and the lists are left out.

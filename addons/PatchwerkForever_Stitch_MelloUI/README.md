@@ -25,7 +25,7 @@ Nothing in MelloUI's own files is changed.
 
 ## Settings and commands
 
-The page **MelloUI (Stitch)**, under **Options → AddOns → Patchwerk Forever** (`/patchwerk config` opens the page above it).
+The page **MelloUI (Stitch)**, in **Patchwerk Forever's options window** (`/patchwerk config`).
 
 | Command | Does |
 |---|---|

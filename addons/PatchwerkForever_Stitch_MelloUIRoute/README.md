@@ -37,7 +37,7 @@ Not possible from outside MelloUI: closing MelloUI's own shipped roads at a bloc
 
 ## Settings and bindings
 
-The page **MelloUI Route (Stitch)**, under **Options → AddOns → Patchwerk Forever** (`/patchwerk config` opens the page above it).
+The page **MelloUI Route (Stitch)**, in **Patchwerk Forever's options window** (`/patchwerk config`).
 
 Bind these under **Options → Keybindings**, in the **Patchwerk Forever** section, or in Console Port's binding list: **Route: Mark Trail Ahead Blocked**, **Route: Undo Blocked Spot**, **Route: Quest Run**, **Route: Next Quest Run Stop** and **Route: Use Suggested Shortcut**. In a macro: `/click PatchwerkRouteQuestRun` (and `PatchwerkRouteNextStop`, `PatchwerkRouteBlock`, `PatchwerkRouteUnblock`, `PatchwerkRouteTravel`).
 

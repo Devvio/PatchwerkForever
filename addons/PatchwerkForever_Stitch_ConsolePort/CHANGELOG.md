@@ -1,5 +1,9 @@
 # Patchwerk Forever: Console Port (Stitch)
 
+## 2.3.0
+
+- **Patchwerk Forever's options window** (Patchwerk Forever 2.10.0) is known to Console Port's interface cursor, so a gamepad moves through it as through the game's own windows. `/patchwerk consoleport` lists it with the other fixes.
+
 ## 2.2.1
 
 - **Now named Patchwerk Forever: Console Port (Stitch)**: the name comes first and what kind of addon it is after it, in brackets (it was Stitch (Console Port)). The options page is named the same way.

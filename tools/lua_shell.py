@@ -44,7 +44,7 @@ def main():
     lua.execute("""
         local made = CreateFrame
         function CreateFrame(kind, name, parent, template)
-            local frame = made(kind, name, parent)
+            local frame = made(kind, name, parent, template)
             frame.kind = kind
             function frame:SetShown(on) if on then self:Show() else self:Hide() end end
             function frame:RegisterForClicks(...) self.clicks = { ... } end
@@ -396,7 +396,9 @@ def main():
         slash(words)
         frames()
     text = chat("slash")
-    assert stub.opened == 8, "the tool's own settings page did not open"
+    O = lua.globals().PatchwerkForever.Options
+    assert O.IsShown(O) and O.Current(O)[0] == ADDON, "the tool's own options page did not open"
+    O.Close(O)
     # Stop says what was stopped, and the help says when routing resumes by itself
     stops = [t for t in text if "stopped." in t or "No active route." in t]
     assert len(stops) == 2 and stops[0].endswith("Routing to your coordinates stopped.") and stops[1].endswith("No active route."), stops
@@ -923,13 +925,13 @@ def main():
     assert len(by_name) == len(stub.settings) and own_settings() == 36, "expected 36 Routes settings on the options pages, found %d" % own_settings()
     assert "baseTellMissing" not in by_name, "the base's switch is on its front page, not a row of the game's"
     pages = sorted(stub.pages.keys())
-    WANT = {"Routes (Thread)": 17, "Routes: Trail": 13, "Routes: Step Text": 6}
+    WANT = {"Routes (Thread)": 17, "Routes (Thread) > Trail": 13, "Routes (Thread) > Step Text": 6}
     assert [p for p in pages if not p.startswith("Sparkle")] == sorted(WANT), pages
-    assert "Sparkle (Thread)" in pages and "Sparkle: Appearance" in pages, pages
+    assert "Sparkle (Thread)" in pages and "Sparkle (Thread) > Appearance" in pages, pages
     for page in pages:
         on_it = [n for n, s in by_name.items() if s.page == page]
         # (a Sparkle page may hold only a list and a button: Sparkle: Ignore List)
-        assert len(on_it) == WANT.get(page, len(on_it)) and (on_it or page == "Sparkle: Ignore List"), \
+        assert len(on_it) == WANT.get(page, len(on_it)) and (on_it or page == "Sparkle (Thread) > Ignore List"), \
             "%s has %d settings, expected %s" % (page, len(on_it), WANT.get(page))
     # headings: Routes' own, in order, then the Sparkle's
     headers = list(stub.headers.values())
@@ -937,17 +939,18 @@ def main():
         "Destinations", "Focus And My Route", "Travel Options", "Chat", "Gathering Nodes", "Display", "Line", "Colors", "Defaults"], headers
     assert len(headers) > 9 and headers[-1] == "Defaults", headers
     # every page opens with its name, its tool's picture and a line in Patchwerk's voice
+    # (a folded page is "Sparkle (Thread) > Appearance" in the list; its intro still names it "Sparkle: Appearance")
+    named = lambda p: p if " > " not in p else p.split(" (")[0] + ": " + p.split(" > ")[1]
     intros = {i.name: i for i in stub.intros.values()}
-    assert sorted(intros) == pages, sorted(intros)
+    assert sorted(intros) == sorted(named(p) for p in pages), sorted(intros)
     assert intros["Routes (Thread)"].voice == "Follow the thread. Patchwerk knows the way. Mostly."
     assert intros["Routes: Trail"].voice.startswith("A line on the ground.") and intros["Sparkle: Appearance"].voice.startswith("Every shiny thing")
     assert all(i.voice and i.icon and i.icon.endswith("icon") for i in intros.values()), [n for n, i in intros.items() if not i.voice]
     lists = len([r for r in stub.rows.values() if r.template == "PatchwerkForeverListTemplate"])   # (Sparkle's two lists)
     assert stub.Rows() == len(pages) + len(headers) + lists, "a row of our own could not be made"
     # the front page: what is sewn on, each with a button to its page
-    front = stub.front
-    front.shown = True
-    front.scripts.OnShow(front)
+    O = lua.globals().PatchwerkForever.Options
+    O.Open(O, BASE)
     page = tables[BASE].FrontShown()
     parts = [(x.name, x.says, x.open) for x in page.parts.values()]
     for part in parts:

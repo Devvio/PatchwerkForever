@@ -6,7 +6,7 @@
 
 The world of **World of Warcraft: Forever** on a globe you can spin and zoom, painted like the world map on parchment, with everything the world map shows on it: your route, your quests, flight points, boats, towns, your group, fog over the land you have not discovered, and the pins of other addons. It can stand in for the world map: **The Map Key Opens The Globe** gives it the map key.
 
-One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the options pages. With **Routes (Thread)** it shows your route, the boats and zeppelins and the recorded nodes; with **Tracker (Thread)** that addon's list sits beside the globe. Neither is needed.
+One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the options. With **Routes (Thread)** it shows your route, the boats and zeppelins and the recorded nodes; with **Tracker (Thread)** that addon's list sits beside the globe. Neither is needed.
 
 ## How it is drawn
 
@@ -30,7 +30,7 @@ The game's continents are separate maps with no sea between them, so where each 
 - Your coordinates, and those of the place under the pointer, are at the lower edge of the picture (**Show Coordinates**).
 - Zoomed in, the minimap's pictures of the ground fade in over the parchment, in their true colours. They are drawn where there is land and fade out to the parchment sea a little way off the coast.
 - The numbers under it say how many pieces are drawn and how long that takes. `/globe stats` says them in chat.
-- Options: **Options → AddOns → Patchwerk Forever → Globe (Thread)**, or `/globe config`.
+- Options: **Globe (Thread)** in Patchwerk Forever's options window, `/globe config`.
 
 ## Land you have not discovered
 

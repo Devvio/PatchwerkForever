@@ -237,7 +237,7 @@ def main():
     stub.Fire("PLAYER_ENTERING_WORLD", True, False)
     chat()
     pages = sorted(stub.pages.keys())
-    assert "Immersive Plainsrunning (Thread)" in pages and "Plainsrunning: Effects" in pages, pages
+    assert "Immersive Plainsrunning (Thread)" in pages and "Immersive Plainsrunning (Thread) > Effects" in pages, pages
     # every slider whose tooltip once said "in percent" shows a percent sign; the bindings in the family's section
     defs = [d for d in ns.settings.values() if d.key]
     assert not any(d.desc.endswith(", in percent.") for d in defs), [d.key for d in defs if d.desc.endswith(", in percent.")]

@@ -14,7 +14,7 @@ Patchwerk wants a rematch! Patchwerk always wants a rematch!
 
 Race courses of your own for **World of Warcraft: Forever**. Place checkpoints as you ride a course, then race it against the clock: a ring and a beam of light mark the next checkpoint in the world, and each checkpoint says your time and how far ahead of or behind your best run you are. A course can be On Foot or Anything Goes, with a best run for each. Send a course to your party and race it together, with one start for everyone and the gap to the racer ahead at each checkpoint.
 
-One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the options pages, and nothing else.
+One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the options, and nothing else.
 
 **This is a beta.** It passes its checks outside the game but has not been raced in the game yet. Please report what goes wrong, as a comment on the addon's CurseForge page.
 
@@ -88,7 +88,7 @@ Nothing is sent to your group unless you invite or have joined. The messages are
 
 ## Options
 
-**Options → AddOns → Patchwerk Forever → Races (Thread)**, or `/race config`. Checkpoint Size, Countdown At The Start, Show Split Times, Play Sounds, Restore Map Pin After A Race, Split Times In Chat, Rule For New Courses and Join Party Races Automatically are on the first page; the marker has the page **Races: Marker**.
+**Races (Thread)** in Patchwerk Forever's options window, `/race config`. Checkpoint Size, Countdown At The Start, Show Split Times, Play Sounds, Restore Map Pin After A Race, Split Times In Chat, Rule For New Courses and Join Party Races Automatically are on the first page; the marker has the page **Races: Marker**.
 
 ## Commands
 

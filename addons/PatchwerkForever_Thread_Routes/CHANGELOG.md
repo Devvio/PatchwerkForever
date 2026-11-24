@@ -1,5 +1,9 @@
 # Patchwerk Forever: Routes (Thread)
 
+## 1.4.1
+
+- The step text's sample follows the sliders on **Routes: Step Text** in Patchwerk Forever 2.10.0's own options window too.
+
 ## 1.4.0
 
 Two new things to be led to, and map data that knows the game's buildings. Works with Patchwerk Forever 2.6.0 or later, as before. The three map data addons are 1.4.0 too, with new data.

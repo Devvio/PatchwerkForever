@@ -200,14 +200,16 @@ def main():
     s.login()
     text = s.chat()
     assert len(text) == 2 and "Patchwerk Forever: Console Port (Stitch)" in text[0], text
-    assert text[1] == "Patchwerk: Options are under Options > AddOns > Patchwerk Forever.", text
+    assert text[1] == "Patchwerk: Options: /patchwerk config, or Options > AddOns > Patchwerk Forever.", text
     assert s.g.PatchwerkForeverDB.told.welcome is True
-    assert s.stub.category and s.stub.front, "the base's page was not built"
-    # its first page is drawn by the base: what Patchwerk says, what is sewn on, its own switch
-    assert len(s.stub.settings) == 0, "the base's switch is still a row of the game's"
-    front = s.stub.front
-    front.shown = True
-    front.scripts.OnShow(front)
+    assert s.stub.category and s.stub.front, "the base's page in the game's options was not built"
+    # (the game's options keep one page of ours, with a button that opens the family's window)
+    door = s.stub.front
+    assert door.Open.text == "Open Patchwerk Forever Options" and s.stub.category.title == "Patchwerk Forever"
+    door.Open.Click(door.Open)
+    assert s.g.PatchwerkForever.Options.IsShown(s.g.PatchwerkForever.Options), "the page's button did not open the window"
+    # the window's first page is drawn by the base: what Patchwerk says, what is sewn on, its own switch
+    assert len(s.stub.settings) == 0, "the base's switch is a row of its own"
     page = base.FrontShown()
     print("      front page: " + page.said)
     assert "Nothing sewn on yet" in page.said, page.said
@@ -280,15 +282,14 @@ def main():
     assert len(intros) == 1 and intros[0].name == "PatchwerkForever_MadeUp", [i.name for i in intros]
     assert s.stub.Rows() == 1
     # and the front page lists the part, with a button that opens its page
-    front = s.stub.front
-    front.shown = True
-    front.scripts.OnShow(front)
+    O = s.g.PatchwerkForever.Options
+    O.Open(O, BASE)
     page = base.FrontShown()
     parts = list(page.parts.values())
     assert [x.name for x in parts][0].startswith("PatchwerkForever_MadeUp") and parts[0].open, [x.name for x in parts]
     assert "One " in page.said and "Nothing" not in page.said, page.said
     parts[0].row.Open.scripts.OnClick(parts[0].row.Open)
-    assert s.stub.opened == 8, "the part's page was not opened from the front page"
+    assert O.Current(O)[0] == MADE_UP, "the part's page was not opened from the front page"
     assert list(s.stub.pages.keys()) == ["PatchwerkForever_MadeUp"], list(s.stub.pages.keys())
     on = sorted(x.variable for x in s.stub.settings.values() if x.page == "PatchwerkForever_MadeUp")
     assert on == ["PatchwerkForever_madeUpOn", "PatchwerkForever_madeUpSteps"], on
@@ -309,21 +310,23 @@ def main():
     assert s.g.PatchwerkForeverDB.settings.madeUpSteps == 5, "a number is not kept inside its range"
     text = s.slash("set")
     assert sum(1 for t in text if t.startswith("  ")) == 3, text
+    O.Close(O)
     s.slash("config")
-    assert s.stub.opened == 7, "the settings page was not opened"
-    # the binding and the minimap's addon list open it too; in combat, said why not
-    s.stub.opened = None
+    assert O.IsShown(O) and O.Current(O)[0] == MADE_UP, "the options were not opened at the page last shown"
+    # the binding and the minimap's addon list open it too; in combat, said why not, and it closes
+    O.Close(O)
     s.g.PatchwerkForever_OpenOptions()
-    assert s.stub.opened == 7, "the Open Options binding did not open the options"
-    s.stub.opened = None
+    assert O.IsShown(O), "the Open Options binding did not open the options"
+    O.Close(O)
     s.g.PatchwerkForever_OnAddonCompartmentClick()
-    assert s.stub.opened == 7, "the minimap's addon list did not open the options"
-    s.stub.opened = None
+    assert O.IsShown(O), "the minimap's addon list did not open the options"
     s.lua.execute("STUB.combat = true")
+    s.stub.Fire("PLAYER_REGEN_DISABLED")
+    assert not O.IsShown(O) and s.chat() == ["Patchwerk: Options closed for combat."], "the window stayed open in combat"
     text = s.slash("config")
-    assert text == ["Patchwerk: Options cannot be opened in combat."] and s.stub.opened is None, text
+    assert text == ["Patchwerk: Options cannot be opened in combat."] and not O.IsShown(O), text
     parts[0].row.Open.scripts.OnClick(parts[0].row.Open)
-    assert s.chat() == ["Patchwerk: Options cannot be opened in combat. Select the page in the list on the left."]
+    assert s.chat() == ["Patchwerk: Options cannot be opened in combat."]
     s.lua.execute("STUB.combat = false")
     assert s.g.BINDING_CATEGORY_PatchwerkForever == "Patchwerk Forever" and s.g.BINDING_NAME_PATCHWERKFOREVER_OPTIONS == "Open Options"
     # the page's own controls read and write the same values
@@ -501,7 +504,7 @@ def main():
     s = Session()
     s.addon(BASE)
     G = s.g.PatchwerkForever.Guides
-    assert s.g.PatchwerkForever.API == 6
+    assert s.g.PatchwerkForever.API == 7
     assert G.Read(G, 2) is None, "a guide with no guide addon running"
     assert G.Go(G, None, 3) is False, "a guide moved with no guide running"
     # a made-up guide addon's reader, behind one that fails: the failure is said once and the next is asked
@@ -1092,11 +1095,16 @@ def main():
     step("the Console Port part's binding changes and its fixes, said through Patchwerk")
     s = Session(saved="{ settings = { foreverNotify = true } }", running=["ConsolePort"], console_port=True)
     s.addon(BASE)
-    env = s.addon("PatchwerkForever_Stitch_ConsolePort", only=["Link.lua", "Database.lua", "Compat.lua"])
+    s.lua.execute("function ConsolePort:AddInterfaceCursorFrame(frame) STUB.cursorFrame = frame return true end")
+    env = s.addon("PatchwerkForever_Stitch_ConsolePort", only=["Link.lua", "Database.lua", "Compat.lua", "Options.lua"])
     s.login()
     env.Notify(env, "Restored native gamepad bindings: %s", "PAD1 (Ping)")
     assert s.chat() == ["Patchwerk Console Port: Restored native gamepad bindings: PAD1 (Ping)"]
     assert env.Applied.GetScaledCursorPosition is True and env.Applied.StaticPopup_Resize is True
+    # Patchwerk Forever's options window is made known to Console Port's interface cursor, a moment after login
+    s.stub.RunAfters()
+    assert s.lua.eval("STUB.cursorFrame == PatchwerkForeverOptions and STUB.cursorFrame ~= nil"), "Console Port's cursor was not told of the options window"
+    assert env.Applied["Options window"] is True
 
     step("MelloUI Route's five actions are named for the game's Key Bindings list")
     xml = open(os.path.join(ADDONS, "PatchwerkForever_Stitch_MelloUIRoute", "Bindings.xml"), encoding="utf-8").read()

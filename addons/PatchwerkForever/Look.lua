@@ -25,6 +25,10 @@ local SENTENCE = false;       -- true: show setting names in sentence case. The 
 
 ns.GOLD  = { 0.84, 0.64, 0.36 };
 ns.CREAM = { 0.90, 0.84, 0.70 };
+-- on the options window's parchment (2.10.0): dark ink for words, a red-brown for names and headings
+ns.INK   = { 0.20, 0.13, 0.07 };
+ns.RUST  = { 0.45, 0.15, 0.05 };
+ns.FADED = { 0.45, 0.37, 0.27 };
 ns.MEDIA = 'Interface\\AddOns\\' .. addonName .. '\\Media\\';
 
 local STITCH, STITCH_GAP = 9, 6;

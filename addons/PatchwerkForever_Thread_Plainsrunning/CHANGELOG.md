@@ -1,5 +1,9 @@
 # Patchwerk Forever: Immersive Plainsrunning (Thread)
 
+## 1.3.1
+
+- Opening Patchwerk Forever 2.10.0's own options window brings the interface back, as the game's windows do.
+
 ## 1.3.0
 
 - **Other ways of going fast.** Speed mode can also run while you are mounted and moving (**Mounts**), while you are moving in Travel Form, Aquatic Form or Ghost Wolf or under Aspect of the Cheetah or Aspect of the Pack (**Travel Forms**), and while you are on a flight (**Flight Paths**). Each is a setting of its own under the new heading **Other Ways Of Going Fast**, each is off until you enable it, and they work for every race.

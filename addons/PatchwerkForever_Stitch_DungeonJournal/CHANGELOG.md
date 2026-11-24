@@ -1,5 +1,9 @@
 # Patchwerk Forever: Dungeon Journal (Stitch)
 
+## 1.2.2
+
+- The line that says Route Dungeon Journal Quests is disabled points to `/patchwerk config`, where Patchwerk Forever 2.10.0 keeps the options.
+
 ## 1.2.1
 
 - **Now named Patchwerk Forever: Dungeon Journal (Stitch)**: the name comes first and what kind of addon it is after it, in brackets (it was Stitch (Dungeon Journal)). The options page is named the same way.

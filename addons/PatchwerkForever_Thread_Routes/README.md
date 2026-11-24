@@ -165,7 +165,7 @@ The only spots known are the ones you have gathered from yourself: the game's fi
 
 ## Settings
 
-**Options → AddOns → Patchwerk Forever → Routes (Thread)**, or `/thread config`. The trail's colors, width and style (solid, dashed or dotted, animated if you like) are on **Routes: Trail**; the words on screen are on **Routes: Step Text**, whose sample follows the sliders while you move them.
+**Routes (Thread)** in Patchwerk Forever's options window, `/thread config`. The trail's colors, width and style (solid, dashed or dotted, animated if you like) are on **Routes: Trail**; the words on screen are on **Routes: Step Text**, whose sample follows the sliders while you move them.
 
 Under **Destinations**: **Route To Map Pin**, **Route To My Corpse**, **Follow Guide**, **Follow Tracked Quests** and **Route Priority** (what always comes first is in its tooltip). Under **Focus And My Route**: **Focus Button On The World Map** and **Show My Route On The World Map** (both on to begin with).
 

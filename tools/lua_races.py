@@ -200,10 +200,10 @@ def main():
     stub.Fire("PLAYER_ENTERING_WORLD", True, False)
     chat()
     pages = sorted(stub.pages.keys())
-    assert "Races: Marker" in pages and "Sparkle: Loot Wisps" in pages, pages
+    assert "Races (Thread) > Marker" in pages and "Sparkle (Thread) > Loot Wisps" in pages, pages
     on = lambda page: [s for s in stub.settings.values() if s.page == page]
-    assert len(on("Races (Thread)")) == 8 and len(on("Races: Marker")) == 9 and len(on("Sparkle: Loot Wisps")) == 11, \
-        (len(on("Races (Thread)")), len(on("Races: Marker")), len(on("Sparkle: Loot Wisps")))
+    assert len(on("Races (Thread)")) == 8 and len(on("Races (Thread) > Marker")) == 9 and len(on("Sparkle (Thread) > Loot Wisps")) == 11, \
+        (len(on("Races (Thread)")), len(on("Races (Thread) > Marker")), len(on("Sparkle (Thread) > Loot Wisps")))
     assert races.Get("rule") == "any" and races.Get("autoJoin") is False, "a new setting does not start as it should"
     # the key bindings in the family's own section of the Key Bindings page, each with a name and a function
     bindings = open(os.path.join(ADDONS, RACES, "Bindings.xml"), encoding="utf-8").read()
@@ -475,7 +475,7 @@ def main():
     assert text.count("will not count: the course is On Foot and you mounted") == 1, text
     assert "Does not count: On Foot, and you mounted" in text and "New best" not in text, text
     assert loop.footBest.time == foot and loop.best.time == fast and races.racing is None
-    banner = [f for f in stub.frames.values() if f.strata == "HIGH"][0]
+    banner = [f for f in stub.frames.values() if f.strata == "HIGH" and not stub.InOptions(f)][0]   # (not Patchwerk Forever's options window)
     assert "Does not count" in banner.small.text, banner.small.text
 
     step("on a flight path: the same; mounted only during the countdown: the run counts")

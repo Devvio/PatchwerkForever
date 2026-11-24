@@ -61,7 +61,7 @@ end)
 local FIXES = {
 	'Extra Action Button', 'Item menu equip slots', 'Interact (tap)', 'Target Friendly / Target Hostile',
 	'Key ring slot', 'StaticPopup_Resize', 'ActionButton_SetTooltip', 'GetScaledCursorPosition',
-	'Micro menu', 'Bag bar',
+	'Micro menu', 'Bag bar', 'Options window',
 };
 
 local function Applied()

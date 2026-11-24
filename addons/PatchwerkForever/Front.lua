@@ -14,9 +14,9 @@ local P = ns.P;
 --   * the parts that are for an addon you run and are not there;
 --   * the base's own switches.
 --
--- The game shows the page inside its own options window
--- (Settings.RegisterCanvasLayoutCategory), so it is reached and
--- closed like any other, with the mouse or a gamepad.
+-- It is the first page of the family's options window
+-- (Window.lua); where the window cannot be made, the game shows
+-- it in its own options window instead (Settings.lua).
 
 local BANNER = 3;             -- the picture is three times as wide as it is tall
 local ROW = 60;               -- the height of one part's row: its name, and two lines of what is said
@@ -55,13 +55,7 @@ local function Short(title)
 end
 
 local function Open(addon)
-	if InCombatLockdown() then
-		ns.Say('Options cannot be opened in combat. Select the page in the list on the left.')
-		return;
-	end
-	local category = ns.pageOf[addon];
-	if not ( category and Settings and Settings.OpenToCategory ) then return end;
-	pcall(function() Settings.OpenToCategory(category:GetID()) end)
+	if ns.OpenWindow then ns.OpenWindow(addon) end;   -- (it says so in combat)
 end
 
 local function Row(i)
@@ -153,6 +147,8 @@ local function Refresh()
 	local y = tall + 14;
 	frame.Sewn:SetPoint('TOPLEFT', frame, 'TOPLEFT', 8, -y)
 	frame.Sewn:SetText(#list > 0 and 'What is sewn on' or 'Nothing is sewn on yet')
+	local heading = frame.ink and ns.RUST or ns.GOLD;
+	frame.Sewn:SetTextColor(heading[1], heading[2], heading[3])
 	y = y + 26;
 	local half = math.floor(( width - 12 ) / 2);
 	for i, part in ipairs(list) do
@@ -170,11 +166,18 @@ local function Refresh()
 		end
 		row.Name:SetText(part.name .. ( part.version and ( '  |cff808080' .. part.version .. '|r' ) or '' ))
 		local shade = part.on and 1 or 0.55;
-		row.Name:SetTextColor(shade, shade, shade)
+		-- (on the options window's parchment, in ink: frame.ink)
+		if frame.ink then
+			local name, says = part.on and ns.RUST or ns.FADED, part.on and ns.INK or ns.FADED;
+			row.Name:SetTextColor(name[1], name[2], name[3])
+			row.Says:SetTextColor(says[1], says[2], says[3])
+		else
+			row.Name:SetTextColor(shade, shade, shade)
+			row.Says:SetTextColor(ns.CREAM[1] * shade, ns.CREAM[2] * shade, ns.CREAM[3] * shade)
+		end
 		row.Says:SetText(part.says or '')
-		row.Says:SetTextColor(ns.CREAM[1] * shade, ns.CREAM[2] * shade, ns.CREAM[3] * shade)
 		row.Open.addon = part.addon;
-		if ( part.on and ns.pageOf[part.addon] ) then row.Open:Show() else row.Open:Hide() end;
+		if ( part.on and ns.Book and ns.Book().byAddon[part.addon] ) then row.Open:Show() else row.Open:Hide() end;
 		row:Show()
 	end
 	for i = #list + 1, #rows do rows[i]:Hide() end
@@ -191,6 +194,8 @@ local function Refresh()
 			check:SetPoint('TOPLEFT', frame, 'TOPLEFT', 4, -y)
 			check:SetChecked(P:GetSetting(def.key) and true or false)
 			check.Label:SetText(check.name)
+			local ink = frame.ink and ns.INK or ns.CREAM;
+			check.Label:SetTextColor(ink[1], ink[2], ink[3])
 			-- (the label is part of what takes the click)
 			if ( check.SetHitRectInsets and check.Label.GetStringWidth ) then
 				check:SetHitRectInsets(0, -( check.Label:GetStringWidth() + 4 ), 0, 0)
@@ -205,7 +210,9 @@ local function Refresh()
 		checks[i].Label:Hide()
 	end
 	frame.Said:SetText(SAYS[math.random(#SAYS)]:format(SewnOn()))
+	frame.tall = y + 12;          -- (how tall it is drawn: the options window makes its page this tall)
 end
+ns.FrontRefresh = Refresh;
 
 -- Makes the page. The game's options window takes it as its own and shows it when it is asked for.
 function ns.FrontPage()

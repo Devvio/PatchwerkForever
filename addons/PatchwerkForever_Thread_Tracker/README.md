@@ -147,7 +147,7 @@ While this one is shown, the game's tracker is made invisible and lets clicks th
 
 ## Settings
 
-**Options > AddOns > Patchwerk Forever**, or `/tracker config`:
+**Tracker (Thread)** in Patchwerk Forever's options window, `/tracker config`:
 
 | Page | Holds |
 |---|---|

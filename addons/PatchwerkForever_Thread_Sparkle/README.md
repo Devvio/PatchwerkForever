@@ -16,7 +16,7 @@ Patchwerk wants more shiny! Patchwerk wants ALL the shiny!
 
 A sparkle on things you can use, for **World of Warcraft: Forever**. As you come up to an herb, a vein, a chest or a quest object, a light effect and its name appear over it. A corpse with loot for you, or one you can skin, sparkles too, and so does the waypoint you are following.
 
-One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the options pages, and nothing else.
+One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the options, and nothing else.
 
 It follows the object the game's own interact key would use: one at a time, the one in front of you. With keyboard and mouse the game only picks one while its **Enable Interact Key** option is on, so Sparkle turns that on for you (**Sparkle With Keyboard And Mouse**, below). Nothing is read off the minimap and nothing is searched for: the game says what the object is.
 
@@ -85,7 +85,7 @@ With **Patchwerk Forever: Routes (Thread)** installed too, an herb or a vein is 
 
 ## Options
 
-**Options → AddOns → Patchwerk Forever → Sparkle (Thread)**, or `/sparkle config`. The name has the page **Sparkle: Names**; how each kind of object sparkles is on **Sparkle: Appearance**, a heading for each kind; **Sparkle: Behind My Character** has the fading; **Sparkle: Alerts** the rumble; **Sparkle: Ignore List** the ignored objects, each with a Remove button; **Sparkle: Passed** what you passed; and **Sparkle: Loot Wisps** has the wisps. The two lists need Patchwerk Forever 2.9.0.
+**Sparkle (Thread)** in Patchwerk Forever's options window, `/sparkle config`; its further pages fold under it. The name has the page **Sparkle: Names**; how each kind of object sparkles is on **Sparkle: Appearance**, a heading for each kind; **Sparkle: Behind My Character** has the fading; **Sparkle: Alerts** the rumble; **Sparkle: Ignore List** the ignored objects, each with a Remove button; **Sparkle: Passed** what you passed; and **Sparkle: Loot Wisps** has the wisps. The two lists need Patchwerk Forever 2.9.0.
 
 ## Commands
 

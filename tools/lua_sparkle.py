@@ -216,7 +216,7 @@ def main():
         [d.desc for d in defs if d.name == "Clear Ignore List"][0]
     assert G.BINDING_NAME_PATCHWERKFOREVER_SPARKLE_IGNORE == "Ignore / Unignore Sparkle Object"
     buttons = {b.name: b for b in stub.buttons.values()}
-    assert "Preview Name" in buttons and buttons["Preview Name"].page == "Sparkle: Names", list(buttons)
+    assert "Preview Name" in buttons and buttons["Preview Name"].page == "Sparkle (Thread) > Names", list(buttons)
     bindings = open(os.path.join(ADDONS, SPARKLE, "Bindings.xml"), encoding="utf-8").read()
     assert 'category="BINDING_CATEGORY_PatchwerkForever"' in bindings and "ADDONS" not in bindings
     # 1.4.0: corpses and what you cannot gather, on the first page; the two new kinds with a look each
@@ -234,8 +234,8 @@ def main():
     for made in stub.settings.values():
         if made.variable.startswith(SPARKLE + "_"):
             on_page[made.page] = on_page.get(made.page, 0) + 1
-    assert on_page == {"Sparkle (Thread)": 11, "Sparkle: Names": 8, "Sparkle: Behind My Character": 7,
-                       "Sparkle: Appearance": 70, "Sparkle: Loot Wisps": 11, "Sparkle: Alerts": 3, "Sparkle: Passed": 2}, on_page
+    assert on_page == {"Sparkle (Thread)": 11, "Sparkle (Thread) > Names": 8, "Sparkle (Thread) > Behind My Character": 7,
+                       "Sparkle (Thread) > Appearance": 70, "Sparkle (Thread) > Loot Wisps": 11, "Sparkle (Thread) > Alerts": 3, "Sparkle (Thread) > Passed": 2}, on_page
     headers = list(stub.headers.values())
     assert headers == ["Herbs", "Ore", "Chests", "Quest Objects", "Quest Corpses", "Corpses With Loot", "Skinnable Corpses",
                        "Other Objects", "Waypoint", "Defaults"], headers
@@ -248,7 +248,7 @@ def main():
     assert by_key["look.waypoint.effect"].default == "beam" and by_key["look.waypoint.height"].default == 0
     assert by_key["sparkleReach"].default == "game" and by_key["sparkleNear"].default is True and by_key["cueRumble"].default is False
     lists = [r for r in stub.rows.values() if r.template == "PatchwerkForeverListTemplate"]
-    assert [r.data.name for r in lists] == ["Ignored Objects", "Passed"] and [r.page for r in lists] == ["Sparkle: Ignore List", "Sparkle: Passed"],         [(r.data.name, r.page) for r in lists]
+    assert [r.data.name for r in lists] == ["Ignored Objects", "Passed"] and [r.page for r in lists] == ["Sparkle (Thread) > Ignore List", "Sparkle (Thread) > Passed"],         [(r.data.name, r.page) for r in lists]
     for k in ("corpse", "skin"):
         for part in ("effect", "colour", "size", "bright", "height", "speed"):
             assert by_key["look.%s.%s" % (k, part)].page == "Sparkle: Appearance", (k, part)
@@ -1086,6 +1086,146 @@ def main():
     first.buttons[2].scripts.OnClick(first.buttons[2])
     assert "\"Battered Chest\" forgotten." in chat() and len(G.PatchwerkForever_Thread_SparkleDB.passed) == 0
     assert passed_row.Empty.shown
+
+    step("the options window (base 2.10.0): the pages folded under Sparkle, every kind of control, greying, search, the gamepad, combat")
+    O = G.PatchwerkForever.Options
+    base = tables[BASE]
+    win = G.PatchwerkForeverOptions
+    assert O.Open(O, SPARKLE) and win.shown and win.strata == "HIGH", "the window did not open at Sparkle's page"
+    assert "PatchwerkForeverOptions" in list(G.UISpecialFrames.values()), "Escape does not close it"
+
+    def shown():
+        used, nav = base.WindowShownRows()
+        return [w for w in used.values()], [l for l in nav.values() if l.shown]
+
+    def go(name):
+        line = [l for l in shown()[1] if l.Text.text == name][0]
+        line.Click(line)
+        return shown()[0]
+
+    def row(rows, key):
+        return [w for w in rows if w.row and w.row.key == key][0]
+
+    rows, nav = shown()
+    names = [l.Text.text for l in nav]
+    print("      left: " + " | ".join(names))
+    assert names == ["Patchwerk Forever", "Sparkle (Thread)", "Names", "Appearance", "Alerts", "Ignore List", "Passed",
+                     "Behind My Character", "Loot Wisps"], names
+    assert [l.Fold.text for l in nav[:2]] == ["", "-"], [l.Fold.text for l in nav[:2]]
+    assert rows[0].kind == "intro" and rows[0].Title.text == "Sparkle (Thread)" and rows[0].Voice.text, "the page has no intro"
+    assert [w.kind for w in rows][-2:] == ["header", "button"] and rows[-1].Control.text == "Reset", "Reset To Defaults is not at the foot"
+    # a tick box
+    check = [w for w in rows if w.kind == "check"][0]
+    key, was = check.row.key, sp.Get(check.row.key)
+    assert check.Control.checked == was and check.Label.text == check.row.name
+    check.Control.checked = not was
+    check.Control.Click(check.Control)
+    assert sp.Get(key) == (not was), "the tick box did not change its setting"
+    check.Control.checked = was
+    check.Control.Click(check.Control)
+    assert sp.Get(key) == was
+    # Reset To Defaults asks first
+    rows[-1].Control.Click(rows[-1].Control)
+    assert stub.asked and "Sparkle (Thread)" in stub.asked.text, "Reset To Defaults did not ask"
+    stub.Answer(False)
+    # a further page, from the left; its line lit
+    rows = go("Appearance")
+    assert O.Current(O)[1] == "Sparkle: Appearance" and rows[0].Title.text == "Sparkle: Appearance", O.Current(O)
+    assert [l.Lit.shown for l in shown()[1] if l.Text.text == "Appearance"] == [True]
+    # a slider: its step buttons move it a step; shown as a percent where it is one
+    size = row(rows, "look.herb.size")
+    old = sp.Get("look.herb.size")
+    size.Control.Forward.Click(size.Control.Forward)
+    assert sp.Get("look.herb.size") == old + size.row.step, (old, sp.Get("look.herb.size"))
+    size.Control.Back.Click(size.Control.Back)
+    assert sp.Get("look.herb.size") == old
+    bright = row(rows, "look.herb.bright")
+    label = list(bright.Control.formatters.values())[0](55)
+    assert label == "55%", label
+    # a dropdown: its lines are the setting's choices, the one in use selected
+    effect = row(rows, "look.herb.effect")
+    assert len(effect.Control.radios) >= 12 and effect.Control.text, "the dropdown shows nothing selected"
+    before = sp.Get("look.herb.effect")
+    other = [r for r in effect.Control.radios.values() if not r.selected()][0]
+    stub.PickChoice(effect.Control, other.text)
+    assert sp.Get("look.herb.effect") == other.value and other.value != before and effect.Control.text == other.text
+    sp.Set("look.herb.effect", before)
+    # a color: the game's color picker, and Cancel puts it back
+    colour = row(rows, "look.herb.colour")
+    was = sp.Get("look.herb.colour")
+    colour.Control.Click(colour.Control)
+    stub.PickColour(1, 0, 0)
+    assert sp.Get("look.herb.colour") == "ffff0000", sp.Get("look.herb.colour")
+    stub.picker.cancelFunc()
+    assert sp.Get("look.herb.colour") == was
+    # greyed out with its tick box, and the gamepad's cursor kept off it
+    show = row(rows, "look.herb.show")
+    show.Control.checked = False
+    show.Control.Click(show.Control)
+    assert effect.enabled is False and effect.Control.enabled is False and stub.smart[effect.Control] == "ignored", "not greyed with its tick box"
+    show.Control.checked = True
+    show.Control.Click(show.Control)
+    assert effect.enabled is True and effect.Control.enabled is True and stub.smart[effect.Control] is None
+    # a value changed elsewhere (the chat, a preset) shows within half a second
+    sp.Set("look.herb.size", old + size.row.step)
+    stub.Frame()
+    assert size.Control.value == old + size.row.step, "the slider did not follow a value changed elsewhere"
+    sp.Set("look.herb.size", old)
+    stub.Frame()
+    # the gamepad: each control has the cursor's place set; the rows and the slider's bar are passed over;
+    # a control the cursor comes to low on the page is scrolled into view
+    assert check.Control.cursorAnchor and size.Control.Back.cursorAnchor and colour.Control.cursorAnchor
+    assert stub.smart[size.Control.Slider] == "ignored" and stub.smart[size] == "ignored"
+    last = [w for w in rows if w.kind == "check"][-1]
+    assert win.Scroll.scroll == 0 and last.y > win.Scroll.height, "the page is not long enough to scroll"
+    last.Control.Run(last.Control, "OnEnter")
+    assert win.Scroll.scroll > 0 and last.y + last.tall <= win.Scroll.scroll + win.Scroll.height, "the control was not scrolled into view"
+    # the lists are on their pages
+    rows = go("Ignore List")
+    assert [w.kind for w in rows] == ["intro", "list", "button"] and rows[1].Title.text == "Ignored Objects", [w.kind for w in rows]
+    # the search: across every part, a heading for each page, the controls themselves
+    win.Search.SetText(win.Search, "rumble")
+    rows, nav = shown()
+    assert O.Current(O)[2] == "rumble" and rows[0].Title.text == "Search Results", "the search did not show its results"
+    heads = [w.Title.text for w in rows if w.kind == "header"]
+    found = O.Search(O, "rumble")
+    assert "Sparkle: Alerts" in heads and heads == [g.page.name for g in found.values()], heads
+    assert len([w for w in rows if w.row and w.kind != "header"]) == sum(len(g.rows) for g in found.values()) >= 4
+    assert not any(l.Lit.shown for l in nav), "a page is lit while searching"
+    win.Search.SetText(win.Search, "no such thing at all")
+    rows = shown()[0]
+    assert rows[1].kind == "text" and "No options found" in rows[1].Text.text
+    win.Search.SetText(win.Search, "")
+    assert O.Current(O)[1] == "Sparkle: Ignore List" and O.Current(O)[2] is None, "clearing the search did not go back to the page"
+    # the open part folds shut and open again
+    part = [l for l in shown()[1] if l.Text.text == "Sparkle (Thread)"][0]
+    part.Click(part)
+    assert [l.Text.text for l in shown()[1]] == ["Patchwerk Forever", "Sparkle (Thread)"]
+    part.Click(part)
+    assert len(shown()[1]) == 9
+    # opened again: the page last shown; it is kept for the account
+    O.Close(O)
+    assert not win.shown
+    G.PatchwerkForever_OpenOptions()
+    assert win.shown and O.Current(O)[1] == "Sparkle: Ignore List"
+    assert G.PatchwerkForeverDB.window.page == "Sparkle: Ignore List"
+    # the tool's own command opens its first page
+    slash("config")
+    assert O.Current(O)[0] == SPARKLE and O.Current(O)[1] == "Sparkle (Thread)"
+    # the preview stands beside this window too (what the steps above changed is let go first)
+    stub.RunAfters()
+    stub.RunAfters()
+    assert not t.shown
+    sp.Set("look.ore.size", 160)
+    stub.RunAfters()
+    assert t.shown, "no preview beside the options window"
+    stub.RunAfters()
+    # combat closes it, and says so once
+    stub.combat = True
+    stub.Fire("PLAYER_REGEN_DISABLED")
+    assert not win.shown and "Options closed for combat." in chat()
+    stub.combat = False
+    chat()
 
     print("Sparkle (Thread): all passed.")
 

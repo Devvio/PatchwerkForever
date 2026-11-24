@@ -167,7 +167,8 @@ local WINDOWS = { 'WorldMapFrame', 'GameMenuFrame', 'SettingsPanel', 'InterfaceO
 	'LootFrame', 'GroupLootContainer', 'TaxiFrame', 'FlightMapFrame', 'MacroFrame', 'KeyBindingFrame',
 	'ContainerFrameCombinedBags', 'StaticPopup1', 'ItemTextFrame', 'ClassTrainerFrame', 'PetStableFrame',
 	'CommunitiesFrame', 'HelpFrame', 'MovieFrame', 'CinematicFrame',
-	'PatchwerkForever_Thread_GlobeWindow' }       -- (and Globe (Thread)'s window, a map of our own)
+	'PatchwerkForever_Thread_GlobeWindow',        -- (and Globe (Thread)'s window, a map of our own)
+	'PatchwerkForeverOptions' }                   -- (and the family's options window, base 2.10.0)
 for i = 1, 13 do WINDOWS[#WINDOWS + 1] = 'ContainerFrame' .. i end
 
 local function Shown(name)

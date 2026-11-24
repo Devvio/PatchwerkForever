@@ -216,3 +216,23 @@ A heavy ornate ring of antique gold, seen straight from the front, with nothing 
 ```
 
 If the tool gets it wrong: the hole must be clear magenta at the middle of the picture, and the band must be closed all the way round (a gap lets the magenta inside join the magenta outside, which is fine, but a band that fades out is not).
+
+---
+
+# Patchwerk Forever: the options window's art (base 2.10.0)
+
+The family's options window is dressed in two pictures: the **parchment** the pages are written on, and the **leather** of the left column, where the parts are listed. Until yours are there, `tools/options_art.py` makes plain stand-ins of its own. The words on the page are dark ink and a rust red, so the parchment must stay light; the column's words are gold and cream, so the leather must stay dark.
+
+Save each as `art/PatchwerkForever/<name>.png`. `build.py` (through `art.py`) makes it `addons/PatchwerkForever/Media/<name>.tga` on the next build, in place of the stand-in, at the nearest power of two on each side (keep it square). Both are stretched over their area, the parchment over 920 x 640 and the leather over a column 232 wide and 526 tall, so neither needs to tile, and anything drawn near the edges shows at the window's edges.
+
+### Parchment: `art/PatchwerkForever/parchment.png`
+
+```text
+A sheet of old parchment seen flat from straight above, filling the whole frame. Warm light cream, gently uneven: soft pale-tan blotches, faint water stains, fine fibres and grain, the edges a little darker and worn as on an old page that has been handled. Light and even overall, so dark ink written on it reads clearly everywhere. Even lighting, no shadows, no folds, no tears, no writing, no drawings, no border. Square 1:1, 1024 x 1024.
+```
+
+### Leather: `art/PatchwerkForever/leather.png`
+
+```text
+A panel of dark brown tooled leather seen flat from straight above, filling the whole frame: the cover of an old, well-used book. Rich dark brown with a fine natural grain, a few soft creases and darker scuffs, slightly lighter wear in the middle. A single line of pale tan stitching runs down each long side, close to the edge. Dark overall, so gold and cream lettering read clearly on it. Even lighting, no shadows, no buckles, no studs, no lettering, no emblem. Square 1:1, 1024 x 1024.
+```

@@ -34,7 +34,7 @@ Nothing in DungeonJournal's own files is changed, and none of its data is in thi
 
 ## Settings and commands
 
-The page **Dungeon Journal (Stitch)**, under **Options → AddOns → Patchwerk Forever**.
+The page **Dungeon Journal (Stitch)**, in **Patchwerk Forever's options window** (`/patchwerk config`).
 
 | Setting | Does |
 |---|---|

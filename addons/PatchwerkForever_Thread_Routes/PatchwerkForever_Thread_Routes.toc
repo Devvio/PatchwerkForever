@@ -2,7 +2,7 @@
 ## Title: Patchwerk Forever: Routes (Thread)
 ## Notes: Finds the way to your map pin, a quest you track or your RestedXP guide's next step: over the ground, through tunnels and over bridges, by flight path, boat and zeppelin. Also records herb and ore nodes. Needs Patchwerk Forever. Type /thread.
 ## Author: Tyrone
-## Version: 1.4.0
+## Version: 1.4.1
 ## Group: PatchwerkForever
 ## X-Category: Map & Minimap
 ## X-License: MIT

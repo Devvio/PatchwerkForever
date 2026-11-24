@@ -190,7 +190,16 @@ local function Page(category, tool, name)
 	name = name or tool.spec.page or tool.addon;
 	local page = tool.pages[name];
 	if not page then
-		local sub, layout = Settings.RegisterVerticalLayoutSubcategory(category, name);
+		-- A tool's further pages fold under its first ("Sparkle (Thread)" › "Appearance"), named without
+		-- the tool's name, which the page's intro still shows ("Sparkle: Appearance"). A client that
+		-- will not nest them three deep gets them beside the first page, as before.
+		local sub, layout;
+		if tool.first then
+			local short = name:match('^[^:]+:%s*(.+)$') or name;
+			local ok, s, l = pcall(Settings.RegisterVerticalLayoutSubcategory, tool.first.category, short);
+			if ok and s then sub, layout = s, l end;
+		end
+		if not sub then sub, layout = Settings.RegisterVerticalLayoutSubcategory(category, name) end;
 		page = { category = sub, layout = layout };
 		tool.pages[name] = page;
 		-- every page opens with its name, the tool's picture and a line in Patchwerk's voice (Look.lua)
@@ -313,6 +322,8 @@ local function AskReset(tool)
 	show('PATCHWERKFOREVER_RESET', tool.spec.page or tool.addon, nil, tool)
 end
 
+ns.AskReset = AskReset;
+
 -- @param category : Patchwerk Forever's own page, not yet handed to the game
 function ns.BuildToolPages(category)
 	if not Settings.RegisterVerticalLayoutSubcategory then return end;
@@ -336,7 +347,12 @@ function ns.BuildToolPages(category)
 	end
 end
 
+-- @return true when the options opened, or (with the family's window) the reason they could not was said
 function ns.OpenToolSettings(tool)
+	if ( ns.WindowFrame and ns.WindowFrame() ) then
+		ns.OpenWindow(tool.addon)
+		return true;     -- (in combat the window says so: the tool says nothing more)
+	end
 	local page = tool.first;
 	if not ( page and page.category and Settings and Settings.OpenToCategory ) or InCombatLockdown() then
 		return false;

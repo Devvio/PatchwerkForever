@@ -159,9 +159,14 @@ end
 
 -- While the options are open, the sample follows the settings of the step text as they change.
 local LOOKS = { floatSize = true, floatDown = true, floatAcross = true, floatRoute = true, floatHold = true }
-ns.OnSetting(function(key)
+local function OptionsOpen()
+	local options = ns.Base and ns.Base.Options                 -- (the family's own window, base 2.10.0)
+	if options and options.IsShown and options:IsShown() then return true end
 	local panel = rawget(_G, 'SettingsPanel')
-	if LOOKS[key] and type(panel) == 'table' and panel.IsShown and panel:IsShown() then
+	return type(panel) == 'table' and panel.IsShown and panel:IsShown() and true or false
+end
+ns.OnSetting(function(key)
+	if LOOKS[key] and OptionsOpen() then
 		ns.FloatTest(true)
 	end
 end)

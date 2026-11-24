@@ -1057,8 +1057,10 @@ end
 ---------------------------------------------------------------------------
 -- The previews: a sparkle (the Preview Sparkle and Preview Name buttons) and the fade area
 ---------------------------------------------------------------------------
--- The options window, while it is open.
+-- The options window, while it is open: the family's own (base 2.10.0), else the game's.
 local function Panel()
+	local options = ns.Base and ns.Base.Options
+	if options and options.IsShown and options:IsShown() then return options:Frame() end
 	local panel = rawget(_G, 'SettingsPanel')
 	if type(panel) == 'table' and panel.IsShown and panel:IsShown() then return panel end
 	return nil

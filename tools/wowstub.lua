@@ -87,12 +87,36 @@ local function Line()
 	return line
 end
 
-function CreateFrame(kind, name, parent)
-	local frame = { scripts = {}, shown = true, level = 1, width = 1002, height = 668, parent = parent }
+function CreateFrame(kind, name, parent, template)
+	local frame = { scripts = {}, hooks = {}, shown = true, level = 1, width = 1002, height = 668, parent = parent,
+		kind = kind, template = template, enabled = true }
 	function frame:RegisterEvent(event) STUB.events[event] = STUB.events[event] or {}; STUB.events[event][self] = true end
 	function frame:UnregisterEvent(event) if STUB.events[event] then STUB.events[event][self] = nil end end
 	function frame:SetScript(what, fn) self.scripts[what] = fn end
-	function frame:HookScript(what, fn) self.scripts['hook' .. what] = fn end
+	function frame:HookScript(what, fn)
+		self.scripts['hook' .. what] = fn
+		self.hooks[what] = self.hooks[what] or {}
+		table.insert(self.hooks[what], fn)
+	end
+	-- (a script and every hook on it, as the game runs them)
+	function frame:Run(what, ...)
+		if self.scripts[what] then self.scripts[what](self, ...) end
+		for _, fn in ipairs(self.hooks[what] or {}) do fn(self, ...) end
+	end
+	function frame:Click(button) self:Run('OnClick', button or 'LeftButton', false) end
+	function frame:SetEnabled(on) self.enabled = on and true or false end
+	function frame:IsEnabled() return self.enabled end
+	function frame:Enable() self.enabled = true end
+	function frame:Disable() self.enabled = false end
+	function frame:GetText() return self.text end
+	function frame:SetToplevel(on) end
+	function frame:SetMovable(on) end
+	function frame:SetClampedToScreen(on) end
+	function frame:RegisterForDrag(...) end
+	function frame:StartMoving() end
+	function frame:StopMovingOrSizing() end
+	function frame:SetAutoFocus(on) assert(type(on) == 'boolean') end
+	function frame:ClearFocus() end
 	function frame:Show() self.shown = true end
 	function frame:Hide() self.shown = false end
 	function frame:IsShown() return self.shown end
@@ -154,11 +178,12 @@ function CreateFrame(kind, name, parent)
 	function frame:GetParent() return self.parent end
 	function frame:SetPoint(point, to, rel, x, y) assert(to and x == x and y == y) self.anchor = to end
 	function frame:CreateTexture()
-		local tex = { shown = false }
+		local tex = { shown = false, owner = self }
 		STUB.allTextures[#STUB.allTextures + 1] = tex
 		function tex:SetTexCoord(a, b, c, d) assert(a and b and c and d) end
 		function tex:SetSize(w, h) assert(w > 0 and h > 0) end
 		function tex:SetHeight(h) assert(h > 0) end
+		function tex:SetWidth(w) assert(w > 0) end
 		function tex:SetColorTexture(r, g, b, a) assert(r and g and b) self.colour = { r, g, b, a } end
 		function tex:IsShown() return self.shown end
 		function tex:SetTexture(icon) assert(icon ~= nil) self.icon = icon end
@@ -171,17 +196,182 @@ function CreateFrame(kind, name, parent)
 		function tex:ClearAllPoints() end
 		function tex:SetAllPoints(other) assert(other) end
 		function tex:SetPoint(point, to, rel, x, y) assert(x == x and y == y, 'not a number') self.x, self.y = x, y end
-		function tex:Show() if not self.shown then self.shown = true; STUB.icons = STUB.icons + 1 end end
-		function tex:Hide() if self.shown then self.shown = false; STUB.icons = STUB.icons - 1 end end
+		-- (STUB.icons counts the pictures shown, but not the options window's: the checks count map icons with it)
+		function tex:Show() if not self.shown then self.shown = true; if not STUB.InOptions(self.owner) then STUB.icons = STUB.icons + 1 end end end
+		function tex:Hide() if self.shown then self.shown = false; if not STUB.InOptions(self.owner) then STUB.icons = STUB.icons - 1 end end end
 		return tex
 	end
 	STUB.frames[#STUB.frames + 1] = frame
+	if name then _G[name] = frame end
+	if template and STUB.templates[template] then STUB.templates[template](frame) end
 	return frame
+end
+
+-- What the game's own templates bring, as far as the addons use them.
+STUB.templates = {}
+STUB.templates.UIPanelScrollFrameTemplate = function(frame)
+	frame.scroll = 0
+	function frame:SetScrollChild(child) self.child = child end
+	function frame:GetVerticalScroll() return self.scroll end
+	function frame:SetVerticalScroll(y) assert(y >= 0 and y <= self:GetVerticalScrollRange() + 0.01, 'scrolled out of range: ' .. y) self.scroll = y end
+	function frame:GetVerticalScrollRange() return math.max(0, (self.child and self.child.height or 0) - self.height) end
+end
+STUB.templates.SearchBoxTemplate = function(box)
+	box.Instructions = box:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
+	box.text = ''
+	function box:SetText(text) assert(type(text) == 'string') self.text = text self:Run('OnTextChanged', false) end
+end
+-- the game's slider with a step button at each end; its value changes are told to whoever asked
+STUB.templates.MinimalSliderWithSteppersTemplate = function(widget)
+	widget.callbacks = {}
+	widget.Slider = CreateFrame('Slider', nil, widget)
+	widget.Back = CreateFrame('Button', nil, widget)
+	widget.Forward = CreateFrame('Button', nil, widget)
+	function widget:RegisterCallback(event, fn, owner) assert(event and fn and owner) table.insert(self.callbacks, function(v) fn(owner, v) end) end
+	function widget:Init(value, low, high, steps, formatters)
+		assert(type(value) == 'number' and low < high and steps >= 1 and steps == math.floor(steps), 'a slider the game would not make')
+		assert(value >= low - 1e-9 and value <= high + 1e-9, 'a slider started outside its range: ' .. value)
+		self.low, self.high, self.step, self.formatters = low, high, (high - low) / steps, formatters
+		self:SetValue(value)
+	end
+	function widget:SetValue(value) self.value = value for _, fn in ipairs(self.callbacks) do fn(value) end end
+	function widget:GetValue() return self.value end
+	function widget:Step(forward) self:SetValue(math.max(self.low, math.min(self.high, self.value + (forward and self.step or -self.step)))) end
+	widget.Back:SetScript('OnClick', function() widget:Step(false) end)
+	widget.Forward:SetScript('OnClick', function() widget:Step(true) end)
+end
+-- the game's dropdown: its menu is made by the addon's function; STUB.Pick chooses a line of it
+STUB.templates.WowStyle1DropdownTemplate = function(dropdown)
+	function dropdown:SetupMenu(fn) assert(type(fn) == 'function') self.menu = fn self:GenerateMenu() end
+	function dropdown:GenerateMenu()
+		local radios = {}
+		local root = { CreateRadio = function(_, text, selected, choose, value)
+			assert(type(text) == 'string' and type(selected) == 'function' and type(choose) == 'function')
+			radios[#radios + 1] = { text = text, selected = selected, choose = choose, value = value }
+		end }
+		self.menu(self, root)
+		self.radios = radios
+		self.text = nil
+		for _, radio in ipairs(radios) do if radio.selected() then self.text = radio.text end end
+	end
+end
+function STUB.PickChoice(dropdown, text)
+	for _, radio in ipairs(dropdown.radios or {}) do
+		if radio.text == text then radio.choose() dropdown:GenerateMenu() return true end
+	end
+	error('no such line in the list: ' .. tostring(text))
+end
+-- the game's color picker: what it was opened with is kept; STUB.PickColour(r, g, b) picks one
+ColorPickerFrame = { SetupColorPickerAndShow = function(self, info) assert(info.swatchFunc and info.cancelFunc) STUB.picker = info end,
+	GetColorRGB = function() return STUB.pickerRGB[1], STUB.pickerRGB[2], STUB.pickerRGB[3] end }
+STUB.pickerRGB = { 1, 1, 1 }
+function STUB.PickColour(r, g, b) STUB.pickerRGB = { r, g, b } STUB.picker.swatchFunc() end
+UISpecialFrames = UISpecialFrames or {}
+function CreateAnchor(point, frame, rel, x, y) assert(point and frame) return { point = point, frame = frame } end
+-- the game's gamepad cursor: what it was told about each frame
+STUB.smart = setmetatable({}, { __mode = 'k' })
+function SmartNavigation_MarkFrameIgnored(frame) assert(frame) STUB.smart[frame] = 'ignored' end
+function SmartNavigation_ClearIgnoreStatus(frame) assert(frame) STUB.smart[frame] = nil end
+function SmartNavigation_SetCustomCursorAnchorPointForFrame(frame, anchor) assert(frame and anchor and anchor.point) frame.cursorAnchor = anchor end
+
+function STUB.InOptions(frame)
+	local window = rawget(_G, 'PatchwerkForeverOptions')
+	while window and frame do
+		if frame == window then return true end
+		frame = frame.parent
+	end
+	return false
 end
 
 function STUB.Fire(event, ...)
 	for frame in pairs(STUB.events[event] or {}) do
 		frame.scripts.OnEvent(frame, event, ...)
+	end
+	if event == 'PLAYER_LOGIN' then STUB.FromBook() end
+end
+
+-- Since base 2.10.0 the options are in the family's own window, made from a book of parts, pages
+-- and rows (PatchwerkForever.Options:Book()). So that each addon's checks of its options stay as
+-- they were, the book is listed here as the game's pages used to list them: STUB.pages (a tool's
+-- further page as "Sparkle (Thread) > Appearance"), STUB.settings (with SetValue, choices, low and
+-- high, colour), STUB.buttons, STUB.headers, STUB.intros and STUB.rows (the lists), each with the
+-- page it is on. The same checks of each setting are made as the game's pages made.
+function STUB.FromBook()
+	local P = rawget(_G, 'PatchwerkForever')
+	if STUB.fromBook or not (P and P.Options and P.Options.IsShown) then return end
+	local made = P.Options:Frame()
+	if not made then return end            -- (the window could not be made: the game's pages were)
+	STUB.fromBook = true
+	local book = P.Options:Book()
+	STUB.book = book
+	for p, part in ipairs(book.parts) do
+		-- (a tool's Reset To Defaults, at the foot of its first page, is listed after all of its pages, as it was made last)
+		local feet = {}
+		for i, page in ipairs(part.pages) do
+			local key = page.name
+			if i > 1 and part.tool then key = part.pages[1].name .. ' > ' .. page.short end
+			if not page.front then
+				assert(not STUB.pages[key], 'a page made twice: ' .. key)
+				local category = { title = key, shown = page.short, items = 0, GetID = function() return 8 end }
+				STUB.pages[key] = category
+				local intro = { template = 'PatchwerkForeverIntroTemplate', data = { name = page.name, icon = part.icon, voice = page.voice },
+					page = key, GetData = function(self) return self.data end }
+				STUB.rows[#STUB.rows + 1] = intro
+				STUB.intros[#STUB.intros + 1] = intro.data
+			end
+			local rows = {}
+			for _, row in ipairs(page.rows) do
+				if row.foot then feet[#feet + 1] = { row = row, key = key } else rows[#rows + 1] = { row = row, key = key } end
+			end
+			if i == #part.pages then for _, foot in ipairs(feet) do rows[#rows + 1] = foot end end
+			for _, entry in ipairs(rows) do
+				local row, key = entry.row, entry.key
+				if row.kind == 'header' then
+					STUB.headers[#STUB.headers + 1] = row.name
+					STUB.rows[#STUB.rows + 1] = { template = 'PatchwerkForeverHeaderTemplate', data = { name = row.name }, page = key,
+						GetData = function(self) return self.data end }
+				elseif row.kind == 'list' then
+					STUB.rows[#STUB.rows + 1] = { template = 'PatchwerkForeverListTemplate', data = { name = row.name, list = row.list, empty = row.empty },
+						page = key, GetData = function(self) return self.data end }
+				elseif row.kind == 'button' then
+					assert(type(row.name) == 'string' and type(row.button) == 'string' and type(row.click) == 'function' and row.desc, 'a button the game would not make')
+					STUB.buttons[#STUB.buttons + 1] = { name = row.name, text = row.button, click = row.click, page = key }
+				else
+					local addon = row.addon or 'PatchwerkForever'
+					local variable = addon .. '_' .. row.key:gsub('%.', '_')
+					local kind = (row.kind == 'check' and 'boolean') or (row.kind == 'slider' and 'number') or 'string'
+					assert(not variable:find('[^%w_]'), 'a bad name for a setting: ' .. variable)
+					for _, other in ipairs(STUB.settings) do assert(other.variable ~= variable, 'two settings named ' .. variable) end
+					assert(type(row.default) == kind, variable .. ': its starting value is not a ' .. kind)
+					assert(type(row.get()) == kind, variable .. ': what it reads is not a ' .. kind)
+					assert(row.desc, variable .. ': no tooltip')
+					local setting = { variable = variable, name = row.name, kind = kind, default = row.default, get = row.get, set = row.set, page = key, row = row }
+					function setting:SetValue(value) assert(type(value) == self.kind, variable .. ': set to a value of the wrong kind') self.set(value) end
+					if row.kind == 'slider' then
+						local low, high, step = row.min or 0, row.max or 1, row.step or 1
+						assert(low < high and step > 0)
+						local steps = (high - low) / step
+						assert(math.abs(steps - math.floor(steps + 0.5)) < 1e-6, variable .. ': its steps do not fit its range')
+						assert(row.default >= low and row.default <= high, variable .. ': starts outside its range')
+						setting.low, setting.high = low, high
+					elseif row.kind == 'choices' then
+						local data, found = {}, false
+						for _, choice in ipairs(row.choices) do
+							assert(choice[1] ~= nil and type(choice[2]) == 'string')
+							data[#data + 1] = { value = choice[1], label = choice[2] }
+							found = found or choice[1] == row.default
+						end
+						assert(#data >= 2, variable .. ': a list of fewer than two')
+						assert(found, variable .. ': its starting value is not in its list')
+						setting.choices = data
+					elseif row.kind == 'colour' then
+						assert(row.default:match('^%x%x%x%x%x%x%x%x$'), variable .. ': not a colour: ' .. row.default)
+						setting.colour = true
+					end
+					STUB.settings[#STUB.settings + 1] = setting
+				end
+			end
+		end
 	end
 end
 
@@ -334,7 +524,7 @@ function WorldMapFrame:AddDataProvider(provider) STUB.provider = provider end
 
 -- The options page. Each maker checks what it is handed the way the game would trip over it.
 STUB.pages, STUB.buttons, STUB.headers = {}, {}, {}
-MinimalSliderWithSteppersMixin = { Label = { Right = 1 } }
+MinimalSliderWithSteppersMixin = { Label = { Right = 1 }, Event = { OnValueChanged = 'OnValueChanged' } }
 local function NewControl()
 	return { SetParentInitializer = function(_, parent, fn) assert(parent and fn() ~= nil) end }
 end
@@ -353,9 +543,12 @@ Settings = {
 	VarType = { Boolean = 'boolean', Number = 'number', String = 'string' },
 	RegisterVerticalLayoutCategory = function(title) return { title = title, GetID = function() return 7 end }, {} end,
 	RegisterVerticalLayoutSubcategory = function(parent, name)
-		assert(parent and type(name) == 'string' and not STUB.pages[name], 'a sub-page made twice: ' .. tostring(name))
-		local page = { title = name, items = 0, GetID = function() return 8 end }
-		STUB.pages[name] = page
+		-- (a page folded under another sub-page is known here as "Sparkle (Thread) > Appearance")
+		assert(parent and type(name) == 'string', 'a sub-page with no parent or name')
+		local key = STUB.pages[parent.title] == parent and ( parent.title .. ' > ' .. name ) or name
+		assert(not STUB.pages[key], 'a sub-page made twice: ' .. key)
+		local page = { title = key, shown = name, parent = parent.title, items = 0, GetID = function() return 8 end }
+		STUB.pages[key] = page
 		return page, {}
 	end,
 	RegisterInitializer = function(category, initializer)
