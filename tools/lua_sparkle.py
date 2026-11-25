@@ -47,8 +47,24 @@ function CreateFrame(...)
     function frame:GetRight() return self.right end
     function frame:GetBottom() return self.bottom end
     function frame:SetPoint(point, to, rel, x, y) assert(to and x == x and y == y) self.anchor, self.px, self.py = to, x, y end
+    function frame:RegisterAllEvents() STUB.everything[self] = true end
+    function frame:UnregisterAllEvents() STUB.everything[self] = nil end
     return frame
 end
+-- a frame that hears every event
+STUB.everything = {}
+local Fire = STUB.Fire
+function STUB.Fire(event, ...)
+    Fire(event, ...)
+    for frame in pairs(STUB.everything) do frame.scripts.OnEvent(frame, event, ...) end
+end
+-- the spell the player channels: STUB.channel = { name =, start =, ends = (milliseconds), id = }
+function UnitChannelInfo(unit)
+    local c = unit == 'player' and STUB.channel
+    if not c then return nil end
+    return c.name, c.name, 136245, c.start, c.ends, false, false, c.id
+end
+C_Spell = { GetSpellName = function(id) return id == 7620 and 'Fishing' or nil end }
 UIParent.right = 1002
 function UIParent:GetRight() return self.right end
 -- the options window: 920 wide in the middle of a wider screen, closed at first
@@ -205,7 +221,7 @@ def main():
     for key in behind:
         assert by_key[key].parent == "sparkleBehind", key
     percent = [k for k, d in by_key.items() if d.percent]
-    assert len(percent) == 26 and all(k.endswith((".bright", ".speed")) or k in behind or k in ("wispSpeed", "cueRumbleStrength", "sparkleBehindMount")
+    assert len(percent) == 29 and all(k.endswith((".bright", ".speed")) or k in behind or k in ("wispSpeed", "cueRumbleStrength", "sparkleBehindMount", "fishEffects", "fishBackground", "threatStrength")
                                       for k in percent), percent
     for d in defs:
         for choice in (d.choices.values() if d.choices else []):
@@ -235,10 +251,10 @@ def main():
         if made.variable.startswith(SPARKLE + "_"):
             on_page[made.page] = on_page.get(made.page, 0) + 1
     assert on_page == {"Sparkle (Thread)": 11, "Sparkle (Thread) > Names": 8, "Sparkle (Thread) > Behind My Character": 7,
-                       "Sparkle (Thread) > Appearance": 70, "Sparkle (Thread) > Loot Wisps": 11, "Sparkle (Thread) > Alerts": 3, "Sparkle (Thread) > Passed": 2}, on_page
+                       "Sparkle (Thread) > Appearance": 70, "Sparkle (Thread) > Loot Wisps": 11, "Sparkle (Thread) > Alerts": 11, "Sparkle (Thread) > Passed": 2}, on_page
     headers = list(stub.headers.values())
     assert headers == ["Herbs", "Ore", "Chests", "Quest Objects", "Quest Corpses", "Corpses With Loot", "Skinnable Corpses",
-                       "Other Objects", "Waypoint", "Defaults"], headers
+                       "Other Objects", "Waypoint", "Threat", "Fishing", "Defaults"], headers
     # 1.5.0: a Show tick box for each kind but the two corpses (theirs are on the first page), the rest grayed out with it
     for k in kinds:
         show = by_key.get("look.%s.show" % k)
@@ -1226,6 +1242,180 @@ def main():
     assert not win.shown and "Options closed for combat." in chat()
     stub.combat = False
     chat()
+
+    step("fishing: the splash louder while the cast runs, put back after; a rumble when the bobber lands")
+    for name, value in (("Sound_SFXVolume", "0.6"), ("Sound_MusicVolume", "0.8"), ("Sound_AmbienceVolume", "0.5"), ("Sound_EnableSFX", "0")):
+        cvars[name] = value
+    assert by_key["fishLoud"].default is False and by_key["fishRumble"].default is False
+    assert by_key["fishEffects"].parent == "fishLoud" and by_key["fishBackground"].parent == "fishLoud"
+    point_at(None, None, None)
+
+    def channel(seconds, spell=7620, name="Fishing"):
+        stub.channel = lua.table_from({"name": name, "start": stub.time * 1000, "ends": (stub.time + seconds) * 1000, "id": spell})
+        stub.Fire("UNIT_SPELLCAST_CHANNEL_START", "player", "Cast-1", spell)
+
+    def stop():
+        stub.channel = None
+        stub.Fire("UNIT_SPELLCAST_CHANNEL_STOP", "player", "Cast-1", 7620)
+
+    def sound():
+        return tuple(cvars[n] for n in ("Sound_SFXVolume", "Sound_MusicVolume", "Sound_AmbienceVolume", "Sound_EnableSFX"))
+
+    BOBBER = "GameObject-0-1116-0-16636977-35591-9D25D2D6C3"
+    # off (as it begins): fishing changes nothing
+    channel(20)
+    assert sound() == ("0.6", "0.8", "0.5", "0")
+    stop()
+    stub.RunAfters()
+    sp.Set("fishLoud", True)
+    channel(20)
+    assert sound() == ("1.00", "0.00", "0.00", "1"), sound()
+    stop()
+    assert sound()[0] == "1.00", "put back at once, not after a moment"
+    # a cast again straight away: nothing put back between them
+    channel(20)
+    stub.RunAfters()
+    assert sound() == ("1.00", "0.00", "0.00", "1"), "put back while still fishing"
+    stop()
+    stub.RunAfters()
+    assert sound() == ("0.6", "0.8", "0.5", "0"), sound()
+    assert len(G.PatchwerkForever_Thread_SparkleDB.fishWas) == 0
+    # the sliders: effects only ever raised, music and ambience a share of their own
+    sp.Set("fishEffects", 50)
+    sp.Set("fishBackground", 50)
+    channel(20)
+    assert sound() == ("0.60", "0.40", "0.25", "1"), sound()
+    sp.Set("fishBackground", 0)                              # (changed while fishing: from their own volume still)
+    assert sound()[1:3] == ("0.00", "0.00"), sound()
+    cvars["Sound_MusicVolume"] = "0.3"                       # (changed by you while fishing: yours is kept)
+    stop()
+    stub.RunAfters()
+    assert sound() == ("0.6", "0.3", "0.5", "0"), sound()
+    # a disconnect mid-cast: put back at the next login
+    channel(20)
+    assert cvars["Sound_AmbienceVolume"] == "0.00"
+    stub.Fire("PLAYER_LOGIN")
+    assert cvars["Sound_AmbienceVolume"] == "0.5"
+    stop()
+    stub.RunAfters()
+    # turned off mid-cast: put back then
+    channel(20)
+    sp.Set("fishLoud", False)
+    assert cvars["Sound_AmbienceVolume"] == "0.5" and cvars["Sound_EnableSFX"] == "0"
+    stop()
+    stub.RunAfters()
+    # another channelled spell changes nothing
+    sp.Set("fishLoud", True)
+    channel(8, 12051, "Evocation")
+    assert sound() == ("0.6", "0.3", "0.5", "0")
+    stop()
+    # the bobber lands: one rumble, only when asked for, and only for Fishing
+    stub.pad = True
+    count = lambda: len(stub.rumbles)
+    before = count()
+    channel(20)
+    stub.Fire("PLAYER_SOFT_INTERACT_CHANGED", None, BOBBER)
+    assert count() == before, "rumbled while Rumble When The Bobber Lands is off"
+    stop()
+    sp.Set("fishRumble", True)
+    channel(20)
+    stub.Fire("PLAYER_SOFT_INTERACT_CHANGED", None, BOBBER)
+    stub.Fire("PLAYER_SOFT_INTERACT_CHANGED", BOBBER, BOBBER)
+    assert count() == before + 1, "not one rumble for the bobber"
+    stop()
+    stub.Fire("PLAYER_SOFT_INTERACT_CHANGED", None, BOBBER)
+    assert count() == before + 1, "rumbled with no cast running"
+    channel(20)
+    stub.time = stub.time + 5
+    stub.Fire("PLAYER_SOFT_INTERACT_CHANGED", None, "GameObject-0-1-1-1-1617-0")   # (an herb, long after the cast)
+    assert count() == before + 1
+    stop()
+    stub.RunAfters()
+    stub.pad = False
+    sp.Set("fishLoud", False)
+    sp.Set("fishRumble", False)
+
+    step("threat: a double rumble and a sound when an enemy turns on you, in a group and not as a tank")
+    lua.execute("""
+        STUB.mobs, STUB.group, STUB.role = {}, false, 'NONE'
+        local guid, exists = UnitGUID, UnitExists
+        function UnitGUID(unit) local m = STUB.mobs[unit] if m then return m.guid end return guid(unit) end
+        function UnitExists(unit) if STUB.mobs[unit] then return true end return exists(unit) end
+        function UnitThreatSituation(unit, mob) local m = STUB.mobs[mob] return m and m.status end
+        function IsInGroup() return STUB.group end
+        function UnitGroupRolesAssigned() return STUB.role end
+    """)
+    assert by_key["threatRumble"].default is False and by_key["threatSound"].default == "none" and by_key["threatWhen"].default == "group"
+    assert by_key["threatStrength"].parent == "threatRumble"
+    stub.pad = True
+    rumbled = lambda: len(stub.rumbles)
+    sounds = lambda: len(stub.sounds)
+
+    def mob(unit, guid, status):
+        stub.mobs[unit] = lua.table_from({"guid": guid, "status": status})
+        stub.Fire("UNIT_THREAT_LIST_UPDATE", unit)
+
+    r0, s0 = rumbled(), sounds()
+    stub.group = True
+    mob("nameplate1", "Creature-0-1-1-1-3100-01", 3)
+    assert rumbled() == r0 and sounds() == s0, "alerted while both are off"
+    stub.Fire("PLAYER_REGEN_ENABLED")
+    sp.Set("threatRumble", True)
+    sp.Set("threatSound", "ping")
+    stub.time = stub.time + 5
+    mob("nameplate1", "Creature-0-1-1-1-3100-01", 1)
+    mob("nameplate1", "Creature-0-1-1-1-3100-01", 3)              # (pulled from the tank)
+    assert sounds() == s0 + 1 and rumbled() == r0 + 1, (sounds(), rumbled())
+    stub.RunAfters()                                               # (the second, short rumble)
+    assert rumbled() == r0 + 2 and abs(stub.rumbles[rumbled()][2] - 0.8) < 1e-6
+    mob("nameplate1", "Creature-0-1-1-1-3100-01", 2)              # (still on you: no alert again)
+    stub.time = stub.time + 5
+    mob("nameplate1", "Creature-0-1-1-1-3100-01", 3)
+    assert sounds() == s0 + 1
+    # a pack turning at once: one alert
+    stub.time = stub.time + 5
+    for i in range(2, 6):
+        mob("nameplate%d" % i, "Creature-0-1-1-1-3100-0%d" % i, 3)
+    assert sounds() == s0 + 2, sounds()
+    # it leaves you and comes back: again
+    stub.time = stub.time + 5
+    mob("nameplate1", "Creature-0-1-1-1-3100-01", 0)
+    mob("nameplate1", "Creature-0-1-1-1-3100-01", 3)
+    assert sounds() == s0 + 3
+    # as a tank, or solo: nothing (In A Group, Not As A Tank); Always: solo too
+    stub.Fire("PLAYER_REGEN_ENABLED")
+    stub.time = stub.time + 5
+    stub.role = "TANK"
+    mob("nameplate1", "Creature-0-1-1-1-3100-01", 3)
+    stub.Fire("PLAYER_REGEN_ENABLED")
+    stub.role, stub.group = "DAMAGER", False
+    mob("nameplate1", "Creature-0-1-1-1-3100-01", 3)
+    assert sounds() == s0 + 3, "alerted as a tank or solo"
+    stub.Fire("PLAYER_REGEN_ENABLED")
+    sp.Set("threatWhen", "always")
+    mob("nameplate1", "Creature-0-1-1-1-3100-01", 3)
+    assert sounds() == s0 + 4
+    # a secret threat, a friendly token, and your own threat changing: asked again from the nameplates
+    stub.Fire("PLAYER_REGEN_ENABLED")
+    stub.time = stub.time + 5
+    stub.mobs["nameplate1"].status = stub.SECRET
+    stub.Fire("UNIT_THREAT_LIST_UPDATE", "nameplate1")
+    stub.Fire("UNIT_THREAT_LIST_UPDATE", "party1")
+    assert sounds() == s0 + 4
+    stub.mobs["nameplate1"].status = 3
+    stub.Fire("UNIT_THREAT_SITUATION_UPDATE", "player")
+    assert sounds() == s0 + 5
+    # the preview
+    stub.RunAfters()
+    sp.Set("threatRumble", False)
+    [b for b in stub.buttons.values() if b.name == "Preview Threat Alert"][0].click()
+    assert "Preview only: Rumble When I Pull Threat is disabled." in chat()
+    stub.RunAfters()
+    sp.Set("threatSound", "none")
+    sp.Set("threatWhen", "group")
+    stub.pad = False
+    stub.mobs = lua.table()
+    stub.Fire("PLAYER_REGEN_ENABLED")
 
     print("Sparkle (Thread): all passed.")
 

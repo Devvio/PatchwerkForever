@@ -1,5 +1,21 @@
 # Patchwerk Forever: Sparkle (Thread)
 
+## 1.6.0
+
+Threat and fishing alerts, on **Sparkle: Alerts** under two new headings. All are off to begin with.
+
+### Threat
+- **Rumble When I Pull Threat**: the gamepad rumbles twice, short, when an enemy turns to attack you: you took it from your tank, or it came for you first. Several turning at once (a pack) rumble once, and an enemy rumbles again only if it leaves you and comes back. **Threat Rumble Strength** (80%) sets how strong.
+- **Threat Alert Sound**: a sound at the same moment, with or without a gamepad.
+- **Alert For Threat**: **In A Group, Not As A Tank** (to begin with: in a party or raid, and not while your group role is Tank) or **Always** (solo too, each enemy that comes for you).
+- **Preview Threat Alert** plays it once.
+
+### Fishing
+
+- **Louder Splash While Fishing**: while you fish, sound effects are turned up (and on, if you had them off) and music and ambience turned down, so the splash of a bite is easy to hear. They are put back a moment after the cast, not between two casts in a row, and a volume you change while fishing is kept. **Sound Effects Volume** (100%) is only ever a raise; **Music And Ambience Volume** (0%) is a share of their own volume. If the game closes mid-cast, the volumes are put back at your next login.
+- **Rumble When The Bobber Lands**: the gamepad rumbles once when your bobber lands within reach of the interact key, so you know the line is out.
+- Why not a rumble on the bite: the game tells addons nothing when a fish bites. A probe recorded every event and everything the game says of the bobber through whole casts, and nothing changes until you click. The bite is only the splash sound and the bobber's dip, and addons can see neither.
+
 ## 1.5.1
 
 - The preview that follows the settings while the options are open (Preview Sparkle, the names, the fade area) works with Patchwerk Forever 2.10.0's own options window too, beside it where there is room.

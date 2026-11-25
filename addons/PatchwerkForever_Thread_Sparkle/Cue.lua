@@ -45,15 +45,16 @@ local function Gamepad()
 end
 
 local rumbles = 0
--- Rumbles the gamepad a moment, as strong as Rumble Strength says. True when the game took it.
-function ns.Rumble()
+-- Rumbles the gamepad a moment, as strong as Rumble Strength says (or `strength`, 0 to 1, for
+-- seconds `long`). True when the game took it.
+function ns.Rumble(strength, long)
 	if not Gamepad() then return false end
 	local pad = C_GamePad
-	local strength = (ns.Get('cueRumbleStrength') or 50) / 100
+	strength = strength or (ns.Get('cueRumbleStrength') or 50) / 100
 	if not pcall(pad.SetVibration, 'Low', strength) then return false end
 	rumbles = rumbles + 1
 	local mine = rumbles
-	C_Timer.After(RUMBLE, function()
+	C_Timer.After(long or RUMBLE, function()
 		if mine == rumbles and type(pad.StopVibration) == 'function' then pcall(pad.StopVibration) end
 	end)
 	return true

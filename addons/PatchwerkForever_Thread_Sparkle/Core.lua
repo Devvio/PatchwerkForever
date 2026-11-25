@@ -142,7 +142,8 @@ for _, kind in ipairs(ns.KINDS) do
 		desc = 'Give every other object type this effect, size, brightness, vertical offset and animation speed. Each type keeps its own color, alert sound and Show setting, and the waypoint its own vertical offset.' })
 end
 
--- alerts: rumble (the sounds are set for each kind on the Appearance page)
+-- alerts: rumble (the sounds are set for each kind on the Appearance page), threat (Threat.lua) and
+-- fishing (Fish.lua)
 do
 	local page = 'Sparkle: Alerts'
 	local add = function(def) def.page = page; ns.settings[#ns.settings + 1] = def end
@@ -156,6 +157,27 @@ do
 		desc = 'How strong the rumble is.' })
 	add({ button = 'Test', name = 'Preview Rumble', click = function() ns.CueTest() end,
 		desc = 'Rumble the gamepad once, as a sparkle would.' })
+	add({ header = true, name = 'Threat' })
+	add({ key = 'threatRumble', default = false, name = 'Rumble When I Pull Threat',
+		desc = 'Rumble the gamepad twice, short, when an enemy turns to attack you: you took it from your tank, or it came for you first. Several at once rumble once. Only while a gamepad is in use.' })
+	add({ key = 'threatStrength', default = 80, min = 10, max = 100, step = 10, name = 'Threat Rumble Strength', parent = 'threatRumble', percent = true,
+		desc = 'How strong the threat rumble is.' })
+	add({ key = 'threatSound', default = 'none', name = 'Threat Alert Sound', choices = ns.SOUNDS,
+		desc = 'A sound the game plays when an enemy turns to attack you, with or without a gamepad.' })
+	add({ key = 'threatWhen', default = 'group', name = 'Alert For Threat',
+		choices = { { 'group', 'In A Group, Not As A Tank' }, { 'always', 'Always' } },
+		desc = 'In A Group, Not As A Tank: only in a party or raid, and not while your group role is Tank, where pulling threat is a warning. Always: solo too, each time an enemy comes for you.' })
+	add({ button = 'Test', name = 'Preview Threat Alert', click = function() ns.ThreatTest() end,
+		desc = 'Play the threat alert once: the sound, and the rumble.' })
+	add({ header = true, name = 'Fishing' })
+	add({ key = 'fishLoud', default = false, name = 'Louder Splash While Fishing',
+		desc = 'While you fish, turn sound effects up and music and ambience down, so the splash of a bite is easy to hear. They are put back after the cast; a volume you change while fishing is kept. (The game does not tell addons when a fish bites, so the bite itself cannot be shown or rumbled.)' })
+	add({ key = 'fishEffects', default = 100, min = 50, max = 100, step = 10, name = 'Sound Effects Volume', parent = 'fishLoud', percent = true,
+		desc = 'The game\'s sound effects volume while you fish. Only ever raised: a higher volume of your own is kept. Sound effects are turned on while you fish if they are off.' })
+	add({ key = 'fishBackground', default = 0, min = 0, max = 100, step = 10, name = 'Music And Ambience Volume', parent = 'fishLoud', percent = true,
+		desc = 'Music and ambience while you fish, as a share of their own volume. 0% silences them.' })
+	add({ key = 'fishRumble', default = false, name = 'Rumble When The Bobber Lands',
+		desc = 'Rumble the gamepad once when your bobber lands within reach of the interact key, as strong as Rumble Strength. Only while a gamepad is in use.' })
 end
 
 -- the ignore list, with a Remove button for each object on it

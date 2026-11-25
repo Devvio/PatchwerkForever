@@ -34,6 +34,8 @@ It follows the object the game's own interact key would use: one at a time, the 
 - **Hiding**: in combat, in dungeons and raids, or on objects and corpses you choose to ignore.
 - **Behind your character** (optional): the sparkle fades where it would be drawn over your character. An addon cannot draw behind your character, so this stands in for it. **Preview Area** shows the area as an oval while you set it, and a second height is used while you are mounted.
 - **Alerts**: an Alert Sound for each kind (None to begin with), and Rumble On Gamepad on **Sparkle: Alerts**. Once for each object; the same one again only after half a minute.
+- **Threat** (off by default, on **Sparkle: Alerts**): **Rumble When I Pull Threat** rumbles the gamepad twice when an enemy turns to attack you, and **Threat Alert Sound** plays a sound then. **Alert For Threat** keeps it to groups where you are not the tank, or makes it always.
+- **Fishing** (off by default, on **Sparkle: Alerts**): **Louder Splash While Fishing** turns sound effects up and music and ambience down while you fish, so you hear the bite, and puts them back after. **Rumble When The Bobber Lands** rumbles the gamepad once when the line is out. The game does not tell addons when a fish bites, so the bite itself cannot be rumbled.
 
 ## From further away
 
@@ -85,7 +87,7 @@ With **Patchwerk Forever: Routes (Thread)** installed too, an herb or a vein is 
 
 ## Options
 
-**Sparkle (Thread)** in Patchwerk Forever's options window, `/sparkle config`; its further pages fold under it. The name has the page **Sparkle: Names**; how each kind of object sparkles is on **Sparkle: Appearance**, a heading for each kind; **Sparkle: Behind My Character** has the fading; **Sparkle: Alerts** the rumble; **Sparkle: Ignore List** the ignored objects, each with a Remove button; **Sparkle: Passed** what you passed; and **Sparkle: Loot Wisps** has the wisps. The two lists need Patchwerk Forever 2.9.0.
+**Sparkle (Thread)** in Patchwerk Forever's options window, `/sparkle config`; its further pages fold under it. The name has the page **Sparkle: Names**; how each kind of object sparkles is on **Sparkle: Appearance**, a heading for each kind; **Sparkle: Behind My Character** has the fading; **Sparkle: Alerts** the rumble, threat and fishing; **Sparkle: Ignore List** the ignored objects, each with a Remove button; **Sparkle: Passed** what you passed; and **Sparkle: Loot Wisps** has the wisps. The two lists need Patchwerk Forever 2.9.0.
 
 ## Commands
 
