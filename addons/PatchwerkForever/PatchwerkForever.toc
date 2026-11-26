@@ -2,7 +2,7 @@
 ## Title: Patchwerk Forever
 ## Notes: The base of the Patchwerk Forever addons: their shared options window, saved data and /patchwerk. It does nothing by itself; add the Stitch addons (fixes and additions for other addons) and the Thread addons (our own tools) you want.
 ## Author: Tyrone
-## Version: 2.10.0
+## Version: 2.11.0
 ## Group: PatchwerkForever
 ## IconTexture: Interface\AddOns\PatchwerkForever\Media\icon
 ## AddonCompartmentFunc: PatchwerkForever_OnAddonCompartmentClick

@@ -33,8 +33,8 @@ ns.settings = {
 		desc = 'Show the trail Routes (Thread) leads you along, and the numbered stops of My Route. Click a stop for what can be done with it.' },
 	{ key = 'globeQuests', default = true, name = 'Show Quests',
 		desc = 'Show where your quests are done and handed in, quests on offer, and the steps of the guide you run. Click a quest to route to it.' },
-	{ key = 'globeTracker', default = true, name = 'Tracker Beside The Globe',
-		desc = 'While the globe is open, put the list of Tracker (Thread) beside it. It goes back where you keep it when the globe closes. Needs Tracker (Thread).' },
+	{ key = 'globeQuestLog', default = false, name = 'Show Quest Log',
+		desc = "Show a list of your quests at the right of the globe's window, as the world map's quest log does, with the stops of Dungeon Journal (Stitch)'s list under them. Click a quest to turn the globe to it; right-click it to route to it, open its details, or track or share it. The globe's picture is narrower while the list shows." },
 	{ key = 'globePlaces', default = true, name = 'Show Places',
 		desc = 'Show towns, landmarks, and dungeon and raid entrances as you zoom in; the place a city guard points you to; while you are dead, your corpse and the spirit healer; and on a battleground\'s map its places and flags.' },
 	{ key = 'globePeople', default = true, name = 'Show Your Group',
@@ -87,6 +87,7 @@ local function Help()
 	ns.Print('  /globe me: open it turned to where you are')
 	ns.Print('  /globe full: fill the screen with it, or back to a window')
 	ns.Print('  /globe levels: color the zones by level, or stop')
+	ns.Print('  /globe quests: show or hide the quest log beside the globe')
 	ns.Print('  /globe stats: say how the last drawing went')
 	ns.Print('  /globe config: open the options')
 end
@@ -104,6 +105,11 @@ SlashCmdList.PATCHWERKFOREVER_GLOBE = function(text)
 	elseif word == 'levels' then
 		ns.Set('globeLevels', not ns.Get('globeLevels'))
 		ns.Print(ns.Get('globeLevels') and 'Zones are colored by level.' or 'Zones are no longer colored by level.')
+	elseif word == 'quests' then
+		-- (with the globe closed, it opens with the quest log beside it)
+		local window = ns.GlobeWindow()
+		ns.Set('globeQuestLog', not (window and window:IsShown() and ns.Get('globeQuestLog')))
+		ns.Try('the globe', ns.Toggle, true)
 	elseif word == 'stats' then
 		ns.Try('the globe', ns.SayStats)
 	elseif word == 'config' or word == 'settings' or word == 'options' then
@@ -136,6 +142,8 @@ BINDING_NAME_PATCHWERKFOREVER_GLOBE_NEXT = 'Next Mark'
 BINDING_NAME_PATCHWERKFOREVER_GLOBE_ROUTE = 'Route Menu'
 BINDING_NAME_PATCHWERKFOREVER_GLOBE_SHOW = 'Show Menu'
 BINDING_NAME_PATCHWERKFOREVER_GLOBE_LEVELS = 'Color Zones By Level'
+BINDING_NAME_PATCHWERKFOREVER_GLOBE_QUESTLOG = 'Show Or Hide The Quest Log'
+BINDING_NAME_PATCHWERKFOREVER_GLOBE_NEXTQUEST = 'Next Quest In The Quest Log'
 function PatchwerkForever_Thread_Globe_Key(what, down)
 	if what == 'toggle' then
 		ns.Try('the globe', ns.Toggle)

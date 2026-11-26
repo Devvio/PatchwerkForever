@@ -1,5 +1,14 @@
 # Patchwerk Forever: Console Port (Stitch)
 
+## 2.4.0
+
+Brought up to Console Port 3.3.16.
+
+- **Clear Native Conflicts no longer takes every native binding for a conflict.** Console Port 3.3.16 changed how it looks up a button's binding: asked for the regular binding, it now answers with the native one when there is none. Read that way, every native gamepad binding (Switch to Cursor, the radial menu, ping, the targeting modifiers, the native action bar) looked as if a Console Port binding blocked it, and the sweep would have removed them. The bindings are now asked of the game itself, one context at a time. The same lookup is used when Console Port binds a button and by `/patchwerk consoleport`, whose regular and native columns showed the same action.
+- **The Target Friendly / Target Hostile fix is gone.** Console Port 3.3.16 replaced those buttons with the game's own targeting modifiers, which pick a target on release without the blocked-action error.
+- **The two targeting modifiers are no longer listed twice** in Console Port's binding list: since 3.3.16 Console Port lists them itself (Target Friendly, Target Hostile). The conflict sweep still covers them.
+- Console Port 3.3.16 mended the menu ring that opened without its buttons, and clears the other kind of binding from a button itself when you bind it. The fixes for both stay for an older Console Port and do nothing on 3.3.16. Keep The Menu Ring is still needed.
+
 ## 2.3.0
 
 - **Patchwerk Forever's options window** (Patchwerk Forever 2.10.0) is known to Console Port's interface cursor, so a gamepad moves through it as through the game's own windows. `/patchwerk consoleport` lists it with the other fixes.

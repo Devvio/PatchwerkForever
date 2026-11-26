@@ -366,7 +366,7 @@ def first_login():
     assert pages == ["Tracker (Thread)", "Tracker (Thread) > Appearance", "Tracker (Thread) > Guide", "Tracker (Thread) > More", "Tracker (Thread) > Quests"], pages
     mine = [x for x in s.stub.settings.values() if x.variable.startswith(TRACKER + "_")]
     count = {page: sum(1 for x in mine if x.page == page) for page in pages}
-    assert count == {"Tracker (Thread)": 9, "Tracker (Thread) > Quests": 13, "Tracker (Thread) > Guide": 8, "Tracker (Thread) > More": 9, "Tracker (Thread) > Appearance": 9}, count
+    assert count == {"Tracker (Thread)": 9, "Tracker (Thread) > Quests": 13, "Tracker (Thread) > Guide": 9, "Tracker (Thread) > More": 9, "Tracker (Thread) > Appearance": 9}, count
     assert sorted(b.text for b in s.stub.buttons.values()) == ["Reset", "Reset", "Unlock"], sorted(b.text for b in s.stub.buttons.values())
     # each page opens with its name and a line in Patchwerk's voice, and is grouped under stitched headings
     heads = list(s.stub.headers.values())
@@ -879,6 +879,53 @@ def guide():
     assert got[0] == "# The Barrens 12-14 | Step 2 of 5" and got[2:4] == ["> Step 2", "  - Fly to Orgrimmar"], got
     s.lua.execute("RXPCData.currentStep = 1")
     s.turn()
+
+    step("quest progress: an objective's count in place of the guide's words, what is left of a quest under its line")
+    s.lua.execute("""
+        local steps = RXP.currentGuide.steps
+        steps[1].elements[2].questId, steps[1].elements[2].obj = 869, 1        -- (one objective: Raptor Thieves)
+        steps[2].elements[1] = { tag = 'complete', questId = 786, text = ' ', step = steps[2] }  -- (a whole quest, not worded yet)
+        steps[5].elements[1].questId = 845                                     -- (a hand-in: The Zhevra, all done)
+    """)
+    s.setting("guideAhead", 4)
+    got = s.shown()
+    assert got[2:5] == ["> Step 1", "  - 10/12 Raptor Head", "2. Attack Plan: Sen'jin Village destroyed"], got
+    head = s.block("Step 1")
+    r, g, b = head.lines[1].colour.values()
+    assert (r, g, b) == tuple(s.ns.Progress(10, 12)) and r < 1, "the count is not colored by progress"
+    # a whole quest RestedXP has not worded yet: its objectives still to do, in place of the line
+    s.lua.execute("RXPCData.currentStep = 2")
+    s.turn()
+    got = s.shown()
+    assert got[2:4] == ["> Step 2", "  - Attack Plan: Sen'jin Village destroyed"], got
+    # worded: set in under its line
+    s.lua.execute("RXP.currentGuide.steps[2].elements[1].text = 'Destroy the attack plans'")
+    s.turn()
+    got = s.shown()
+    assert got[2:5] == ["> Step 2", "  - Destroy the attack plans", "    - Attack Plan: Sen'jin Village destroyed"], got
+    s.lua.execute("RXP.currentGuide.steps[2].elements[1].text = ' '")
+    # a hand-in: under it the quest's own words for where to take it, dimmed as done
+    s.lua.execute("RXPCData.currentStep = 5")
+    s.turn()
+    got = s.shown()
+    assert got[2:5] == ["> Step 5", "  - Turn in your report", "    - Return to Sergra Darkthorn at the Crossroads."], got
+    # a quest not in your log: the guide's words alone
+    s.lua.execute("RXP.currentGuide.steps[5].elements[1].questId = 999")
+    s.turn()
+    assert s.shown()[2:4] == ["> Step 5", "  - Turn in your report"] and not s.shown()[4].startswith("    -")
+    # switched off: the guide's own words
+    s.lua.execute("RXPCData.currentStep = 1")
+    s.setting("guideProgress", False)
+    assert s.shown()[2:5] == ["> Step 1", "  - Kill 7 plainstriders", "2. ..."], s.shown()[2:5]
+    s.setting("guideProgress", True)
+    s.lua.execute("""
+        local steps = RXP.currentGuide.steps
+        steps[1].elements[2].questId, steps[1].elements[2].obj = nil, nil
+        steps[2].elements[1] = { tag = 'fly', text = 'Fly to Orgrimmar', step = steps[2] }
+        steps[5].elements[1].questId = nil
+    """)
+    s.setting("guideAhead", 3)
+    assert s.shown()[2:5] == ["> Step 1", "  - Kill 7 plainstriders", "2. Fly to Orgrimmar"], s.shown()[2:5]
 
     step("a click on the step skips it; on a later one goes to it; /tracker back takes it back; each is said in chat")
     assert s.chat() == []

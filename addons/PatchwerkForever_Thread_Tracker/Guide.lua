@@ -27,6 +27,13 @@
 -- see Go below.)
 --
 -- A guide's words are shown from the guide addon's own tables as the game runs. None are kept.
+--
+-- With Show Quest Progress, the quests a step names are shown as your quest log has them, so they are
+-- right even while the guide addon is paused: a line that has you complete one objective of a quest
+-- shows the game's own words for it with its count, colored by progress as the quest list colors it;
+-- a line that has you complete a whole quest, or hand one in, has under it the quest's objectives
+-- still to do, or Ready to turn in. A step that names its quest (the Dungeon Journal's) has it the
+-- same way. A quest that is not in your log shows nothing more.
 local ADDON, ns = ...
 if not ns.linked then return end
 
@@ -107,6 +114,84 @@ local function First(lines)
 	return nil
 end
 
+---------------------------------------------------------------------------
+-- Quest progress
+---------------------------------------------------------------------------
+local function Ask(fn, ...)
+	if type(fn) ~= 'function' then return nil end
+	local ok, a = pcall(fn, ...)
+	if ok then return a end
+	return nil
+end
+
+-- The quest's place in your log, or nil when it is not in it.
+local function InLog(id)
+	local index = Ask(C_QuestLog.GetLogIndexForQuestID, id)
+	if index and index ~= 0 then return index end
+	return nil
+end
+
+-- One objective of a quest as a line, as the game words it; nil for one it does not word.
+local function Objective(o, sub)
+	if not (type(o) == 'table' and type(o.text) == 'string' and o.text ~= '') then return nil end
+	local each = { text = o.text, done = o.finished and true or false, sub = sub }
+	local have, need = tonumber(o.numFulfilled), tonumber(o.numRequired)
+	if ns.Get('progress') and not each.done and have and need and need > 1 then
+		each.r, each.g, each.b = ns.Progress(have, need)
+	end
+	return each
+end
+
+local function Objectives(id)
+	local list = Ask(C_QuestLog.GetQuestObjectives, id)
+	return type(list) == 'table' and list or {}
+end
+
+-- What is left of a quest in your log, added to out as lines (set in under the line before, with sub):
+-- its objectives still to do, or that it is ready to turn in (in the quest's own words when the game has
+-- them, as the quest list says).
+local function Left(id, out, sub)
+	local index = InLog(id)
+	if not index then return end
+	if Ask(C_QuestLog.IsComplete, id) then
+		local say = Ask(GetQuestLogCompletionText, index)
+		if type(say) ~= 'string' or say == '' then say = 'Ready to turn in' end
+		out[#out + 1] = { text = say, done = true, sub = sub }
+		return
+	end
+	for _, o in ipairs(Objectives(id)) do
+		if type(o) == 'table' and not o.finished then out[#out + 1] = Objective(o, sub) end
+	end
+end
+
+-- A line of a step as shown: for one objective of a quest in your log, the game's words and count in
+-- place of the guide's; else as the guide words it. Also the quest it names that is in your log.
+local function Shown(line, progress)
+	local quest = progress and not line.done and tonumber(line.quest) or nil
+	if not (quest and InLog(quest)) then return { text = line.text, done = line.done }, nil end
+	if line.kind == 'complete' and line.obj then
+		local each = Objective(Objectives(quest)[line.obj])
+		if each then return each, quest end
+	end
+	return { text = line.text, done = line.done }, quest
+end
+
+-- The first words of a step listed on one line, its quest's count in them as above.
+local function FirstShown(lines)
+	local progress = ns.Get('guideProgress')
+	for _, line in ipairs(lines or {}) do
+		local each, quest = Shown(line, progress)
+		if not each.done and type(each.text) == 'string' and each.text ~= '' then return each.text end
+		-- (a line the guide addon has not worded yet: what is left of its quest)
+		if quest and not each.done and each.text == '' then
+			local left = {}
+			Left(quest, left)
+			if left[1] then return left[1].text end
+		end
+	end
+	return nil
+end
+
 -- Every guide with something to say, the main one first. Asked once a drawing.
 local function Infos()
 	local now = GetTime()
@@ -183,11 +268,23 @@ local function Section(n)
 		local chosen = Choice:Is('guide', info.source)
 		local gr, gg, gb = ns.RGB(ns.Get('lookGuide'))
 		local lines = {}
+		local progress = ns.Get('guideProgress')
+		local told = {}                                   -- (the quests whose objectives are shown already)
 		for _, line in ipairs(info.lines or {}) do
-			if not line.done or ns.Get('guideDone') then
-				lines[#lines + 1] = { text = line.text, done = line.done }
+			local each, quest = Shown(line, progress)
+			if (not each.done or ns.Get('guideDone')) and type(each.text) == 'string' then
+				local worded = each.text ~= ''
+				if worded then lines[#lines + 1] = each end
+				-- (a whole quest to complete, or one to hand in: what is left of it, under the line, or in
+				-- its place while the guide addon has not worded it)
+				if quest and not told[quest] and (line.kind == 'turnin' or (line.kind == 'complete' and not line.obj)) then
+					told[quest] = true
+					Left(quest, lines, worded)
+				end
 			end
 		end
+		local named = progress and tonumber(info.quest)
+		if named and not told[named] then Left(named, lines, #lines > 0) end
 		local skip = ns.Get('guideSkip')
 		local click
 		if main then
@@ -261,12 +358,12 @@ local function Section(n)
 					local entries = {}
 					if skip then entries[1] = { 'Go To This Step', GoThere } end
 					entries[#entries + 1] = RouteEntry(info, step.quest, step.lines)
-					ns.Menu(block, First(step.lines) or info.guide or 'Guide', entries)
+					ns.Menu(block, FirstShown(step.lines) or info.guide or 'Guide', entries)
 				end
 			end
 			blocks[#blocks + 1] = {
 				key = 'after' .. i, small = true, oneLine = true, r = gr * 0.6, g = gg * 0.6, b = gb * 0.6,
-				title = ('%d. %s'):format(index, First(step.lines) or '...'),
+				title = ('%d. %s'):format(index, FirstShown(step.lines) or '...'),
 				click = click, tip = tip,
 			}
 		end

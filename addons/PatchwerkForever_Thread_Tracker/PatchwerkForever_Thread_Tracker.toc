@@ -2,7 +2,7 @@
 ## Title: Patchwerk Forever: Tracker (Thread)
 ## Notes: A quest tracker of our own: your quests by zone with distances, your guide's steps, My Route (your own stops in your own order), buttons for quest items, tracked recipes, a collect list and a gathering list, in a list you can move, resize and color. Needs Patchwerk Forever. Type /tracker.
 ## Author: Tyrone
-## Version: 1.6.0
+## Version: 1.7.0
 ## Group: PatchwerkForever
 ## X-Category: Quests & Leveling
 ## X-License: MIT

@@ -37,7 +37,10 @@ local P = ns.P;
 --     kind             what the step asks for: 'fly', 'hearth', 'death', 'travel', 'home', 'fp',
 --                      'turnin', 'accept', 'complete', 'train', 'vendor', 'place' (go somewhere)
 --                      or 'text' (words only)
---     lines            the step's lines, each { text =, done =, kind = }, as the guide words them
+--     lines            the step's lines, each { text =, done =, kind = }, as the guide words them; a
+--                      line that has you take, finish or hand in a quest also has quest = its id, and
+--                      for one objective of it obj = that objective's number (C_QuestLog.GetQuestObjectives).
+--                      Its text may be '' while the guide addon has not worded it yet
 --     map, x, y        where it sends you now, in the game's world coordinates; none when nowhere
 --     key              changes when the step or its place does
 --     ahead            the steps after it that have a place (or that carry you off), each

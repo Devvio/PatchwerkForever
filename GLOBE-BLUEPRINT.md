@@ -480,6 +480,30 @@ where discovered land shows the minimap's pictures.
   a drawing (from the 'frame' hook). Parchment style only; with Fog Of War off the ground is as before.
 - A piece discovered while you look: its fog fades over 1.6 s, its ground comes in at once.
 
+## 1.2.0: a quest log beside the globe (2026-11-26)
+
+Asked for as "a quest journal" in the Globe's map, as a side panel like the world map's quest log. Asked
+which list, the user chose the player's quest log with Dungeon Journal (Stitch)'s list under it. This
+replaces decision 5 of the parity interview ("no quest log of the globe's own"): the globe now has one,
+and Tracker (Thread)'s list beside it stays as it was. The other choices, asked the same day: inside the
+window at its right, the picture narrower beside it; off as it comes (Show Quest Log, `globeQuestLog`);
+a click shows the quest on the globe and picks out its mark, and routing is in the right-click menu;
+Tracker Beside The Globe goes on as before, outside the window. Later the same day the user changed that:
+"now that the quest log is part of the globe, lets leave the tracker in place and no longer move it to the
+globe panel", and it "should now be behind the globe". So the dock is gone from `Quests.lua` with its
+setting (`globeTracker`) and its Route menu entry; the tracker keeps its own place and strata (LOW), under
+the globe's window (HIGH). Tracker (Thread)'s `PatchwerkForever_Thread_Tracker_Dock` is left in place,
+unused by the globe.
+
+- `QuestLog.lua`: the panel, its rows (headings, quests, objectives, the journal's stops), the menus and
+  the two keys (Show Or Hide The Quest Log, Next Quest In The Quest Log). The journal's stops are what its
+  reader (`fdj`) gives the base's `Guides`, read again every 3 seconds while the panel shows.
+- `Globe.lua`: `ns.GlobeSide(w)` keeps room at the window's right; the picture is anchored at the
+  window's left, its smallest size and full screen leave the room, and a window too narrow is widened.
+- `Quests.lua`: the quest picked in the panel is drawn as the one routed to (larger, ringed);
+  `ns.QuestRoute` is what a click on a quest's mark does, for the panel's Route To Quest.
+- Checked offline only.
+
 ## Rules this keeps
 
 - No picture of the game's in the addon; the game's pictures by number only.

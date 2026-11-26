@@ -21,7 +21,10 @@ if not env.NativeContext then return end;
 --    same through its own secure Execute (as Console Port's
 --    CPAPI.SecureExportMixin does), and a setup that stopped is run
 --    again, its empty button pool cleared first. This is always on,
---    like the other missing functions in Compat.lua.
+--    like the other missing functions in Compat.lua. Console Port
+--    3.3.16 fixed this itself (the setup no longer calls
+--    RunAttribute), and there the repair finds the buttons already
+--    in place and does nothing; it stays for 3.3.14 and 3.3.15.
 --
 -- 2. The ring stays shut. It decides through a secure attribute,
 --    'enabled', which Console Port sets each time its settings or the

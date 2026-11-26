@@ -1,5 +1,10 @@
 # Patchwerk Forever
 
+## 2.11.0
+
+- **The route keeps following your RestedXP guide while RestedXP's window is hidden.** Hidden, RestedXP pauses itself: it marks nothing done and its step stays where it was, so the route stopped at that step and then showed nothing. While it is paused, the steps the game shows done are now read past, as RestedXP would have marked them: a quest taken, handed in or finished, and a place you have been within. Reading stops at a step with anything else to do (a flight, a hearthstone, a condition). RestedXP itself is left as it is, and catches up by itself when it is shown again.
+- For the parts: a guide step's line that has you take, finish or hand in a quest now names that quest (`quest`), and an objective's line its number (`obj`), so Tracker (Thread) 1.7.0 can show the quest's progress.
+
 ## 2.10.0
 
 - **Patchwerk Forever's own options window.** Every option of the family is in one window of its own now, in parchment and leather, not in the game's options: `/patchwerk config`, the **Open Options** key binding, Patchwerk Forever in the minimap's addon list and each tool's own `config` command open it. The game's options keep one page, **Patchwerk Forever**, with a button that opens it.

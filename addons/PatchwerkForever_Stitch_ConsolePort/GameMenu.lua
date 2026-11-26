@@ -59,7 +59,7 @@ end)
 -- Which of the smaller fixes took hold (env.Applied, set by each fix's file where it attaches): a fix
 -- that did not may no longer be needed, or Console Port may have changed under it.
 local FIXES = {
-	'Extra Action Button', 'Item menu equip slots', 'Interact (tap)', 'Target Friendly / Target Hostile',
+	'Extra Action Button', 'Item menu equip slots', 'Interact (tap)',
 	'Key ring slot', 'StaticPopup_Resize', 'ActionButton_SetTooltip', 'GetScaledCursorPosition',
 	'Micro menu', 'Bag bar', 'Options window',
 };
@@ -73,8 +73,8 @@ local function Applied()
 end
 
 local function DescribeKey(keyChord)
-	local regular = CPAPI.GetBindingAction(keyChord, false, env.RegularContext);
-	local native  = CPAPI.GetBindingAction(keyChord, false, env.NativeContext);
+	local regular = env:BindingIn(keyChord, env.RegularContext);
+	local native  = env:BindingIn(keyChord, env.NativeContext);
 	return ('%s: regular=%s native=%s'):format(keyChord,
 		regular ~= '' and regular or '-', native ~= '' and native or '-');
 end

@@ -6,10 +6,23 @@ if not ctx then return end;
 ---------------------------------------------------------------
 -- Listed with Console Port's special bindings, so the config can
 -- bind them. CPAPI.SetBinding already writes each action to its
--- own context.
+-- own context. One Console Port lists itself is left to it (since
+-- 3.3.16 it has the two targeting modifiers, as Target Friendly and
+-- Target Hostile).
+
+local function Listed(action)
+	for _, list in ipairs({ db.Bindings.Primary, db.Bindings.Special }) do
+		for _, set in ipairs(type(list) == 'table' and list or {}) do
+			if ( type(set) == 'table' and set.binding == action ) then
+				return true;
+			end
+		end
+	end
+	return false;
+end
 
 for _, info in ipairs(env.NativeActions) do
-	if info.bindable then
+	if ( info.bindable and not Listed(info.action) ) then
 		tinsert(db.Bindings.Special, {
 			binding = info.action;
 			name    = info.name;
@@ -26,8 +39,9 @@ end
 -- button itself is still there (ExtraActionButton1, shown whenever
 -- the game hands out an extra action, and given its action slot by
 -- Console Port), so the entry clicks it instead. The proxied ID moves
--- with it, so Rings sees it bound and stops adding the extra action
--- to the utility ring.
+-- with it. (Up to 3.3.15 that also kept Rings from adding the extra
+-- action to the utility ring; since 3.3.16 Rings leaves it off on
+-- Forever by itself.)
 
 local function HasBinding(action)
 	for i = 1, GetNumBindings() do
@@ -56,7 +70,10 @@ end
 ---------------------------------------------------------------
 -- A native and a regular binding on the same chord can't both work,
 -- since the native one always wins. When Console Port binds either
--- kind, clear the other kind from that chord.
+-- kind, clear the other kind from that chord. Since 3.3.16 Console
+-- Port's SetBinding clears the other kind itself (silently, so it is
+-- not said or recorded), and this finds nothing left to do; it stays
+-- for an older Console Port.
 
 local changes, flushing = {}, false;
 
@@ -81,18 +98,18 @@ hooksecurefunc(CPAPI, 'SetBinding', function(keyChord, bindingID)
 	if ( InCombatLockdown() or not env:GetConsolePortSaved() ) then return end;
 
 	if env:IsNativeAction(bindingID) then
-		if ( CPAPI.GetBindingAction(keyChord, false, ctx) ~= bindingID ) then return end;
+		if ( env:BindingIn(keyChord, ctx) ~= bindingID ) then return end;
 		-- The user placed this action themselves, so whatever the sweep
 		-- cleared for it before is no longer worth putting back.
 		env:ForgetCleared(bindingID)
-		local replaced = CPAPI.GetBindingAction(keyChord, false, regular);
+		local replaced = env:BindingIn(keyChord, regular);
 		if ( replaced ~= '' and SetBinding(keyChord, nil, regular) ) then
 			env:SaveBindings()
 			Report(keyChord, replaced, bindingID)
 		end
 	else
-		if ( CPAPI.GetBindingAction(keyChord, false, regular) ~= bindingID ) then return end;
-		local native = CPAPI.GetBindingAction(keyChord, false, ctx);
+		if ( env:BindingIn(keyChord, regular) ~= bindingID ) then return end;
+		local native = env:BindingIn(keyChord, ctx);
 		if ( native ~= '' and SetBinding(keyChord, nil, ctx) ) then
 			-- Only a clear the sweep would also have made is put back later.
 			if env:IsClearingAllowed(native) then

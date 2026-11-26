@@ -552,7 +552,11 @@ local function Fill(block, data, width, size)
 		Font(dash, size)
 		dash:SetText('-')
 		local dashWide = DashWide(dash, size)
-		fs:SetWidth(math.max(40, width - INDENT - dashWide))
+		-- (sub: a line that belongs to the one before it, set in further)
+		local inset = INDENT + (line.sub and INDENT or 0)
+		block.subs = block.subs or {}
+		block.subs[i] = line.sub and true or nil
+		fs:SetWidth(math.max(40, width - inset - dashWide))
 		fs:SetText(tostring(line.text))
 		local r, g, b = lr, lg, lb
 		if line.r then
@@ -563,9 +567,9 @@ local function Fill(block, data, width, size)
 		fs:SetTextColor(r, g, b)
 		dash:SetTextColor(r, g, b)
 		fs:ClearAllPoints()
-		fs:SetPoint('TOPLEFT', block, 'TOPLEFT', INDENT + dashWide, -(h + 2))
+		fs:SetPoint('TOPLEFT', block, 'TOPLEFT', inset + dashWide, -(h + 2))
 		dash:ClearAllPoints()
-		dash:SetPoint('TOPLEFT', block, 'TOPLEFT', INDENT, -(h + 2))
+		dash:SetPoint('TOPLEFT', block, 'TOPLEFT', inset, -(h + 2))
 		fs:Show()
 		if line.plain then dash:Hide() else dash:Show() end
 		h = h + 2 + Tall(fs, size)
@@ -814,7 +818,10 @@ function ns.Shown()
 			out[#out + 1] = (block.data and block.data.mark and '> ' or '') .. (block.title:GetText() or '')
 				.. ((note and note ~= '') and (' | ' .. note) or '')
 			for i, fs in ipairs(block.lines) do
-				if fs:IsShown() then out[#out + 1] = '  ' .. (block.dashes[i]:IsShown() and '- ' or '') .. (fs:GetText() or '') end
+				if fs:IsShown() then
+					out[#out + 1] = '  ' .. ((block.subs and block.subs[i]) and '  ' or '')
+						.. (block.dashes[i]:IsShown() and '- ' or '') .. (fs:GetText() or '')
+				end
 			end
 		end
 	end

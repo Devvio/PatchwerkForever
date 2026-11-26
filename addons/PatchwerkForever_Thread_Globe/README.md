@@ -6,7 +6,7 @@
 
 The world of **World of Warcraft: Forever** on a globe you can spin and zoom, painted like the world map on parchment, with everything the world map shows on it: your route, your quests, flight points, boats, towns, your group, fog over the land you have not discovered, and the pins of other addons. It can stand in for the world map: **The Map Key Opens The Globe** gives it the map key.
 
-One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the options. With **Routes (Thread)** it shows your route, the boats and zeppelins and the recorded nodes; with **Tracker (Thread)** that addon's list sits beside the globe. Neither is needed.
+One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the options. With **Routes (Thread)** it shows your route, the boats and zeppelins and the recorded nodes; **Tracker (Thread)**'s list stays where you keep it, behind the globe's window. Neither is needed.
 
 ## How it is drawn
 
@@ -18,7 +18,7 @@ The game's continents are separate maps with no sea between them, so where each 
 
 ## Using it
 
-- `/globe` opens or closes it; `/globe me` opens it turned to where you are; `/globe full` fills the screen with it, or goes back to a window; `/globe levels` colours the zones by level, or stops.
+- `/globe` opens or closes it; `/globe me` opens it turned to where you are; `/globe full` fills the screen with it, or goes back to a window; `/globe levels` colours the zones by level, or stops; `/globe quests` shows or hides the quest log beside it.
 - Drag the window's corner to size it. **Full Screen** fills the screen. Escape closes it.
 - Drag to turn it; it carries on a little after you let go. The mouse wheel zooms toward the pointer, and a double-click zooms in on a spot.
 - **Go To** lists the continents and their zones; picking one turns and fits the globe. It also lists the city and battleground maps, and the game's world map.
@@ -69,7 +69,19 @@ Point at a mark for its name and what a click does. Marks on the far side of the
 - **Rares and treasures**: the rare creatures, treasures and events the game marks on the minimap while they are near you.
 - **Other addons' pins**: the pins other addons put on the world map through the pin library they share (HereBeDragons), such as quest helpers, guides and rare finders, with their own picture, tooltip and click. An addon that draws on the world map in a way of its own is not seen by the globe.
 
-The **Route** button lists what the route can follow, adds the map pin to My Route, opens My Route's editor, and keeps Tracker (Thread)'s list beside the globe while it is open. A quest clicked in that list turns the globe to it.
+The **Route** button lists what the route can follow, adds the map pin to My Route, and opens My Route's editor. A quest clicked in Tracker (Thread)'s list turns the globe to it.
+
+## The quest log
+
+**Show Quest Log** (off as it comes) puts a list of your quests at the right of the window, as the world map's quest log sits beside its map. The **Quest Log** button, the Show menu, `/globe quests` and a key binding show and hide it. The globe's picture is narrower while it shows; a window too narrow for both is widened, and goes back to its size when the list is hidden.
+
+- Your quests are listed under their headings, as the game's quest log has them, each with its level, its objectives, and Complete once it is done. Click a heading to fold it. At the top, how many quests you have, out of how many you can hold.
+- Click a quest and the globe turns to where it is done, and its mark there is picked out, larger and ringed. Clicking does not change your route.
+- Right-click a quest for Show On Globe, Route To Quest (or Stop Routing To Quest), Quest Details, Track Quest (or Untrack Quest), Share Quest while you are in a group, and Add To My Route. The quest your route follows has a gold dot.
+- With **Dungeon Journal (Stitch)**, the stops of its list are under your quests: the dungeon quests to pick up and turn in, in the order it would take them. Click one and the globe turns to it; right-click for Follow This List (or Back To Your Main Route) and Add To My Route.
+- With keys, **Next Quest In The Quest Log** picks each quest of the list in turn and turns the globe to it.
+
+Tracker (Thread)'s list is no longer moved beside the globe: it stays where you keep it, behind the globe's window while the globe is open.
 
 ## In place of the world map
 
@@ -90,7 +102,7 @@ Each has a setting, under **Show → Light And Movement** and on the options pag
 
 ## Keys and gamepad
 
-Everything the mouse does has a key binding, under **Options → Keybindings → Patchwerk Forever**: open or close, Where I Am, Full Screen Or Window, Go To, Show Menu, Fit The Zone At The Middle, Step Out, turning, zooming, Set Or Clear The Map Pin At The Middle, Next Mark, Route Menu and Color Zones By Level. With keys the middle of the picture is the pointer: a cross marks it, and the zone and the mark there are named. On a city's or battleground's map, which does not turn, Next Mark moves the cross from mark to mark.
+Everything the mouse does has a key binding, under **Options → Keybindings → Patchwerk Forever**: open or close, Where I Am, Full Screen Or Window, Go To, Show Menu, Fit The Zone At The Middle, Step Out, turning, zooming, Set Or Clear The Map Pin At The Middle, Next Mark, Route Menu, Color Zones By Level, Show Or Hide The Quest Log and Next Quest In The Quest Log. With keys the middle of the picture is the pointer: a cross marks it, and the zone and the mark there are named. On a city's or battleground's map, which does not turn, Next Mark moves the cross from mark to mark.
 
 A gamepad turns the globe while it is open and you are not in combat: the left stick turns it, the right stick or the triggers zoom, and the four face buttons fit the zone at the middle (or press the mark there), step out (and close the window from the whole globe), go to the next mark, and set or clear the map pin. Every other button does what it is bound to. **Gamepad Turns The Globe** turns this off. With Console Port, the globe's bindings are also listed among its own.
 

@@ -18,7 +18,7 @@ Fixes for **Console Port** on **World of Warcraft: Forever**. Console Port's sup
 
 **It needs two addons:** [Console Port](https://github.com/seblindfors/ConsolePort) itself, and **Patchwerk Forever**, the base that holds the settings page and the saved data. (Until Patchwerk Forever 1.0.1 these fixes were inside that addon; your settings carry over.)
 
-Nothing in Console Port's own files is changed: the fixes hook it while the game runs, so its updates don't undo them.
+Nothing in Console Port's own files is changed: the fixes hook it while the game runs, so its updates don't undo them. Last checked against Console Port 3.3.16.
 
 ## What it fixes
 
@@ -27,8 +27,7 @@ Nothing in Console Port's own files is changed: the fixes hook it while the game
 - **Extra Action Button can be bound** (Forever has the button but no binding for it).
 - **Item menu equips into the right slot**: robes, held off-hand items, bows, guns, wands, thrown weapons and relics.
 - **Interact works from a ring** ("Interact (tap)").
-- **Target Friendly / Target Hostile** hold buttons no longer raise a blocked-action error.
-- **Console Port's menu ring works again**: since Console Port 3.3.14 it stayed shut while Console Port's Game Menu setting was off or the game's own gamepad interface was on (Keep The Menu Ring, its own switch), and opened without its buttons, because its setup calls a function Forever lacks.
+- **Console Port's menu ring works again**: since Console Port 3.3.14 it stayed shut while Console Port's Game Menu setting was off or the game's own gamepad interface was on (Keep The Menu Ring, its own switch). Up to Console Port 3.3.15 it also opened without its buttons, because its setup called a function Forever lacks; that is mended too.
 - **The game's bag bar and micro menu come back** when Console Port's toolbar isn't using their buttons (Console Port hides them for good on Forever). Has its own switch.
 - Smaller repairs: tooltips for the game's action buttons under the interface cursor, the key ring slot on characters without one, an error when dragging the on-screen keyboard, and switching between gamepad and mouse-and-keyboard interface mid-session.
 

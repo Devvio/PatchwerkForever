@@ -18,8 +18,14 @@ if not ns.linked then return end;
 --   * where a quest starts and where it is handed in;
 --   * the quests that must be done before another is offered;
 --   * the spot its own map arrow is on, when it has one.
--- Whether you have a quest, have finished it or have handed it in
--- is asked of the game.
+-- Whether you have a quest or have finished it is asked of the
+-- game. Whether it is handed in, and whether it is one for this
+-- character at all, is asked of the journal's own functions, as its
+-- tracker asks them (with the game's answer when one is missing):
+-- it counts a few quests the game does not (the Mallet of
+-- Zul'Farrak, a choice between two quests, a quest done once), and
+-- leaves out other classes' quests, quests no longer available, and
+-- quests its RPG Mode keeps locked.
 --
 -- Nothing of the journal is changed, and nothing of it is kept:
 -- its places and names are shown from its tables at that moment
@@ -41,7 +47,13 @@ if not ns.linked then return end;
 -- once that quest is finished (seen 2026-11-18: Wailing Caverns
 -- quests sent you to Nalpak and Ebru before their work was done).
 -- An arrow on a listed stop (within 15 yards) brings that stop to
--- the front; elsewhere it is a stop of its own.
+-- the front; elsewhere it is a stop of its own. While you are a
+-- ghost the journal points it at your corpse; that is not a stop.
+--
+-- A quest that starts from an item (one a creature drops) has no
+-- place to accept it, so it gets no stop until you hold it. A chain
+-- step that is an item and not a quest (the Gnomeregan punch cards)
+-- is passed over, as the journal does.
 --
 -- Skipping a stop (a click in Tracker (Thread)) lasts for the
 -- session; Previous Step or /tracker back takes the last skip or
@@ -105,7 +117,14 @@ local function Tracked()
 	return type(list) == 'table' and list or {};
 end
 
-local function HandedIn(id) return Ask(C_QuestLog.IsQuestFlaggedCompleted, id) and true or false end
+local function HandedIn(id)
+	local journal = Journal();
+	if ( journal and type(journal.QuestTurnedIn) == 'function' ) then
+		local ok, yes = pcall(journal.QuestTurnedIn, id);
+		if ok then return yes == true end;
+	end
+	return Ask(C_QuestLog.IsQuestFlaggedCompleted, id) and true or false;
+end
 local function Held(id)
 	local index = Ask(C_QuestLog.GetLogIndexForQuestID, id);
 	return index ~= nil and index ~= 0;
@@ -119,6 +138,24 @@ local function ForMySide(journal, quest, side)
 	end
 	local faction = quest.faction;
 	return faction == nil or faction == 'Both' or faction == 'Neutral' or faction == side;
+end
+
+-- The journal's own word on a quest, when it has that function: a missing one, or one that fails, says nothing.
+local function Says(journal, fn, ...)
+	if ( type(journal[fn]) ~= 'function' ) then return nil end;
+	local ok, yes = pcall(journal[fn], ...);
+	if ok then return yes and true or false end;
+	return nil;
+end
+
+-- Whether the journal lists a quest of a dungeon for this character, as its own tracker does: your
+-- side, your class and professions, still available, and not locked by its RPG Mode.
+local function ForMe(journal, name, quest, side)
+	if not ForMySide(journal, quest, side) then return false end;
+	if ( Says(journal, 'QuestCountsForCharacter', quest) == false ) then return false end;
+	if Says(journal, 'IsQuestUnavailable', quest) then return false end;
+	if ( name and Says(journal, 'RPGQuestHidden', name, quest) ) then return false end;
+	return true;
 end
 
 -- A spot of the journal's ({ mapID, x, y, label }) as a place in the world, with its label.
@@ -136,10 +173,18 @@ local function Stop(quest, kind, words, place)
 	return { quest = quest, kind = kind, lines = lines, map = place.map, x = place.x, y = place.y, zone = place.zone };
 end
 
+-- Where a quest is picked up: its own spot, else the journal's spot for that quest. None for a quest
+-- that starts from an item (the journal's spot for one of those can be where it is handed in).
+local function StartPlace(journal, id, startMap, startItem)
+	if startItem then return nil end;
+	local starts = type(journal.QUEST_START_MAPS) == 'table' and journal.QUEST_START_MAPS or {};
+	return Place(startMap) or Place(starts[id]);
+end
+
 -- Where one quest of a dungeon sends you now, or nothing.
 local function StopFor(journal, quest)
 	local id, name = quest.id, tostring(quest.name);
-	local starts = type(journal.QUEST_START_MAPS) == 'table' and journal.QUEST_START_MAPS or {};
+	local details = type(journal.QUEST_PREREQ_DETAILS) == 'table' and journal.QUEST_PREREQ_DETAILS or {};
 	if Held(id) then
 		if not Finished(id) then return nil end;                 -- (still to be done, inside)
 		local place = Place(Ask(journal.TurnInSpotFor, quest));
@@ -148,13 +193,14 @@ local function StopFor(journal, quest)
 	-- not taken yet: a quest that must be done first comes before it
 	local chains = type(journal.QUEST_PREREQ_CHAINS) == 'table' and journal.QUEST_PREREQ_CHAINS[id];
 	for _, first in ipairs(type(chains) == 'table' and chains or {}) do
-		if ( type(first) == 'table' and type(first.id) == 'number' and not HandedIn(first.id) ) then
+		if ( type(first) == 'table' and type(first.id) == 'number' and not first.itemStep and not HandedIn(first.id) ) then
 			if Held(first.id) then return nil end;                -- (under way: nothing to fetch for it)
-			local place = Place(starts[first.id]);
+			local more = type(details[first.id]) == 'table' and details[first.id] or {};
+			local place = StartPlace(journal, first.id, more.map, more.startItem);
 			return place and Stop(id, 'accept', ('Accept: %s (needed for %s)'):format(tostring(first.name or first.id), name), place) or nil;
 		end
 	end
-	local place = Place(quest.startMap) or Place(starts[id]);
+	local place = StartPlace(journal, id, quest.startMap, quest.startItem);
 	return place and Stop(id, 'accept', 'Accept: ' .. name, place) or nil;
 end
 
@@ -197,7 +243,7 @@ local function Stops(journal)
 			names[#names + 1] = tostring(name);
 			for _, quest in ipairs(type(dungeon.quests) == 'table' and dungeon.quests or {}) do
 				if ( type(quest) == 'table' and type(quest.id) == 'number' and quest.name and not quest.repeatable
-				and not quest.hideFromMainList and ForMySide(journal, quest, side) ) then
+				and not quest.hideFromMainList and ForMe(journal, name, quest, side) ) then
 					total = total + 1;
 					if HandedIn(quest.id) then
 						done = done + 1;
@@ -282,7 +328,7 @@ local function Read(count)
 	local arrow;
 	local spot = Ask(journal.WaypointArrowTarget);
 	local place = Place(spot);
-	if ( place and FollowArrow(journal, spot) ) then
+	if ( place and not spot.corpse and FollowArrow(journal, spot) ) then
 		arrow = ArrowKey(place);
 		local near, nearest;
 		for i, stop in ipairs(stops) do
@@ -365,9 +411,9 @@ end
 local function QuestOf(id)
 	local journal = Journal();
 	if not journal then return nil end;
-	for _, dungeon in pairs(journal.DB) do
+	for name, dungeon in pairs(journal.DB) do
 		for _, quest in ipairs(type(dungeon) == 'table' and type(dungeon.quests) == 'table' and dungeon.quests or {}) do
-			if ( type(quest) == 'table' and quest.id == id ) then return journal, quest end;
+			if ( type(quest) == 'table' and quest.id == id ) then return journal, quest, name end;
 		end
 	end
 	return nil;
@@ -380,10 +426,10 @@ if P.MyRoute then
 			return quest and tostring(quest.name) or nil;
 		end,
 		Place = function(stop)
-			local journal, quest = QuestOf(stop.id);
+			local journal, quest, name = QuestOf(stop.id);
 			if not journal then return nil end;
-			-- (a quest of the other side is never routed to)
-			if not ForMySide(journal, quest, Ask(UnitFactionGroup, 'player')) then return nil end;
+			-- (a quest of the other side, or one the journal does not list for you, is never routed to)
+			if not ForMe(journal, name, quest, Ask(UnitFactionGroup, 'player')) then return nil end;
 			local found = StopFor(journal, quest);
 			if not found then return nil end;
 			local label = found.lines[1] and found.lines[1].text;

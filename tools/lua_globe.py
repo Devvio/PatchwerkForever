@@ -14,7 +14,9 @@ fading out to sea, only the tiles in the picture looked at), the window (sized b
 back, both remembered), Go To, keys and a gamepad's sticks (the middle of the picture their pointer), the
 marks (a gamepad taken and given back; boats and zeppelins, the trail, flight points, herb and ore nodes, My
 Route's stops and the map pin, with what Routes (Thread) offers made up here; quests, quests on offer, a guide's
-steps, Next Mark, the Route button and the tracker beside the globe), guild members and friends (counted by the
+steps, Next Mark, the Route button, Tracker (Thread)'s list left where it is kept), the quest log beside the globe (your
+quests under their heading and Dungeon Journal (Stitch)'s stops, a click turning the globe, its menus, its keys,
+the picture made narrower for it), guild members and friends (counted by the
 zone each is in, from the guild's club and the friends lists; the roster asked for no more often than the game
 allows), the hand-made pieces (the ink pieces on the
 sea, the whole brass ring (and its stand, when the ring's picture has one) in the picture when zoomed right
@@ -102,6 +104,12 @@ function CreateFrame(kind, name, parent, template)
     if name then _G[name] = f end
     local create = f.CreateTexture
     function f:CreateTexture(...) return Bendable(create(self, ...)) end
+    local fontString = f.CreateFontString
+    function f:CreateFontString(...)
+        local fs = fontString(self, ...)
+        function fs:SetFontObject(font) assert(type(font) == 'string' or type(font) == 'table') self.fontObject = font end
+        return fs
+    end
     function f:CreateMaskTexture()
         return { mask = true, SetTexture = function(_, path) assert(type(path) == 'string') end, SetAllPoints = function() end }
     end
@@ -1595,31 +1603,192 @@ def main():
     stub.pin = None
     stub.Fire("USER_WAYPOINT_UPDATED")
 
-    step("Tracker (Thread)'s list beside the globe while it is open, and back after")
+    step("Tracker (Thread)'s list stays where it is kept, behind the globe's window: it is never moved beside the globe")
     lua.execute('''
         STUB.docks = 0
-        function PatchwerkForever_Thread_Tracker_Dock(anchor) STUB.dockedTo = anchor or false; STUB.docks = STUB.docks + 1 return anchor ~= nil end
+        function PatchwerkForever_Thread_Tracker_Dock(anchor) STUB.docks = STUB.docks + 1 return anchor ~= nil end
     ''')
     ns.Toggle()
-    assert not stub.dockedTo, "the tracker was moved with the globe closed"
     ns.Toggle(True)
     frames(3)
-    assert lua.eval("STUB.dockedTo == PatchwerkForever_Thread_GlobeWindow") and ns.QuestsState().docked, "the tracker was not put beside the globe"
-    n = stub.docks
     ns.GlobeFull(True)
-    assert stub.docks > n and lua.eval("STUB.dockedTo == PatchwerkForever_Thread_GlobeWindow"), "full screen did not put the tracker over it again"
+    frames(3)
     ns.GlobeFull(False)
-    ns.Set("globeTracker", False)
-    assert stub.dockedTo is False, "switched off, the tracker stayed beside the globe"
-    ns.Set("globeTracker", True)
-    assert lua.eval("STUB.dockedTo == PatchwerkForever_Thread_GlobeWindow")
+    frames(3)
+    assert stub.docks == 0, "the tracker was moved beside the globe"
+    assert window.strata == "HIGH", ("the globe's window is not drawn over the tracker (which is LOW)", window.strata)
     ns.GlobeKey("route")
     names = [k.text for k in stub.menu.kids.values()]
-    assert names[-1] == "Tracker Beside The Globe" and stub.menu.kids[len(names)].selected() is True, names
+    assert "Tracker Beside The Globe" not in names, names
+    assert ns.Get("globeTracker") is None, "the setting Tracker Beside The Globe is still there"
     ns.Toggle()
-    assert stub.dockedTo is False, "the tracker was not put back when the globe closed"
     ns.Toggle(True)
     frames(3)
+    assert stub.docks == 0, "the tracker was moved when the globe closed or opened"
+    step("the quest log beside the globe: off as it comes; your quests under their heading, a click turns the globe to one")
+    lua.execute("""
+        local info = C_QuestLog.GetInfo
+        C_QuestLog.GetInfo = function(i)
+            local out = info(i)
+            if out and out.questID then out.level = STUB.quests[out.questID].level end
+            return out
+        end
+        C_QuestLog.GetMaxNumQuestsCanAccept = function() return 25 end
+        C_QuestLog.GetQuestWatchType = function(id)
+            for _, w in ipairs(STUB.watched) do if w == id then return 0 end end
+            return nil
+        end
+        C_QuestLog.AddQuestWatch = function(id) table.insert(STUB.watched, id) end
+        C_QuestLog.RemoveQuestWatch = function(id)
+            for i = #STUB.watched, 1, -1 do if STUB.watched[i] == id then table.remove(STUB.watched, i) end end
+        end
+        QuestUtil = { OpenQuestDetails = function(id) STUB.details = id end }
+        STUB.quests[870].level = 12
+    """)
+    stub.Fire("QUEST_LOG_UPDATE")
+    before = (window.width, window.height)
+    st = size(700, 660)
+    assert st.w == 680 and not ns.Get("globeQuestLog"), "the quest log is not off as it comes"
+    ql = ns.QuestLogState()
+    assert ql.button and ql.button.text == "Quest Log" and not ql.shown, "no Quest Log button, or the list shown while off"
+    ql.button.scripts["OnClick"](ql.button)
+    frames(3)
+    ql, st = ns.QuestLogState(), ns.GlobeState()
+    same = lua.eval("function(a, b) return rawequal(a, b) end")
+    assert ns.Get("globeQuestLog") and ql.shown and same(ql.panel.anchor, view), "the button did not show the list beside the picture"
+    assert st.w == 680 - 256 and window.width == 700, ("the picture did not make room for the list", st.w, window.width)
+    in_box(st, state()[1])
+    rows = [(r.kind, r.text, r.right) for r in ql.rows.values()]
+    assert rows == [("heading", "- The Barrens", ""), ("quest", "[12] The Forgotten Pools", ""), ("line", "- Explore the pools", ""),
+                    ("line", "- Find the fissure", ""), ("quest", "A Quest With No Place", ""), ("quest", "Disrupt the Attacks", ""),
+                    ("quest", "Plainstrider Menace", "Complete")], rows
+    assert ql.count == "4/25", ql.count
+
+    def row(text):
+        return [r for r in ns.QuestLogState().rows.values() if r.text.endswith(text)][0]
+
+    pools = row("The Forgotten Pools")
+    pools.frame.scripts["OnEnter"](pools.frame)
+    tip = list(stub.tip.lines.values())
+    assert stub.tip.title == "The Forgotten Pools" and tip[0] == "Explore the pools" and "Right-click for more." in tip[-1], tip
+    pools.frame.scripts["OnLeave"](pools.frame)
+    attacks = row("Disrupt the Attacks")
+    attacks.frame.scripts["OnClick"](attacks.frame, "LeftButton")
+    frames(90)
+    x, y, _z = ns.GlobeWhere(1, -500, -3300)
+    assert abs(x) < 1 and abs(y) < 1, ("a click in the list did not turn the globe to the quest", x, y)
+    assert Ch.Get(Ch) is None, "a click in the list routed to the quest"
+    assert ns.QuestLogState().picked == 871 and row("Disrupt the Attacks").picked, "the quest clicked is not picked out in the list"
+    mark = named([m for m in marks("quests") if m.name], "Disrupt the Attacks")
+    assert mark.size == 26 and [m for m in marks("quests") if m.icon.endswith("mark_ring")], "the quest clicked is not picked out on the globe"
+    nowhere = row("A Quest With No Place")
+    nowhere.frame.scripts["OnClick"](nowhere.frame, "LeftButton")
+    assert "no place on the map" in chat(), "a quest with no place said nothing"
+
+    step("the quest log: a right-click routes to a quest, opens its details, tracks it, adds it to My Route; a heading folds")
+    pools = row("The Forgotten Pools")
+    pools.frame.scripts["OnClick"](pools.frame, "RightButton")
+    names = [k.text for k in stub.menu.kids.values()]
+    assert stub.menu.title == "The Forgotten Pools" and names == ["Show On Globe", "Route To Quest", "Quest Details", "Track Quest", "Add To My Route"], names
+    stub.menu.kids[2].click()
+    frames(90)
+    assert Ch.Get(Ch) and Ch.Get(Ch).id == 870, "Route To Quest did not route to it"
+    assert row("The Forgotten Pools").routed and not row("Disrupt the Attacks").routed, "the quest routed to is not marked in the list"
+    pools.frame.scripts["OnClick"](pools.frame, "RightButton")
+    assert stub.menu.kids[2].text == "Stop Routing To Quest"
+    stub.menu.kids[2].click()
+    assert Ch.Get(Ch) is None, "Stop Routing To Quest did not go back"
+    pools.frame.scripts["OnClick"](pools.frame, "RightButton")
+    stub.menu.kids[3].click()
+    assert stub.details == 870, "Quest Details did not open it"
+    stub.menu.kids[4].click()
+    assert 870 in list(stub.watched.values()), "Track Quest did not track it"
+    pools.frame.scripts["OnClick"](pools.frame, "RightButton")
+    assert stub.menu.kids[4].text == "Untrack Quest"
+    stub.menu.kids[4].click()
+    assert 870 not in list(stub.watched.values()), "Untrack Quest did not untrack it"
+    pools.frame.scripts["OnClick"](pools.frame, "RightButton")
+    stub.menu.kids[5].click()
+    stops = list(R.Entries(R).values())
+    assert len(stops) == 1 and stops[0].kind == "quest" and stops[0].id == 870, "Add To My Route did not add it"
+    pools.frame.scripts["OnClick"](pools.frame, "RightButton")
+    assert "Add To My Route" not in [k.text for k in stub.menu.kids.values()], "Add To My Route offered for a quest in it"
+    R.Clear(R)
+    heading = ns.QuestLogState().rows[1]
+    heading.frame.scripts["OnClick"](heading.frame, "LeftButton")
+    rows = [(r.kind, r.text) for r in ns.QuestLogState().rows.values()]
+    assert rows == [("heading", "+ The Barrens")] and ns.QuestLogState().count == "4/25", rows
+    heading.frame.scripts["OnClick"](heading.frame, "LeftButton")
+    assert len(ns.QuestLogState().rows) == 7, "the heading did not unfold"
+
+    step("the quest log: Dungeon Journal (Stitch)'s stops under your quests; a click turns the globe, a right-click follows the list")
+    lua.execute("""
+        PatchwerkForever.Guides:Register('fdj', { name = 'Dungeon Journal', Side = function() return true end, Read = function(count)
+            if not STUB.journalOn then return nil end
+            return { source = 'fdj', reader = 'Dungeon Journal', side = true, guide = 'Dungeon Journal: Wailing Caverns', index = 1,
+                total = 2, quest = 914, kind = 'accept', key = 'j', lines = { { text = 'Accept: Leaders of the Fang' } },
+                map = 1, x = -1700, y = -3500, after = {},
+                ahead = { { index = 2, quest = 959, kind = 'turnin', lines = { { text = 'Turn in: Trouble at the Docks' } },
+                    map = 1, x = -950, y = -3780 } } }
+        end })
+    """)
+    stub.journalOn = True
+    frames(200)                                  # (the journal's list is read again every few seconds)
+    rows = [(r.kind, r.text, r.right) for r in ns.QuestLogState().rows.values()][7:]
+    assert rows == [("heading", "- Dungeon Journal: Wailing Caverns", ""), ("stop", "Accept: Leaders of the Fang", "Next"),
+                    ("stop", "Turn in: Trouble at the Docks", "")], rows
+    docks = row("Trouble at the Docks")
+    docks.frame.scripts["OnClick"](docks.frame, "LeftButton")
+    frames(90)
+    x, y, _z = ns.GlobeWhere(1, -950, -3780)
+    assert abs(x) < 1 and abs(y) < 1 and row("Trouble at the Docks").picked, ("a click on a stop did not turn the globe to it", x, y)
+    assert not [m for m in marks("quests") if m.icon.endswith("mark_ring")], "a quest is still picked out with a stop picked"
+    docks.frame.scripts["OnClick"](docks.frame, "RightButton")
+    names = [k.text for k in stub.menu.kids.values()]
+    assert names == ["Show On Globe", "Follow This List"], names
+    stub.menu.kids[2].click()
+    assert Ch.Get(Ch) and Ch.Get(Ch).kind == "guide" and Ch.Get(Ch).id == "fdj", "Follow This List did not follow it"
+    frames(3)
+    assert row("Leaders of the Fang").routed, "the stop the list leads to is not marked"
+    docks.frame.scripts["OnClick"](docks.frame, "RightButton")
+    assert [k.text for k in stub.menu.kids.values()][1] == "Back To Your Main Route"
+    stub.menu.kids[2].click()
+    assert Ch.Get(Ch) is None
+    stub.journalOn = False
+    frames(200)
+    assert len(ns.QuestLogState().rows) == 7 and ns.QuestLogState().picked is None, "the journal's stops stayed after it stopped"
+
+    step("the quest log by keys, in the Show menu, and with a window too narrow for both; hidden, the picture is as it was")
+    ns.GlobeKey("nextquest")
+    assert ns.QuestLogState().picked == 870, "Next Quest did not pick the first quest"
+    ns.GlobeKey("nextquest")
+    ns.GlobeKey("nextquest")
+    chat()
+    assert ns.QuestLogState().picked == 871, "Next Quest did not go on down the list"
+    ns.GlobeKey("show")
+    boxes = [k for k in stub.menu.kids.values() if k.text == "Quest Log"]
+    assert boxes and boxes[0].selected() is True, "the Show menu has no Quest Log"
+    ns.GlobeFull(True)
+    frames(3)
+    assert ns.GlobeState().w == 1002 - 20 - 256, ("full screen did not make room for the list", ns.GlobeState().w)
+    ns.GlobeFull(False)
+    frames(3)
+    ns.GlobeKey("questlog")
+    frames(3)
+    assert not ns.QuestLogState().shown and ns.GlobeState().w == 680 and not ns.Get("globeQuestLog"), "the key did not hide the list"
+    assert named([m for m in marks("quests") if m.name], "Disrupt the Attacks").size == 20, "hidden, the list's pick stayed on the globe"
+    st = size(400, 500)
+    assert st.w == 380
+    slash("quests")
+    frames(3)
+    st = ns.GlobeState()
+    assert ns.QuestLogState().shown and st.w == 320 and window.width == 340 + 256, ("a window too narrow was not widened", st.w, window.width)
+    slash("quests")
+    frames(3)
+    assert not ns.QuestLogState().shown and ns.GlobeState().w == 380, "hidden, the window is not as it was left"
+    size(*before)
+    view.scripts["OnMouseWheel"](view, 1)        # (the mouse again, not keys)
+    frames(60)
     lua.execute("STUB.quests, STUB.questOrder, STUB.offers = {}, {}, {}")
     stub.Fire("QUEST_LOG_UPDATE")
     stub.Fire("QUESTLINE_UPDATE")

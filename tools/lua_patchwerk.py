@@ -634,6 +634,73 @@ def main():
     s.lua.execute("RXPG_ARROW = nil")
     assert G.Read(G, 2) is None
     assert s.chat() == []
+    # RestedXP's window hidden: RestedXP is paused and marks nothing done, so the steps the game shows
+    # done are read past (a quest taken, finished or handed in, a place with a radius you were within)
+    s = Session()
+    s.lua.execute("""
+        local function at(x, y, radius) return { tag = 'goto', wx = y, wy = x, instance = 1, textOnly = not radius or nil, radius = radius } end
+        local steps = {
+            { { tag = 'accept', questId = 871, text = 'Accept Plainstrider Menace' }, at(-600, -2800) },
+            { { tag = 'complete', questId = 999, obj = 1, text = 'Something kept open' } },
+            { { tag = 'complete', questId = 871, obj = 1, text = 'Kill 7 plainstriders' }, at(-650, -2850) },
+            { { text = 'Run to the Crossroads', textOnly = true }, at(-437, -2596, 10) },
+            { { tag = 'turnin', questId = 871, text = 'Turn in Plainstrider Menace' }, at(-437, -2596) },
+            { { tag = 'fly', text = 'Fly to Orgrimmar', location = 'ORGRIMMAR' }, at(-437, -2596) },
+            { { tag = 'turnin', questId = 872, text = 'Turn in your report' }, at(1600, -4400) },
+        }
+        for i, lines in ipairs(steps) do
+            local step = { index = i, elements = lines }
+            for _, e in ipairs(lines) do e.step = step end
+            steps[i] = step
+        end
+        steps[1].active = true
+        steps[2].sticky = true
+        RXPCData = { currentStep = 1, stepSkip = {} }
+        RXP = { currentGuide = { name = 'The Barrens', steps = steps } }
+        RXPG_ARROW = { shown = true, element = steps[1].elements[2], IsShown = function(self) return self.shown end }
+        STUB.handed, STUB.finished = {}, {}
+        C_QuestLog.IsQuestFlaggedCompleted = function(id) return STUB.handed[id] or false end
+        C_QuestLog.IsComplete = function(id) return false end
+        C_QuestLog.GetQuestObjectives = function(id) return { { finished = STUB.finished[id] or false } } end
+        STUB.player.x, STUB.player.y = -600, -2800
+        STUB.QuestAt(871, 'Plainstrider Menace', 1, -650, -2850)
+    """)
+    s.addon(BASE)
+    G = s.g.PatchwerkForever.Guides
+    # running: what RestedXP says, though the quest is taken already
+    assert G.Read(G, 0).index == 1
+    # paused: the quest taken, the step kept open beside the others passed, on to the kill
+    s.lua.execute("RXP.isHidden = true")
+    info = G.Read(G, 3)
+    assert info.index == 3 and info.kind == "complete", (info.index, info.kind)
+    # (a line that names its quest says which, and which objective, for the tracker's quest progress)
+    assert (info.lines[1].quest, info.lines[1].obj, info.lines[1].kind) == (871, 1, "complete")
+    assert (info.map, info.x, info.y) == (1, -650, -2850), "RestedXP's arrow, left on the step it had, was gone to"
+    assert [a.index for a in info.ahead.values()] == [4, 5, 6], [a.index for a in info.ahead.values()]
+    # the objective finished: on to the walk, whose place is not reached yet
+    s.lua.execute("STUB.finished[871] = true")
+    info = G.Read(G, 0)
+    assert info.index == 4 and (info.x, info.y) == (-437, -2596), (info.index, info.x, info.y)
+    # within its radius: on to the hand-in; and walking away again does not take it back
+    s.lua.execute("STUB.player.x, STUB.player.y = -440, -2600")
+    assert G.Read(G, 0).index == 5
+    s.lua.execute("STUB.player.x, STUB.player.y = -600, -2800")
+    info = G.Read(G, 2)
+    assert info.index == 5 and info.key != "1:nowhere" and info.kind == "turnin"
+    # a line you tick yourself (RestedXP's "+" line) cannot be told done from here: reading stops at it
+    s.lua.execute("table.insert(RXP.currentGuide.steps[5].elements, { text = 'Sell your junk' })")
+    s.lua.execute("STUB.handed[871] = true")
+    assert G.Read(G, 0).index == 5
+    s.lua.execute("table.remove(RXP.currentGuide.steps[5].elements)")
+    # handed in: on to the flight, which cannot be told done from here, and reading stops there
+    s.lua.execute("STUB.handed[871] = true; STUB.QuestGone(871)")
+    info = G.Read(G, 2)
+    assert info.index == 6 and info.kind == "fly" and info.flyTo == "ORGRIMMAR", (info.index, info.kind)
+    assert [a.index for a in info.ahead.values()] == [7]
+    # shown again: RestedXP's own step, until it catches up by itself
+    s.lua.execute("RXP.isHidden = false")
+    assert G.Read(G, 0).index == 1
+    assert s.chat() == []
 
     step("the gathering service: nothing offered, then a provider; one that fails is said once")
     s = Session()

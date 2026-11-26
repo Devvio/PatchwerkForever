@@ -43,7 +43,7 @@ function env:RestoreDisallowed()
 	for action, keys in pairs(cleared) do
 		if not self:IsClearingAllowed(action) then
 			for keyChord in pairs(keys) do
-				if ( CPAPI.GetBindingAction(keyChord, false, ctx) == '' and SetBinding(keyChord, action, ctx) ) then
+				if ( env:BindingIn(keyChord, ctx) == '' and SetBinding(keyChord, action, ctx) ) then
 					changes[#changes + 1] = ('%s (%s)'):format(keyChord, self:GetActionName(action));
 				end
 			end
@@ -60,7 +60,7 @@ function env:ClearConflicts()
 		if self:IsClearingAllowed(action) then
 			for _, keyChord in ipairs({GetBindingKey(action, false, ctx)}) do
 				if ( IsBindingForGamePad(keyChord)
-				and CPAPI.GetBindingAction(keyChord, false, regular) ~= ''
+				and env:BindingIn(keyChord, regular) ~= ''
 				and SetBinding(keyChord, nil, ctx) ) then
 					self:RecordCleared(action, keyChord)
 					changes[#changes + 1] = ('%s (%s)'):format(keyChord, self:GetActionName(action));

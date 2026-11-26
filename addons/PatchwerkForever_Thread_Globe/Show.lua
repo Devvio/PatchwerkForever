@@ -21,6 +21,7 @@ local MARKS = {
 	false,
 	{ 'globeNames', 'Names' },
 	{ 'globeCoords', 'Coordinates' },
+	{ 'globeQuestLog', 'Quest Log' },
 	{ 'globeExplore', 'Fog Of War' },
 	{ 'globeLevels', 'Zones Colored By Level' },
 	{ 'globeAge', 'Aged Paper' },

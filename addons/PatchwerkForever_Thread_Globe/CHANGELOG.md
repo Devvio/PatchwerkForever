@@ -1,5 +1,15 @@
 # Patchwerk Forever: Globe (Thread)
 
+## 1.2.0
+
+- **A quest log beside the globe**: **Show Quest Log** (off as it comes), the **Quest Log** button, `/globe quests` and a key binding put a list of your quests at the right of the window, as the world map's quest log sits beside its map. The globe's picture is narrower while it shows; a window too narrow for both is widened, and goes back to its size when the list is hidden. It is also in the Show menu.
+  - Your quests are listed under their headings, as the game's quest log has them, each with its level, its objectives, and Complete once it is done. Click a heading to fold it. The list shows how many quests you have, out of how many you can hold.
+  - Click a quest and the globe turns to where it is done, and its mark there is picked out, larger and ringed. Clicking does not change your route.
+  - Right-click a quest for **Show On Globe**, **Route To Quest** (or **Stop Routing To Quest**), **Quest Details**, **Track Quest** (or **Untrack Quest**), **Share Quest** while you are in a group, and **Add To My Route**. The quest your route follows has a gold dot.
+  - With Dungeon Journal (Stitch), the stops of its list are under your quests: the dungeon quests to pick up and turn in, in the order it would take them. Click one and the globe turns to it; right-click for **Follow This List** (or **Back To Your Main Route**) and **Add To My Route**.
+  - Keys: **Show Or Hide The Quest Log**, and **Next Quest In The Quest Log**, which picks each quest of the list in turn and turns the globe to it. Console Port lists both among its own.
+- **Tracker (Thread)'s list stays where you keep it**: it is no longer moved beside the globe while the globe is open, and the globe's window is drawn over it. **Tracker Beside The Globe** is gone, from the options and from the Route button's list, now that the quest log is part of the globe.
+
 ## 1.1.0
 
 - **Zones colored by level**: **Color Zones By Level** (off as it comes) lays a thin wash of color over each zone, in the colors the levels by a zone's name are written in: gray for far below you, green, yellow, orange, and red for far above. A small key in the lower left corner says which is which. It follows the zone's shape, changes when you gain a level, fades out toward the ground, and is not drawn on a city's or battleground's map. A zone the game gives no levels for has no wash, nor have the few zones the game's map has no pictures of. In the Show menu, by `/globe levels`, and by a key binding.

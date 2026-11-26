@@ -111,6 +111,22 @@ base), the sparkle split from the route planner, and MelloUI Route's additions u
   the eight names the reader reads are there with the same shapes (`FDJ.TurnInSpotFor`,
   `FDJ.QuestMatchesFaction`, `trackedDungeons` on the character's saved table). EllesmereUI: both menu button
   names and `EllesmereUIQuestTracker` there. None of this was tried in the game.
+- Checked against the addons updated by 2026-11-26 (asked for: "go through the stitches"): Console Port 3.3.14
+  to 3.3.16, MelloUI 2.1.58 to 2.1.89, EllesmereUI 9.8.8 to 9.9.5, DungeonJournal 2.0.9 to 2.1.7.
+  Console Port needed two fixes (Console Port (Stitch) 2.4.0): `CPAPI.GetBindingAction` now answers a question
+  about the regular context with the native binding when the regular one is empty, so the conflict sweep would
+  have taken every native binding for a conflict (none had been cleared in the user's save); the Stitch now asks
+  the game's own `GetBindingAction` per context (`env:BindingIn`). `ConsolePortTargetFriendly/Hostile` are gone
+  (the targeting modifiers took their place), so Targeting.lua was removed, and the two modifiers are no longer
+  listed twice. 3.3.16 also mended the menu ring's missing buttons and clears the other context on a bind
+  itself (`ClearSharedContext`); both of our fixes for those stay for an older Console Port and do nothing.
+  DungeonJournal: nothing errors, but Dungeon Journal (Stitch) 1.3.0 now uses its `QuestTurnedIn`,
+  `QuestCountsForCharacter`, `IsQuestUnavailable` and `RPGQuestHidden`, gives no accept stop to a quest started
+  by an item (`startItem`), passes over `itemStep` chain entries (start spot from `QUEST_PREREQ_DETAILS`), and
+  ignores the arrow's `corpse` spot. MelloUI and EllesmereUI: every name both MelloUI Stitches use is there with
+  its shape; the game menu entry still makes room for Polestar only. Left as they are: the hidden GroupMoment
+  module (not switched off by the trim) and the guide preview starting from the step's spot when MelloUI follows
+  the step's quest (2.1.63). None of this was tried in the game.
 - Routes (Thread) 0.12.0: RestedXP read ahead, and the step said on screen (asked for 2026-11-12: route by
   the upcoming RestedXP steps, and a floating text that describes the step when the route changes; of the
   interview all four read-ahead parts were taken, the step then the route for the words, upper middle and

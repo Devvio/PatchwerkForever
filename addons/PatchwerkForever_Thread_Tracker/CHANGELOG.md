@@ -1,5 +1,10 @@
 # Patchwerk Forever: Tracker (Thread)
 
+## 1.7.0
+
+- **Quest progress in your guide's steps** (Tracker: Guide, **Show Quest Progress**, enabled), read from your quest log: a line that has you complete an objective shows the game's count for it ("Raptor Head: 10/12"), colored as a quest's counts are, and under a quest to turn in, its objectives still to do or Ready to turn in. It is right even while RestedXP's window is hidden. Needs Patchwerk Forever 2.11.0.
+- With Globe (Thread) 1.2.0 the list is no longer moved beside the globe: it stays where you keep it, under the globe's window.
+
 ## 1.6.0
 
 A collect list, and the quests your party shares. Works with Patchwerk Forever 2.6.0.

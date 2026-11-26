@@ -15,6 +15,16 @@ local Guides = ns.P.Guides;
 -- what is not there gives nothing, and with no steps to be found
 -- the arrow's spot alone is given, as a step with no words.
 --
+-- While its window is hidden RestedXP is paused (RXP.isHidden):
+-- it marks nothing done, and the step you are on stays where it
+-- was. Then the steps the game shows done are read past here,
+-- as RestedXP would have marked them: a quest taken (accept),
+-- handed in (turnin) or finished (complete: its objective, or the
+-- whole quest), and a place with a radius you have been within
+-- (goto). Reading stops at the first step with anything else
+-- still to be done (a flight, a hearthstone, a condition). Shown
+-- again, RestedXP catches up by itself.
+--
 -- Nothing of RestedXP's is changed or copied. Its words are shown
 -- from its own tables as the game runs and are not kept.
 
@@ -36,6 +46,8 @@ local KIND_OF = {
 	vendor = 'vendor',
 };
 local ORDER = { 'hearth', 'fly', 'death', 'travel', 'home', 'fp', 'turnin', 'accept', 'complete', 'train', 'vendor' };
+-- kinds of line that name their quest
+local OF_QUEST = { accept = true, turnin = true, complete = true };
 
 -- Where a line of a step is: map, world x, world y; nothing for a line that is not a place.
 local function PlaceOf(e)
@@ -69,11 +81,14 @@ local function Describe(step)
 			local kind = KIND_OF[e.tag];
 			if ( kind and not done ) then found[kind] = true end;
 			local text = e.text;
+			-- (a line that names its quest is kept even before RestedXP has worded it: the game words its objective)
+			local quest = OF_QUEST[kind] and tonumber(e.questId) or nil;
 			if ( type(text) == 'string' and #lines < MOST_LINES ) then
 				text = text:gsub('^%s+', ''):gsub('%s+$', '');
-				if ( text ~= '' and not seen[text] ) then
+				if ( ( text ~= '' and not seen[text] ) or ( text == '' and quest ) ) then
 					seen[text] = true;
-					lines[#lines + 1] = { text = text, done = done, kind = kind };
+					lines[#lines + 1] = { text = text, done = done, kind = kind, quest = quest,
+						obj = kind == 'complete' and tonumber(e.obj) or nil };
 				end
 			end
 			if not ( done or e.skip ) then
@@ -87,6 +102,81 @@ local function Describe(step)
 		if found[name] then kind = name; break end;
 	end
 	return kind or ( #places > 0 and 'place' or 'text' ), lines, places, flyTo;
+end
+
+-- While RestedXP is paused: what the game says of a quest, and the goto lines you have been within
+-- (kept on the line itself as a weak key: a guide loaded afresh leaves them behind).
+local reached = setmetatable({}, { __mode = 'k' });
+
+local function Ask(fn, ...)
+	if ( type(fn) ~= 'function' ) then return nil end;
+	local ok, a = pcall(fn, ...);
+	if ok then return a end;
+	return nil;
+end
+
+local function Log() return type(C_QuestLog) == 'table' and C_QuestLog or {} end
+local function HandedIn(id) return Ask(Log().IsQuestFlaggedCompleted, id) and true or false end
+local function Held(id)
+	local index = Ask(Log().GetLogIndexForQuestID, id);
+	return index ~= nil and index ~= 0;
+end
+local function Finished(id, obj)
+	if Ask(Log().IsComplete, id) then return true end;
+	local list = obj and Ask(Log().GetQuestObjectives, id);
+	local o = type(list) == 'table' and list[obj];
+	return type(o) == 'table' and o.finished and true or false;
+end
+
+local TAKE = { accept = true, daily = true, acceptmultiple = true };
+local GIVE = { turnin = true, dailyturnin = true, turninmultiple = true };
+
+-- Whether the game shows one line of a step done; nil when that cannot be told from here.
+local function LineDone(e)
+	local id = tonumber(e.questId);
+	if TAKE[e.tag] and id then
+		return HandedIn(id) or Held(id);
+	elseif GIVE[e.tag] and id then
+		return HandedIn(id) or ( e.skipIfMissing and not Held(id) ) or false;
+	elseif ( e.tag == 'complete' and id ) then
+		if HandedIn(id) then return true end;
+		if ( e.skipIfMissing and not Held(id) ) then return true end;
+		return Held(id) and Finished(id, tonumber(e.obj)) or false;
+	elseif ( e.tag == 'goto' and tonumber(e.radius) ) then
+		if reached[e] then return true end;
+		local map, x, y = PlaceOf(e);
+		local px, py, here = Guides.Here();
+		if ( map and px and map == here and ( x - px ) ^ 2 + ( y - py ) ^ 2 <= tonumber(e.radius) ^ 2 ) then
+			reached[e] = true;
+			return true;
+		end
+		return false;
+	end
+	return nil;
+end
+
+-- Whether a step is done, by RestedXP's own rule (every line done, passed over or words only), with
+-- the lines RestedXP has not marked told from the game.
+local function StepDone(step)
+	if step.completed then return true end;
+	for _, e in ipairs(Elements(step)) do
+		if ( type(e) == 'table' and not ( e.completed or e.skip or e.textOnly ) and not LineDone(e) ) then
+			return false;
+		end
+	end
+	return true;
+end
+
+-- The step you are on while RestedXP is paused: from the one it has, past those the game shows done.
+-- (A step it keeps open beside the others, sticky, or a tip, is never the one you are on.)
+local function PausedStep(steps, n, skipped)
+	local last = math.min(#steps, n + LOOK_AHEAD);
+	for i = n, last do
+		local s = steps[i];
+		if ( type(s) ~= 'table' ) then return n end;
+		if not ( skipped[i] or s.sticky or s.tip or StepDone(s) ) then return i end;
+	end
+	return last;
 end
 
 local function Key(index, map, x, y)
@@ -111,6 +201,7 @@ local function Read(count)
 	local steps = guide and guide.steps;
 	local n = type(data) == 'table' and tonumber(data.currentStep);
 	local spot = Arrow();
+	local paused = rxp and rxp.isHidden == true;
 	if not ( type(steps) == 'table' and n and type(steps[n]) == 'table' ) then
 		-- no steps to read: the arrow's spot alone, if it has one
 		local map, x, y = PlaceOf(spot);
@@ -118,6 +209,13 @@ local function Read(count)
 		return { kind = 'place', lines = {}, map = map, x = x, y = y, key = Key('arrow', map, x, y), ahead = {} };
 	end
 
+	local skipped = type(data.stepSkip) == 'table' and data.stepSkip or {};
+	-- RestedXP paused: the steps the game shows done are passed, and its arrow, left on the step it
+	-- had, is not gone to once they are
+	if paused then
+		local at = PausedStep(steps, n, skipped);
+		if ( at ~= n ) then n, spot = at, nil end;
+	end
 	-- the step the arrow's spot belongs to, when RestedXP has more than one open; else the one you are on
 	local step = steps[n];
 	if ( spot and type(spot.step) == 'table' and spot.step ~= step and spot.step.active ) then
@@ -149,11 +247,10 @@ local function Read(count)
 		table.sort(info.items)
 	end
 
-	local skipped = type(data.stepSkip) == 'table' and data.stepSkip or {};
 	for i = n + 1, math.min(#steps, n + LOOK_AHEAD) do
 		if ( #info.ahead >= count and #info.after >= count ) then break end;
 		local s = steps[i];
-		if ( type(s) == 'table' and not s.completed and not skipped[i] ) then
+		if ( type(s) == 'table' and not s.completed and not skipped[i] and not ( paused and StepDone(s) ) ) then
 			local k, l, p = Describe(s);
 			if ( #info.after < count ) then
 				info.after[#info.after + 1] = { index = i, kind = k, lines = l };

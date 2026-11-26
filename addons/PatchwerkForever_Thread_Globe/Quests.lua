@@ -14,8 +14,9 @@
 --                     follows that list
 --
 -- The Route button (and the Route Menu key) lists what the route can follow, adds the map pin to My
--- Route, opens My Route's editor beside the globe, and keeps Tracker (Thread)'s list beside the globe
--- while it is open. A quest chosen anywhere (a click in the tracker) turns the globe to it.
+-- Route, and opens My Route's editor beside the globe. A quest chosen anywhere (a click in the tracker)
+-- turns the globe to it. Tracker (Thread)'s list stays where you keep it, behind the globe's window:
+-- the quest log beside the globe is QuestLog.lua.
 local ADDON, ns = ...
 if not (ns.linked and ns.Marks) then return end
 local G, Marks = ns.G, ns.Marks
@@ -74,22 +75,27 @@ local function QuestLines(m)
 end
 
 local arrowed                 -- the quest the game's arrow was put on here
-local function QuestClick(_, m)
+-- Route to a quest; on the quest routed to already, back to your main route. (A click on its mark, and
+-- Route To Quest in the quest log beside the globe.)
+local function Route(id)
 	if not (type(Choice) == 'table' and Choice.Set) then return end
-	if Chosen(m.quest) then
+	if Chosen(id) then
 		Choice:Clear()
-		if arrowed == m.quest and Ask(track.GetSuperTrackedQuestID) == m.quest then Ask(track.SetSuperTrackedQuestID, 0) end
+		if arrowed == id and Ask(track.GetSuperTrackedQuestID) == id then Ask(track.SetSuperTrackedQuestID, 0) end
 		arrowed = nil
 	else
-		Choice:Set('quest', m.quest)
+		Choice:Set('quest', id)
 		-- (with no Tracker (Thread) to move the game's own arrow, it is put on the quest here, and taken
 		-- off again when you go back)
 		if not rawget(_G, 'PatchwerkForeverTracker') and not rawget(_G, 'PatchwerkForever_Thread_Tracker_Dock') then
-			Ask(track.SetSuperTrackedQuestID, m.quest)
-			arrowed = m.quest
+			Ask(track.SetSuperTrackedQuestID, id)
+			arrowed = id
 		end
 	end
 end
+local function QuestClick(_, m) Route(m.quest) end
+-- (for the quest log beside the globe: QuestLog.lua)
+ns.QuestRoute, ns.QuestChosen, ns.QuestPicked = Route, Chosen, Picked
 
 Marks.Source('quests', {
 	order = 50,
@@ -98,6 +104,7 @@ Marks.Source('quests', {
 	Fill = function(mark)
 		if not (Guides and Guides.QuestPlace) then return end
 		local picked = Picked()
+		local shown = ns.QuestLogPicked and ns.QuestLogPicked()       -- (the one picked in the quest log beside the globe)
 		local n = 0
 		for i = 1, Ask(log.GetNumQuestLogEntries) or 0 do
 			local info = Ask(log.GetInfo, i)
@@ -106,7 +113,7 @@ Marks.Source('quests', {
 				local map, x, y = Guides.QuestPlace(id)
 				if map and x and y then
 					n = n + 1
-					local done, mine = Done(id), id == picked
+					local done, mine = Done(id), id == picked or id == shown
 					local title = type(info.title) == 'string' and info.title or Ask(log.GetTitleForQuestID, id) or 'Quest'
 					if mine and not done then
 						mark({ map = map, x = x, y = y, icon = Marks.Icon('ring'), tint = GOLD, alpha = 0.85, yards = RING_YARDS, least = 34,
@@ -237,23 +244,6 @@ local function Pin()
 	return Guides.WorldOf(point.uiMapID, x, y)
 end
 
-local function TrackerDock() return rawget(_G, 'PatchwerkForever_Thread_Tracker_Dock') end
-
--- Tracker (Thread)'s list beside the globe while it is open, and back where you keep it after.
-local docked = false
-local function Dock()
-	local dock = TrackerDock()
-	if type(dock) ~= 'function' then return end
-	local window = ns.GlobeWindow()
-	local want = window and window:IsShown() and ns.Get('globeTracker') and true or false
-	if want then
-		docked = pcall(dock, window) and true or false
-	elseif docked then
-		docked = false
-		pcall(dock, nil)
-	end
-end
-
 local function RouteMenu(owner)
 	local window, view = ns.GlobeWindow()
 	G.Menu(owner or view, function(root)
@@ -284,15 +274,6 @@ local function RouteMenu(owner)
 		if type(editor) == 'function' then
 			root:CreateButton('Edit My Route', function() editor(window) end)
 		end
-		if type(TrackerDock()) == 'function' then
-			local on = ns.Get('globeTracker')
-			if root.CreateCheckbox then
-				root:CreateCheckbox('Tracker Beside The Globe', function() return ns.Get('globeTracker') end,
-					function() ns.Set('globeTracker', not ns.Get('globeTracker')) end)
-			else
-				root:CreateButton(on and 'Tracker Back Where I Keep It' or 'Tracker Beside The Globe', function() ns.Set('globeTracker', not on) end)
-			end
-		end
 	end)
 end
 
@@ -306,12 +287,6 @@ ns.GlobeOn('show', function()
 		button:SetText('Route')
 		button:SetScript('OnClick', function(self) ns.Try('the globe', RouteMenu, self) end)
 	end
-	Dock()
-end)
-ns.GlobeOn('hide', Dock)
-ns.GlobeOn('place', Dock)
-ns.OnSetting(function(key)
-	if key == 'globeTracker' then Dock() end
 end)
 ns.GlobeOn('key', function(what)
 	if what ~= 'route' then return false end
@@ -320,4 +295,4 @@ ns.GlobeOn('key', function(what)
 end)
 
 -- For the checks outside the game.
-function ns.QuestsState() return { docked = docked, button = button } end
+function ns.QuestsState() return { button = button } end

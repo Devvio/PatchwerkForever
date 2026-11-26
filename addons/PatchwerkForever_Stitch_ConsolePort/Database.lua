@@ -16,6 +16,14 @@ env.NativeContext  = Enum.BindingContext and Enum.BindingContext.GamepadModeInGa
 env.RegularContext = Enum.BindingContext and Enum.BindingContext.None;
 if not env.NativeContext then return end;
 
+-- The action bound to a chord in exactly one context, asked of the game itself. Console Port's own
+-- CPAPI.GetBindingAction cannot be used for this since 3.3.16: asked about the regular context it
+-- answers with the native binding when the regular one is empty, so every native binding would look
+-- like a conflict.
+function env:BindingIn(keyChord, context)
+	return GetBindingAction(keyChord, false, context) or '';
+end
+
 -- @return saved : { cleared = {...}, autoEnable = cvar value }, or nil before load
 function env:GetConsolePortSaved()
 	local saved = self:GetSaved('ConsolePort');

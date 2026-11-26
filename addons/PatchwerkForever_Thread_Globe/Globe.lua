@@ -137,6 +137,7 @@ local FIT = 0.82                      -- a zone fitted takes up this much of the
 local CLICK = 5                       -- a press that moves less than this (points) is a click, not a drag
 local EDGES_W, EDGES_H = 20, 64       -- the window round the picture: across, and up and down (title and foot)
 local VIEW_LEAST = 320                -- the smallest picture the window can be sized to
+local side = 0                        -- room kept at the window's right for a panel beside the picture (ns.GlobeSide)
 local KEY_TURN = 420                  -- a held key turns the globe as a drag this fast would (points a second)
 local KEY_ZOOM = 1.6                  -- and zooms this fast (the zoom's logarithm a second)
 
@@ -1420,7 +1421,7 @@ end
 -- zoomed right out stays so; else the zoom is kept, and more or less of the world is seen.
 local function Layout()
 	local w, h = window:GetWidth(), window:GetHeight()
-	local vw, vh = max(VIEW_LEAST, w - EDGES_W), max(VIEW_LEAST, h - EDGES_H)
+	local vw, vh = max(VIEW_LEAST, w - EDGES_W - side), max(VIEW_LEAST, h - EDGES_H)
 	if vw == viewW and vh == viewH then return end
 	local out = look.r <= RMIN * 1.02
 	view:SetSize(vw, vh)
@@ -1441,7 +1442,7 @@ local function Place()
 		window:SetSize(sw, sh)
 	else
 		window:SetFrameStrata('HIGH')
-		local w = max(VIEW_LEAST + EDGES_W, min(sw, tonumber(saved.w) or VIEW + EDGES_W))
+		local w = max(VIEW_LEAST + EDGES_W + side, min(sw, tonumber(saved.w) or VIEW + EDGES_W))
 		local h = max(VIEW_LEAST + EDGES_H, min(sh, tonumber(saved.h) or VIEW + EDGES_H))
 		window:SetSize(w, h)
 		if tonumber(saved.x) and tonumber(saved.y) then
@@ -1577,6 +1578,28 @@ function ns.GlobePad(x, y, z)
 end
 
 function ns.GlobeFull(on) if window then Full(on) end end
+
+-- The smallest the window can be sized to: the smallest picture, and the panel beside it.
+local function Bounds()
+	if window.SetResizeBounds then
+		window:SetResizeBounds(VIEW_LEAST + EDGES_W + side, VIEW_LEAST + EDGES_H)
+	elseif window.SetMinResize then
+		window:SetMinResize(VIEW_LEAST + EDGES_W + side, VIEW_LEAST + EDGES_H)
+	end
+end
+
+-- Room at the window's right for a panel beside the picture (QuestLog.lua): w points, or none. The
+-- picture is that much narrower; a window too narrow for both is widened while the panel shows.
+function ns.GlobeSide(w)
+	w = max(0, tonumber(w) or 0)
+	if w == side then return end
+	side = w
+	if window then
+		Bounds()
+		Place()
+	end
+end
+function ns.GlobeSideWidth() return side end
 function ns.GlobeWindow() return window, view end
 
 local function Build()
@@ -1592,11 +1615,7 @@ local function Build()
 	window:SetFrameStrata('HIGH')
 	window:SetMovable(true)
 	window:SetResizable(true)
-	if window.SetResizeBounds then
-		window:SetResizeBounds(VIEW_LEAST + EDGES_W, VIEW_LEAST + EDGES_H)
-	elseif window.SetMinResize then
-		window:SetMinResize(VIEW_LEAST + EDGES_W, VIEW_LEAST + EDGES_H)
-	end
+	Bounds()
 	window:SetClampedToScreen(true)
 	window:EnableMouse(true)
 	window:RegisterForDrag('LeftButton')
@@ -1641,7 +1660,7 @@ local function Build()
 
 	view = CreateFrame('Frame', nil, window)
 	view:SetSize(viewW, viewH)
-	view:SetPoint('TOP', window, 'TOP', 0, -30)
+	view:SetPoint('TOPLEFT', window, 'TOPLEFT', EDGES_W / 2, -30)     -- (a panel beside it takes the right: ns.GlobeSide)
 	view:SetClipsChildren(true)
 	view:EnableMouse(true)
 	view:EnableMouseWheel(true)

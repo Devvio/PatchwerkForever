@@ -16,7 +16,7 @@ Patchwerk wants more jobs! Patchwerk wants them written down!
 
 A quest tracker for **World of Warcraft: Forever**: your quests by zone with how far each is, the steps of the guide you run, buttons for quest items, tracked recipes, a collect list and a gathering list, in a list of our own that you can move, resize and color.
 
-One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the settings pages, and nothing else. It works with no other addon installed; RestedXP Guides and Routes (Thread) each add a section when they are there, and Globe (Thread) can keep the list beside its window.
+One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwerk Forever**, the small base addon that holds the settings pages, and nothing else. It works with no other addon installed; RestedXP Guides and Routes (Thread) each add a section when they are there.
 
 One piece is marked experimental and starts disabled: dungeon objectives, which depend on what Forever's dungeons report.
 
@@ -28,6 +28,7 @@ One piece is marked experimental and starts disabled: dungeon objectives, which 
 - **Who in your party has a quest**, under it. For party members who run this tracker too, how far along they are.
 - **A share mark** on a quest that someone in your party is not on and that the game lets you share: three small dots at the right of its name. Point at it to see who is not on the quest; click it to share the quest with your party. The game does not say who has done a quest before, so a member who has already turned it in is named too. Not in a raid.
 - **Your guide's steps**, when a guide addon runs (RestedXP): the step you are on with its lines, the next few steps dimmed under it, one line each, and in the heading the guide's name, "step 34 of 120" and a thin bar.
+- **Quest progress in your guide's steps**, read from your quest log: a line that has you complete an objective shows the game's count for it ("Raptor Head: 10/12"), colored as a quest's counts are, and a quest to turn in has its objectives still to do, or that it is ready, under its line. It is right even while RestedXP's window is hidden. A setting, Show Quest Progress (enabled).
 - **Focus buttons** along its top: one small button for each route you can follow (Auto, RestedXP, the Dungeon Journal list, Quests, My Route), only for what is installed and running. The one in use is lit and named beside them; click another to follow it, or right-click the row for a menu. Routes (Thread) follows the focus. It is kept for each character.
 - **My Route**: your own stops in your own order (see below), above your quests.
 - **A second list beside your guide**, with Patchwerk Forever: Dungeon Journal (Stitch): the quests of the dungeons you track in the Dungeon Journal, in a section of their own. Click it to route along it; click again to go back to your guide.
@@ -153,7 +154,7 @@ While this one is shown, the game's tracker is made invisible and lets clicks th
 |---|---|
 | Tracker (Thread) | on or off, the game's tracker, width, the tallest it grows, its place, visibility (fading, instances) |
 | Tracker: Quests | the order (Party's Quests First among them), the ready group, levels, kinds, distance, progress colors, the flash, the party and the share mark, the quest arrow on the nearest quest |
-| Tracker: Guide | the guide's steps, how many after, skipping by a click, the step's items, RestedXP's window; the focus buttons; My Route |
+| Tracker: Guide | the guide's steps, how many after, quest progress, skipping by a click, the step's items, RestedXP's window; the focus buttons; My Route |
 | Tracker: More | item buttons, recipes, the collect list and whether the bank counts, the gathering list, a dungeon's stages |
 | Tracker: Appearance | scale, font size, the colors, the background |
 

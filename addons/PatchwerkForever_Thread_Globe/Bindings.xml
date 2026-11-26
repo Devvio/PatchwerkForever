@@ -50,4 +50,10 @@
 	<Binding name="PATCHWERKFOREVER_GLOBE_LEVELS" category="BINDING_CATEGORY_PatchwerkForever">
 		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('levels') end
 	</Binding>
+	<Binding name="PATCHWERKFOREVER_GLOBE_QUESTLOG" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('questlog') end
+	</Binding>
+	<Binding name="PATCHWERKFOREVER_GLOBE_NEXTQUEST" category="BINDING_CATEGORY_PatchwerkForever">
+		if PatchwerkForever_Thread_Globe_Key then PatchwerkForever_Thread_Globe_Key('nextquest') end
+	</Binding>
 </Bindings>

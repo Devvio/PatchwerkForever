@@ -1,5 +1,15 @@
 # Patchwerk Forever: Dungeon Journal (Stitch)
 
+## 1.3.0
+
+Brought up to DungeonJournal 2.1.7.
+
+- **The list leaves out the quests the journal leaves out**: other classes' quests (with the journal's Show All Class Quests on), quests no longer available, and quests its RPG Mode keeps locked.
+- **A quest counts as handed in when the journal says so**, which covers the Mallet of Zul'Farrak, a choice between two quests, and a quest done once. The Mallet's page no longer sends you to accept it once you have the mallet.
+- **A quest that starts from an item** (one a creature drops) is no longer sent to its hand-in to be accepted; it has no stop until you hold it.
+- **A step that is an item and not a quest** (the Gnomeregan punch cards) no longer holds up the quest after it.
+- **Your corpse is not a stop**: while you are a ghost the journal's arrow points there, and that is left to the game.
+
 ## 1.2.2
 
 - The line that says Route Dungeon Journal Quests is disabled points to `/patchwerk config`, where Patchwerk Forever 2.10.0 keeps the options.

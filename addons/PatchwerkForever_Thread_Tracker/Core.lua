@@ -102,6 +102,8 @@ ns.settings = {
 		desc = 'Number of upcoming steps shown below the current one, one line each.' },
 	{ page = GUIDE, key = 'guideDone', default = false, name = 'Show Completed Lines', parent = 'guide',
 		desc = 'Keep completed lines of the current step in the list, dimmed.' },
+	{ page = GUIDE, key = 'guideProgress', default = true, name = 'Show Quest Progress', parent = 'guide',
+		desc = 'Show the progress of the quests a step names, from your quest log: the count of an objective to complete, colored by progress, and under a quest to turn in, its objectives still to do or Ready to turn in.' },
 	{ page = GUIDE, key = 'guideSkip', default = true, name = 'Click To Skip Steps', parent = 'guide',
 		desc = 'Click the current step to skip it, or an upcoming step to jump to it. /tracker back, or the Undo Skipped Guide Step key binding, undoes the last skip.' },
 	{ page = GUIDE, key = 'guideItems', default = true, name = 'Show Guide Item Buttons', parent = 'guide',
