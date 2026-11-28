@@ -116,6 +116,23 @@ local function FocusMenu(root)
 	if root.CreateDivider then root:CreateDivider() end
 	Entry(root, 'Edit My Route', function() ns.RouteEdit(WorldMapFrame) end)
 	Entry(root, 'Add Map Pin To My Route', ns.RouteAddPin)
+	-- runs to places of a kind (Questie.lua, Gather.lua, Farm.lua), where what they need is there
+	local db = Base.QuestDB
+	local questie = db and db:Ready()
+	local gathers = ns.GatherActive ~= nil
+	if questie or gathers then
+		if root.CreateDivider then root:CreateDivider() end
+		if questie and ns.GiversSay then
+			local on = ns.GiversActive and ns.GiversActive()
+			Entry(root, on and 'Stop Quest Giver Run' or 'Nearby Quest Givers', function() ns.GiversSay(on and 'stop' or '') end)
+		end
+		if gathers then
+			Entry(root, 'Best Gathering Area', function() ns.GatherSay('best') end)
+		end
+		if questie and ns.SkinKnown and ns.SkinKnown() > 0 then
+			Entry(root, 'Best Skinning Area', function() ns.SkinSay('') end)
+		end
+	end
 end
 
 local function Tip(self)

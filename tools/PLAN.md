@@ -565,7 +565,8 @@ Still wrong or missing after 5a:
      Lifts are the first use.
   c. Floors as places (see above).
 - Boats and zeppelins: from the game's transport tables if readable, else a hand-made table.
-- Roads: recognise road textures in the terrain files and make them cheaper, so routes prefer them.
+- Roads: recognise road textures in the terrain files and make them cheaper, so routes prefer them. Done
+  2026-11-28 as a search option: see "Roads, scenery and a penalty" below.
 
 ### 6. Carry over what Patchwerk Forever adds to MelloUI's Route
 These get simpler and better once the planner is ours:
@@ -622,9 +623,178 @@ What was done, all in the tools (the addon's Lua and the data's format are uncha
 - Checked with pictures of Orgrimmar and with every flight point and test place before and after (a
   scratch script: the way from a hub to each, on the old graph and the new).
 
-Not done: scenery models (tents, carts, trees) are not building models and are not read; two floors
-one over the other are one cell; a level reached only by a lift is not ground until the lift is told
-by hand (hand_links.txt), as Thunder Bluff's are.
+Not done: scenery models (tents, carts, trees) are not building models and are not read (done 2026-11-28, see
+below); two floors one over the other are one cell; a level reached only by a lift is not ground until the lift is
+told by hand (hand_links.txt), as Thunder Bluff's are.
+
+## Roads, scenery and a penalty (2026-11-28, Routes 1.5.0)
+
+Asked for: routes that keep to known roads (the user chose "strong preference"), finer walking in towns, caves,
+dungeons and buildings, and a run-time penalty hook for PvP danger (the danger itself is Route.lua's, the other
+session's). Done in a side session; the addon's UI side (the `roads` setting, Avoid Danger) is Route.lua's.
+
+The pipeline is now: `world.py` -> `roads.py <map>` (any time before walls.py's graph) -> `build_nav.py` ->
+`links.py <map>` -> `walls.py <map>` (walls, floors, scenery; then the graph with links and road costs) ->
+`crossings.py` -> `pack.py`. `python walls.py <map> graph` makes only the graph again (after roads.py: about 2
+minutes a continent). A full walls.py run is about 8 minutes a continent. Backups of what this replaced are in
+`backup/world-2026-11-28/` (walls, linked graphs, crossings.bin, the old Crossings.lua).
+
+### Roads
+- **No names.** The terrain's texture files (`_tex0`) give each tile's textures as file numbers only (MDID), and
+  this client's root file carries no name hashes at all (checked: every block has the no-names flag), so no road
+  texture can be found by its name. They were found by looking: a picture of where each texture is painted over
+  each zone beside the texture itself, and pictures of the long thin pieces of each (scratch scripts, not kept).
+- **`roads.py`** (pure Python): a cell's share of each texture from the chunk's layers (MCLY, MCAL; the alpha averaged
+  over the cell's 8 x 8, the layers blended in turn). Two lists, both in roads.py with the reasons:
+  - ROAD, 27 textures that are only ever roads, paths and paved squares (cobbles, flagstones, Durotar's cracked road,
+    Elwynn's cobbles 187100, ...): a cell is road where their share is over 45%, in patches of 40 cells or more.
+  - STRIP, 16 dirts, gravels and sands that some zones paint roads with and others lay as patches or shores
+    (Mulgore's road is its bare-ground dirt 188653): only long thin strips count (an opening takes away everything 7
+    cells wide; a piece must be 40 cells across, sparse, not branching like gullies (cells at most 7 times its
+    length), and not mostly within 2 cells of water). Two gravels were dropped after a look: their strips are the
+    ragged edges of scree.
+  - `world.load` also counts as road every floor walls.py lays on the ground (a city's streets, a bridge's deck, a
+    pier, an inn's floor); `nav.Ground` keeps a mark only on ground that can be walked or waded.
+  - Found: Kalimdor 47,033 road cells from the textures (139,009 with the floors, on walkable ground), the Eastern
+    Kingdoms 50,872 (129,256), Zephras Isle 2,302 (6,214). `world/roads_<id>.png` shows them;
+    `python roads.py <map> survey` lists every texture's cells to look for more.
+  - **Not found yet** (no road there, routes as before): Desolace, Stonetalon, Silithus, Un'Goro, Winterspring,
+    Felwood, Azshara, Dustwallow; the Badlands, Searing Gorge, Burning Steppes, the Swamp of Sorrows, the Blasted
+    Lands, the Hinterlands, and parts of Arathi and Westfall. Their roads are other textures to add to the lists.
+- **Costs.** With the search option `roads` a cell off the road costs `OFF_ROAD` (2.0, nav.py) times as much, a road
+  cell the plain walk; so a road up to twice as long as the way across country is taken. Off the road everything
+  scales (wading 2.5, swimming 6), so the road option never makes swimming more attractive. Links (tunnels, bridges,
+  lifts) and flights cost as they are. Because a road costs the plain walk and everything else more, the search's
+  guess (straight to the goal at running speed) stays a true least: A* stays exact.
+- **The graph** (`Coarse.add_roads`): every step's (cost with roads, seconds really taken), kept in
+  `nav_<id>_linked.bin` (`coarse.road`, with `coarse.linked`, the steps that are links). In a block with a road, a
+  walk between two gates that the plain graph left out as redundant but that is the cheapest way with roads is added
+  (Kalimdor 1,406, the Eastern Kingdoms 1,500), so one graph does for both.
+- **Packed** (pack.py's heading has the format): `M.roads[tile]` the marks as runs, `M.roadgraph[block]` each walk's
+  cost with roads and its real seconds (only for the 1,913 / 1,907 blocks of the continents that have a road; the rest cost `off`
+  times their plain walk), a ninth field on each flight point (its walks with roads), `M.road = { off = 2 }`. A link
+  is now always kept with the links, even when both its ends are in one block (it costs the same either way).
+  With the scenery walls too, Kalimdor's data grew from 2.3 to 2.9 MB, the Eastern Kingdoms' from 1.8 to 2.4.
+- **Planner.lua**: `opts.roads` (used only where the data has roads: `P.HasRoads(map)`), `P.RoadAt`. The search
+  keeps `real` (the seconds really taken) beside the cost; `found.real`, and `P.Line(...).seconds` uses it, so the
+  time shown is the real time whatever the search weighed. The smoothing prices a straight cut with the same road
+  costs, so it does not cut a road's bends across country.
+- Checked: `python lua_trips.py 1 roads` (and 0, and with a side) against the prototype: 0 trips differ, costs within
+  0.05%. On foot with roads, Kalimdor's long trips take 5-22% longer than the quickest way (Astranaar to Everlook
+  29.6 min, 24.2 without) and search 1.5 to 4 times as many gates (slowest search 164 ms, was 113; slowest trip with
+  its line 558 ms). `python trips.py <map> roads` draws both (world/trips_<id>_roads.png) and says how much of each
+  way is on a road.
+
+### Penalty
+- `opts.penalty(map, world x, world y)` -> 1 or more, asked once a gate a search at the middle of the gate's cell
+  (pcall'd; an error or a non-number counts as 1; `math.huge` forbids the gate): what entering that gate costs is
+  multiplied by it. Flight points in the air have none (landing at a gate does). Only raising costs, it keeps A*
+  exact; `real` leaves it out. The Python prototype takes the same (`route(..., penalty=)`).
+- Checked: `python lua_trips.py 1 penalty` (3 times within 400 yards of a spot between the Crossroads and Ratchet,
+  and on the Kharanos road): 0 trips differ; the Crossroads to Ratchet goes round (241 s, 200 s without).
+
+### Scenery (M2)
+- `wmo.scenery_placements` reads each tile's MDDF (file, position, turn, scale; one standing over two tiles is kept
+  once by its id), `wmo.scenery_shape` a model's collision triangles (MD20 header, 0xD8 and 0xE0). They are placed as
+  buildings are; checked: a placed model's lowest collision point sits a yard below the terrain at the median (models
+  are sunk in), so the placing is right.
+- `walls.scenery`: models whose collision is 2.5 yards wide or more (a tent, a cart, a wagon, a fence, a palisade, a
+  rock; not a post, a lamp or a thin trunk) and no taller than 20 yards (not a tree or a rock spire) lay their
+  *sides* (triangles steeper than a floor) that start within 4 yards of the model's own foot on the one-yard grid, with the height each holds at each yard; a
+  yard of terrain where one stands between knee and head is shut, as a building's wall shuts it, and a floor so
+  blocked is taken away. Two first tries were wrong and were looked at before going on: giving a triangle its whole
+  height span over its whole footprint walled everything under Kalimdor's giant trees (440,000 wall cells, 169,000
+  of them in shut-in pockets, against 92,000 before); and with per-yard heights a Teldrassil tree's canopy still drew
+  a 60-yard ring where its rim met the slope, hence the 4 yards. With only the feet, Kalimdor still had 246,000
+  wall cells (76,000 in pockets): its giant trees' feet are real (7 yards across), but at four-yard cells the gaps
+  between neighbouring trunks close and the forest floor falls into shut pockets. So trees are left out (TALL); doing
+  them well needs the finer grid in the planner, not only in walls.py. Tops do not block and are not walked onto, so a
+  scenery bridge's or dock's deck never cuts the bank (and such a bridge is still not a way across: not read as one).
+  Then walls.py decides as before (a fence across a cell walls it, a gate leaves it open, a small patch shut in by
+  scenery becomes wall).
+- Counts are in each `walls_<id>.txt` ("scenery models laid on the ground"). Laid: Kalimdor 35,896 of 170,118 models
+  (walls 92,054 -> 133,486 cells), the Eastern Kingdoms 42,198 of 209,491 (88,010 -> 133,481), Zephras Isle 895 of
+  3,663 (2,051 -> 3,173), before the fixes to the verdict below (after them 85,514, 77,373 and 1,539).
+- Checked with the test trips on foot on the old graph (the backup) and the new: 28 of 29 within a few seconds and
+  yards (Crossroads to Orgrimmar 2,756 -> 2,797 yd). One is not: **Brill to Light's Hope 14.8 -> 18.4 min**: the old
+  way crosses cells now walled at the Bulwark's barricade (world 1762, -683) and at a barricade in a narrow pass east
+  of it (1779, -1892). After the slanting-bridge fix below it is 14.8 min again: the same edge rule had cut it. The
+  boats' and zeppelins' stops (crossings.py) came out the same.
+- **Stormwind's slanting bridges (fixed the same day, reported from the game: "routing is choosing very expensive
+  paths").** From the Trade District's canal bank to the Cathedral the trail went south, over a bridge to the west
+  and all round, not over the nearest bridge. Not the roads and not the scenery: the 2026-11-22 data had it too. A
+  search on walls.py's own one-yard grid found the way in 62 s where the cells took 124 s, through cells walled by
+  the "wall along the edge" rule: a narrow bridge or street running slantwise, its railings on the cells' edges,
+  touches its next cell only at a corner or through the cell beside both, so one of the two was walled, and what was
+  left of the bridge became a shut-in pocket. Now that rule first looks for a way between the two cells yard by yard
+  within two cells of them (`linked`, REACH) and walls nothing if there is one. Stormwind: the canal bank to the
+  Cathedral 113 -> 52 s, the Trade District to the Cathedral 124 -> 71 s, the gate to the Cathedral 171 -> 119 s.
+  Walls from the edge rule: the Eastern Kingdoms 35,799 -> 9,152 cells, Kalimdor 28,743 -> 7,977 (all walls now
+  94,066 and 100,638; pockets 27,177 -> 14,409 and 24,569 -> 12,487). `walls.EDGES` keeps, for looking, the pair
+  of cells that walled each edge cell. All checks pass again, the test trips on foot are within a few yards of the
+  2026-11-22 data, Brill to Light's Hope included. "Near misses" (two open cells 2-3 cells apart across no way, more
+  than 12 times as far on foot) before and after: Stormwind 154 -> 89, Darnassus 128 -> 100, Thunder Bluff 105 -> 95,
+  Undercity 168 -> 161, Booty Bay 172 -> 169, Ironforge 33 -> 33, Orgrimmar 121 -> 141 (more open cells beside real
+  walls; its trips are no longer; not looked at one by one). Many that are left are real railings and walls.
+  Kalimdor's data is now 2.8 MB, the Eastern Kingdoms' 2.3 (and so after the sweep below).
+- **A sweep over every map (asked for after Stormwind: "the same broken-bridge cells are on the other maps too").**
+  Two new checks, then two more general fixes in walls.py's verdict, then both checks again:
+  - `python walls.py <map> check` (and every walls.py run, into walls_<id>.txt): `splits`. For each patch of cells a
+    structure touches, with a ring of two cells, the pieces of open yards (terrain the walk reached and every floor,
+    joined as the walk joins them: a step of CLIMB at most, so a roof is not joined to the street beside it) against
+    the pieces of cells that are a way (eight ways, no corner cut). A piece of yards whose cells fall into two pieces
+    of cells is a split: a bridge, gate, dock or walkway the cells cut. A scratch script traced the yard way across
+    the largest splits and named the cells that cut it and why.
+  - `python sweep.py <old folder>`: every flight point, test place, a spot every 700 yards over the map and every 120
+    yards in the cities, each to its six nearest within 3,000 yards, on foot on the old data and the new (4,865
+    routes); lists every route more than 10% and 30 s longer, every one lost, every one much shorter. A spot is
+    routed from the old data's cell where that is still a way (else a spot that snaps to another cell looks like a
+    change). Writes world/sweep_<id>.txt.
+  - What the traces found, both general: (1) a cell was given the floor level that most yards round it have, so a
+    cell full of a floor of its own beside a larger floor at another height took the other's level, held only a
+    few yards of it and was not taken as ground; now the level the cell itself holds most of comes first. (2) The
+    rule "two cells side by side whose floors are more than STEP apart are not joined" cut passages under arches and
+    overhangs whose cells were given the upper floor's height though both held floor at the lower; now it does not
+    apply where either cell holds floor at the other's height. Also (3) a cell less than half open is still a way
+    where its one open piece (NARROW, 3 yards or more) meets open ground on two sides facing away from each other
+    (a stair, a deck or a passage two or three yards wide), again and again along a passage.
+  - Splits before -> after these fixes: Kalimdor 105 -> 46, the Eastern Kingdoms 108 -> 71, Zephras Isle 6 -> 2 (the
+    first counts without heights, so somewhat high). Walls in all: Kalimdor 85,514 cells, the Eastern Kingdoms 77,373,
+    Zephras Isle 1,539: fewer than the 2026-11-22 data had (92,054, 88,010, 2,051) with the scenery added.
+  - Sweep against the 2026-11-22 data: **no route longer** on any map. Lost: 3, all from one sample spot on a cliff
+    edge in Darnassus (9500, 1920), whose old cell is now wall; it snaps to a 12-cell ledge (not looked into further).
+    Much shorter: Kalimdor 82, the Eastern Kingdoms 74 (inside Stormwind 845 -> 54 s and 807 -> 109 s, inside Orgrimmar
+    407 -> 41 s and 288 -> 20 s, Eastern Plaguelands 585 -> 288 s, Silithus spots that had no way at all). Checked
+    that these are not leaks through walls: on the yard grid the same trips take 50, 93, 36 and 19 s; the cells are
+    never quicker than the yards.
+  - Left: the remaining splits (walls_<id>.txt lists the largest; e.g. Kalimdor (6860, -2123), Felwood, and the
+    Eastern Kingdoms (2460, -5735), Eastern Plaguelands) are mostly floors one over the other or a way joined round
+    outside the ring; not traced one by one.
+- lua_shell.py's trail scene turns the `roads` setting off for itself (the dashes are measured on the quickest way's
+  long straight runs; Route.lua already passes `roads`, on by default, and the road way bends), and asks only that a
+  dash grows past a thin line's 20 units (a whole 40 fits only where the pattern falls well on a straight piece).
+
+### Not done, and what it would take
+- **Two floors one over the other** (a cave under a hill, a walkway over a street, Undercity's levels): the data has
+  one cell a place. It needs a second layer: per tile a sparse list of (cell, kind, height) for the cells with a
+  second floor GAP or more apart (walls.py has both heights already and keeps the wider), gates per layer in each
+  block (the gate's code has no bit left: a layer needs a wider gate field), the in-block search over (cell, layer)
+  with steps between layers where two floors meet within CLIMB, and the line drawn per layer. The hard part is in the
+  game: Forever's UnitPosition gives no height, so which layer the character stands on must come from elsewhere:
+  the map the game shows (a cave or a city level is often a map of its own: `C_Map.GetBestMapForUnit`), or the layer
+  the trail was on. Until then a place in a cave snaps to the ground over it.
+- **Caves**: a cave whose mouth is a hole in the terrain is walked already (its floor over the hole is ground); one
+  under solid terrain is the two-layer case above.
+- **Lifts and ramps**: ramps and stairs are walked (CLIMB); lifts still come from lifts.py (a tower's model) or are told
+  by hand (hand_links.txt). Their transports are not in any table this client has (5a).
+- **Dungeons and raids**: each is a map of its own (Map.db2), mostly building models with little or no terrain. The
+  format would do for one floor: walls.py's city case (a model whose floor is the ground) over an empty terrain gives
+  cells, build_nav and pack as for a continent, one more data addon (or one for all instances, loaded by map id). But
+  most dungeons have floors over floors (the two-layer case), their entrances would need linking (the portal's
+  place on both maps), and first it must be tried whether Forever's UnitPosition answers inside an instance at all
+  (on the live game it does not). Not started.
+- **Scenery bridges and docks as ways**: their decks could be floors like a building's (walls.py's walk) if scenery
+  models with a large top were chained with the buildings; left out for the time it would add to walls.py.
 
 ## Order and size
 

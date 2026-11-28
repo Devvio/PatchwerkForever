@@ -375,10 +375,15 @@ end
 -- The section
 ---------------------------------------------------------------------------
 local function RowMenu(block, id, name)
-	ns.Menu(block, name, {
-		{ 'Change Count', function() ns.CollectAsk(id) end },
-		{ 'Remove', function() ns.CollectRemove(id) end },
-	})
+	local entries = {}
+	-- an item Routes knows the drops of: farm it (Routes with QuestieDB)
+	local Gather = ns.Base.Gather
+	if Gather and Gather.CanFarm and Gather:CanFarm(tostring(id)) then
+		entries[#entries + 1] = { 'Farm This', function() Gather:Farm(tostring(id)) end }
+	end
+	entries[#entries + 1] = { 'Change Count', function() ns.CollectAsk(id) end }
+	entries[#entries + 1] = { 'Remove', function() ns.CollectRemove(id) end }
+	ns.Menu(block, name, entries)
 end
 
 ns.AddSection('collect', 75, function()

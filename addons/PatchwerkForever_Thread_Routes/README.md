@@ -25,7 +25,7 @@ One of Patchwerk Forever's own tools (the **Thread** track). **It needs Patchwer
 With nothing else to do, you only have to pick a destination:
 
 - **Your map pin.** Put a pin on the world map and the route appears. A pin always comes first. A pin that is already on the map is picked up when you log in or reload, not after other loading screens.
-- **A quest you track.** With no pin, it routes to the quest the game's own arrow is on, or failing that the nearest quest in your tracker. It moves on to the next objective, and to whoever takes the quest in once it is done.
+- **A quest you track.** With no pin, it routes to the quest the game's own arrow is on, or failing that the nearest quest in your tracker. It moves on to the next objective, and to whoever takes the quest in once it is done. With QuestieDB installed (more below) it goes to the very creature, object or quest giver.
 - **Your RestedXP guide.** With no pin, it routes to the guide's current step and moves on with it (more below). Nothing of RestedXP's is changed.
 - **A spot you type.** `/thread to 45.2 61.8` routes to that place on the map you are on.
 - **Your corpse.** While you are a ghost, the route leads to your corpse before anything else (more below).
@@ -96,6 +96,18 @@ A route only flies between flight points your character has discovered (the sett
 - **It is a side path**, like a gathering run: one at a time, your guide and quests are not followed meanwhile, a pin of your own still comes first, and **Start Routing** ends it.
 - The **Toggle Flight Point Search** key starts a search and, pressed again, ends it.
 
+## With QuestieDB
+
+QuestieDB is the quest database that comes with Questie. With it installed, and the setting **Use QuestieDB** on (it is, by default):
+
+- **A tracked quest is routed to the nearest spot of what it still needs**: the creature to kill, the object to use, or a creature that drops the item, instead of the middle of the area the game marks. Once the quest is done, to the one who takes it in. The route stays on the spot it chose until another is a good deal nearer, so it does not flick between two spawns as you fight.
+- **Every spot of that quest shows on the minimap and the world map** (Show Quest Spots On Minimap / World Map), the one routed to larger: yellow for an objective, blue for the turn-in.
+- **A RestedXP step that only names a quest**, with no place of its own, goes to that quest's giver, objective or turn-in.
+- **`/thread givers`** leads to the nearest quest giver on your continent with a quest you can take now, then the next. A giver is left behind once you have taken its quests or walk away from it; `/thread givers stop` ends it. It is a side path like a gathering run. Which quests you can take is Questie's own check when Questie runs; with QuestieDB alone, your level, race, class and the quests before it are checked, and quests that ask for a profession or reputation are left out.
+- The other Patchwerk Forever tools (Tracker, Globe, My Route) use the same spots, through Patchwerk Forever 2.12.0.
+
+Without QuestieDB, or for a quest it does not know, the game's own quest marks are used as before. Nothing of QuestieDB's or Questie's is changed.
+
 ## The way back to your corpse
 
 When you have died and released, the route leads to your corpse. It comes before everything else, your map pin included, and the step text says "To your corpse". The setting is **Route To My Corpse**, on to begin with.
@@ -154,14 +166,36 @@ Each spot where you pick a herb or mine a vein is remembered for all your charac
 
 ### Gathering runs
 
-`/thread gather` leads you to the nearest spot you have gathered at before, and on reaching it goes on to the next, until `/thread gather stop`. Spots you have been to in the last five minutes are left out, so a run does not turn back on itself.
+`/thread gather` leads you to a herb or ore spot near you, and on reaching it goes on to the next, until `/thread gather stop`. Spots you have been to in the last five minutes are left out, so a run does not turn back on itself. The next spot is the first of the shortest walk through three of the nearest, so a run works through a group of spots before it leaves for a lone one, and a spot with many others within 150 yards counts as nearer, so it leans toward rich ground.
 
 - `/thread gather round` keeps to the spots near where you began, and ends when you have been round them.
+- `/thread gather best` finds the area on your continent with the most spots you can gather within 400 yards (one far away counts somewhat less), says how many and how far, goes there, and then goes round it as a round does. With GatherMate2's data these are where things can grow, not what is up now: the richest area is where a run is most worth making.
 - `/thread gather Peacebloom` goes only to spots of that one thing. `/thread gather list` shows what is near.
-- Only what your character can gather is gone to, as the game's profession book says; a character with no gathering profession gets no runs. While a run is on, your guide and your quests are not followed; a pin of your own still comes first, and **Start Routing** ends the run.
+- Only what your character can gather is gone to, as the game's profession book says; a character with no gathering profession gets no runs. Spots that need more skill than you have are left out, except those within **Nodes Above Your Skill** (25 points by default): those come after the ones you can gather, and the step text says "needs Mining 175; you have 160".
+- With **GatherMate2** installed (setting **Use GatherMate2 Nodes**), its spots are gone to as well: the ones it collected or you imported into it, with its own filters, and the herb and ore data that comes with it (GatherMate2_Data), which does not need to be imported first. A spot both know is gone to once. Nothing of GatherMate2's is changed. While a run is on, your guide and your quests are not followed; a pin of your own still comes first, and **Start Routing** ends the run.
 - With **Tracker (Thread)** installed, its Gathering section lists the nearest spots and starts a run on a click. The **Toggle Gathering Run** key starts one and, pressed again, ends it.
 
-The only spots known are the ones you have gathered from yourself: the game's files do not say where herbs and ore grow. With **Patchwerk Forever: Sparkle (Thread)** 1.5.0 and Patchwerk Forever 2.9.0, the herbs and ore you walked past without gathering are added too, with the game's plain herb or ore icon until you gather there yourself.
+Without GatherMate2, the only spots known are the ones you have gathered from yourself: the game's files do not say where herbs and ore grow. With **Patchwerk Forever: Sparkle (Thread)** 1.5.0 and Patchwerk Forever 2.9.0, the herbs and ore you walked past without gathering are added too, with the game's plain herb or ore icon until you gather there yourself.
+
+### Safer routes, and roads
+
+- **Avoid Danger** counts dangerous ground as slower, so the route goes round it unless that is much longer: the other faction's towns, guards and NPCs (from QuestieDB) and its home zones, contested zones a little, where you saw enemy players in the last five minutes, and where a player killed you in the last hour. **Auto** does this while you are flagged for PvP, as you are outside your own lands on a PvP realm; it can also be **Always** or **Never**. **Avoid Danger Strength** (1 to 5) sets how far round it may go.
+- **Stick To Roads** has routes join the nearest road and follow it, leaving it near the start and end or where the road would be far longer. It needs map data that knows the roads.
+
+### Areas on the maps, and buttons
+
+A run to the best gathering area, and the way to the best place to skin or farm an item, go to an area: its edge is drawn as a ring on the minimap and the world map (**Show Area On Maps**). **Show GatherMate2 Nodes On Minimap** (off) shows GatherMate2's spots near you. The focus button on the world map offers **Nearby Quest Givers**, **Best Gathering Area** and **Best Skinning Area**, and Tracker (Thread) 1.8.0 has buttons for all of them and **Farm** in its menus.
+
+### Skinning and farming an item
+
+Both need QuestieDB, for where creatures stand and their levels, and go to the densest area as `/thread gather best` does. The place routed to is a spawn point near the area's middle, as a spot you gave: it comes first, and the route ends when you are there. Creatures more than three levels above you are left out.
+
+- **`/thread skin`** goes to where most of the creatures you can skin stand. No file says which creatures can be skinned, so Routes learns it: each kind you skin is remembered for all your characters (**Remember Skinned Creatures**). Only creatures whose level your Skinning allows count. `/thread skin list` shows the ones known.
+- **`/thread farm Strider Meat`** (a name in any case, a link or an id) goes to where that item is most likely to drop, by Wowhead's drop rates in QuestieDB, times how many creatures that drop it stand there. QuestieDB has rates for quest items and the things quests ask for, not every item.
+
+### Switching herb and ore tracking
+
+For a character with both Herbalism and Mining, the key binding **Switch Herb/Ore Tracking** switches between Find Herbs and Find Minerals with one press. The game does not let an addon switch tracking by itself, so the key casts the other tracking spell, as a click on an action button would. With Tracker (Thread), the Gathering section shows which is on and the key.
 
 ## Settings
 
@@ -185,12 +219,15 @@ Under **Destinations**: **Route To Map Pin**, **Route To My Corpse**, **Follow G
 | `/thread step` | says the current step on screen again |
 | `/thread flights` | lists the flight points you know on this continent, and how that is known |
 | `/thread nodes` / `nodes forget` | counts the herb and ore spots; forgets the ones within 15 yards |
-| `/thread gather` / `gather round` / `gather <name>` / `gather list` / `gather stop` | a gathering run to the nearest spot and on; a round near here; one kind only; what is near; end it |
+| `/thread gather` / `gather best` / `gather round` / `gather <name>` / `gather list` / `gather stop` | a gathering run to the nearest spot and on; the richest area first; a round near here; one kind only; what is near; end it |
 | `/thread discover` / `discover stop` | a search for the flight points you lack: to the nearest one and on to the next; end it |
+| `/thread skin` / `skin list` | with QuestieDB: to where most creatures you can skin stand; the ones known |
+| `/thread farm <item>` | with QuestieDB: to where the item is most likely to drop |
+| `/thread givers` / `givers stop` | with QuestieDB: to the nearest quest giver with a quest you can take now, and on to the next; end it |
 
 ## Key bindings
 
-Bind these under Options → Keybindings → Patchwerk Forever, or in Console Port's binding list: **Start Routing** (`/thread go`), **Stop Routing**, **Show Step Text Again**, **Toggle Gathering Run**, **Toggle Flight Point Search**, **Next Focus** (goes round the focuses that can be chosen), and one for each focus: **Focus: Auto**, **Focus: RestedXP**, **Focus: Dungeon Journal**, **Focus: Quests** and **Focus: My Route**.
+Bind these under Options → Keybindings → Patchwerk Forever, or in Console Port's binding list: **Start Routing** (`/thread go`), **Stop Routing**, **Show Step Text Again**, **Toggle Gathering Run**, **Switch Herb/Ore Tracking**, **Toggle Flight Point Search**, **Next Focus** (goes round the focuses that can be chosen), and one for each focus: **Focus: Auto**, **Focus: RestedXP**, **Focus: Dungeon Journal**, **Focus: Quests** and **Focus: My Route**.
 
 ## What it does not do yet
 

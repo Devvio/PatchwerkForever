@@ -106,7 +106,7 @@ def placing(store, piece):
                 pz - (r00 * lx + r01 * ly + r02 * lz),
                 py + r20 * lx + r21 * ly + r22 * lz)
 
-    box = model(store, fdid)[0]
+    box = model(store, fdid)[0] if fdid is not None else None
     if box:                                    # the check: the model's box, placed, is the box the placement states
         xs, zs, ys = [], [], []
         for lx in (box[0], box[3]):
@@ -120,3 +120,63 @@ def placing(store, piece):
                abs(min(ys) - y0), abs(max(ys) - y1)) > 1.5:
             return None
     return to
+
+
+# ---- scenery models (M2): a tent, a cart, a fence, a rock ---------------------------------------------------------
+# A terrain file's object part lists them too (MDDF, 36 bytes each: the model's file, an id, its position, turn and
+# scale as a building's, and flags; flag 0x40: the first field is a file number). Their collision is a few triangles
+# kept apart from what is drawn (in the model's MD20 header: collision triangles at 0xD8, vertices at 0xE0).
+_scenery = {}
+
+
+def scenery_placements(store, wdt_fdid):
+    """Every scenery model on the map: [(file, position, turn, scale)] (one standing over two tiles is listed by both:
+    kept once, by its id)."""
+    wdt = store.read_fdid(wdt_fdid)
+    out = {}
+    for tag, at, size in _chunks(wdt):
+        if tag != b"MAID":
+            continue
+        for i in range(4096):
+            root, obj0 = struct.unpack_from("<II", wdt, at + i * 32)
+            data = root and obj0 and store.read_fdid(obj0)
+            if not data:
+                continue
+            for tag2, at2, size2 in _chunks(data):
+                if tag2 == b"MDDF":
+                    for k in range(size2 // 36):
+                        e = struct.unpack_from("<II3f3fHH", data, at2 + 36 * k)
+                        if e[9] & 0x40:
+                            out[e[1]] = (e[0], e[2:5], e[5:8], (e[8] or 1024) / 1024.0)
+    return [out[k] for k in sorted(out)]
+
+
+def scenery_shape(store, fdid):
+    """A scenery model's collision: (vertices, triangles), both empty for one with none."""
+    if fdid in _scenery:
+        return _scenery[fdid]
+    verts, tris = [], []
+    data = store.read_fdid(fdid)
+    md = None
+    if data and data[:4] == b"MD21":
+        for tag, at, size in _chunks(data):
+            if tag == b"12DM":                         # (the chunk "MD21": _chunks turns the tag round)
+                md = data[at:at + size]
+                break
+    elif data and data[:4] == b"MD20":
+        md = data
+    if md and len(md) >= 0xF0:
+        ni, oi = struct.unpack_from("<II", md, 0xD8)
+        nv, ov = struct.unpack_from("<II", md, 0xE0)
+        if ni and nv and oi + 2 * ni <= len(md) and ov + 12 * nv <= len(md):
+            verts = [struct.unpack_from("<3f", md, ov + 12 * j) for j in range(nv)]
+            index = struct.unpack_from("<%dH" % ni, md, oi)
+            tris = [(index[3 * t], index[3 * t + 1], index[3 * t + 2]) for t in range(ni // 3)
+                    if max(index[3 * t], index[3 * t + 1], index[3 * t + 2]) < nv]
+    _scenery[fdid] = (verts, tris)
+    return _scenery[fdid]
+
+
+def turned(pos, turn, scale):
+    """The function placing() makes, for a model with no box to check it by (a scenery model)."""
+    return placing(None, (None, 0, 0, 0, 0, 0, 0, pos, turn, scale))

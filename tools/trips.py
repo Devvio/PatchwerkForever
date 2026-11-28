@@ -2,6 +2,9 @@
 
     python trips.py 1        (Kalimdor)      python trips.py 0        (Eastern Kingdoms)
     python trips.py 1 horde                  the same trips with that side's flight paths as well
+    python trips.py 1 roads                  the trips on foot twice: as before (white) and keeping to the roads
+                                             (the search option `roads`: cyan, where it differs), the roads in yellow;
+                                             world/trips_<id>_roads.png
 
 Writes world/trips_<id>.png (the routes found, in white, on the ground picture) and
 world/islands_<id>.png (each stretch of ground that is connected, in a colour of its own:
@@ -98,11 +101,14 @@ ISLAND_COLOURS = [(60, 170, 70), (230, 150, 40), (70, 130, 230), (200, 70, 200),
 
 
 def seconds_of(found, swum):
-    """A route's real time: its cost, less what swimming is priced above its real slowness (1.5 times)."""
-    return found["cost"] - swum * (FACTOR[SWIM] - 1.5) / SPEED
+    """A route's real time: its seconds (its cost without the roads' preference or a penalty), less what swimming is
+    priced above its real slowness (1.5 times)."""
+    return found.get("real", found["cost"]) - swum * (FACTOR[SWIM] - 1.5) / SPEED
 
 
 def main(map_id, side=None):
+    if side == "roads":
+        return with_roads(map_id)
     ground = Ground("world/map_%d.bin" % map_id)
     linked = "world/nav_%d_linked.bin" % map_id
     coarse = Coarse.open(linked if os.path.exists(linked) else "world/nav_%d.bin" % map_id)
@@ -229,6 +235,52 @@ def main(map_id, side=None):
                     if (r, g, b) not in ((205, 45, 45), (30, 80, 170), (10, 10, 20)):       # keep cliffs, sea, void
                         rows2[y][x * 3: x * 3 + 3] = bytes(colour)
     write_png("world/islands_%d.png" % map_id, len(rows2[0]) // 3, len(rows2), [bytes(r) for r in rows2])
+
+
+def with_roads(map_id):
+    """The trips on foot as before and keeping to the roads, side by side in one picture."""
+    ground = Ground("world/map_%d.bin" % map_id)
+    coarse = Coarse.open("world/nav_%d_linked.bin" % map_id)
+    tiles = load("world/map_%d.bin" % map_id)["tiles"]
+    rows, x0, y0, per = picture_rows(tiles)
+    scale = 128 // per
+
+    def dot(gx, gy, colour, size=0):
+        px, py = int(gx) // scale - x0 * per, int(gy) // scale - y0 * per
+        for y in range(py - size, py + size + 1):
+            for x in range(px - size, px + size + 1):
+                if 0 <= y < len(rows) and 0 <= x < len(rows[0]) // 3:
+                    rows[y][x * 3: x * 3 + 3] = bytes(colour)
+
+    for (tx, ty), marks in ground.roads.items():
+        for i in range(0, 16384):
+            if marks[i]:
+                dot(tx * 128 + i % 128, ty * 128 + i // 128, (150, 130, 30))
+    print("trips on foot: as before | keeping to the roads (minutes, yards; then how much of the way is on a road)")
+    for a, b in TRIPS[map_id]:
+        ca = nearest_passable(ground, *cell_of(*PLACES[map_id][a]))
+        cb = nearest_passable(ground, *cell_of(*PLACES[map_id][b]))
+        plain = route(ground, coarse, ca, cb)
+        kept = route(ground, coarse, ca, cb, roads=True)
+        if not (plain and kept):
+            print("  %s -> %s: no way" % (a, b))
+            continue
+        out = []
+        for found, roads, colour in ((plain, False, (255, 255, 255)), (kept, True, (60, 230, 255))):
+            path = cells_of(ground, coarse, ca, cb, found, roads)
+            swum, yards, _ = swimming(ground, path)
+            on = sum(math.hypot(q[0] - p[0], q[1] - p[1]) * CELL for p, q in zip(path, path[1:])
+                     if ground.road(*p) and ground.road(*q))
+            out.append("%.1f min, %.0f yd, %.0f%% on a road" % (seconds_of(found, swum) / 60.0, yards, 100.0 * on / max(1.0, yards)))
+            for gx, gy in path:
+                dot(gx, gy, colour)
+        print("  %s -> %s: %s | %s" % (a, b, out[0], out[1]))
+    for a in PLACES[map_id]:
+        cell = nearest_passable(ground, *cell_of(*PLACES[map_id][a]))
+        if cell:
+            dot(cell[0], cell[1], (255, 235, 60), 3)
+            dot(cell[0], cell[1], (0, 0, 0), 1)
+    write_png("world/trips_%d_roads.png" % map_id, len(rows[0]) // 3, len(rows), [bytes(r) for r in rows])
 
 
 if __name__ == "__main__":

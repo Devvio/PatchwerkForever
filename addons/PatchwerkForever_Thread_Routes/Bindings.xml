@@ -16,6 +16,9 @@
 	<Binding name="PATCHWERKFOREVER_THREAD_DISCOVER" category="BINDING_CATEGORY_PatchwerkForever">
 		if PatchwerkForever_Thread_Routes_Discover then PatchwerkForever_Thread_Routes_Discover() end
 	</Binding>
+	<!-- a click on a secure button (Tracking.lua) that casts the other tracking spell: the game lets
+	     an addon switch tracking only this way -->
+	<Binding name="CLICK PatchwerkForeverTrackSwitch:LeftButton" category="BINDING_CATEGORY_PatchwerkForever"/>
 	<Binding name="PATCHWERKFOREVER_THREAD_FOCUS_NEXT" category="BINDING_CATEGORY_PatchwerkForever">
 		if PatchwerkForever_Thread_Routes_FocusNext then PatchwerkForever_Thread_Routes_FocusNext() end
 	</Binding>

@@ -908,6 +908,17 @@ def main():
     assert G.Read(G, 1, "fdj").lines[1].text == "Accept: Horde Job", "a hand-in of a quest it cannot tell"
     s.lua.execute("STUB.arrow = STUB.spot(-2000, -2000); STUB.arrow.turnIn = true; STUB.arrow.fdjAutoQuest = 5003")
     assert G.Read(G, 1, "fdj").lines[1].text == "Turn in: Dungeon Journal map point", "a pin opened for a finished quest"
+    # ... and a hand-in of a chain step, which the journal keeps apart from the dungeons' lists (the Cozy
+    # Sleeping Bag's "... and that note you found", 2026-11-28): found by its name there, and gone to once you
+    # hold it, as a step with no objectives is ready to hand in though the game does not call it complete
+    s.lua.execute("STUB.arrow = STUB.spot(-2000, -2000); STUB.arrow.questTitle = 'First Things'; STUB.arrow.turnIn = true")
+    assert G.Read(G, 1, "fdj").lines[1].text == "Accept: Horde Job", "a hand-in of a chain step not in your log"
+    s.lua.execute("STUB.QuestAt(5010, 'First Things', 1, -400, 0); C_QuestLog.GetQuestObjectives = function() return {} end")
+    info = G.Read(G, 1, "fdj")
+    assert info.kind == "place" and info.lines[1].text == "Turn in: First Things", info.lines[1].text
+    s.lua.execute("C_QuestLog.GetQuestObjectives = function() return { { finished = false } } end")
+    assert G.Read(G, 1, "fdj").lines[1].text == "Accept: Horde Job", "a chain step with work left sent to its hand-in"
+    s.lua.execute("STUB.QuestGone(5010); C_QuestLog.GetQuestObjectives = nil")
     s.lua.execute("STUB.arrow = nil; STUB.complete[5003] = nil")
     # its page, its two settings, and the binding: the list chosen as a side path, and let go again
     assert list(s.stub.pages.keys()) == ["Dungeon Journal (Stitch)"], list(s.stub.pages.keys())

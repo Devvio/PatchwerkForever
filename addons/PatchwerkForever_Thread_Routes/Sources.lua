@@ -111,7 +111,8 @@ end
 local function GuideMore()
 	if not guide then return nil end
 	return { lines = guide.words, kind = guide.kind, step = guide.index,
-		walkOnly = (guide.kind == 'fly' and ns.Get('rxpTravel')) or nil }
+		walkOnly = (guide.kind == 'fly' and ns.Get('rxpTravel')) or nil,
+		questie = guide.questie }      -- (a step sent on by QuestieDB: its quest, for the spots on the maps)
 end
 
 ---------------------------------------------------------------------------
@@ -521,6 +522,17 @@ local function Look()
 		end
 		return
 	end
+	if ns.GiversActive and ns.GiversActive() then            -- and a quest giver run (Questie.lua)
+		said = nil
+		ns.Ahead.Set({})
+		local dest = ns.dest
+		if dest and dest.source == 'givers' then
+			Report('givers', nil, nil, dest.map, dest.x, dest.y)
+		else
+			Report('givers')
+		end
+		return
+	end
 	local dest = ns.dest
 	if dest and not dest.source then                         -- your own pin or spot comes first
 		said = nil
@@ -608,7 +620,7 @@ local function Look()
 		return
 	end
 	local more = guide and GuideMore()
-		or (source == 'quest' and quest.id and { lines = { 'Quest: ' .. Title(quest.id) } }) or nil
+		or (source == 'quest' and quest.id and { lines = { 'Quest: ' .. Title(quest.id) }, questie = { quest = quest.id } }) or nil
 	if more and picked then more.chosen = true end
 	-- Its words come on screen once its route is known, unless they have been there already: a step
 	-- of the guide's whose place has only moved, or a place you had reached and are led back to. (They
@@ -638,6 +650,8 @@ function ns.GoToSource()
 	if ns.GatherActive and ns.GatherActive() and ns.GatherStop() then ns.Print('Gathering stopped.') end
 	-- (and so would a flight point search)
 	if ns.DiscoverActive and ns.DiscoverActive() and ns.DiscoverStop() then ns.Print('Flight point search stopped.') end
+	-- (and so would a quest giver run)
+	if ns.GiversActive and ns.GiversActive() and ns.GiversStop() then ns.Print('Quest giver run stopped.') end
 	skip = nil
 	if not map then                                    -- the guide's step has no place: its words, again
 		Note()
@@ -693,6 +707,10 @@ function ns.QuestSay()
 	end
 	if ns.DiscoverActive and ns.DiscoverActive() then
 		ns.Print('Following: your flight point search. /thread discover stop ends it.')
+		return
+	end
+	if ns.GiversActive and ns.GiversActive() then
+		ns.Print('Following: your quest giver run. /thread givers stop ends it.')
 		return
 	end
 	if ns.dest and not ns.dest.source then

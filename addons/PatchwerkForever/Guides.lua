@@ -87,6 +87,7 @@ local function Ask(id, count)
 	end
 	if ( type(info) ~= 'table' ) then return nil end;
 	info.source, info.reader = id, reader.name or id;
+	Guides.FillFromQuestie(info);
 	-- (a reader may say it is a side list; one that fails to say is not one, as with Leads)
 	if ( type(reader.Side) == 'function' ) then
 		local asked, side = pcall(reader.Side);
@@ -95,7 +96,31 @@ local function Ask(id, count)
 	return info;
 end
 
--- The readers in the order they are asked: the ones that say they lead first, then as they joined.
+-- A step that names a quest but sends you nowhere (take it, finish it, hand it in, with no spot the
+-- guide gives): sent to where QuestieDB has the quest's giver, objective or turn-in. Then
+-- info.questie = { quest =, mode =, obj = } says so. Only the step you are on: those after it are the
+-- guide's as it has them.
+local MODE = { accept = 'giver', turnin = 'turnin', complete = 'objective' };
+function Guides.FillFromQuestie(info)
+	local QuestDB = P.QuestDB;
+	if ( info.map or not ( QuestDB and QuestDB:Ready() ) ) then return end;
+	for _, line in ipairs(type(info.lines) == 'table' and info.lines or {}) do
+		local mode = MODE[line.kind];
+		if ( mode and not line.done and type(line.quest) == 'number' ) then
+			local obj = mode == 'objective' and tonumber(line.obj) or nil;
+			local map, x, y = QuestDB.Place(line.quest, mode, obj);
+			if map then
+				info.map, info.x, info.y = map, x, y;
+				info.key = ('%s:questie:%d:%d:%d'):format(tostring(info.index), map, math.floor(x + 0.5), math.floor(y + 0.5));
+				info.questie = { quest = line.quest, mode = mode, obj = obj };
+				if ( info.kind == 'text' ) then info.kind = line.kind end;
+				return;
+			end
+		end
+	end
+end
+
+-- The readers in the order they are asked:the ones that say they lead first, then as they joined.
 local function Order()
 	local first, rest = {}, {};
 	for _, id in ipairs(Guides.order) do
@@ -183,9 +208,21 @@ function Guides.QuestZone(id)
 	return nil;
 end
 
--- For readers: where the game marks a quest in your log (its next objective, or whoever takes it in once
--- it is done), as continent, world x, world y; nothing when the game shows no mark for it.
+-- For readers: where a quest in your log is to be done (the nearest spot of what it still needs, or
+-- whoever takes it in once it is done), as continent, world x, world y; nothing when that is not known.
+-- With QuestieDB installed its spots come first (QuestieDB.lua: the very NPC, object or drop); else, or
+-- where it has none, the game's own mark for the quest (often the middle of an area).
 function Guides.QuestPlace(id)
+	local QuestDB = P.QuestDB;
+	if ( QuestDB and QuestDB:Ready() ) then
+		local map, x, y = QuestDB.Place(id);
+		if map then return map, x, y end;
+	end
+	return Guides.GameQuestPlace(id);
+end
+
+-- Where the game marks a quest in your log, as continent, world x, world y; nothing when it shows none.
+function Guides.GameQuestPlace(id)
 	if not ( C_QuestLog and type(C_QuestLog.GetQuestsOnMap) == 'function' ) then return nil end;
 	local tried = {};
 	local function On(uiMap)

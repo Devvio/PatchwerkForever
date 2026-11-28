@@ -1,5 +1,10 @@
 # Patchwerk Forever: Dungeon Journal (Stitch)
 
+## 1.3.1
+
+- **A quest chain page you track is routed again at its hand-ins** (the Cozy Sleeping Bag). When the journal's arrow pointed at the hand-in of one of the chain's steps ("... and that note you found"), the route had nowhere to go: the step's quest was looked for only in the dungeons' quest lists, and the journal keeps a chain's steps apart from them. It is now found there too.
+- A quest in your log with no objectives counts as ready to hand in, as the chain's steps are, though the game may not call it complete until it is handed in.
+
 ## 1.3.0
 
 Brought up to DungeonJournal 2.1.7.

@@ -1,5 +1,11 @@
 # Patchwerk Forever
 
+## 2.12.0
+
+- **QuestieDB.** Where QuestieDB (the database that comes with Questie) is installed, a quest's place is taken from it: the nearest spot of the creature, object or item drop the quest still needs, or the very NPC who takes it in, instead of the game's mark in the middle of the quest area. Routes, Tracker, Globe and My Route all get it. A guide step that names a quest but has no place goes to that quest's giver, objective or turn-in. Without QuestieDB, or for a quest it does not know, the game's marks are used as before. Nothing of QuestieDB's is changed.
+- For the parts: the Gather service takes more from its provider, each optional (`Best`, `Skin`, `SkinKnown`, `CanFarm`, `Farm`, `Tracking`, `Givers`, `GiversState`), so Tracker (Thread) 1.8.0 can offer Routes (Thread) 1.5.0's runs as buttons.
+- For the parts: `PatchwerkForever.QuestDB` (Spots, Place, Givers, NpcSpots, NpcLevels, ItemDrops, FindItem, Ready, SetEnabled) and `Guides.GameQuestPlace` for the game's own mark.
+
 ## 2.11.0
 
 - **The route keeps following your RestedXP guide while RestedXP's window is hidden.** Hidden, RestedXP pauses itself: it marks nothing done and its step stays where it was, so the route stopped at that step and then showed nothing. While it is paused, the steps the game shows done are now read past, as RestedXP would have marked them: a quest taken, handed in or finished, and a place you have been within. Reading stops at a step with anything else to do (a flight, a hearthstone, a condition). RestedXP itself is left as it is, and catches up by itself when it is shown again.

@@ -1,5 +1,38 @@
 # Patchwerk Forever: Routes (Thread)
 
+## 1.5.0
+
+Routes uses QuestieDB, the quest database that comes with Questie, where it is installed. Needs Patchwerk Forever 2.12.0 for this (with an older base everything works as in 1.4.1). The three map data addons are 1.5.0 too, with new data: the roads, and scenery in the way (see Map data below).
+
+- **Tracked quests go to the very spot**: the nearest place of the creature to kill, the object to use or a creature that drops the item, and the exact quest giver to hand in to, instead of the middle of the area the game marks. The spot gone to is kept until another is a good deal nearer.
+- **Quest spots on the maps**: every spot of the quest followed shows on the minimap and the world map, the one gone to larger (Show Quest Spots On Minimap, Show Quest Spots On World Map).
+- **Guide steps that only name a quest** go to its giver, objective or turn-in.
+- **`/thread givers`**: to the nearest quest giver with a quest you can take now, then the next; `/thread givers stop` ends it.
+- New setting **Use QuestieDB** (on), in a QuestieDB section on the first page. Without QuestieDB nothing changes.
+
+### Safer routes
+- **Avoid Danger** (Auto: while you are flagged for PvP, as you are outside your own lands on a PvP realm; or Always, or Never): the route counts dangerous ground as slower and goes round it unless that is much longer. Dangerous is: the other faction's towns, guards and NPCs (from QuestieDB) and its home zones, contested zones a little, where you saw enemy players in the last five minutes, and where a player killed you in the last hour. **Avoid Danger Strength** (1 to 5) sets how far round.
+- **Stick To Roads** (on): routes join the nearest road and follow it. Needs the map data that knows the roads.
+
+### On the maps and in the menus
+- The **area** a run to the best gathering area, or the way to the best place to skin or farm, goes to is drawn as a ring on the minimap and the world map (**Show Area On Maps**).
+- **Show GatherMate2 Nodes On Minimap** (off): GatherMate2's spots near you, green for herbs and orange for ore.
+- The world map's focus button menu has **Nearby Quest Givers**, **Best Gathering Area** and **Best Skinning Area**. Tracker (Thread) 1.8.0 has buttons for all of these.
+
+### Gathering
+- **GatherMate2's nodes** are used by gathering runs where GatherMate2 is installed: the ones it collected or you imported (its filters apply), and the herb and ore data that comes with it (GatherMate2_Data), read directly, so it does not need to be imported first. A node GatherMate2 and Routes both know is gone to once. GatherMate2 itself is not changed. Setting **Use GatherMate2 Nodes** (on).
+- **A cluster before a lone node.** The next node is no longer simply the nearest: the run tries the shortest walk through three of the nearest nodes and goes to the first of it, so it works through a group before leaving it. A node with many others within 150 yards counts as nearer, so the run leans toward rich ground.
+- **`/thread skin`** routes to the area on your continent with the most creatures you can skin. Which creatures can be skinned is learned as you play: each kind you skin is remembered for all your characters (**Remember Skinned Creatures**, on), and QuestieDB says where they stand and how high their levels are, so only those your Skinning allows count. `/thread skin list` shows what is known.
+- **`/thread farm <item>`** routes to where an item is most likely to drop: QuestieDB's Wowhead drop rates times how many of the creatures that drop it stand there. Quest items and the things quests ask for; not every item. Creatures more than three levels above you are left out of both.
+- **`/thread gather best`** finds the area on your continent with the most nodes you can gather within 400 yards (a far one counts somewhat less), says how many and how far, goes there and then round it.
+- **Your skill.** Nodes that need more Herbalism or Mining than you have are left out, except those within **Nodes Above Your Skill** (25 points by default). Those are gone to after the ones you can gather, and the step text says so: "Gather: Mithril Deposit (needs Mining 175; you have 160)".
+- **Switch Herb/Ore Tracking**, a new key binding, switches between Find Herbs and Find Minerals with one press, for a character with both professions. The game does not let an addon switch tracking by itself (it blocks the addon if one tries), so the key casts the other tracking spell through a secure button of ours. Tracker (Thread) 1.8.0 shows which is on and the key.
+
+### Map data
+- **The roads.** The map data now knows where the roads and paths are: the ground the game paints with a road texture (cobbles, flagstones, the packed dirt of a road), and the streets, bridges and piers of buildings. With Stick To Roads a step off the road counts as twice as slow, so a route joins the nearest road, follows it and leaves it near the end, unless the road goes more than twice as far round. The time shown is still the real walking time. The main roads of both continents and Zephras Isle are known; some zones' roads are not yet (Desolace, Stonetalon, Silithus, Un'Goro, Winterspring, Felwood, Azshara, Dustwallow; the Badlands, Searing Gorge, Burning Steppes, the Swamp of Sorrows, the Blasted Lands and the Hinterlands), and there routes go as before.
+- **Scenery in the way.** Tents, carts, wagons, crates, fences, palisades and boulders are now walls to the planner, as buildings have been since 1.4.0, so a route goes round them and through a fence's gate. Posts and lamps are left out (too small to matter), and so are trees and tall rock spires (the map data is too coarse to keep the gaps between them open).
+- **Bridges, stairs and narrow ways are ways again, on every map.** The map data had cut many of them: bridges and streets running at an angle (where their railings met the map data's grid), passages two or three yards wide, ways under arches and overhangs, and floors beside a larger floor at another height. So routes went far round, as in Stormwind from the Trade District to the Cathedral by the bridges to the west and south. Checked over nearly 5,000 routes on all three maps against the old map data: none is longer now, and many in Stormwind, Orgrimmar, the Eastern Plaguelands and Silithus are much shorter.
+
 ## 1.4.1
 
 - The step text's sample follows the sliders on **Routes: Step Text** in Patchwerk Forever 2.10.0's own options window too.

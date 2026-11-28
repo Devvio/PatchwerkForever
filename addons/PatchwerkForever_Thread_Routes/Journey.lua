@@ -44,7 +44,10 @@ end
 -- opts: rides = the list of crossings (ns.Crossings), or nil for none
 --       side = 'A' or 'H', for the rides
 --       walk = function(map) returning the options the planner takes for a walk on that map
---              ({ side =, known = } for flight paths; nil or an empty table for none)
+--              ({ side =, known = } for flight paths, roads =, penalty =; nil or an empty table for none).
+--              Chains are weighed by the walks' costs (with roads and a penalty, if given), and the least a
+--              chain could cost stays a true least, since those only raise a walk's cost
+-- The journey's cost is what it is weighed at; P.JourneyLine gives the seconds it really takes.
 --       use = function(map) saying whether that map's data is there (it may load it)
 -- Returns nil where there is no way, else { cost = seconds, legs = { leg, ... } }, a leg being
 --   { kind = 'walk', map =, sx =, sy =, gx =, gy =, found = what the planner found }

@@ -12,6 +12,13 @@
 -- Cells are (x, y) counted east and south from the map's north-west corner. A gate's number is
 -- block * 32 + its place in the block; a block's is y * 256 + x. A flight point in the air is minus
 -- its id.
+--
+-- Two search options change what a route costs (not the time it really takes, which is kept beside it):
+--   roads    ground off the roads costs D.road.off times as much (the map data says how much), so a route
+--            joins the nearest road and keeps to it, leaving it only near its ends or where the road goes
+--            far out of the way. The roads' own cost is the plain one, so the guess below stays a true least.
+--   penalty  function(map, world x, world y) giving 1 or more: what entering a gate there costs is
+--            multiplied by it (asked once a gate a search). It only raises costs, so the guess stays true.
 
 local ADDON, ns = ...
 local P = {}
@@ -48,6 +55,9 @@ function P.Use(id)
 		step = D.cell / D.speed, tick = D.tick,
 		factor = { [0] = 0, D.factor[1], D.factor[2], D.factor[3] },
 		tiles = {}, tileCount = 0, blocks = {}, far = {},
+		-- the roads, where the data has them: off the road a cell costs `off` times as much
+		off = D.road and D.roads and D.roadgraph and D.road.off or nil,
+		rtiles = {}, rtileCount = 0,
 	}
 	for _, l in ipairs(D.links) do
 		local a, b = l[1] * 32 + l[2], l[3] * 32 + l[4]
@@ -65,8 +75,11 @@ end
 function P.Forget()                  -- lets go of everything decoded (after a search, to give memory back)
 	for _, s in pairs(maps) do
 		s.tiles, s.tileCount, s.blocks = {}, 0, {}
+		s.rtiles, s.rtileCount = {}, 0
 	end
 end
+
+P.HasRoads = function(id) local s = P.Use(id); return s and s.off ~= nil or false end
 
 local KIND = { [0] = char(0), char(1), char(2), char(3) }
 
@@ -109,6 +122,60 @@ local function kindAt(s, x, y)       -- 0 no way, 1 walk, 2 wade, 3 swim
 end
 P.KindAt = function(id, x, y) local s = P.Use(id); return s and kindAt(s, x, y) or 0 end
 
+-- A tile's road marks: a string of 128 x 128 bytes, 1 on a road, else 0; false for a tile with no road.
+-- Packed as runs, off the road and on it by turns, starting off it: a run is one character (0 to 62),
+-- or the character for 63 and then the length in two (low six bits first).
+local ROADS = { [false] = char(0), [true] = char(1) }
+
+local function roadTileOf(s, key)
+	local t = s.rtiles[key]
+	if t ~= nil then return t end
+	local text = s.D.roads and s.D.roads[key]
+	if not text then
+		s.rtiles[key] = false
+		return false
+	end
+	if s.rtileCount >= TILES_KEPT then
+		s.rtiles, s.rtileCount = {}, 0
+	end
+	local out, n, i, len, on = {}, 0, 1, #text, false
+	while i <= len do
+		local v = byte(text, i) - 62
+		if v == 63 then
+			v = (byte(text, i + 1) - 62) + (byte(text, i + 2) - 62) * 64
+			i = i + 3
+		else
+			i = i + 1
+		end
+		if v > 0 then
+			n = n + 1
+			out[n] = rep(ROADS[on], v)
+		end
+		on = not on
+	end
+	t = concat(out)
+	s.rtiles[key] = t
+	s.rtileCount = s.rtileCount + 1
+	return t
+end
+
+local function roadAt(s, x, y)       -- 1 on a road, else 0
+	if x < 0 or y < 0 or x >= 8192 or y >= 8192 then return 0 end
+	local t = roadTileOf(s, floor(y / 128) * 64 + floor(x / 128))
+	if not t then return 0 end
+	return byte(t, (y % 128) * 128 + x % 128 + 1)
+end
+P.RoadAt = function(id, x, y) local s = P.Use(id); return s and s.off and roadAt(s, x, y) or 0 end
+
+-- What a cell costs to cross, as a share of a plain walk (0: no way). roads: the off-road multiplier, or nil.
+local function priceAt(s, x, y, roads)
+	local k = kindAt(s, x, y)
+	if k == 0 then return 0, 0 end
+	local f = s.factor[k]
+	if roads and roadAt(s, x, y) ~= 1 then f = f * roads end
+	return f, k
+end
+
 local function blockOf(s, key)       -- a block's gates and the walks between them, or false
 	local b = s.blocks[key]
 	if b ~= nil then return b end
@@ -118,7 +185,8 @@ local function blockOf(s, key)       -- a block's gates and the walks between th
 		return false
 	end
 	local n = byte(text, 1) - 62
-	b = { n = n, r = {}, c = {}, k = {}, at = {}, adj = {} }
+	-- adj[gate]: { other gate, seconds, seconds with roads, seconds really taken on the way roads choose, ... }
+	b = { n = n, r = {}, c = {}, k = {}, at = {}, adj = {}, rd = {} }
 	local p = 2
 	for i = 0, n - 1 do
 		local v = byte(text, p) - 62 + (byte(text, p + 1) - 62) * 64
@@ -132,15 +200,34 @@ local function blockOf(s, key)       -- a block's gates and the walks between th
 	local walks = byte(text, p) - 62 + (byte(text, p + 1) - 62) * 64
 	p = p + 2
 	local tick = s.tick
+	-- with roads: each walk's cost with roads (three characters) and the time the way it then takes really
+	-- takes (two), in the same order; a block with no road has none (off the road all through: the plain
+	-- walk, costing `off` times as much)
+	local road, q, off = s.off and s.D.roadgraph[key], 1, s.off or 1
 	for _ = 1, walks do
 		local i, j = byte(text, p) - 62, byte(text, p + 1) - 62
 		local cost = (byte(text, p + 2) - 62 + (byte(text, p + 3) - 62) * 64) * tick
 		p = p + 4
-		local a = b.adj[i]; a[#a + 1] = j; a[#a + 1] = cost
-		a = b.adj[j]; a[#a + 1] = i; a[#a + 1] = cost
+		local rcost, real = cost * off, cost
+		if road then
+			rcost = (byte(road, q) - 62 + (byte(road, q + 1) - 62) * 64 + (byte(road, q + 2) - 62) * 4096) * tick
+			real = (byte(road, q + 3) - 62 + (byte(road, q + 4) - 62) * 64) * tick
+			q = q + 5
+		end
+		local a = b.adj[i]; a[#a + 1] = j; a[#a + 1] = cost; a[#a + 1] = rcost; a[#a + 1] = real
+		a = b.adj[j]; a[#a + 1] = i; a[#a + 1] = cost; a[#a + 1] = rcost; a[#a + 1] = real
 	end
 	s.blocks[key] = b
 	return b
+end
+
+local function gateRoad(s, key, b, i)  -- whether a gate's cell is on a road (1) or not (0)
+	local v = b.rd[i]
+	if v == nil then
+		v = roadAt(s, (key % 256) * BLOCK + b.c[i], floor(key / 256) * BLOCK + b.r[i])
+		b.rd[i] = v
+	end
+	return v
 end
 
 ---------------------------------------------------------------------------
@@ -191,24 +278,35 @@ end
 ---------------------------------------------------------------------------
 local MOVES = { 1, 0, 1, -1, 0, 1, 0, 1, 1, 0, -1, 1, 1, 1, SQ2, 1, -1, SQ2, -1, 1, SQ2, -1, -1, SQ2 }
 
--- Returns cost and parent, both indexed by row * 32 + column + 1. With `target` it stops once that is reached.
-local function spread(s, bx, by, r0, c0, target)
+-- Returns cost, parent and the time really taken, all indexed by row * 32 + column + 1. With `target` it stops
+-- once that is reached. roads: the off-road multiplier (cost is then the cost with roads), or nil.
+local function spread(s, bx, by, r0, c0, target, roads)
 	local f, factor = {}, s.factor
+	local g = roads and {} or f              -- (the plain shares, for the time really taken)
 	local x0, y0 = bx * BLOCK, by * BLOCK
-	local t = tileOf(s, floor(y0 / 128) * 64 + floor(x0 / 128))
+	local tkey = floor(y0 / 128) * 64 + floor(x0 / 128)
+	local t = tileOf(s, tkey)
 	local cost, parent = {}, {}
-	if not t then return cost, parent end
+	local real = roads and {} or cost
+	if not t then return cost, parent, real end
+	local rt = roads and roadTileOf(s, tkey)
 	local base = (y0 % 128) * 128 + x0 % 128
 	for r = 0, 31 do
 		local at = base + r * 128
 		for c = 0, 31 do
-			f[r * 32 + c + 1] = factor[byte(t, at + c + 1)]
+			local v = factor[byte(t, at + c + 1)]
+			if roads then
+				g[r * 32 + c + 1] = v
+				if not (rt and byte(rt, at + c + 1) == 1) then v = v * roads end
+			end
+			f[r * 32 + c + 1] = v
 		end
 	end
 	local start = r0 * 32 + c0 + 1
-	if f[start] == 0 then return cost, parent end
+	if f[start] == 0 then return cost, parent, real end
 	local step = s.step
 	cost[start] = 0
+	real[start] = 0
 	local h = heap()
 	push(h, 0, start, 0)
 	while h.n > 0 do
@@ -230,6 +328,7 @@ local function spread(s, bx, by, r0, c0, target)
 						if nd < (cost[to] or huge) then
 							cost[to] = nd
 							parent[to] = at
+							if roads then real[to] = real[at] + step * MOVES[m + 2] * (g[at] + g[to]) / 2 end
 							push(h, nd, to, 0)
 						end
 					end
@@ -237,7 +336,7 @@ local function spread(s, bx, by, r0, c0, target)
 			end
 		end
 	end
-	return cost, parent
+	return cost, parent, real
 end
 
 ---------------------------------------------------------------------------
@@ -292,13 +391,18 @@ local function position(s, air, node)
 	return (key % 256) * BLOCK + b.c[i], floor(key / 256) * BLOCK + b.r[i]
 end
 
--- The flight points of one side that the character knows, ready for a search.
-local function flights(s, side, known)
+-- The flight points of one side that the character knows, ready for a search. Each way out of a node is
+-- { node, cost, seconds really taken }; roads: the off-road multiplier (the walks to the flight master then
+-- cost as roads have them), or nil.
+local function flights(s, side, known, roads)
 	local D = s.D
 	if not side or not D.points then return nil end
 	local air = { pos = {}, out = {}, fromGate = {}, cells = {}, point = {} }
 	local board, land = D.air.board, D.air.land
 	local any = false
+	local function add(t, node, cost, real)
+		t[#t + 1] = node; t[#t + 1] = cost; t[#t + 1] = real
+	end
 	for _, p in ipairs(D.points) do
 		local id = p[1]
 		if p[5]:find(side, 1, true) and (not known or known[id]) then
@@ -309,13 +413,17 @@ local function flights(s, side, known)
 			air.out[-id] = out
 			if p[6] then
 				local key = floor(y / BLOCK) * 256 + floor(x / BLOCK)
-				local legs = p[8]
-				for n = 1, #legs, 2 do
+				local legs, stride = p[8], 2
+				if roads and p[9] then legs, stride = p[9], 3 end      -- { gate, cost with roads, seconds, ... }
+				for n = 1, #legs, stride do
 					local gate = key * 32 + legs[n]
+					local cost = legs[n + 1]
+					local real = stride == 3 and legs[n + 2] or cost
+					if roads and stride == 2 then cost = cost * roads end
 					local from = air.fromGate[gate]
 					if not from then from = {}; air.fromGate[gate] = from end
-					from[#from + 1] = -id; from[#from + 1] = legs[n + 1] + board + climb
-					out[#out + 1] = gate; out[#out + 1] = legs[n + 1] + land + climb
+					add(from, -id, cost + board + climb, real + board + climb)
+					add(out, gate, cost + land + climb, real + land + climb)
 				end
 				air.cells[#air.cells + 1] = -id
 				any = true
@@ -326,7 +434,7 @@ local function flights(s, side, known)
 	for _, f in ipairs(D.flights) do
 		local out = air.out[-f[1]]
 		if out and air.out[-f[2]] then
-			out[#out + 1] = -f[2]; out[#out + 1] = f[3]
+			add(out, -f[2], f[3], f[3])
 		end
 	end
 	return air
@@ -334,33 +442,42 @@ end
 
 -- From cell (sx, sy) to cell (gx, gy), both ones a character can stand on.
 -- opts.side "A" or "H" to use that side's flight paths; opts.known { [flight point id] = true } to use only those.
--- Returns nil where there is no way, or { cost = seconds, nodes = { gate or flight point, ... }, expanded = n }.
+-- opts.roads true to keep to the roads (where the map's data has them); opts.penalty function(map, world x,
+-- world y) -> a multiplier of 1 or more on what entering a gate there costs (see the top of this file).
+-- Returns nil where there is no way, or { cost = what the search weighs it at, real = seconds it really takes,
+-- nodes = { gate or flight point, ... }, expanded = n, air =, roads = the off-road multiplier used or nil }.
 function P.Route(id, sx, sy, gx, gy, opts)
 	local s = P.Use(id)
 	if not s then return nil end
 	opts = opts or {}
+	local roads = opts.roads and s.off or nil
+	local pen = type(opts.penalty) == 'function' and opts.penalty or nil
 	local step, factor = s.step, s.factor
 	local sbx, sby, gbx, gby = floor(sx / BLOCK), floor(sy / BLOCK), floor(gx / BLOCK), floor(gy / BLOCK)
 	local skey, gkey = sby * 256 + sbx, gby * 256 + gbx
-	local scost = spread(s, sbx, sby, sy % BLOCK, sx % BLOCK)
-	local gcost = spread(s, gbx, gby, gy % BLOCK, gx % BLOCK)
-	local air = flights(s, opts.side, opts.known)
+	local scost, _, sreal = spread(s, sbx, sby, sy % BLOCK, sx % BLOCK, nil, roads)
+	local gcost, _, greal = spread(s, gbx, gby, gy % BLOCK, gx % BLOCK, nil, roads)
+	local air = flights(s, opts.side, opts.known, roads)
 
-	local goalLeg = {}
+	local goalLeg, goalReal = {}, {}
 	local gb = blockOf(s, gkey)
 	if gb then
 		for i = 0, gb.n - 1 do
-			local d = gcost[gb.r[i] * 32 + gb.c[i] + 1]
-			if d then goalLeg[gkey * 32 + i] = d end
+			local at = gb.r[i] * 32 + gb.c[i] + 1
+			if gcost[at] then
+				goalLeg[gkey * 32 + i], goalReal[gkey * 32 + i] = gcost[at], greal[at]
+			end
 		end
 	end
-	local best, bestNode = huge, nil
+	local best, bestReal, bestNode = huge, huge, nil
 	if skey == gkey then
-		best = scost[(gy % BLOCK) * 32 + gx % BLOCK + 1] or huge
+		local at = (gy % BLOCK) * 32 + gx % BLOCK + 1
+		best, bestReal = scost[at] or huge, sreal[at] or huge
 	end
 
 	-- the least a route can still cost from a node: on foot straight to the goal, or, with flights, flying
-	-- straight there and then walking from the flight point nearest the goal
+	-- straight there and then walking from the flight point nearest the goal. (A road costs a plain walk, and
+	-- the rest more, so this stays the least with roads; a penalty only adds.)
 	local lastWalk, fly = 0, s.cell / (s.D.air and s.D.air.speed or 32)
 	if air then
 		lastWalk = huge
@@ -379,10 +496,28 @@ function P.Route(id, sx, sy, gx, gy, opts)
 		return d * step
 	end
 
-	local dist, parent, h = {}, {}, heap()
-	local function reach(node, nd, from)
+	-- the penalty for entering a gate, asked once a gate (a flight point in the air has none: landing does)
+	local weights = {}
+	local function weigh(node)
+		local m = weights[node]
+		if m then return m end
+		m = 1
+		if node >= 0 then
+			local x, y = position(s, air, node)
+			local ok, v = pcall(pen, id, s.edge - (y + 0.5) * s.cell, s.edge - (x + 0.5) * s.cell)
+			if ok and type(v) == 'number' and v > 1 then m = v end
+		end
+		weights[node] = m
+		return m
+	end
+
+	local dist, real, parent, h = {}, {}, {}, heap()
+	-- cost: what the step to the node costs as the search weighs it (before a penalty); took: the seconds it takes
+	local function reach(node, d, cost, from, took)
+		local nd = d + (pen and cost * weigh(node) or cost)
 		if nd < (dist[node] or huge) then
 			dist[node] = nd
+			real[node] = took
 			parent[node] = from
 			push(h, nd + guess(node), node, nd)
 		end
@@ -391,8 +526,8 @@ function P.Route(id, sx, sy, gx, gy, opts)
 	local sb = blockOf(s, skey)
 	if sb then
 		for i = 0, sb.n - 1 do
-			local d = scost[sb.r[i] * 32 + sb.c[i] + 1]
-			if d then reach(skey * 32 + i, d, false) end
+			local at = sb.r[i] * 32 + sb.c[i] + 1
+			if scost[at] then reach(skey * 32 + i, 0, scost[at], false, sreal[at]) end
 		end
 	end
 	-- a flight master in the start's own block is walked to directly, and one in the goal's block walked from
@@ -404,12 +539,22 @@ function P.Route(id, sx, sy, gx, gy, opts)
 			local at = (p[2] % BLOCK) * 32 + p[1] % BLOCK + 1
 			local climb = air.point[node][7]
 			if key == skey and scost[at] then
-				reach(node, scost[at] + board + climb, false)
+				reach(node, 0, scost[at] + board + climb, false, sreal[at] + board + climb)
 			end
 			if key == gkey and gcost[at] then
-				goalLeg[node] = gcost[at] + land + climb
+				goalLeg[node], goalReal[node] = gcost[at] + land + climb, greal[at] + land + climb
 			end
 		end
+	end
+
+	-- across a block's edge, from gate i of block b (key) to gate j of block nb (nkey): its cost and its seconds
+	local function across(key, b, i, nkey, nb, j)
+		local fa, fb = factor[b.k[i]], factor[nb.k[j]]
+		local took = step * (fa + fb) / 2
+		if not roads then return took, took end
+		if gateRoad(s, key, b, i) ~= 1 then fa = fa * roads end
+		if gateRoad(s, nkey, nb, j) ~= 1 then fb = fb * roads end
+		return step * (fa + fb) / 2, took
 	end
 
 	local expanded = 0
@@ -419,14 +564,15 @@ function P.Route(id, sx, sy, gx, gy, opts)
 			if f >= best then break end
 			expanded = expanded + 1
 			if expanded % 64 == 0 then breathe() end
+			local rd = real[at]
 			local leg = goalLeg[at]
 			if leg and d + leg < best then
-				best, bestNode = d + leg, at
+				best, bestReal, bestNode = d + leg, rd + goalReal[at], at
 			end
 			if at < 0 then
 				local out = air.out[at]
-				for n = 1, #out, 2 do
-					reach(out[n], d + out[n + 1], at)
+				for n = 1, #out, 3 do
+					reach(out[n], d, out[n + 1], at, rd + out[n + 2])
 				end
 			else
 				local key = floor(at / 32)
@@ -434,40 +580,64 @@ function P.Route(id, sx, sy, gx, gy, opts)
 				local b = blockOf(s, key)
 				local adj = b.adj[i]
 				local base = key * 32
-				for n = 1, #adj, 2 do
-					reach(base + adj[n], d + adj[n + 1], at)
+				if roads then
+					for n = 1, #adj, 4 do
+						reach(base + adj[n], d, adj[n + 2], at, rd + adj[n + 3])
+					end
+				else
+					for n = 1, #adj, 4 do
+						reach(base + adj[n], d, adj[n + 1], at, rd + adj[n + 1])
+					end
 				end
 				-- across the block's edge
-				local r, c, k = b.r[i], b.c[i], b.k[i]
+				local r, c = b.r[i], b.c[i]
 				local bx = key % 256
+				local nkey, j
 				if c == 31 and bx < 255 then
-					local nb = blockOf(s, key + 1)
-					local j = nb and nb.at[r * 32]
-					if j then reach((key + 1) * 32 + j, d + step * (factor[k] + factor[nb.k[j]]) / 2, at) end
+					nkey = key + 1
+					local nb = blockOf(s, nkey)
+					j = nb and nb.at[r * 32]
+					if j then
+						local cost, took = across(key, b, i, nkey, nb, j)
+						reach(nkey * 32 + j, d, cost, at, rd + took)
+					end
 				elseif c == 0 and bx > 0 then
-					local nb = blockOf(s, key - 1)
-					local j = nb and nb.at[r * 32 + 31]
-					if j then reach((key - 1) * 32 + j, d + step * (factor[k] + factor[nb.k[j]]) / 2, at) end
+					nkey = key - 1
+					local nb = blockOf(s, nkey)
+					j = nb and nb.at[r * 32 + 31]
+					if j then
+						local cost, took = across(key, b, i, nkey, nb, j)
+						reach(nkey * 32 + j, d, cost, at, rd + took)
+					end
 				end
 				if r == 31 then
-					local nb = blockOf(s, key + 256)
-					local j = nb and nb.at[c]
-					if j then reach((key + 256) * 32 + j, d + step * (factor[k] + factor[nb.k[j]]) / 2, at) end
+					nkey = key + 256
+					local nb = blockOf(s, nkey)
+					j = nb and nb.at[c]
+					if j then
+						local cost, took = across(key, b, i, nkey, nb, j)
+						reach(nkey * 32 + j, d, cost, at, rd + took)
+					end
 				elseif r == 0 and key >= 256 then
-					local nb = blockOf(s, key - 256)
-					local j = nb and nb.at[31 * 32 + c]
-					if j then reach((key - 256) * 32 + j, d + step * (factor[k] + factor[nb.k[j]]) / 2, at) end
+					nkey = key - 256
+					local nb = blockOf(s, nkey)
+					j = nb and nb.at[31 * 32 + c]
+					if j then
+						local cost, took = across(key, b, i, nkey, nb, j)
+						reach(nkey * 32 + j, d, cost, at, rd + took)
+					end
 				end
+				-- tunnels, bridges and lifts: as built, so a road's cost (a plain walk) with roads too
 				local far = s.far[at]
 				if far then
 					for n = 1, #far, 2 do
-						reach(far[n], d + far[n + 1], at)
+						reach(far[n], d, far[n + 1], at, rd + far[n + 1])
 					end
 				end
 				local up = air and air.fromGate[at]
 				if up then
-					for n = 1, #up, 2 do
-						reach(up[n], d + up[n + 1], at)
+					for n = 1, #up, 3 do
+						reach(up[n], d, up[n + 1], at, rd + up[n + 2])
 					end
 				end
 			end
@@ -483,7 +653,7 @@ function P.Route(id, sx, sy, gx, gy, opts)
 	for i = 1, floor(#nodes / 2) do
 		nodes[i], nodes[#nodes + 1 - i] = nodes[#nodes + 1 - i], nodes[i]
 	end
-	return { cost = best, nodes = nodes, expanded = expanded, air = air }
+	return { cost = best, real = bestReal, nodes = nodes, expanded = expanded, air = air, roads = roads }
 end
 
 ---------------------------------------------------------------------------
@@ -508,7 +678,7 @@ local worked = 0
 -- The straight line from (x0, y0) to (x1, y1), here with the cells' corners at whole numbers. Returns what
 -- walking it is priced at (cells, weighted as the search weights them) and how much of it is deep water;
 -- or nil where it leaves the ground or slips between two cells that are no way.
-local function ray(s, x0, y0, x1, y1)
+local function ray(s, x0, y0, x1, y1, roads)
 	if kindAt(s, floor(x1), floor(y1)) == 0 then return nil end
 	local dx, dy = x1 - x0, y1 - y0
 	local len = sqrt(dx * dx + dy * dy)
@@ -523,17 +693,16 @@ local function ray(s, x0, y0, x1, y1)
 		py = abs(1 / dy)
 		ty = ((dy > 0 and cy + 1 or cy) - y0) / dy
 	end
-	local factor = s.factor
 	local t, price, swum = 0, 0, 0
 	while true do
-		local k = kindAt(s, cx, cy)
+		local f, k = priceAt(s, cx, cy, roads)
 		if k == 0 then return nil end
 		worked = worked + 1
 		if worked % 256 == 0 then breathe() end
 		local nt = min(tx, ty)
 		if nt > 1 then nt = 1 end
 		local part = (nt - t) * len
-		price = price + part * factor[k]
+		price = price + part * f
 		if k == 3 then swum = swum + part end
 		if nt >= 1 then return price, swum end
 		if tx < ty - 1e-9 then
@@ -550,36 +719,36 @@ end
 
 -- The same between two points of a line (a cell's middle at whole numbers), with room on both sides.
 -- `middle`: also along the line itself, for points that are not the middles of cells.
-local function sight(s, ax, ay, bx, by, middle)
+local function sight(s, ax, ay, bx, by, middle, roads)
 	local dx, dy = bx - ax, by - ay
 	local len = sqrt(dx * dx + dy * dy)
 	if len == 0 then return 0, 0 end
-	if middle and not ray(s, ax + 0.5, ay + 0.5, bx + 0.5, by + 0.5) then return nil end
+	if middle and not ray(s, ax + 0.5, ay + 0.5, bx + 0.5, by + 0.5, roads) then return nil end
 	local ox, oy = -dy / len * MARGIN, dx / len * MARGIN
-	local p1, w1 = ray(s, ax + 0.5 + ox, ay + 0.5 + oy, bx + 0.5 + ox, by + 0.5 + oy)
+	local p1, w1 = ray(s, ax + 0.5 + ox, ay + 0.5 + oy, bx + 0.5 + ox, by + 0.5 + oy, roads)
 	if not p1 then return nil end
-	local p2, w2 = ray(s, ax + 0.5 - ox, ay + 0.5 - oy, bx + 0.5 - ox, by + 0.5 - oy)
+	local p2, w2 = ray(s, ax + 0.5 - ox, ay + 0.5 - oy, bx + 0.5 - ox, by + 0.5 - oy, roads)
 	if not p2 then return nil end
 	return (p1 + p2) / 2, (w1 + w2) / 2
 end
 
 -- The cell-by-cell points with the detours cut out: each point kept is the farthest one seen from the one before.
-local function straighten(s, points)
-	local count, factor = #points, s.factor
+local function straighten(s, points, roads)
+	local count = #points
 	-- what the path is priced at up to each point, and how much of it is deep water
 	local price, wet = { 0 }, { 0 }
-	local k0 = kindAt(s, points[1][1], points[1][2])
+	local f0, k0 = priceAt(s, points[1][1], points[1][2], roads)
 	for n = 2, count do
 		local a, b = points[n - 1], points[n]
-		local k1 = kindAt(s, b[1], b[2])
+		local f1, k1 = priceAt(s, b[1], b[2], roads)
 		if b[3] == "walk" then
 			local d = sqrt((a[1] - b[1]) * (a[1] - b[1]) + (a[2] - b[2]) * (a[2] - b[2]))
-			price[n] = price[n - 1] + d * (factor[k0] + factor[k1]) / 2
+			price[n] = price[n - 1] + d * (f0 + f1) / 2
 			wet[n] = wet[n - 1] + d * ((k0 == 3 and 0.5 or 0) + (k1 == 3 and 0.5 or 0))
 		else
 			price[n], wet[n] = price[n - 1], wet[n - 1]
 		end
-		k0 = k1
+		f0, k0 = f1, k1
 	end
 	-- the last point of the dead straight run of cells that each walked step begins
 	local run = {}
@@ -594,7 +763,7 @@ local function straighten(s, points)
 	local function seen(i, j)
 		if j <= run[i] then return true end
 		local a, b = points[i], points[j]
-		local cost, swum = sight(s, a[1], a[2], b[1], b[2])
+		local cost, swum = sight(s, a[1], a[2], b[1], b[2], nil, roads)
 		return cost and cost <= price[j] - price[i] + SLACK and swum <= wet[j] - wet[i] + SLACK
 	end
 
@@ -639,7 +808,7 @@ end
 -- `fine` is the most the line turns at one of those points; a corner turning less than `gentle` is left. A
 -- corner whose arc would leave the ground, or cost or swim more than the corner does, is tried smaller and
 -- then left as it is.
-local function rounded(s, line, fine, gentle)
+local function rounded(s, line, fine, gentle, roads)
 	local out, count = { line[1] }, #line
 	local function add(x, y)
 		local z = out[#out]
@@ -664,8 +833,8 @@ local function rounded(s, line, fine, gentle)
 				while d >= 0.5 and not done do
 					-- from d before the corner to d after it, on a circle that touches both sides there
 					local x1, y1, x2, y2 = bx - ux * d, by - uy * d, bx + vx * d, by + vy * d
-					local c1, w1 = sight(s, x1, y1, bx, by, true)
-					local c2, w2 = sight(s, bx, by, x2, y2, true)
+					local c1, w1 = sight(s, x1, y1, bx, by, true, roads)
+					local c2, w2 = sight(s, bx, by, x2, y2, true, roads)
 					if not (c1 and c2) then break end
 					local radius = d / math.tan(turn / 2)
 					local pieces = max(1, min(math.ceil(turn / fine), floor(radius * turn / PIECE)))
@@ -681,7 +850,7 @@ local function rounded(s, line, fine, gentle)
 					arc[#arc + 1] = x2; arc[#arc + 1] = y2
 					local cost, swum = 0, 0
 					for m = 3, #arc, 2 do
-						local c3, w3 = sight(s, arc[m - 2], arc[m - 1], arc[m], arc[m + 1], true)
+						local c3, w3 = sight(s, arc[m - 2], arc[m - 1], arc[m], arc[m + 1], true, roads)
 						if not c3 then cost = nil; break end
 						cost, swum = cost + c3, swum + w3
 					end
@@ -711,12 +880,12 @@ local function rounded(s, line, fine, gentle)
 	return slim
 end
 
-local function smoothed(s, points)
-	local line = straighten(s, points)
+local function smoothed(s, points, roads)
+	local line = straighten(s, points, roads)
 	if P.smooth == "straight" then return line end
 	local best
 	for _, fine in ipairs(FINE) do
-		local try = rounded(s, line, fine[1], fine[2])
+		local try = rounded(s, line, fine[1], fine[2], roads)
 		if not best or #try < #best then best = try end
 		if #best <= POINTS then break end
 	end
@@ -755,7 +924,7 @@ function P.Line(id, sx, sy, gx, gy, found)
 				-- the same cell: boarding or landing beside the flight master
 			elseif abx == floor(bx / BLOCK) and aby == floor(by / BLOCK) then
 				local target = (by % BLOCK) * 32 + bx % BLOCK + 1
-				local cost, parent = spread(s, abx, aby, ay % BLOCK, ax % BLOCK, target)
+				local cost, parent = spread(s, abx, aby, ay % BLOCK, ax % BLOCK, target, found.roads)
 				if cost[target] then
 					local back, at = {}, target
 					while at do
@@ -777,7 +946,8 @@ function P.Line(id, sx, sy, gx, gy, found)
 			end
 		end
 	end
-	-- lengths, and the time it really takes (swimming is priced above its real slowness)
+	-- lengths, and the time it really takes (swimming is priced above its real slowness; the search's cost may
+	-- also hold the roads' preference and a penalty, which `real` leaves out)
 	local yards, swum = 0, 0
 	for n = 2, #points do
 		local a, b = points[n - 1], points[n]
@@ -787,9 +957,9 @@ function P.Line(id, sx, sy, gx, gy, found)
 			if kindAt(s, a[1], a[2]) == 3 and kindAt(s, b[1], b[2]) == 3 then swum = swum + d end
 		end
 	end
-	local seconds = found.cost - swum * (s.factor[3] - 1.5) / s.D.speed
+	local seconds = (found.real or found.cost) - swum * (s.factor[3] - 1.5) / s.D.speed
 	if P.smooth then
-		return { points = smoothed(s, points), yards = yards, swum = swum, flown = flown, seconds = seconds }
+		return { points = smoothed(s, points, found.roads), yards = yards, swum = swum, flown = flown, seconds = seconds }
 	end
 	-- not smoothed: a straight run of cells is its two ends
 	local slim = { points[1] }

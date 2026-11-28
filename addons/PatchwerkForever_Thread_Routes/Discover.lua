@@ -155,6 +155,7 @@ local function Start()
 	-- One side path at a time: a search ends a gathering run and lets a selected quest go. (After the
 	-- search is set, so the look this sets off already sees it.)
 	if ns.GatherActive and ns.GatherActive() and ns.GatherStop() then ns.Print('Gathering stopped.') end
+	if ns.GiversActive and ns.GiversActive() and ns.GiversStop() then ns.Print('Quest giver run stopped.') end
 	local Choice = ns.Base.Choice
 	if Choice and Choice.Get and Choice:Get() and Choice.Clear then Choice:Clear() end
 	Go(point, map)

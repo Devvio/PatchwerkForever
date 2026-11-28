@@ -301,9 +301,11 @@ Search = function(from, to, opts)
 		rides = rides, side = side,
 		use = function(m) return DATA[m] ~= nil and Data(m) end,
 		walk = function(m)
-			if not flights then return {} end
+			-- (roads: prefer them where the map data has them; penalty: danger on a PvP ruleset, Danger.lua)
+			local roads, penalty = ns.Get('roads') and true or nil, ns.DangerPenalty and ns.DangerPenalty(m) or nil
+			if not flights then return { roads = roads, penalty = penalty } end
 			if known[m] == nil then known[m] = Known(m) or false end
-			return { side = side, known = known[m] or nil }       -- (false: every point; a table, even an empty one: only those)
+			return { side = side, known = known[m] or nil, roads = roads, penalty = penalty }       -- (known false: every point; a table, even an empty one: only those)
 		end,
 	})
 	if not journey then
@@ -378,7 +380,7 @@ function ns.Plan(announce)
 				-- asked, Fail has said it. Not for a node of a gathering run or a flight point of a search:
 				-- each is a destination of its own and the run goes on to the next by itself (Gather.lua,
 				-- Discover.lua), so the line would come once a node; the step text says it
-				if not (announce or dest.wait) and dest.source ~= 'gather' and dest.source ~= 'discover' and ns.Get('notify') then
+				if not (announce or dest.wait) and dest.source ~= 'gather' and dest.source ~= 'discover' and dest.source ~= 'givers' and ns.Get('notify') then
 					ns.Print(why)
 				end
 				-- (the first whole search to find no way is said under the destination's words, also where
@@ -603,6 +605,8 @@ function ns.Stop(announce)
 		ns.Print('Gathering stopped.')
 	elseif had.source == 'discover' then
 		ns.Print('Flight point search stopped.')
+	elseif had.source == 'givers' then
+		ns.Print('Quest giver run stopped.')
 	elseif had.pin then
 		ns.Print('Routing to your map pin stopped.')
 	elseif not had.source then

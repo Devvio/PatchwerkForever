@@ -58,6 +58,29 @@ function Gather:Start(mode, name)
 end
 function Gather:Stop() return Ask('Stop') end
 function Gather:State() return Ask('State') end
+-- More a provider may offer (Routes 1.5.0 with base 2.12.0); each answers nil where it does not:
+--     Gather:Best()            the best area to gather in: { count =, yards = } (a look, nothing started)
+--     Gather:Skin()            route to where most creatures you can skin stand
+--     Gather:SkinKnown()       how many kinds of skinnable creature are known
+--     Gather:CanFarm(text)     the item's name when an item (name, link or id) has drop data to farm by
+--     Gather:Farm(text)        route to where that item most likely drops
+--     Gather:Tracking()        for a character with both: { on = 'h', 'o' or nil, key = the switch key or nil }
+--     Gather:Givers(on)        start (true) or stop (false) a quest giver run
+--     Gather:GiversState()     nil, or { going = the giver's name, quests = how many it has, near = how
+--                              many givers with a quest for you are on the continent }
+local function Optional(what, ...)
+	if not ( provider and type(provider[what]) == 'function' ) then return nil end;
+	return Ask(what, ...);
+end
+function Gather:Best() return Optional('Best') end
+function Gather:Skin() return Optional('Skin') end
+function Gather:SkinKnown() return Optional('SkinKnown') end
+function Gather:CanFarm(text) return Optional('CanFarm', text) end
+function Gather:Farm(text) return Optional('Farm', text) end
+function Gather:Tracking() return Optional('Tracking') end
+function Gather:Givers(on) return Optional('Givers', on) end
+function Gather:GiversState() return Optional('GiversState') end
+
 function Gather:Note(name, kind, map, x, y)
 	if not ( provider and type(provider.Note) == 'function' ) then return false end;
 	return Ask('Note', name, kind, map, x, y) == true;

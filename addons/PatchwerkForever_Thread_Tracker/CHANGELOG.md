@@ -1,5 +1,13 @@
 # Patchwerk Forever: Tracker (Thread)
 
+## 1.8.0
+
+Buttons for what Routes (Thread) 1.5.0 can now do, so nothing needs a command. Needs Patchwerk Forever 2.12.0; with older parts these rows are simply not shown.
+
+- **Gathering**: **Best Gathering Area**, with how many nodes it has and how far it is (a click goes there, then round it; a second click stops); **Best Skinning Area** once Routes knows a skinnable creature; and a line saying whether Find Herbs or Find Minerals is on, with the key that switches them (Routes' Switch Herb/Ore Tracking).
+- **Quest Givers** (with QuestieDB): **Nearest Quest Giver** and how many givers with a quest for you are near; a click starts a run to them, one after another, and the row then names the giver gone to and how many quests it has.
+- **Farm** an item without typing its name: a quest's right-click menu has **Farm <item>** for each item it still asks for, and a Collect row's has **Farm This**, wherever Routes knows where the item drops (QuestieDB's drop rates).
+
 ## 1.7.0
 
 - **Quest progress in your guide's steps** (Tracker: Guide, **Show Quest Progress**, enabled), read from your quest log: a line that has you complete an objective shows the game's count for it ("Raptor Head: 10/12"), colored as a quest's counts are, and under a quest to turn in, its objectives still to do or Ready to turn in. It is right even while RestedXP's window is hidden. Needs Patchwerk Forever 2.11.0.

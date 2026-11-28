@@ -38,6 +38,13 @@ ns.settings = {
 	{ key = 'sourceFirst', default = 'rxp', name = 'Route Priority',
 		choices = { { 'rxp', 'Guide First' }, { 'quest', 'Tracked Quest First' } },
 		desc = 'With the focus on Auto: which to follow when both your guide and a tracked quest have a destination. The other is used when the first has none you can reach. Your corpse, a gathering run or flight point search, your map pin or coordinates, a quest or list you selected in the tracker, and a focus other than Auto always come before both.' },
+	{ header = true, name = 'QuestieDB' },
+	{ key = 'questie', default = true, name = 'Use QuestieDB',
+		desc = 'With QuestieDB installed (it comes with Questie): route a tracked quest to the nearest spot of what it still needs (the creature, the object, a creature that drops the item) or to the exact quest giver or turn-in, instead of the middle of the quest area the game marks. A guide step that only names a quest goes to its giver, objective or turn-in. Also used by the other Patchwerk Forever tools. Without QuestieDB, or for a quest it does not know, the quest marks of the game are used.' },
+	{ key = 'questieMinimap', default = true, name = 'Show Quest Spots On Minimap', parent = 'questie',
+		desc = 'Show every spot of the quest being followed on the minimap (all the places the creature or object can be), the one routed to larger.' },
+	{ key = 'questieWorldMap', default = true, name = 'Show Quest Spots On World Map', parent = 'questie',
+		desc = 'Show every spot of the quest being followed on the world map, the one routed to larger.' },
 	{ header = true, name = 'Focus And My Route' },
 	{ key = 'focusButton', default = true, name = 'Focus Button On The World Map',
 		desc = 'Show a button at the top right of the world map to choose what the route follows (Auto, a guide, your tracked quests or My Route), edit My Route, and add your map pin to My Route.' },
@@ -48,6 +55,13 @@ ns.settings = {
 		desc = 'Use flight paths when they are faster than walking.' },
 	{ key = 'knownOnly', default = true, name = 'Known Flight Points Only', parent = 'flights',
 		desc = 'Only fly between flight points this character has discovered. They are read from the flight map when you open it at a flight master, and remembered. Until one has been opened on a continent, routes there go on foot.' },
+	{ key = 'roads', default = true, name = 'Stick To Roads',
+		desc = 'Prefer roads and paths: routes join the nearest road and follow it, leaving it near the start and end, or where following the road would be far longer. Needs map data that knows the roads.' },
+	{ key = 'pvpAvoid', default = 'auto', name = 'Avoid Danger',
+		choices = { { 'auto', 'Auto (While Flagged For PvP)' }, { 'on', 'Always' }, { 'off', 'Never' } },
+		desc = 'Route round dangerous ground: the towns, guards and lands of the other faction, contested zones a little, where you saw enemy players in the last few minutes, and where players killed you in the last hour. The route goes round unless that is much longer. Auto does this while you are flagged for PvP, as you are outside your own lands on a PvP realm.' },
+	{ key = 'pvpStrength', default = 3, min = 1, max = 5, step = 1, name = 'Avoid Danger Strength', parent = 'pvpAvoid',
+		desc = 'How much longer a route may be to go round danger. 1 goes round only the worst; 5 goes far round.' },
 	{ key = 'rides', default = true, name = 'Use Boats And Zeppelins',
 		desc = 'Use boats, zeppelins and the Deeprun Tram when they are faster, and to reach other continents. Only those available to your faction. Waiting time is unknown, so the estimate allows half a round trip.' },
 	{ header = true, name = 'Chat' },
@@ -61,6 +75,16 @@ ns.settings = {
 		desc = 'Show recorded nodes on the minimap, with the icon of what you gathered there. They mark where nodes spawn, not whether one is currently there.' },
 	{ key = 'nodesWorldMap', default = true, name = 'Show Nodes On World Map',
 		desc = 'Show recorded nodes on zone maps.' },
+	{ key = 'gathermate', default = true, name = 'Use GatherMate2 Nodes',
+		desc = 'With GatherMate2 installed, gathering runs also go to its nodes: the ones it has collected or imported (its filters apply) and the herb and ore data that comes with it (GatherMate2_Data), which does not need to be imported first. GatherMate2 itself is not changed.' },
+	{ key = 'gathermateMinimap', default = false, name = 'Show GatherMate2 Nodes On Minimap', parent = 'gathermate',
+		desc = 'Show the GatherMate2 nodes near you on the minimap, green for herbs and orange for ore, only the kinds you can gather. Off by default: GatherMate2 draws its own once its data is imported.' },
+	{ key = 'areaRing', default = true, name = 'Show Area On Maps',
+		desc = 'While a gathering run goes to the best area, or the route goes to the best place to skin or farm an item, draw the edge of that area on the minimap and the world map.' },
+	{ key = 'gatherAbove', default = 25, min = 0, max = 50, step = 5, name = 'Nodes Above Your Skill',
+		desc = 'Gathering runs also go to nodes that need up to this many points more Herbalism or Mining than you have. The step text says when a node cannot be gathered yet, and nodes you can gather are preferred. 0 leaves out every node above your skill.' },
+	{ key = 'skinRecord', default = true, name = 'Remember Skinned Creatures',
+		desc = 'Remember each kind of creature you skin, shared across your characters. /thread skin then routes to where most of them stand (needs QuestieDB for where creatures are).' },
 
 	-- the route's trail
 	{ page = 'Routes: Trail', voice = 'A line on the ground. Patchwerk walks on the line. The line is never wrong. Mostly.' },
@@ -125,8 +149,11 @@ local function Help()
 	ns.Print('  /thread focus: show what the route follows by itself, and what else it can follow')
 	ns.Print('  /thread focus auto, rxp, dj, quests or route: follow your guide and quests (Auto), RestedXP, the Dungeon Journal, tracked quests only, or My Route')
 	ns.Print('  /thread step: show the step text again (Show Step Text Again)')
-	ns.Print('  /thread gather: route to the nearest recorded herb or ore node, then the next (gather round, gather <name>, gather list, gather stop; Toggle Gathering Run)')
+	ns.Print('  /thread gather: route through the herb and ore nodes you know and GatherMate2\'s, a cluster at a time (gather best: the richest area first; gather round, gather <name>, gather list, gather stop; Toggle Gathering Run)')
 	ns.Print('  /thread discover: route to the nearest flight point you have not discovered, then the next (discover stop; Toggle Flight Point Search)')
+	ns.Print('  /thread skin: route to where most of the creatures you have skinned stand, at your skill (skin list; needs QuestieDB)')
+	ns.Print('  /thread farm <item>: route to where an item is most likely to drop, by Wowhead drop rates (quest items and the like; needs QuestieDB)')
+	ns.Print('  /thread givers: route to the nearest quest giver with a quest you can take now, then the next (givers stop; needs QuestieDB)')
 	ns.Print('  /thread config: open the options')
 	ns.Print('  /thread where: show your position as the planner sees it')
 	ns.Print('  /thread flights: list the flight points you know on this continent, and how that is known')
@@ -173,6 +200,12 @@ SlashCmdList.PATCHWERKFOREVER_THREAD = function(text)
 		ns.Try('gather', ns.GatherSay, rest)
 	elseif word == 'discover' then
 		ns.Try('discover', ns.DiscoverSay, rest)
+	elseif word == 'skin' or word == 'skinning' then
+		ns.Try('skin', ns.SkinSay, rest)
+	elseif word == 'farm' then
+		ns.Try('farm', ns.FarmSay, (text or ''):match('^%s*%S+%s*(.-)%s*$'))
+	elseif word == 'givers' or word == 'giver' then
+		ns.Try('givers', ns.GiversSay, rest)
 	else
 		Help()
 	end
@@ -187,6 +220,8 @@ BINDING_NAME_PATCHWERKFOREVER_THREAD_STOP = 'Stop Routing'
 BINDING_NAME_PATCHWERKFOREVER_THREAD_STEP = 'Show Step Text Again'
 BINDING_NAME_PATCHWERKFOREVER_THREAD_GATHER = 'Toggle Gathering Run'
 BINDING_NAME_PATCHWERKFOREVER_THREAD_DISCOVER = 'Toggle Flight Point Search'
+-- (a click on Tracking.lua's secure button, which casts Find Herbs or Find Minerals: an addon may not switch tracking itself)
+_G['BINDING_NAME_CLICK PatchwerkForeverTrackSwitch:LeftButton'] = 'Switch Herb/Ore Tracking'
 BINDING_NAME_PATCHWERKFOREVER_THREAD_FOCUS_NEXT = 'Next Focus'
 BINDING_NAME_PATCHWERKFOREVER_THREAD_FOCUS_AUTO = 'Focus: Auto'
 BINDING_NAME_PATCHWERKFOREVER_THREAD_FOCUS_RXP = 'Focus: RestedXP'
@@ -199,6 +234,6 @@ function PatchwerkForever_Thread_Routes_Step() ns.Try('step', ns.FloatAgain) end
 -- (one key starts a run and, pressed again, ends it)
 function PatchwerkForever_Thread_Routes_Gather() ns.Try('gather', ns.GatherSay, ns.GatherActive() and 'stop' or '', true) end
 function PatchwerkForever_Thread_Routes_Discover() ns.Try('discover', ns.DiscoverSay, ns.DiscoverActive() and 'stop' or '', true) end
-function PatchwerkForever_Thread_Routes_FocusNext() ns.Try('focus', ns.FocusNext) end
+function PatchwerkForever_Thread_Routes_FocusNext()ns.Try('focus', ns.FocusNext) end
 -- id: 'auto', 'rxp', 'fdj', 'quests' or 'route' (Focus.lua)
 function PatchwerkForever_Thread_Routes_Focus(id) ns.Try('focus', ns.FocusTo, id) end

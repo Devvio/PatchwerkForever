@@ -195,7 +195,15 @@ def load(path, walls=True):
     with open(path, "rb") as f:
         info = pickle.loads(zlib.decompress(f.read()))
     name = os.path.basename(path)
-    extra = os.path.join(os.path.dirname(path), "walls_" + name[4:])
+    folder = os.path.dirname(path)
+    # the roads (roads.py: road textures painted on the terrain), {tile: 16384 bytes, 1 a road}; with walls, a
+    # floor a building lays on the ground (a street, a bridge's deck, a pier) is road too
+    roads = {}
+    marked = os.path.join(folder, "roads_" + name[4:])
+    if name.startswith("map_") and os.path.exists(marked):
+        with open(marked, "rb") as f:
+            roads = {key: bytearray(marks) for key, marks in pickle.loads(zlib.decompress(f.read()))["tiles"].items()}
+    extra = os.path.join(folder, "walls_" + name[4:])
     if walls and name.startswith("map_") and os.path.exists(extra):
         with open(extra, "rb") as f:
             found = pickle.loads(zlib.decompress(f.read()))
@@ -207,7 +215,10 @@ def load(path, walls=True):
                     cells[i] = kind
                     if height is not None:                  # (the cell's ground is a floor: the floor's height)
                         heights[i] = height
+                        if kind == WALK:
+                            roads.setdefault(key, bytearray(16384))[i] = 1
                 info["tiles"][key] = (bytes(cells), heights)
+    info["roads"] = {key: bytes(marks) for key, marks in roads.items()}
     return info
 
 

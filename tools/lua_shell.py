@@ -186,7 +186,7 @@ def main():
     # (counted by addon: Routes' own settings are checked here, Sparkle's in its own suite, lua_sparkle.py)
     def own_settings(addon=ADDON):
         return sum(1 for s in stub.settings.values() if s.variable.startswith(addon + "_"))
-    assert own_settings() == 36 and own_settings(SPARKLE) > 0 and stub.category and stub.front, "the settings pages were not built"
+    assert own_settings() == 47 and own_settings(SPARKLE) > 0 and stub.category and stub.front, "the settings pages were not built"
     assert stub.provider, "the world map layer was not attached"
 
     step("put a pin on Gadgetzan")
@@ -405,7 +405,7 @@ def main():
     assert any("/thread stop: stop routing (a route to a guide step or quest resumes" in t for t in text), text
 
     step("no pin: the route follows the RestedXP guide's arrow, step by step")
-    assert own_settings() == 36, "the guide setting is missing from the settings page"
+    assert own_settings() == 47, "the guide setting is missing from the settings page"
     stub.pin = None
     stub.Fire("USER_WAYPOINT_UPDATED")
     assert not ns.dest
@@ -769,7 +769,7 @@ def main():
     go(-460.0, -2640.0)
     assert at(-520.0, -2650.0) and G.State(G).going == "Copper Vein", "the run did not go on to the next spot"
     go(-520.0, -2650.0)
-    assert at(-700.0, -2900.0), "the run went back to a spot just visited"
+    assert at(-700.0, -2900.0), ("the run went back to a spot just visited", ns.dest and (ns.dest.x, ns.dest.y, ns.dest.lines[1]))
     # stopped by you: the run is over, and that is what the chat says
     slash("stop")
     text = chat("run stopped")
@@ -873,7 +873,7 @@ def main():
     lua.execute("""
         STUB.professions = { 12 }
         function GetProfessions() return STUB.professions[1], STUB.professions[2] end
-        function GetProfessionInfo(index) return 'Profession', 1, 1, 300, 0, 0, STUB.professionLine[index] end
+        function GetProfessionInfo(index) return 'Profession', 1, STUB.skill or 300, 300, 0, 0, STUB.professionLine[index] end
         STUB.professionLine = { [10] = 182, [11] = 186, [12] = 165 }
     """)
     stub.Fire("SKILL_LINES_CHANGED")
@@ -893,6 +893,15 @@ def main():
     lua.execute("STUB.professions = { 11, 10 }")                # both, the other way round
     stub.Fire("SKILL_LINES_CHANGED")
     assert len(G.Near(G, 5)) == 3
+    # the skill: Tin Vein asks for Mining 65. At 50 it is kept (Nodes Above Your Skill: 25), at 30 not
+    lua.execute("STUB.skill = 50")
+    stub.Fire("SKILL_LINES_CHANGED")
+    assert len(G.Near(G, 5)) == 3, "a node within Nodes Above Your Skill was left out"
+    lua.execute("STUB.skill = 30")
+    stub.Fire("SKILL_LINES_CHANGED")
+    assert sorted(n.name for n in G.Near(G, 5).values()) == ["Copper Vein", "Peacebloom"], "a node far above your skill was offered"
+    lua.execute("STUB.skill = nil")
+    stub.Fire("SKILL_LINES_CHANGED")
     lua.execute("GetProfessions, GetProfessionInfo = nil, nil")
     stub.Fire("SKILL_LINES_CHANGED")
     chat("professions")
@@ -922,10 +931,10 @@ def main():
                 by_name[s.variable[len(addon) + 1:]] = s
                 break
     # (Routes' own exactly, here and below; Sparkle's are its own business and change with it: lua_sparkle.py)
-    assert len(by_name) == len(stub.settings) and own_settings() == 36, "expected 36 Routes settings on the options pages, found %d" % own_settings()
+    assert len(by_name) == len(stub.settings) and own_settings() == 47, "expected 47 Routes settings on the options pages, found %d" % own_settings()
     assert "baseTellMissing" not in by_name, "the base's switch is on its front page, not a row of the game's"
     pages = sorted(stub.pages.keys())
-    WANT = {"Routes (Thread)": 17, "Routes (Thread) > Trail": 13, "Routes (Thread) > Step Text": 6}
+    WANT = {"Routes (Thread)": 28, "Routes (Thread) > Trail": 13, "Routes (Thread) > Step Text": 6}
     assert [p for p in pages if not p.startswith("Sparkle")] == sorted(WANT), pages
     assert "Sparkle (Thread)" in pages and "Sparkle (Thread) > Appearance" in pages, pages
     for page in pages:
@@ -935,9 +944,9 @@ def main():
             "%s has %d settings, expected %s" % (page, len(on_it), WANT.get(page))
     # headings: Routes' own, in order, then the Sparkle's
     headers = list(stub.headers.values())
-    assert headers[:9] == [
-        "Destinations", "Focus And My Route", "Travel Options", "Chat", "Gathering Nodes", "Display", "Line", "Colors", "Defaults"], headers
-    assert len(headers) > 9 and headers[-1] == "Defaults", headers
+    assert headers[:10] == [
+        "Destinations", "QuestieDB", "Focus And My Route", "Travel Options", "Chat", "Gathering Nodes", "Display", "Line", "Colors", "Defaults"], headers
+    assert len(headers) > 10 and headers[-1] == "Defaults", headers
     # every page opens with its name, its tool's picture and a line in Patchwerk's voice
     # (a folded page is "Sparkle (Thread) > Appearance" in the list; its intro still names it "Sparkle: Appearance")
     named = lambda p: p if " > " not in p else p.split(" (")[0] + ": " + p.split(" > ")[1]
@@ -967,7 +976,7 @@ def main():
     assert mine == ["Reset", "Show"], mine
     assert sum(1 for b in buttons if b.text == "Reset") == 2, [b.text for b in buttons]
     routes_own = [s for s in by_name.values() if s.variable.startswith(ADDON + "_")]
-    assert sum(1 for s in routes_own if s.colour) == 5 and sum(1 for s in routes_own if s.choices) == 3
+    assert sum(1 for s in routes_own if s.colour) == 5 and sum(1 for s in routes_own if s.choices) == 4
     assert "Route To My Corpse" in names and [s for s in routes_own if s.name == "Route To My Corpse"][0].default is True
 
     def setv(name, value):
@@ -1236,6 +1245,9 @@ def main():
     setv("flights", False)
     setv("rxp", False)
     setv("minimap", False)
+    roads_was = ns.Get("roads")
+    if roads_was is not None:                                     # (the quickest way, whose long straight runs the dashes
+        setv("roads", False)                                      # are measured on; with roads it bends along the road)
     stub.Tick()
     stub.player.x, stub.player.y = -442.0, -2598.0
     stub.PinAt(1, -956.0, -3754.0)
@@ -1271,7 +1283,11 @@ def main():
     assert abs(length(drawn()) - long * 20 / 34) < 25, "the dashes do not cover the share of the trail they should"
     # a wider line spaces its dashes in proportion, so they do not run together: twice as wide, twice as long
     setv("trailThickMap", 6)
-    assert max(length([l]) for l in drawn()) > 30 and all(length([l]) <= 40.01 for l in drawn()), "the dashes did not grow with the line"
+    # (longer than a thin line's dash can be; a whole dash of 40 fits only where a straight piece of the trail is long
+    # enough for where the pattern falls on it, which moves with the map data)
+    assert max(length([l]) for l in drawn()) > 20.5 and all(length([l]) <= 40.01 for l in drawn()), \
+        "the dashes did not grow with the line (longest %.1f of %d; the trail %.0f long in %d lines, roads %s)" % (
+            max(length([l]) for l in drawn()), len(drawn()), long, solid, ns.Get("roads"))
     setv("trailThickMap", 3)
     setv("trailStyle", "dots")
     assert len(drawn()) == 0 and abs(len(dots()) - long / 18) <= 2, "dots: %d lines, %d dots for a trail %.0f long" % (len(drawn()), len(dots()), long)
@@ -1309,6 +1325,8 @@ def main():
     world_map.shown = True
     world_map.mapID = 1414
     slash("stop")
+    if roads_was is not None:
+        setv("roads", roads_was)
     stub.pin = None
     stub.Fire("USER_WAYPOINT_UPDATED")
     setv("flights", True)
@@ -2480,7 +2498,7 @@ def main():
     assert not world_map.overlayFrames, "the button went in among the map's overlay frames"
     button.scripts.OnClick(button, "LeftButton")
     texts = menu_texts()
-    assert texts == ["Route Focus", "Auto", "RestedXP", "Quests", "My Route", "Edit My Route", "Add Map Pin To My Route"], texts
+    assert texts == ["Route Focus", "Auto", "RestedXP", "Quests", "My Route", "Edit My Route", "Add Map Pin To My Route", "Best Gathering Area"], texts
     radios = [e for e in stub.menu.entries.values() if e.kind == "radio"]
     assert [e.text for e in radios if e.isSelected(e.data)] == ["Auto"], "the focus in use is not the one checked"
     pick("Quests")
@@ -3023,6 +3041,10 @@ def main():
         for k, v in pairs(mine.known) do was.known[k] = v end
         return was
     end""")(mine())
+    # (a quest giver run needs QuestieDB, which this stand-in has not: said, and nothing starts)
+    slash("givers")
+    text = chat("givers, no QuestieDB")
+    assert any("QuestieDB is not installed" in t for t in text) and not ns.GiversActive(), text
     # no flight map read on this continent: a point not known may be one never read, so no search
     mine().seen[1] = None
     slash("discover")
@@ -3263,7 +3285,11 @@ def main():
     bindings = open(os.path.join(ADDONS, ADDON, "Bindings.xml"), encoding="utf-8").read()
     import re
     found = re.findall(r'<Binding name="([A-Z_]+)"[^>]*category="([^"]+)"[^>]*>\s*if (\w+) then (\w+)\(', bindings)
-    assert len(found) == bindings.count("<Binding "), "a binding is not guarded, or not in the section"
+    # (a click binding has no body: it presses a secure button, Tracking.lua's, which must be named and exist)
+    clicks = re.findall(r'<Binding name="CLICK (\w+):LeftButton" category="BINDING_CATEGORY_PatchwerkForever"/>', bindings)
+    for button in clicks:
+        assert G[button] and G["BINDING_NAME_CLICK " + button + ":LeftButton"], button
+    assert len(found) + len(clicks) == bindings.count("<Binding "), "a binding is not guarded, or not in the section"
     assert all(cat == "BINDING_CATEGORY_PatchwerkForever" and a == b for _, cat, a, b in found), found
     for name, _, fn, _ in found:
         assert G["BINDING_NAME_" + name] and G[fn], name

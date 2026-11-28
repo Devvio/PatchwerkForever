@@ -7,6 +7,7 @@ For each map, a folder beside the addon (loaded only when the character is on th
 
     PatchwerkForever_Thread_Routes_<Name>/Cells<n>.lua    what each ground cell is, a tile a string
     PatchwerkForever_Thread_Routes_<Name>/Graph<n>.lua    each block's gates and the walks between them, a block a string
+    PatchwerkForever_Thread_Routes_<Name>/Roads<n>.lua    the roads: where they are (and Roadgraph<n>.lua: what each block's walks cost with them)
     PatchwerkForever_Thread_Routes_<Name>/Extra.lua       the links (tunnels, bridges, lifts) and the flight paths
 
 Everything large is text of 64 different characters ('>' to '}', a number 0 to 63 each), inside Lua
@@ -23,14 +24,23 @@ A block's graph:
     4 a walk       gate, gate, seconds * 20 in two characters
 
 A gate on a block's edge joins the gate on the cell across the edge; that is not stored.
+
+The roads (roads.py; with the search option `roads` a cell off them costs M.road.off times as much):
+    M.roads[tile]      a tile's road marks: runs off the road and on it by turns, starting off it; a run is one
+                       character (0 to 62), or the character for 63 and then the length in two
+    M.roadgraph[block] for each of the block's walks, in the same order: its cost with roads (three characters)
+                       and the seconds the way it then takes really takes (two). A block with no road has none:
+                       its walks cost `off` times as much and take their plain seconds.
+    a flight point's ninth field: { gate, cost with roads, seconds, ... } for the walks to its block's gates
+A link (a tunnel, a bridge, a lift) is kept with the links even when both its ends are in one block.
 """
 import math
 import os
 import sys
 
 import flights as flight_data
-from nav import (Ground, Coarse, BLOCK, STEP, _F, _spread, flight_spot, cell_of,
-                 BOARD, LAND, AIR_SPEED, SPEED, FACTOR)
+from nav import (Ground, Coarse, BLOCK, STEP, _F, _spread, _spread_roads, flight_spot, cell_of,
+                 BOARD, LAND, AIR_SPEED, SPEED, FACTOR, OFF_ROAD)
 from terrain import CELL, TILE
 from world import NONE, WALK, STEEP, WADE, SWIM
 
@@ -51,6 +61,26 @@ def c2(v):
     return chr(62 + (v & 63)) + chr(62 + (v >> 6))
 
 
+def c3(v):
+    return chr(62 + (v & 63)) + chr(62 + ((v >> 6) & 63)) + chr(62 + (v >> 12))
+
+
+def pack_roads(marks):
+    """A tile's road marks (16384 bytes, 1 a road) as runs off and on by turns, starting off the road."""
+    out, i, on, n = [], 0, 0, len(marks)
+    while i < n:
+        j = i
+        while j < n and (marks[j] != 0) == on:
+            j += 1
+        length = j - i
+        while length > 4095:                   # (longer than two characters hold: split by an empty run)
+            out.append(c1(63) + c2(4095) + c1(0))
+            length -= 4095
+        out.append(c1(length) if length < 63 else c1(63) + c2(length))
+        i, on = j, 1 - on
+    return "".join(out)
+
+
 def pack_cells(cells):
     """A tile's 16384 cells as runs."""
     kinds = bytes(KIND[k] for k in cells)
@@ -69,9 +99,12 @@ def pack_cells(cells):
 def pack_map(map_id, flights):
     ground = Ground("world/map_%d.bin" % map_id)
     coarse = Coarse.open("world/nav_%d_linked.bin" % map_id)
+    roads = bool(ground.roads)
+    if roads and not coarse.road:
+        raise SystemExit("map %d has roads but its graph has no road costs: run walls.py %d graph" % (map_id, map_id))
     nodes, edges = coarse.nodes, coarse.edges
     place = {}                                         # node -> (block key, index in its block)
-    graph, far, odd = {}, [], 0
+    graph, roadgraph, far, odd = {}, {}, [], 0
     for (bx, by), ids in coarse.of_block.items():
         for n, i in enumerate(ids):
             place[i] = (by * 256 + bx, n)
@@ -81,7 +114,8 @@ def pack_map(map_id, flights):
         for i in ids:
             _, _, r, c = nodes[i]
             text.append(c2(r + 32 * c + 1024 * KIND[ground.kind(bx * BLOCK + c, by * BLOCK + r)]))
-        walks = []
+        walks, rwalks = [], []
+        with_roads = roads and ground.road_block(bx, by) is not None
         for n, i in enumerate(ids):
             for j, cost in edges[i].items():
                 ob = nodes[j][:2]
@@ -90,9 +124,17 @@ def pack_map(map_id, flights):
                     # one way only (a drop): kept with the links, wherever its ends are
                     far.append((place[i][0], place[i][1], place[j][0], place[j][1], cost, 1))
                     continue
+                if (i, j) in coarse.linked:
+                    # a link (a tunnel, a bridge, a lift), even within one block: it costs the same with roads
+                    if i < j:
+                        far.append((place[i][0], place[i][1], place[j][0], place[j][1], cost, 0))
+                    continue
                 if ob == (bx, by):
                     if i < j:
                         walks.append(c1(n) + c1(place[j][1]) + c2(min(4095, int(round(cost / TICK)))))
+                        if with_roads:
+                            rcost, real = coarse.road_cost(ground, i, j)
+                            rwalks.append(c3(min(262143, int(round(rcost / TICK)))) + c2(min(4095, int(round(real / TICK)))))
                     continue
                 # the gate on the cell across the block's edge: found again in the game, not stored
                 ax, ay = bx * BLOCK + nodes[i][3], by * BLOCK + nodes[i][2]
@@ -108,27 +150,37 @@ def pack_map(map_id, flights):
         text.append(c2(len(walks)))
         text.extend(walks)
         graph[by * 256 + bx] = "".join(text)
-    tiles = {}
+        if with_roads:
+            roadgraph[by * 256 + bx] = "".join(rwalks)
+    tiles, road_tiles = {}, {}
     wanted = {(bx >> 2, by >> 2) for (bx, by) in coarse.of_block}
     for (tx, ty), cells in ground.tiles.items():
         if (tx, ty) in wanted:
             tiles[ty * 64 + tx] = pack_cells(cells)
+            marks = ground.roads.get((tx, ty))
+            if roads and marks and any(marks):
+                road_tiles[ty * 64 + tx] = pack_roads(marks)
 
     # flight points: where each stands, and the walk from there to its block's gates
     points, paths = [], []
     here = {i: n for i, n in flights["nodes"].items() if n["map"] == map_id}
     for i, n in sorted(here.items()):
         at, cell, why, climb, _note = flight_spot(ground, n)
-        legs = []
+        legs, rlegs = [], []
         if cell:
             block = (cell[0] // BLOCK, cell[1] // BLOCK)
             spread, _ = _spread(ground.block(*block), cell[1] % BLOCK, cell[0] % BLOCK)
+            if roads:
+                rspread, _, rreal = _spread_roads(ground.block(*block), ground.road_block(*block),
+                                                  cell[1] % BLOCK, cell[0] % BLOCK)
             for k, g in enumerate(coarse.of_block.get(block, ())):
-                d = spread[nodes[g][2] * BLOCK + nodes[g][3]]
-                if d < float("inf"):
-                    legs.append((k, d))
+                at_gate = nodes[g][2] * BLOCK + nodes[g][3]
+                if spread[at_gate] < float("inf"):
+                    legs.append((k, spread[at_gate]))
+                    if roads:
+                        rlegs.append((k, rspread[at_gate], rreal[at_gate]))
         sides = ("A" if "alliance" in n["sides"] else "") + ("H" if "horde" in n["sides"] else "")
-        points.append((i, n["name"], at[0], at[1], sides, bool(cell and legs), climb, legs))
+        points.append((i, n["name"], at[0], at[1], sides, bool(cell and legs), climb, legs, rlegs))
     for (a, b), path in sorted(flights["paths"].items()):
         if a in here and b in here:
             paths.append((a, b, path["seconds"]))
@@ -144,6 +196,12 @@ def pack_map(map_id, flights):
             "PatchwerkForever_Thread_RoutesData[%d] = M\n" % (map_id, map_id))
     files, total = [], 0
 
+    def opener(kind):
+        name = kind.lower()
+        if kind in ("Roads", "Roadgraph"):          # (the map's table has no such field until here)
+            return "M.%s = M.%s or {}\nlocal t = M.%s\n" % (name, name, name)
+        return "local t = M.%s\n" % name
+
     def write(name, body):
         nonlocal total
         with open(os.path.join(folder, name), "w", encoding="ascii", newline="\n") as f:
@@ -151,7 +209,7 @@ def pack_map(map_id, flights):
         files.append(name)
         total += len(head) + len(body)
 
-    for kind, table in (("Cells", tiles), ("Graph", graph)):
+    for kind, table in (("Cells", tiles), ("Graph", graph), ("Roads", road_tiles), ("Roadgraph", roadgraph)):
         part, size, count = [], 0, 0
         for key in sorted(table):
             line = "t[%d]=[=[%s]=]\n" % (key, table[key])
@@ -160,25 +218,29 @@ def pack_map(map_id, flights):
             size += len(line)
             if size >= FILE_BYTES:
                 count += 1
-                write("%s%d.lua" % (kind, count), "local t = M.%s\n" % kind.lower() + "".join(part))
+                write("%s%d.lua" % (kind, count), opener(kind) + "".join(part))
                 part, size = [], 0
         if part:
             count += 1
-            write("%s%d.lua" % (kind, count), "local t = M.%s\n" % kind.lower() + "".join(part))
+            write("%s%d.lua" % (kind, count), opener(kind) + "".join(part))
 
     extra = ["M.cell, M.tile, M.speed, M.tick = %r, %r, %r, %r\n" % (CELL, TILE, SPEED, TICK),
              "M.factor = { %r, %r, %r }\n" % (FACTOR[WALK], FACTOR[WADE], FACTOR[SWIM]),
              "M.air = { speed = %r, board = %r, land = %r }\n" % (AIR_SPEED, BOARD, LAND),
+             ("-- with roads (a search option): a cell off the road costs `off` times as much\n"
+              "M.road = { off = %r }\nM.roads = M.roads or {}\nM.roadgraph = M.roadgraph or {}\n" % OFF_ROAD)
+             if roads else "",
              "-- ways the ground does not show: { block, gate, block, gate, seconds }, with a 1 after them for\n"
              "-- one that only goes from the first to the second (a drop)\n", "M.links = {\n"]
     for a, an, b, bn, cost, oneway in far:
         extra.append("{%d,%d,%d,%d,%.2f%s},\n" % (a, an, b, bn, cost, ",1" if oneway else ""))
     extra.append("}\n-- flight points: { id, name, cell x, cell y, sides, walked to or not, seconds to climb to it, "
-                 "{ gate, seconds, gate, seconds, ... } }\nM.points = {\n")
-    for i, name, gx, gy, sides, walk, climb, legs in points:
-        extra.append("{%d,%s,%d,%d,\"%s\",%s,%.1f,{%s}},\n" % (
+                 "{ gate, seconds, gate, seconds, ... }, with roads { gate, cost, seconds, ... } }\nM.points = {\n")
+    for i, name, gx, gy, sides, walk, climb, legs, rlegs in points:
+        extra.append("{%d,%s,%d,%d,\"%s\",%s,%.1f,{%s}%s},\n" % (
             i, '"%s"' % name.replace('"', "'"), gx, gy, sides, "true" if walk else "false", climb,
-            ",".join("%d,%.2f" % leg for leg in legs)))
+            ",".join("%d,%.2f" % leg for leg in legs),
+            ",{%s}" % ",".join("%d,%.2f,%.2f" % leg for leg in rlegs) if roads else ""))
     extra.append("}\n-- flights: { from, to, seconds }\nM.flights = {\n")
     for a, b, seconds in paths:
         extra.append("{%d,%d,%.1f},\n" % (a, b, seconds))
@@ -195,8 +257,10 @@ def pack_map(map_id, flights):
                 "## X-License: MIT (code); map data made from the game's own files\n"
                 "## Dependencies: PatchwerkForever_Thread_Routes\n## LoadOnDemand: 1\n\n%s\n"
                 % (TITLES[map_id], routes_version(), "\n".join(files)))
-    print("map %d -> %s: %d tiles, %d blocks, %d links, %d flight points, %d flights; %d files, %.1f MB%s" % (
-        map_id, os.path.basename(folder), len(tiles), len(graph), len(far), len(points), len(paths), len(files),
+    print("map %d -> %s: %d tiles (%d with roads), %d blocks (%d with roads), %d links, %d flight points, %d flights; "
+          "%d files, %.1f MB%s" % (
+        map_id, os.path.basename(folder), len(tiles), len(road_tiles), len(graph), len(roadgraph), len(far),
+        len(points), len(paths), len(files),
         total / 1e6, "; %d links between cells side by side" % odd if odd else ""))
 
 

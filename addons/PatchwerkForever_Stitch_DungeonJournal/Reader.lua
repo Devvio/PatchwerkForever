@@ -129,7 +129,15 @@ local function Held(id)
 	local index = Ask(C_QuestLog.GetLogIndexForQuestID, id);
 	return index ~= nil and index ~= 0;
 end
-local function Finished(id) return Ask(C_QuestLog.IsComplete, id) and true or false end
+-- Whether a quest in your log is ready to hand in: the game says it is complete or ready for turn-in,
+-- or it has no objectives at all (a quest that is only taken somewhere, as the steps of the Cozy
+-- Sleeping Bag chain are, may not be called complete by the game until it is handed in).
+local function Finished(id)
+	if ( Ask(C_QuestLog.IsComplete, id) or Ask(C_QuestLog.ReadyForTurnIn, id) ) then return true end;
+	if not Held(id) then return false end;
+	local objectives = Ask(C_QuestLog.GetQuestObjectives, id);
+	return type(objectives) == 'table' and #objectives == 0;
+end
 
 local function ForMySide(journal, quest, side)
 	if ( type(journal.QuestMatchesFaction) == 'function' ) then
@@ -218,6 +226,17 @@ local function ArrowQuest(journal, spot)
 			and ( quest.name == title or quest.arrowName == title ) ) then
 				if Held(quest.id) then return quest.id end;
 				found = found or quest.id;
+			end
+		end
+	end
+	-- the steps before a quest (a chain page's, as the Cozy Sleeping Bag's): kept apart from the
+	-- dungeons' lists, each chain a list of { id =, name = }
+	local chains = type(journal.QUEST_PREREQ_CHAINS) == 'table' and journal.QUEST_PREREQ_CHAINS or {};
+	for _, chain in pairs(chains) do
+		for _, step in ipairs(type(chain) == 'table' and chain or {}) do
+			if ( type(step) == 'table' and type(step.id) == 'number' and step.name == title ) then
+				if Held(step.id) then return step.id end;
+				found = found or step.id;
 			end
 		end
 	end

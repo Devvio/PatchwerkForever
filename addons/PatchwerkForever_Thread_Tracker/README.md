@@ -34,7 +34,9 @@ One piece is marked experimental and starts disabled: dungeon objectives, which 
 - **A second list beside your guide**, with Patchwerk Forever: Dungeon Journal (Stitch): the quests of the dungeons you track in the Dungeon Journal, in a section of their own. Click it to route along it; click again to go back to your guide.
 - **Recipes you track** in a profession window, with what each needs and how much you have.
 - **Collect**: items you are collecting, each against a number you set, such as "Linen Cloth 14/20" (see below).
-- **Gathering**, with Routes (Thread) installed: the nearest herb and ore nodes you have gathered from before.
+- **Gathering**, with Routes (Thread) installed: the nearest herb and ore nodes (yours, and GatherMate2's), **Best Gathering Area** with its node count and distance, **Best Skinning Area** once Routes knows a skinnable creature, and whether Find Herbs or Find Minerals is on, with the key that switches them.
+- **Quest Givers**, with Routes and QuestieDB: **Nearest Quest Giver**; a click starts a run to the quest givers with a quest for you, one after another.
+- **Farm** an item: in a quest's right-click menu (**Farm <item>**, for each item it still asks for) and a Collect row's (**Farm This**), wherever Routes knows where the item drops.
 - **A dungeon's stages**, where the game runs a place in stages. Untried; off until you enable it.
 
 ## Clicks

@@ -132,7 +132,7 @@ ns.Crossings = {
 },
 { id = 369, kind = "tram", sides = "A", wait = 30,
 	stops = {
-		{ 0, "Stormwind", -8346.5, 514.0, 3969, 6102, 14 },
+		{ 0, "Stormwind", -8346.5, 514.0, 3972, 6099, 11 },
 		{ 0, "Ironforge", -4840.3, -1330.5, 4295, 5300, 109 },
 	},
 	rides = {

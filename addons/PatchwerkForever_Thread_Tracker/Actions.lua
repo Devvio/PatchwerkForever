@@ -295,6 +295,17 @@ function ns.QuestClick(quest, button, block)
 		if grouped and Ask(C_QuestLog.IsPushableQuest, id) then
 			entries[#entries + 1] = { 'Share Quest', function() Share(id) end }
 		end
+		-- an item the quest still asks for, that Routes knows the drops of: farm it (Routes with QuestieDB)
+		local Gather = ns.Base.Gather
+		if Gather and Gather.CanFarm then
+			for _, o in ipairs(Ask(C_QuestLog.GetQuestObjectives, id) or {}) do
+				if type(o) == 'table' and o.type == 'item' and not o.finished and type(o.text) == 'string' then
+					local item = o.text:match('^%s*(.-)%s*:%s*%d+%s*/%s*%d+') or o.text:match('^%s*%d+%s*/%s*%d+%s+(.-)%s*$')
+					local name = item and Gather:CanFarm(item)
+					if name then entries[#entries + 1] = { 'Farm ' .. name, function() Gather:Farm(name) end } end
+				end
+			end
+		end
 		entries[#entries + 1] = { 'Untrack Quest', function() Untrack(id) end }
 		entries[#entries + 1] = { 'Abandon Quest', function() Abandon(id, quest.title) end }
 		ns.Menu(block, quest.title, entries)
